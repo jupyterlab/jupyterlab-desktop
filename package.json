@@ -1,0 +1,23 @@
+{
+  "name": "jupyterlab_app",
+  "version": "0.0.1",
+  "description": "A native app for JupyterLab, based on electron.",
+  "main": "index.ts",
+  "scripts": {
+    "start": "electron .",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jupyterlab/jupyterlab_app.git"
+  },
+  "author": "Project Jupyter",
+  "bugs": {
+    "url": "https://github.com/jupyterlab/jupyterlab_app/issues"
+  },
+  "homepage": "https://github.com/jupyterlab/jupyterlab_app#readme",
+  "devDependencies": {
+    "electron-prebuilt-compile": "^1.6.6",
+    "typescript": "^2.2.1"
+  }
+}
