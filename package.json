@@ -5,7 +5,8 @@
   "main": "node_index.ts",
   "scripts": {
     "start": "electron .",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "webpack"
   },
   "repository": {
     "type": "git",
@@ -62,4 +63,36 @@
     "es6-promise": "^4.1.0",
     "font-awesome": "^4.6.3"
   },
+  "jupyterlab": {
+    "extensions": [
+      "@jupyterlab/about-extension",
+      "@jupyterlab/application-extension",
+      "@jupyterlab/apputils-extension",
+      "@jupyterlab/codemirror-extension",
+      "@jupyterlab/completer-extension",
+      "@jupyterlab/console-extension",
+      "@jupyterlab/csvviewer-extension",
+      "@jupyterlab/docmanager-extension",
+      "@jupyterlab/docregistry-extension",
+      "@jupyterlab/fileeditor-extension",
+      "@jupyterlab/faq-extension",
+      "@jupyterlab/filebrowser-extension",
+      "@jupyterlab/help-extension",
+      "@jupyterlab/imageviewer-extension",
+      "@jupyterlab/inspector-extension",
+      "@jupyterlab/landing-extension",
+      "@jupyterlab/launcher-extension",
+      "@jupyterlab/markdownviewer-extension",
+      "@jupyterlab/notebook-extension",
+      "@jupyterlab/rendermime-extension",
+      "@jupyterlab/running-extension",
+      "@jupyterlab/services-extension",
+      "@jupyterlab/shortcuts-extension",
+      "@jupyterlab/tabmanager-extension",
+      "@jupyterlab/terminal-extension",
+      "@jupyterlab/tooltip-extension"
+    ],
+    "name": "JupyterLab",
+    "version": "0.22.1"
+  }
 }
