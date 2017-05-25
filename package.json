@@ -4,7 +4,7 @@
   "description": "A native app for JupyterLab, based on electron.",
   "main": "node_index.ts",
   "scripts": {
-    "start": "electron .",
+    "start": "npm run build && electron .",
     "test": "echo \"Error: no test specified\" && exit 1",
     "build": "webpack"
   },
