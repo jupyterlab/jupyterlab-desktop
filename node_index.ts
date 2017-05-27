@@ -10,7 +10,12 @@ let mainWindow : Electron.BrowserWindow;
 
 // Opens the main window, with a native menu bar.
 function createWindow() {
-  mainWindow = new BrowserWindow({width: 800, height: 600});
+  mainWindow = new BrowserWindow({
+    width: 800, 
+    height: 600,
+    minWidth: 400,
+    minHeight: 300
+  });
 
   // and load the index.html of the app.
   mainWindow.loadURL(url.format({
