@@ -8,7 +8,10 @@
     "moduleResolution": "node",
     "target": "ES5",
     "lib": ["ES5", "ES2015.Collection", "ES2015.Promise", "DOM"],
-    "types": ["node", "text-encoding"],
     "baseUrl": "."
-  }
+  },
+  "include": [
+    "node_modules/electron-prebuilt-compile/node_modules/electron",
+    "node_index.ts"
+  ]
 }

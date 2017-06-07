@@ -19,7 +19,7 @@
   },
   "homepage": "https://github.com/jupyterlab/jupyterlab_app#readme",
   "devDependencies": {
-    "electron-prebuilt-compile": "^1.6.6",
+    "electron-prebuilt-compile": "^1.6.11",
     "typescript": "^2.2.1",
     "css-loader": "^0.27.3",
     "file-loader": "^0.10.1",
