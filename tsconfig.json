@@ -12,6 +12,6 @@
   },
   "include": [
     "node_modules/electron-prebuilt-compile/node_modules/electron",
-    "node_index.ts"
+    "src/*.ts"
   ]
 }
