@@ -5,7 +5,6 @@ let dialog = electron.dialog;
 
 import path = require('path');
 import url = require('url');
-
 // Global reference to the main window, so the garbage collector doesn't close it.
 let mainWindow : Electron.BrowserWindow;
 
