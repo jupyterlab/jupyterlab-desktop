@@ -2,7 +2,7 @@
   "name": "jupyterlab_app",
   "version": "0.0.1",
   "description": "A native app for JupyterLab, based on electron.",
-  "main": "src/node_index.ts",
+  "main": "src/main/main.ts",
   "scripts": {
     "start": "electron .",
     "test": "echo \"Error: no test specified\" && exit 1",
