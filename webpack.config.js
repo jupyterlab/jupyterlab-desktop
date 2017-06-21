@@ -20,7 +20,6 @@ var result = template(data);
 
 fs.writeFileSync(path.resolve(buildDir, 'index.out.js'), result);
 
-
 // Create the hash
 var hash = crypto.createHash('md5');
 hash.update(fs.readFileSync('./package.json'));

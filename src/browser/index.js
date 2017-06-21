@@ -1,13 +1,16 @@
+require('es6-promise/auto');  // polyfill Promise on IE
 
-
-require('es6-promise/auto');  // polyfill Promise on IE'
-
-var app = require('@jupyterlab/application').JupyterLab;
 var PageConfig = require('@jupyterlab/coreutils').PageConfig;
 __webpack_public_path__ = PageConfig.getOption('publicUrl');
 
+// This needs to come after __webpack_public_path__ is set.
 require('font-awesome/css/font-awesome.min.css');
+// Load the core theming before any other package.
 require('@jupyterlab/default-theme/style/index.css');
+
+// Use window.require to prevent webpack from expanding electron
+var ipcRenderer = window.require('electron').ipcRenderer;
+var app = require('@jupyterlab/application').JupyterLab;
 
 function main() {
     var version = PageConfig.getOption('appVersion') || 'unknown';
@@ -41,9 +44,20 @@ function main() {
         var option = PageConfig.getOption('ignorePlugins');
         ignorePlugins = JSON.parse(option);
     } catch (e) {
-        console.error("Invalid ignorePlugins config:", option);
+        // No-op
     }
     lab.start({ "ignorePlugins": ignorePlugins });
+    ipcRenderer.on('server-data', (evt, arg) => {
+        /*var serverData = JSON.parse(String(arg));
+        var el = document.getElementById('jupyter-config-data');
+        var data = JSON.parse(el.innerText);
+        data.token = serverData.token;
+        el.innerText = JSON.stringify(data);
+        console.log(JSON.parse(el.innerText));*/
+        //lab.start({ "ignorePlugins": ignorePlugins });
+    });
+
+    ipcRenderer.send('server-data', 'get');
 }
 
 window.onload = main;
