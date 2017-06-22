@@ -179,7 +179,7 @@ export class JupyterApplication {
             }
         });
         
-        this.mainWindow.on('closed', function () {
+        this.mainWindow.on('closed', () => {
             this.mainWindow = null;
         });
     }
