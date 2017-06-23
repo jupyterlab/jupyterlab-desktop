@@ -21,7 +21,8 @@ module.exports = {
   entry:  path.resolve(buildDir, '../src/browser/index.js'),
   output: {
     path: path.resolve(buildDir),
-    filename: '[name].bundle.js'
+    filename: '[name].bundle.js',
+    publicPath: '../../build/'
   },
   module: {
     rules: [
