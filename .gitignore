@@ -20,4 +20,3 @@ __pycache__
 *.swp
 *.map
 .idea/
-!src/browser/global.d.ts
