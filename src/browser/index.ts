@@ -3,7 +3,6 @@ import {PageConfig} from '@jupyterlab/coreutils';
 import JupyterLab from './extensions';
 import 'font-awesome/css/font-awesome.min.css';
 import '@jupyterlab/default-theme/style/index.css';
-__webpack_public_path__ = PageConfig.getOption('publicUrl');
 
 function main() : void {
     let version : string = PageConfig.getOption('appVersion') || 'unknown';
