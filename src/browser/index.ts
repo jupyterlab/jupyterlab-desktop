@@ -26,6 +26,7 @@ function main() : void {
     // Require Extensions 
     for (let ext of JupyterLab.extensions){
         try {
+            console.log(ext);
             lab.registerPluginModule(ext);
         } catch (e) {
             console.error(e);

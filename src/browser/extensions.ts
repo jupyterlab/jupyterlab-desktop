@@ -1,7 +1,8 @@
 export default class JupyterLab { 
     public static extensions : any[] = [
       require("@jupyterlab/about-extension"),
-      require("@jupyterlab/apputils-extension"),
+      require("./electron-extension/index"),
+      //require("@jupyterlab/apputils-extension"),
       require("@jupyterlab/codemirror-extension"),
       require("@jupyterlab/completer-extension"),
       require("@jupyterlab/console-extension"),

@@ -157,7 +157,7 @@ export class JupyterApplication {
             minWidth: 400,
             minHeight: 300
         });
-
+        this.mainWindow.openDevTools();
         this.mainWindow.loadURL(url.format({
             pathname: this.indexFile,
             protocol: 'file:',

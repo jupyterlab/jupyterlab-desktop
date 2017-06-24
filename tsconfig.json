@@ -12,6 +12,7 @@
   },
   "include": [
     "src/main/*.ts",
-    "src/browser/*.ts"
+    "src/browser/*.ts",
+    "src/browser/electron-extension/*.ts"
   ]
 }
