@@ -51,7 +51,7 @@ class NativeMenu extends MenuBar implements IMainMenu {
         }
 
         let nItems: Electron.MenuItemConstructorOptions[] = menu.items.map((item: Menu.IItemOptions) => {
-            let nItem: Electron.MenuItemConstructorOptions;
+            let nItem: Electron.MenuItemConstructorOptions = new Object();
             // HACK. Submenus should be new menu objects.
             if (item.type == 'command' || item.type == 'submenu')
                 nItem.type = 'normal';
