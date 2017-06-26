@@ -100,7 +100,7 @@ export class JupyterApplication {
     /**
      * The JupyterLab window
      */
-    private mainWindow: any;
+    private mainWindow: Electron.BrowserWindow;
 
     /**
      * The file that stores index.html after it has been
@@ -195,7 +195,7 @@ export class JupyterApplication {
         this.server.start(8888)
             .then((serverData) => {
                 console.log("Jupyter Server started at: " + serverData.url + "?token=" + serverData.token);
-                let source = fs.readFileSync(path.join(__dirname, '../browser/index.html')).toString();
+                let source = fs.readFileSync(path.join(__dirname, '../../../src/browser/index.html')).toString();
                 let template = Handlebars.compile(source);
                 let html = template(serverData);
                 fs.writeFileSync(path.resolve(__dirname, this.indexFile), html);
