@@ -1,7 +1,6 @@
 var webpack = require('webpack');
 var path = require('path');
 var fs = require('fs-extra');
-var Handlebars = require('handlebars');
 var crypto = require('crypto');
 var package_data = require('./package.json');
 
@@ -10,15 +9,6 @@ var buildDir = './build';
 fs.removeSync(buildDir);
 fs.ensureDirSync(buildDir);
 
-fs.copySync('./package.json', './build/package.json');
-
-// Create the entry point file.
-var source = fs.readFileSync('src/browser/index.js').toString();
-var template = Handlebars.compile(source);
-var data = { jupyterlab_extensions: package_data.jupyterlab.extensions };
-var result = template(data);
-
-fs.writeFileSync(path.resolve(buildDir, 'index.out.js'), result);
 
 // Create the hash
 var hash = crypto.createHash('md5');
@@ -28,10 +18,11 @@ fs.writeFileSync(path.resolve(buildDir, 'hash.md5'), digest);
 
 
 module.exports = {
-  entry:  path.resolve(buildDir, 'index.out.js'),
+  entry:  path.resolve(buildDir, '../src/browser/index.js'),
   output: {
     path: path.resolve(buildDir),
-    filename: '[name].bundle.js'
+    filename: '[name].bundle.js',
+    publicPath: '../../build/'
   },
   module: {
     rules: [

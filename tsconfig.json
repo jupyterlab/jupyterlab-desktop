@@ -11,6 +11,7 @@
     "baseUrl": "."
   },
   "include": [
-    "src/main/*.ts"
+    "src/main/*.ts",
+    "src/browser/*.ts"
   ]
 }
