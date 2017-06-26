@@ -38,7 +38,6 @@ class NativeMenu extends MenuBar implements IMainMenu {
     constructor(private app: JupyterLab) {
         super();
         this.nMenu = new NMenu();
-        NMenu.setApplicationMenu(this.nMenu);
     }
 
     private handleClick(menuItem: Electron.MenuItem): void {
@@ -53,10 +52,13 @@ class NativeMenu extends MenuBar implements IMainMenu {
         let nItems: Electron.MenuItemConstructorOptions[] = menu.items.map((item: Menu.IItemOptions) => {
             let nItem: Electron.MenuItemConstructorOptions = new Object();
             // HACK. Submenus should be new menu objects.
-            if (item.type == 'command' || item.type == 'submenu')
+            if (item.type == 'command' || item.type == 'submenu') {
                 nItem.type = 'normal';
-            nItem.label = this.app.commands.label(item.command);
-            nItem.click = this.handleClick;
+                nItem.label = this.app.commands.label(item.command);
+                nItem.click = this.handleClick;
+            } else {
+                nItem.type = 'separator'
+            }
             return nItem;
         });
 
@@ -65,6 +67,9 @@ class NativeMenu extends MenuBar implements IMainMenu {
             label: menu.title.label,
             submenu: nItems
         }));
+        // We need to look into the performace impact of calling this
+        // every time
+        NMenu.setApplicationMenu(this.nMenu);
 
         /* Append the menu to local list */
         this.insertMenu(this.index++, menu);
