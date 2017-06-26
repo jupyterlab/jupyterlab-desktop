@@ -1,8 +1,6 @@
 # Jupyterlab App
 
 A native app for [JupyterLab](https://github.com/jupyterlab/jupyterlab), based on electron.
-Project for Cal Poly interns of summer 2017. 
-
 
 ### Getting started
 
