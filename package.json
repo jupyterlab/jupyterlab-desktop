@@ -2,10 +2,11 @@
   "name": "jupyterlab_app",
   "version": "0.0.1",
   "description": "A native app for JupyterLab, based on electron.",
-  "main": "src/main/main.js",
+  "main": "build/lib/main/main.js",
   "scripts": {
     "start": "electron .",
     "test": "echo \"Error: no test specified\" && exit 1",
+    "clean": "rm -fr build",
     "build": "tsc && webpack",
     "build:all": "npm run build && npm start"
   },

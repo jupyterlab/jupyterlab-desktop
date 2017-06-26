@@ -3,12 +3,7 @@ var path = require('path');
 var fs = require('fs-extra');
 var crypto = require('crypto');
 var package_data = require('./package.json');
-
-// Ensure a clear build directory.
 var buildDir = './build';
-fs.removeSync(buildDir);
-fs.ensureDirSync(buildDir);
-
 
 // Create the hash
 var hash = crypto.createHash('md5');
@@ -18,11 +13,11 @@ fs.writeFileSync(path.resolve(buildDir, 'hash.md5'), digest);
 
 
 module.exports = {
-  entry:  path.resolve(buildDir, '../src/browser/index.js'),
+  entry:  path.resolve(buildDir, 'lib/browser/index.js'),
   output: {
     path: path.resolve(buildDir),
     filename: '[name].bundle.js',
-    publicPath: '../../build/'
+    publicPath: '../../'
   },
   module: {
     rules: [
