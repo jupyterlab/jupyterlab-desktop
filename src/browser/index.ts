@@ -3,6 +3,7 @@ import {PageConfig} from '@jupyterlab/coreutils';
 import JupyterLab from './extensions';
 import 'font-awesome/css/font-awesome.min.css';
 import '@jupyterlab/default-theme/style/index.css';
+let ipcRenderer = (window as any).require('electron').ipcRenderer;
 
 function main() : void {
     let version : string = PageConfig.getOption('appVersion') || 'unknown';
@@ -14,6 +15,8 @@ function main() : void {
     if (version[0] === 'v') {
         version = version.slice(1);
     }
+
+
     let lab = new app({
         namespace: namespace,
         name: name,
@@ -26,7 +29,6 @@ function main() : void {
     // Require Extensions 
     for (let ext of JupyterLab.extensions){
         try {
-            console.log(ext);
             lab.registerPluginModule(ext);
         } catch (e) {
             console.error(e);
@@ -42,6 +44,14 @@ function main() : void {
         // No-op
     }
 
-    lab.start({ "ignorePlugins": ignorePlugins });
+    ipcRenderer.send("ready-for-token");
+    ipcRenderer.on("token", (event: any, arg: any) => {
+        console.log(arg);
+        PageConfig.setOption("token", arg);
+        lab.start({ "ignorePlugins": ignorePlugins });
+        // document.getElementById("universe").style.animation = "fade .4s linear 0s forwards";
+    });
+
 }
+
 window.onload = main;
