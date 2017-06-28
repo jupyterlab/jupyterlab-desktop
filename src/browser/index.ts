@@ -46,7 +46,6 @@ function main() : void {
 
     ipcRenderer.send("ready-for-token");
     ipcRenderer.on("token", (event: any, arg: any) => {
-        console.log(arg);
         PageConfig.setOption("token", arg);
         lab.start({ "ignorePlugins": ignorePlugins });
         // document.getElementById("universe").style.animation = "fade .4s linear 0s forwards";
