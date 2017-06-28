@@ -1,8 +1,43 @@
-import {JupyterLab as app} from '@jupyterlab/application';
+
 import {PageConfig} from '@jupyterlab/coreutils';
-import JupyterLab from './extensions';
+import {RenderMime} from '@jupyterlab/rendermime';
 import 'font-awesome/css/font-awesome.min.css';
-import '@jupyterlab/default-theme/style/index.css';
+import '@jupyterlab/theming/style/index.css';
+import {JupyterLab as app} from '@jupyterlab/application';
+
+let extensions = [
+    require("./electron-extension/index.js"),
+    require("@jupyterlab/apputils-extension"),
+    require("@jupyterlab/chatbox-extension"),
+    require("@jupyterlab/codemirror-extension"),
+    require("@jupyterlab/completer-extension"),
+    require("@jupyterlab/console-extension"),
+    require("@jupyterlab/csvviewer-extension"),
+    require("@jupyterlab/docmanager-extension"),
+    require("@jupyterlab/docregistry-extension"),
+    require("@jupyterlab/fileeditor-extension"),
+    require("@jupyterlab/faq-extension"),
+    require("@jupyterlab/filebrowser-extension"),
+    require("@jupyterlab/help-extension"),
+    require("@jupyterlab/imageviewer-extension"),
+    require("@jupyterlab/inspector-extension"),
+    require("@jupyterlab/launcher-extension"),
+    require("@jupyterlab/markdownviewer-extension"),
+    require("@jupyterlab/notebook-extension"),
+    require("@jupyterlab/rendermime-extension"),
+    require("@jupyterlab/running-extension"),
+    require("@jupyterlab/services-extension"),
+    require("@jupyterlab/settingeditor-extension"),
+    require("@jupyterlab/shortcuts-extension"),
+    require("@jupyterlab/tabmanager-extension"),
+    require("@jupyterlab/terminal-extension"),
+    require("@jupyterlab/theme-light-extension"),
+    require("@jupyterlab/tooltip-extension")
+];
+
+let mimeExtensions: any[] = [
+    require("@jupyterlab/vega")
+];
 
 function main() : void {
     let version : string = PageConfig.getOption('appVersion') || 'unknown';
@@ -23,11 +58,15 @@ function main() : void {
         assetsDir: assetsDir
     });
 
-    // Require Extensions 
-    for (let ext of JupyterLab.extensions){
+    try {
+        lab.registerPluginModules(extensions);
+    } catch (e) {
+        console.error(e);
+    }
+
+    for (let exten in mimeExtensions) {
         try {
-            console.log(ext);
-            lab.registerPluginModule(ext);
+            RenderMime.registerExtensionModule(exten as any);
         } catch (e) {
             console.error(e);
         }
@@ -41,7 +80,8 @@ function main() : void {
     } catch (e) {
         // No-op
     }
-
+    
     lab.start({ "ignorePlugins": ignorePlugins });
 }
+
 window.onload = main;
