@@ -4,6 +4,7 @@ import {RenderMime} from '@jupyterlab/rendermime';
 import 'font-awesome/css/font-awesome.min.css';
 import '@jupyterlab/theming/style/index.css';
 import {JupyterLab as app} from '@jupyterlab/application';
+let ipcRenderer = (window as any).require('electron').ipcRenderer;
 
 let extensions = [
     require("./electron-extension/index.js"),
@@ -39,6 +40,7 @@ let mimeExtensions: any[] = [
     require("@jupyterlab/vega")
 ];
 
+
 function main() : void {
     let version : string = PageConfig.getOption('appVersion') || 'unknown';
     let name : string = PageConfig.getOption('appName') || 'JupyterLab';
@@ -49,6 +51,8 @@ function main() : void {
     if (version[0] === 'v') {
         version = version.slice(1);
     }
+
+
     let lab = new app({
         namespace: namespace,
         name: name,
@@ -80,8 +84,15 @@ function main() : void {
     } catch (e) {
         // No-op
     }
-    
-    lab.start({ "ignorePlugins": ignorePlugins });
+
+    ipcRenderer.send("ready-for-token");
+    ipcRenderer.on("token", (event: any, arg: any) => {
+        console.log(arg);
+        PageConfig.setOption("token", arg);
+        lab.start({ "ignorePlugins": ignorePlugins });
+        // document.getElementById("universe").style.animation = "fade .4s linear 0s forwards";
+    });
+
 }
 
 window.onload = main;

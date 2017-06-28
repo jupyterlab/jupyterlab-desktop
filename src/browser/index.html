@@ -6,7 +6,18 @@ Distributed under the terms of the Modified BSD License.
 <html>
 
 <head>
+  <style>
+    @keyframes fade {
+    0% {
+        opacity: 1;
+    }
+    100% {
+        opacity: 0;
+    }
+}
+  </style>
   <meta charset="utf-8">
+  <link rel="stylesheet" href="../../../src/browser/css/main.css" type="text/css">
 
   <title>JupyterLab Application</title>
 
@@ -34,7 +45,23 @@ Distributed under the terms of the Modified BSD License.
 </head>
 
 <body>
-
+  <div id="universe">
+    <div id="galaxy">
+        <div id="main-logo">
+        </div>
+          <div id="moon1" class="moon orbit">
+              <div class="planet"></div>
+          </div>
+          <div id="moon2" class="moon orbit">
+              <div class="planet"></div>
+          </div>
+          <div id="moon3" class="moon orbit">
+              <div class="planet"></div>
+          </div>
+      </div>
+    </div>
+    <script src="//ajax.googleapis.com/ajax/libs/jquery/1.8.1/jquery.min.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/prefixfree/1.0.7/prefixfree.min.js"></script>
 </body>
 
 </html>
