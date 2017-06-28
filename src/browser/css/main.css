@@ -189,5 +189,6 @@ table { border-collapse: collapse; border-spacing: 0; }
     }
     100% {
         opacity: 0;
+        visibility: hidden;
     }
 }
