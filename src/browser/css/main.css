@@ -1,0 +1,194 @@
+/* Resetting CSS styles */
+
+html, body, div, span, applet, object, iframe, h1, h2, h3, h4, h5, h6, p, blockquote, pre, a, abbr, acronym, address, big, cite, code, del, dfn, em, img, ins, kbd, q, s, samp, small, strike, strong, sub, sup, tt, var, b, u, i, center, dl, dt, dd, ol, ul, li, fieldset, form, label, legend, table, caption, tbody, tfoot, thead, tr, th, td, article, aside, canvas, details, embed, figure, figcaption, footer, header, hgroup, menu, nav, output, ruby, section, summary, time, mark, audio, video {
+  border: 0;
+  font-size: 100%;
+  font: inherit;
+  vertical-align: baseline;
+  margin: 0;
+  padding: 0;
+}
+ 
+article, aside, details, figcaption, figure, footer, header, hgroup, menu, nav, section {
+  display: block;
+}
+ 
+body { line-height: 1; }
+ol, ul { list-style: none; }
+blockquote, q { quotes: none; }
+blockquote:before, blockquote:after, q:before, q:after { content: none; }
+table { border-collapse: collapse; border-spacing: 0; }
+ 
+* {
+  -moz-box-sizing: border-box;
+  box-sizing: border-box;
+}
+
+
+#universe {
+    animation: fade .4s linear 2.5s forwards;
+    z-index: 1;
+    position: absolute;
+    overflow: hidden;
+    width: 100%;
+    height: 100%;
+    background-position: center 40%;
+    background-repeat: no-repeat;
+    background-size: cover;
+    background-color: #ffffff;
+}
+
+#galaxy {
+    position: relative;
+    width: 100%;
+    height: 100%;
+}
+
+#main-logo {
+    background-image: url(../img/main.svg);
+    background-repeat: no-repeat;
+    background-size: 100px;
+    position: absolute;
+    background-position: center;
+    width: 100%;
+    height: 100%;
+    z-index: 1;
+}
+
+.planet {
+    background-repeat: no-repeat;
+    background-size: cover;
+    animation-iteration-count: infinite;
+    animation-name: orbit;
+}
+
+#moon1.orbit {
+    animation: orbit 2s ease .5s;
+    width: 200px;
+    height: 140px;
+    margin-top: -53px;
+    margin-left: -54px;
+}
+
+#moon2.orbit {
+    animation: orbit 2s ease .5s;
+    width: 132px;
+    height: 180px;
+    margin-top: -66px;
+    margin-left: -85px;
+}
+
+#moon3.orbit {
+    display: flex;
+    align-items: flex-end;
+    animation: orbit 2s ease .5s;
+    width: 220px;
+    height: 166px;
+    margin-top: -96px;
+    margin-left: -50px;
+}
+
+#moon1 .planet {
+    background-color: #6F7070;
+    height: 12px;
+    width: 12px;
+    border-radius: 50%;
+}
+
+#moon2 .planet {
+    background-color: #767677;
+    height: 16px;
+    width: 16px;
+    border-radius: 50%;
+    float: right;
+}
+
+#moon3 .planet {
+    background-color: #989798;
+    height: 20px;
+    width: 20px;
+    border-radius: 50%;
+}
+
+.orbit {
+    animation-iteration-count: 1;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    border-radius: 50%;
+}
+
+.spinner {
+  margin: 100px auto;
+  width: 40px;
+  height: 40px;
+  position: relative;
+  text-align: center;
+  -webkit-animation: sk-rotate 2.0s infinite linear;
+  animation: sk-rotate 2.0s infinite linear;
+}
+
+.dot1, .dot2 {
+  width: 60%;
+  height: 60%;
+  display: inline-block;
+  position: absolute;
+  top: 0;
+  background-color: #333;
+  border-radius: 100%;
+  
+  -webkit-animation: sk-bounce 2.0s infinite ease-in-out;
+  animation: sk-bounce 2.0s infinite ease-in-out;
+}
+
+.dot2 {
+  top: auto;
+  bottom: 0;
+  -webkit-animation-delay: -1.0s;
+  animation-delay: -1.0s;
+}
+
+@-webkit-keyframes sk-rotate { 100% { -webkit-transform: rotate(360deg) }}
+@keyframes sk-rotate { 100% { transform: rotate(360deg); -webkit-transform: rotate(360deg) }}
+
+@-webkit-keyframes sk-bounce {
+  0%, 100% { -webkit-transform: scale(0.0) }
+  50% { -webkit-transform: scale(1.0) }
+}
+
+@keyframes sk-bounce {
+  0%, 100% { 
+    transform: scale(0.0);
+    -webkit-transform: scale(0.0);
+  } 50% { 
+    transform: scale(1.0);
+    -webkit-transform: scale(1.0);
+  }
+}
+@keyframes orbit {
+    0% {
+        transform: rotateZ(0deg);
+    }
+    100% {
+        transform: rotateZ(-360deg);
+    }
+}
+
+@keyframes orbit2 {
+    0% {
+        transform: rotateZ(0deg);
+    }
+    100% {
+        transform: rotateZ(360deg);
+    }
+}
+
+@keyframes fade {
+    0% {
+        opacity: 1;
+    }
+    100% {
+        opacity: 0;
+        visibility: hidden;
+    }
+}

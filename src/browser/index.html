@@ -6,7 +6,18 @@ Distributed under the terms of the Modified BSD License.
 <html>
 
 <head>
+  <style>
+    @keyframes fade {
+    0% {
+        opacity: 1;
+    }
+    100% {
+        opacity: 0;
+    }
+}
+  </style>
   <meta charset="utf-8">
+  <link rel="stylesheet" href="../../../src/browser/css/main.css" type="text/css">
 
   <title>JupyterLab Application</title>
 
@@ -29,12 +40,27 @@ Distributed under the terms of the Modified BSD License.
     require('../../main.bundle.js');
   </script>
 
-  <script type="text/javascript" src="http://localhost:8888/static/components/MathJax/MathJax.js?config=TeX-AMS-MML_HTMLorMML-full,Safe&amp;delayStartupUntil=configured" charset="utf-8"></script>
+   <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS_CHTML-full,Safe&amp;delayStartupUntil=configured"></script>
 
 </head>
 
 <body>
-
+  <div id="universe">
+    <div id="galaxy">
+        <div id="main-logo">
+        </div>
+          <div id="moon1" class="moon orbit">
+              <div class="planet"></div>
+          </div>
+          <div id="moon2" class="moon orbit">
+              <div class="planet"></div>
+          </div>
+          <div id="moon3" class="moon orbit">
+              <div class="planet"></div>
+          </div>
+      </div>
+    </div>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/prefixfree/1.0.7/prefixfree.min.js"></script>
 </body>
 
 </html>
