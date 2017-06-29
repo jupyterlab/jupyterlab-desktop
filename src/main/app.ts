@@ -2,10 +2,8 @@
 // Distributed under the terms of the Modified BSD License.
 
 import { dialog, app, BrowserWindow, ipcMain } from 'electron'
-import { ChildProcess, spawn } from 'child_process';
-// import * as Handlebars from 'handlebars';
-import * as fs from 'fs';
-import * as path from 'path';
+import { ChildProcess, spawn } from 'child_process'
+import * as path from 'path'
 import * as url from 'url'
 
 class JupyterServer {
@@ -103,20 +101,11 @@ export class JupyterApplication {
     private mainWindow: Electron.BrowserWindow;
 
     /**
-     * The file that stores index.html after it has been
-     * run through the templater. This is a hack that should
-     * be replaced when the JupyterLab application api is 
-     * updated.
-     */
-    private indexFile: string;
-
-    /**
      * Construct the Jupyter application
      */
     constructor() {
         this.registerListeners();
         this.server = new JupyterServer();
-        this.indexFile = path.join(__dirname, 'temp.index.html');
     }
 
     /**
@@ -142,7 +131,6 @@ export class JupyterApplication {
 
         app.on('quit', () => {
             this.server.stop();
-            fs.unlinkSync(this.indexFile);
         });
     }
 
@@ -161,7 +149,7 @@ export class JupyterApplication {
         });
 
         this.mainWindow.loadURL(url.format({
-            pathname: this.indexFile,
+            pathname: path.resolve(__dirname, '../../../src/browser/index.html'),
             protocol: 'file:',
             slashes: true
         }));
@@ -201,8 +189,6 @@ export class JupyterApplication {
      */
     public start(): void {
         let token: Promise<string>;
-        let source = fs.readFileSync(path.join(__dirname, '../../../src/browser/index.html')).toString();
-        fs.writeFileSync(path.resolve(__dirname, this.indexFile), source);
         
         ipcMain.on("ready-for-token", (event: any, arg: any) => {
             token.then((data) => {
