@@ -1,6 +1,5 @@
 
 import {PageConfig} from '@jupyterlab/coreutils';
-import {RenderMime} from '@jupyterlab/rendermime';
 import 'font-awesome/css/font-awesome.min.css';
 import '@jupyterlab/theming/style/index.css';
 import {JupyterLab as app} from '@jupyterlab/application';
@@ -36,10 +35,6 @@ let extensions = [
     require("@jupyterlab/tooltip-extension")
 ];
 
-let mimeExtensions: any[] = [
-    require("@jupyterlab/vega")
-];
-
 
 function main() : void {
     let version : string = PageConfig.getOption('appVersion') || 'unknown';
@@ -66,14 +61,6 @@ function main() : void {
         lab.registerPluginModules(extensions);
     } catch (e) {
         console.error(e);
-    }
-
-    for (let exten in mimeExtensions) {
-        try {
-            RenderMime.registerExtensionModule(exten as any);
-        } catch (e) {
-            console.error(e);
-        }
     }
     
     // Ignore Plugins

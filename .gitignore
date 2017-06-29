@@ -2,8 +2,6 @@ MANIFEST
 build
 dist
 lib
-src/main/*.js
-*.d.ts
 node_modules
 .cache
 .vscode
@@ -20,4 +18,3 @@ __pycache__
 *.swp
 *.map
 .idea/
-jupyterlab
