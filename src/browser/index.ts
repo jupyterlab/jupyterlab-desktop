@@ -47,6 +47,14 @@ function main() : void {
         version = version.slice(1);
     }
 
+    // Promise for animation listener
+    let promise : Promise<string>;
+    document.getElementById('moon1').addEventListener('animationiteration', () => {
+        promise.then( (animation) => {
+            document.getElementById('universe').style.animation = animation;
+        })
+    });
+
 
     let lab = new app({
         namespace: namespace,
@@ -72,13 +80,22 @@ function main() : void {
         // No-op
     }
 
+    // Get token from server
     ipcRenderer.send("ready-for-token");
     ipcRenderer.on("token", (event: any, arg: any) => {
+        // Set token
         PageConfig.setOption("token", arg);
-        lab.start({ "ignorePlugins": ignorePlugins });
-        // document.getElementById("universe").style.animation = "fade .4s linear 0s forwards";
+        // Start lab and fade splash
+        promise = new Promise((resolve, reject) => {
+            try{
+                lab.start({ "ignorePlugins": ignorePlugins });
+                resolve("fade .4s linear 0s forwards");
+            }
+            catch (e){
+                reject(e);
+            }
+        });
     });
-
 }
 
 window.onload = main;
