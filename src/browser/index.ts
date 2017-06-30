@@ -1,8 +1,40 @@
-import {JupyterLab as app} from '@jupyterlab/application';
+
 import {PageConfig} from '@jupyterlab/coreutils';
-import JupyterLab from './extensions';
 import 'font-awesome/css/font-awesome.min.css';
-import '@jupyterlab/default-theme/style/index.css';
+import '@jupyterlab/theming/style/index.css';
+import {JupyterLab as app} from '@jupyterlab/application';
+let ipcRenderer = (window as any).require('electron').ipcRenderer;
+
+let extensions = [
+    require("./electron-extension/index.js"),
+    require("./utils-extension/index.js"),
+    require("@jupyterlab/chatbox-extension"),
+    require("@jupyterlab/codemirror-extension"),
+    require("@jupyterlab/completer-extension"),
+    require("@jupyterlab/console-extension"),
+    require("@jupyterlab/csvviewer-extension"),
+    require("@jupyterlab/docmanager-extension"),
+    require("@jupyterlab/docregistry-extension"),
+    require("@jupyterlab/fileeditor-extension"),
+    require("@jupyterlab/faq-extension"),
+    require("@jupyterlab/filebrowser-extension"),
+    require("@jupyterlab/help-extension"),
+    require("@jupyterlab/imageviewer-extension"),
+    require("@jupyterlab/inspector-extension"),
+    require("@jupyterlab/launcher-extension"),
+    require("@jupyterlab/markdownviewer-extension"),
+    require("@jupyterlab/notebook-extension"),
+    require("@jupyterlab/rendermime-extension"),
+    require("@jupyterlab/running-extension"),
+    require("@jupyterlab/services-extension"),
+    require("@jupyterlab/settingeditor-extension"),
+    require("@jupyterlab/shortcuts-extension"),
+    require("@jupyterlab/tabmanager-extension"),
+    require("@jupyterlab/terminal-extension"),
+    require("@jupyterlab/theme-light-extension"),
+    require("@jupyterlab/tooltip-extension")
+];
+
 
 function main() : void {
     let version : string = PageConfig.getOption('appVersion') || 'unknown';
@@ -14,6 +46,8 @@ function main() : void {
     if (version[0] === 'v') {
         version = version.slice(1);
     }
+
+
     let lab = new app({
         namespace: namespace,
         name: name,
@@ -23,13 +57,10 @@ function main() : void {
         assetsDir: assetsDir
     });
 
-    // Require Extensions 
-    for (let ext of JupyterLab.extensions){
-        try {
-            lab.registerPluginModule(ext);
-        } catch (e) {
-            console.error(e);
-        }
+    try {
+        lab.registerPluginModules(extensions);
+    } catch (e) {
+        console.error(e);
     }
     
     // Ignore Plugins
@@ -41,6 +72,13 @@ function main() : void {
         // No-op
     }
 
-    lab.start({ "ignorePlugins": ignorePlugins });
+    ipcRenderer.send("ready-for-token");
+    ipcRenderer.on("token", (event: any, arg: any) => {
+        PageConfig.setOption("token", arg);
+        lab.start({ "ignorePlugins": ignorePlugins });
+        // document.getElementById("universe").style.animation = "fade .4s linear 0s forwards";
+    });
+
 }
+
 window.onload = main;

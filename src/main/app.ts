@@ -1,9 +1,8 @@
 // Copyright (c) Jupyter Development Team.
 // Distributed under the terms of the Modified BSD License.
 
-import { dialog, app, BrowserWindow } from 'electron'
+import { dialog, app, BrowserWindow, ipcMain } from 'electron'
 import { ChildProcess, spawn } from 'child_process';
-import * as Handlebars from 'handlebars';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as url from 'url'
@@ -100,6 +99,7 @@ export class JupyterApplication {
     /**
      * The JupyterLab window
      */
+   // private mainWindow: Electron.BrowserWindow;
     private mainWindow: any;
 
     /**
@@ -151,11 +151,13 @@ export class JupyterApplication {
      * html
      */
     private createWindow(): void {
+        
         this.mainWindow = new BrowserWindow({
             width: 800,
             height: 600,
             minWidth: 400,
-            minHeight: 300
+            minHeight: 300,
+            show: false
         });
         this.mainWindow.openDevTools();
         this.mainWindow.loadURL(url.format({
@@ -163,6 +165,10 @@ export class JupyterApplication {
             protocol: 'file:',
             slashes: true
         }));
+
+        this.mainWindow.webContents.on('did-finish-load', () =>{
+            this.mainWindow.show();
+        });
 
         // Register dialog on window close
         this.mainWindow.on('close', (event: Event) => {
@@ -184,6 +190,8 @@ export class JupyterApplication {
         });
     }
 
+
+
     /**
      * Starts the Jupyter Server and launches the electron application.
      * When the Jupyter Sevrer start promise is fulfilled, the Handlebars
@@ -192,18 +200,29 @@ export class JupyterApplication {
      * calling createWindow
      */
     public start(): void {
-        this.server.start(8888)
+        let token: Promise<string>;
+        let source = fs.readFileSync(path.join(__dirname, '../../../src/browser/index.html')).toString();
+        fs.writeFileSync(path.resolve(__dirname, this.indexFile), source);
+        
+        ipcMain.on("ready-for-token", (event: any, arg: any) => {
+            token.then((data) => {
+                event.sender.send("token", data);
+            });
+        });
+        this.createWindow();
+        
+        token = new Promise((resolve, reject) => {
+            this.server.start(8888)
             .then((serverData) => {
                 console.log("Jupyter Server started at: " + serverData.url + "?token=" + serverData.token);
-                let source = fs.readFileSync(path.join(__dirname, '../browser/index.html')).toString();
-                let template = Handlebars.compile(source);
-                let html = template(serverData);
-                fs.writeFileSync(path.resolve(__dirname, this.indexFile), html);
-                this.createWindow();
+                resolve(serverData.token);
+
             })
             .catch((err) => {
                 console.error("Failed to start Jupyter Server");
                 console.error(err);
+                reject(err);
             });
+        });
     }
 }

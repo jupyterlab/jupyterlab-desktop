@@ -2,8 +2,6 @@ MANIFEST
 build
 dist
 lib
-*.js
-*.d.ts
 node_modules
 .cache
 .vscode

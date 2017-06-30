@@ -10,7 +10,7 @@ import {
 } from '@phosphor/widgets';
 
 import {
-  JupyterLab
+    JupyterLab
 } from '@jupyterlab/application';
 
 import {
@@ -21,6 +21,10 @@ let remote = (window as any).require('electron').remote;
 
 let NMenu = remote.Menu;
 let NMenuItem = remote.MenuItem;
+
+interface NMenuItemOptions extends Electron.MenuItemConstructorOptions {
+    args: any;
+}
 
 export
 class NativeMenu extends MenuBar implements IMainMenu {
@@ -38,11 +42,34 @@ class NativeMenu extends MenuBar implements IMainMenu {
     constructor(private app: JupyterLab) {
         super();
         this.nMenu = new NMenu();
-        NMenu.setApplicationMenu(this.nMenu);
     }
 
-    private handleClick(menuItem: Electron.MenuItem): void {
-        console.log('Click Received');
+    private handleClick(menuItem: any): void {
+        console.log(menuItem.args);
+        console.log(this.app)
+    }
+
+    private translateMenuType(type: Menu.ItemType): "normal" | "submenu" | "separator" {
+        if (type == "command")
+            return 'normal';
+        return type;
+    }
+
+    private buildNativeMenu(menu: Menu): NMenuItemOptions[] {
+        let nItems = menu.items.map((item: Menu.IItem) => {
+            let nItem: NMenuItemOptions = {args: {}};
+            
+            nItem.type = this.translateMenuType(item.type);
+            nItem.click = this.handleClick;
+            nItem.label = item.label;
+            nItem.args = item.args;
+            
+            if (item.submenu)
+                nItem.submenu = this.buildNativeMenu(item.submenu)
+
+            return nItem
+        })
+        return nItems;
     }
 
     addMenu(menu: Menu, options: IMainMenu.IAddOptions = {}): void {
@@ -50,21 +77,12 @@ class NativeMenu extends MenuBar implements IMainMenu {
             return;
         }
 
-        let nItems: Electron.MenuItemConstructorOptions[] = menu.items.map((item: Menu.IItemOptions) => {
-            let nItem: Electron.MenuItemConstructorOptions;
-            // HACK. Submenus should be new menu objects.
-            if (item.type == 'command' || item.type == 'submenu')
-                nItem.type = 'normal';
-            nItem.label = this.app.commands.label(item.command);
-            nItem.click = this.handleClick;
-            return nItem;
-        });
-
         /* Append the menu to the native menu */
         this.nMenu.append(new NMenuItem({
             label: menu.title.label,
-            submenu: nItems
+            submenu: this.buildNativeMenu(menu)
         }));
+        NMenu.setApplicationMenu(this.nMenu);
 
         /* Append the menu to local list */
         this.insertMenu(this.index++, menu);
