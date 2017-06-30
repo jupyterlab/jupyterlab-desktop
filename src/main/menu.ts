@@ -7,6 +7,10 @@ import {
     Menu, MenuItem, ipcMain
 } from 'electron';
 
+import {
+    ArrayExt
+} from '@phosphor/algorithm'
+
 type ItemOptions = Electron.MenuItemConstructorOptions;
 
 export
@@ -34,7 +38,14 @@ class JupyterMenu {
     private registerListeners(): void {
         ipcMain.on('menu-append', (event: any, menu: ItemOptions) => {
             this.setClickEvents(menu);
-            this.menu.append(new MenuItem(menu));
+            
+            /* Set position in the native menu bar */
+            let index = ArrayExt.upperBound(<ItemOptions[]>this.menu.items, menu, 
+                        (f: ItemOptions, s: ItemOptions) => {
+                            return Number(f.id) - Number(s.id)
+                        });
+            
+            this.menu.insert(index, new MenuItem(menu));
             Menu.setApplicationMenu(this.menu);
         });
     }

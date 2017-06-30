@@ -19,18 +19,12 @@ import {
 
 let ipc = (window as any).require('electron').ipcRenderer;
 
-export
-interface MenuItemOptions extends Electron.MenuItemConstructorOptions {
+interface NativeMenuItem extends Electron.MenuItemConstructorOptions {
     item: Menu.IItem;
 }
 
 export
 class NativeMenu extends MenuBar implements IMainMenu {
-
-    /**
-     * The next open index in the menu array
-     */
-    private index: number = 0;
 
     constructor(private app: JupyterLab) {
         super();
@@ -38,7 +32,7 @@ class NativeMenu extends MenuBar implements IMainMenu {
     }
 
     private registerListeners(): void {
-        ipc.on('menu-click', (event: any, opts: MenuItemOptions) => {
+        ipc.on('menu-click', (event: any, opts: NativeMenuItem) => {
             this.app.commands.execute(opts.item.command);
         });
     }
@@ -49,9 +43,9 @@ class NativeMenu extends MenuBar implements IMainMenu {
         return type;
     }
 
-    private buildNativeMenu(menu: Menu): MenuItemOptions[] {
+    private buildNativeMenu(menu: Menu): NativeMenuItem[] {
         let nItems = menu.items.map((item: Menu.IItem) => {
-            let nItem: MenuItemOptions = {item: item};
+            let nItem: NativeMenuItem = {item: item};
             
             nItem.type = this.translateMenuType(item.type);
             nItem.label = item.label;
@@ -69,13 +63,13 @@ class NativeMenu extends MenuBar implements IMainMenu {
             return;
         }
 
+        let rank = 'rank' in options ? options.rank : 100;
+
         /* Append the menu to the native menu */
         ipc.send('menu-append', {
+            id: String(rank),
             label: menu.title.label,
             submenu: this.buildNativeMenu(menu)
         });
-
-        /* Append the menu to local list */
-        this.insertMenu(this.index++, menu);
     }
 }
