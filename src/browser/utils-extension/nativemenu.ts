@@ -17,22 +17,15 @@ import {
     IMainMenu
 } from '@jupyterlab/apputils';
 
-let remote = (window as any).require('electron').remote;
+let ipc = (window as any).require('electron').ipcRenderer;
 
-let NMenu = remote.Menu;
-let NMenuItem = remote.MenuItem;
-
-interface NMenuItemOptions extends Electron.MenuItemConstructorOptions {
-    args: any;
+export
+interface MenuItemOptions extends Electron.MenuItemConstructorOptions {
+    item: Menu.IItem;
 }
 
 export
 class NativeMenu extends MenuBar implements IMainMenu {
-
-    /**
-     * The native menu object. This is a remote object in the main process.
-     */
-    private nMenu: Electron.Menu;
 
     /**
      * The next open index in the menu array
@@ -41,12 +34,13 @@ class NativeMenu extends MenuBar implements IMainMenu {
 
     constructor(private app: JupyterLab) {
         super();
-        this.nMenu = new NMenu();
+        this.registerListeners();
     }
 
-    private handleClick(menuItem: any): void {
-        console.log(menuItem.args);
-        console.log(this.app)
+    private registerListeners(): void {
+        ipc.on('menu-click', (event: any, opts: MenuItemOptions) => {
+            this.app.commands.execute(opts.item.command);
+        });
     }
 
     private translateMenuType(type: Menu.ItemType): "normal" | "submenu" | "separator" {
@@ -55,14 +49,12 @@ class NativeMenu extends MenuBar implements IMainMenu {
         return type;
     }
 
-    private buildNativeMenu(menu: Menu): NMenuItemOptions[] {
+    private buildNativeMenu(menu: Menu): MenuItemOptions[] {
         let nItems = menu.items.map((item: Menu.IItem) => {
-            let nItem: NMenuItemOptions = {args: {}};
+            let nItem: MenuItemOptions = {item: item};
             
             nItem.type = this.translateMenuType(item.type);
-            nItem.click = this.handleClick;
             nItem.label = item.label;
-            nItem.args = item.args;
             
             if (item.submenu)
                 nItem.submenu = this.buildNativeMenu(item.submenu)
@@ -78,11 +70,10 @@ class NativeMenu extends MenuBar implements IMainMenu {
         }
 
         /* Append the menu to the native menu */
-        this.nMenu.append(new NMenuItem({
+        ipc.send('menu-append', {
             label: menu.title.label,
             submenu: this.buildNativeMenu(menu)
-        }));
-        NMenu.setApplicationMenu(this.nMenu);
+        });
 
         /* Append the menu to local list */
         this.insertMenu(this.index++, menu);

@@ -2,14 +2,9 @@
 // Distributed under the terms of the Modified BSD License.
 
 import { dialog, app, BrowserWindow, ipcMain } from 'electron'
-<<<<<<< HEAD
-import { ChildProcess, spawn } from 'child_process';
-import * as fs from 'fs';
-import * as path from 'path';
-=======
 import { ChildProcess, spawn } from 'child_process'
+import { JupyterMenu } from './menu';
 import * as path from 'path'
->>>>>>> master
 import * as url from 'url'
 
 class JupyterServer {
@@ -102,6 +97,11 @@ export class JupyterApplication {
     private server: JupyterServer;
 
     /**
+     * Controls the native menubar
+     */
+    private menu: JupyterMenu;
+
+    /**
      * The JupyterLab window
      */
    // private mainWindow: Electron.BrowserWindow;
@@ -113,6 +113,7 @@ export class JupyterApplication {
     constructor() {
         this.registerListeners();
         this.server = new JupyterServer();
+        this.menu = new JupyterMenu();
     }
 
     /**
@@ -155,6 +156,7 @@ export class JupyterApplication {
             show: false
         });
         this.mainWindow.openDevTools();
+
         this.mainWindow.loadURL(url.format({
             pathname: path.resolve(__dirname, '../../../src/browser/index.html'),
             protocol: 'file:',

@@ -7,8 +7,8 @@
     "start": "electron .",
     "test": "echo \"Error: no test specified\" && exit 1",
     "clean": "rm -fr build",
-    "tscwatch": "tsc -w",
-    "packwatch": "webpack --progress --colors --watch",
+    "watch:tsc": "tsc -w",
+    "watch:pack": "webpack --progress --colors --watch",
     "build": "tsc && webpack",
     "build:all": "npm run build && npm start"
   },
