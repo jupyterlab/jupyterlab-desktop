@@ -26,7 +26,6 @@ table { border-collapse: collapse; border-spacing: 0; }
 
 
 #universe {
-    animation: fade .4s linear 2.5s forwards;
     z-index: 1;
     position: absolute;
     overflow: hidden;
@@ -63,7 +62,7 @@ table { border-collapse: collapse; border-spacing: 0; }
 }
 
 #moon1.orbit {
-    animation: orbit 2s ease .5s;
+    animation: orbit 3.5s ease -1.0s infinite;
     width: 200px;
     height: 140px;
     margin-top: -53px;
@@ -71,7 +70,7 @@ table { border-collapse: collapse; border-spacing: 0; }
 }
 
 #moon2.orbit {
-    animation: orbit 2s ease .5s;
+    animation: orbit 3.5s ease -1.0s infinite;
     width: 132px;
     height: 180px;
     margin-top: -66px;
@@ -81,7 +80,7 @@ table { border-collapse: collapse; border-spacing: 0; }
 #moon3.orbit {
     display: flex;
     align-items: flex-end;
-    animation: orbit 2s ease .5s;
+    animation: orbit 3.5s ease -1.0s infinite;
     width: 220px;
     height: 166px;
     margin-top: -96px;
@@ -152,21 +151,21 @@ table { border-collapse: collapse; border-spacing: 0; }
 @keyframes sk-rotate { 100% { transform: rotate(360deg); -webkit-transform: rotate(360deg) }}
 
 @-webkit-keyframes sk-bounce {
-  0%, 100% { -webkit-transform: scale(0.0) }
-  50% { -webkit-transform: scale(1.0) }
+  0%, 50%, 100% { -webkit-transform: scale(0.0) }
+  75% { -webkit-transform: scale(1.0) }
 }
 
 @keyframes sk-bounce {
-  0%, 100% { 
+  0%, 50%, 100% { 
     transform: scale(0.0);
     -webkit-transform: scale(0.0);
-  } 50% { 
+  } 75% { 
     transform: scale(1.0);
     -webkit-transform: scale(1.0);
   }
 }
 @keyframes orbit {
-    0% {
+    0%, 50% {
         transform: rotateZ(0deg);
     }
     100% {
@@ -175,7 +174,7 @@ table { border-collapse: collapse; border-spacing: 0; }
 }
 
 @keyframes orbit2 {
-    0% {
+    0%, 50% {
         transform: rotateZ(0deg);
     }
     100% {
