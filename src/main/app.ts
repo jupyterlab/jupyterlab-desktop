@@ -33,20 +33,18 @@ class JupyterServer {
 
             this.nbServer.stderr.on('data', (serverBuff: string) => {
                 let urlMatch = serverBuff.toString().match(urlRegExp);
-                if (!urlMatch){ 
+                if (!urlMatch)
                     return; 
-                }
-                else{
-                    let url = urlMatch[0].toString();
-                    this.nbServer.removeAllListeners();
-                    this.nbServer.stderr.removeAllListeners();
 
-                    let serverData = {
-                        token: (url.match(tokenRegExp))[0].replace("token=", ""),
-                        baseUrl: (url.match(baseRegExp))[0]
-                    }
-                    resolve(serverData);
+                let url = urlMatch[0].toString();
+                this.nbServer.removeAllListeners();
+                this.nbServer.stderr.removeAllListeners();
+
+                let serverData = {
+                    token: (url.match(tokenRegExp))[0].replace("token=", ""),
+                    baseUrl: (url.match(baseRegExp))[0]
                 }
+                resolve(serverData);
             });
         });
     }
