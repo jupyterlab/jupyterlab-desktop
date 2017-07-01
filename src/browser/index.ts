@@ -1,9 +1,19 @@
 
-import {PageConfig} from '@jupyterlab/coreutils';
+import {
+    PageConfig
+} from '@jupyterlab/coreutils';
+
 import 'font-awesome/css/font-awesome.min.css';
 import '@jupyterlab/theming/style/index.css';
-import {ElectronJupyterLab as app} from './electron-extension';
-import {JupyterAppChannels as Channels} from '../ipc';
+
+import {
+    ElectronJupyterLab as app
+} from './electron-extension';
+
+import {
+    JupyterAppChannels as Channels
+} from '../ipc';
+
 let ipcRenderer = (window as any).require('electron').ipcRenderer;
 import extensions from './extensions'
 

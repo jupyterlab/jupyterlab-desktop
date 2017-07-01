@@ -1,12 +1,24 @@
 // Copyright (c) Jupyter Development Team.
 // Distributed under the terms of the Modified BSD License.
 
-import { dialog, app, BrowserWindow, ipcMain } from 'electron'
-import { ChildProcess, spawn } from 'child_process'
-import { JupyterMainMenu } from './menu';
-import { JupyterAppChannels as Channels } from '../ipc';
-import * as path from 'path'
-import * as url from 'url'
+import { 
+    dialog, app, BrowserWindow, ipcMain
+} from 'electron';
+
+import {
+    ChildProcess, spawn
+} from 'child_process';
+
+import {
+    JupyterMainMenu
+} from './menu';
+
+import {
+    JupyterAppChannels as Channels
+} from '../ipc';
+
+import * as path from 'path';
+import * as url from 'url';
 
 class JupyterServer {
     /**
