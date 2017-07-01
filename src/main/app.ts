@@ -4,6 +4,7 @@
 import { dialog, app, BrowserWindow, ipcMain } from 'electron'
 import { ChildProcess, spawn } from 'child_process'
 import { JupyterMainMenu } from './menu';
+import { JupyterAppChannels as Channels } from '../ipc';
 import * as path from 'path'
 import * as url from 'url'
 
@@ -164,9 +165,9 @@ export class JupyterApplication {
     public start(): void {
         let token: Promise<string>;
         
-        ipcMain.on("server-data-ready", (event: any, arg: any) => {
+        ipcMain.on(Channels.RENDER_PROCESS_READY, (event: any, arg: any) => {
             token.then((data) => {
-                event.sender.send("server-data", data);
+                event.sender.send(Channels.SERVER_DATA, data);
             });
         });
         this.createWindow();

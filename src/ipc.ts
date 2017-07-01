@@ -4,6 +4,22 @@
 |----------------------------------------------------------------------------*/
 
 export
+namespace JupyterAppChannels {
+    
+    /**
+     * IPC channel for render process signalling
+     */
+    export
+    let RENDER_PROCESS_READY = 'render-ready';
+
+    /**
+     * IPC channel for sending jupyter server data
+     */
+    export
+    let SERVER_DATA = 'server-data';
+}
+
+export
 namespace JupyterMenuChannels {
 
     /**

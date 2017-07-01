@@ -3,6 +3,7 @@ import {PageConfig} from '@jupyterlab/coreutils';
 import 'font-awesome/css/font-awesome.min.css';
 import '@jupyterlab/theming/style/index.css';
 import {ElectronJupyterLab as app} from './electron-extension';
+import {JupyterAppChannels as Channels} from '../ipc';
 let ipcRenderer = (window as any).require('electron').ipcRenderer;
 import extensions from './extensions'
 
@@ -51,8 +52,7 @@ function main() : void {
     }
 
     // Get token from server
-    ipcRenderer.send("server-data-ready");
-    ipcRenderer.on("server-data", (event: any, data: any) => {
+    ipcRenderer.on(Channels.SERVER_DATA, (event: any, data: any) => {
         // Set token
         PageConfig.setOption("token", data.token);
         // Set baseUrl
@@ -68,6 +68,7 @@ function main() : void {
             }
         });
     });
+    ipcRenderer.send(Channels.RENDER_PROCESS_READY);
 }
 
 window.onload = main;
