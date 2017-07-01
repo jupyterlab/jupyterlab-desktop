@@ -154,7 +154,7 @@ export class JupyterApplication {
             minHeight: 300,
             show: false
         });
-        (this.mainWindow as any).openDevTools();
+
         this.mainWindow.loadURL(url.format({
             pathname: path.resolve(__dirname, '../../../src/browser/index.html'),
             protocol: 'file:',
