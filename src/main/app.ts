@@ -11,40 +11,19 @@ class JupyterServer {
      * The child process object for the Jupyter server
      */
     private nbServer: ChildProcess;
-
-    /**
-     * The Jupyter server authentication token
-     */
-    public token: string;
-
-    /**
-     * The Jupyter server hostname
-     */
-    public hostname: string;
-
-    /**
-     * The Jupyter server port number
-     */
-    public port: number;
-
-    /**
-     * The Jupyter server url
-     */
-    public url: string;
-
-    /**
-     * The jupyter server notebook directory
-     */
-    public notebookDir: string;
     
     /**
      * Start a local Jupyer server on the specified port. Returns
      * a promise that is fulfilled when the Jupyter server has
      * started and all the required data (url, token, etc.) is
-     * collected. This data is collected using `jupyter notebook list`
+     * collected. This data is collected from the data written to
+     * std out upon sever creation
      */
     public start(port: number): Promise<any> {
         return new Promise((resolve, reject) => {
+            let urlRegExp = /http:\/\/localhost:\d+\/\?token=\w+/g;
+            let tokenRegExp = /token=\w+/g;
+            let baseRegExp = /http:\/\/localhost:\d+\//g;
             this.nbServer = spawn('jupyter', ['notebook', '--no-browser', '--port', String(port)]);
 
             this.nbServer.on('error', (err: Error) => {
@@ -52,30 +31,20 @@ class JupyterServer {
                 reject(err);
             });
 
-            this.nbServer.stderr.on('data', (serverData: string) => {
-                if (serverData.indexOf("The Jupyter Notebook is running at") == -1)
-                    return;
+            this.nbServer.stderr.on('data', (serverBuff: string) => {
+                let urlMatch = serverBuff.toString().match(urlRegExp);
+                if (!urlMatch)
+                    return; 
+
+                let url = urlMatch[0].toString();
                 this.nbServer.removeAllListeners();
                 this.nbServer.stderr.removeAllListeners();
-                
-                /* Get server data */
-                let list = spawn('jupyter', ['notebook', 'list', '--json']);
 
-                list.on('error', (err: Error) => {
-                    list.stdout.removeAllListeners();
-                    reject(err);
-                });
-
-                list.stdout.on('data', (data: string) => {
-                    let serverData = JSON.parse(data);
-                    serverData.port = Number(serverData.port);
-                    this.token = serverData.token;
-                    this.hostname = serverData.hostname;
-                    this.port = serverData.port;
-                    this.url = serverData.url;
-                    this.notebookDir = serverData.notebook_dir;
-                    resolve(serverData);
-                });
+                let serverData = {
+                    token: (url.match(tokenRegExp))[0].replace("token=", ""),
+                    baseUrl: (url.match(baseRegExp))[0]
+                }
+                resolve(serverData);
             });
         });
     }
@@ -182,17 +151,15 @@ export class JupyterApplication {
 
     /**
      * Starts the Jupyter Server and launches the electron application.
-     * When the Jupyter Sevrer start promise is fulfilled, the Handlebars
-     * templater is run on index.html and the output is saved to a file.
-     * The electron render process is then started on that file by
-     * calling createWindow
+     * When the Jupyter Sevrer start promise is fulfilled, the baseUrl
+     * and the token is send to the browser window.
      */
     public start(): void {
         let token: Promise<string>;
         
-        ipcMain.on("ready-for-token", (event: any, arg: any) => {
+        ipcMain.on("server-data-ready", (event: any, arg: any) => {
             token.then((data) => {
-                event.sender.send("token", data);
+                event.sender.send("server-data", data);
             });
         });
         this.createWindow();
@@ -200,8 +167,8 @@ export class JupyterApplication {
         token = new Promise((resolve, reject) => {
             this.server.start(8888)
             .then((serverData) => {
-                console.log("Jupyter Server started at: " + serverData.url + "?token=" + serverData.token);
-                resolve(serverData.token);
+                console.log("Jupyter Server started at: " + serverData.baseUrl + "?token=" + serverData.token);
+                resolve(serverData);
 
             })
             .catch((err) => {

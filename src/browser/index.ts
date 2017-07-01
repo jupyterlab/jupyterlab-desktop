@@ -81,10 +81,12 @@ function main() : void {
     }
 
     // Get token from server
-    ipcRenderer.send("ready-for-token");
-    ipcRenderer.on("token", (event: any, arg: any) => {
+    ipcRenderer.send("server-data-ready");
+    ipcRenderer.on("server-data", (event: any, data: any) => {
         // Set token
-        PageConfig.setOption("token", arg);
+        PageConfig.setOption("token", data.token);
+        // Set baseUrl
+        PageConfig.setOption("baseUrl", data.baseUrl);
         // Start lab and fade splash
         promise = new Promise((resolve, reject) => {
             try{
