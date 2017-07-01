@@ -17,9 +17,15 @@ import {
 
 type ItemOptions = Electron.MenuItemConstructorOptions;
 
+/**
+ * Native main menu bar class
+ */
 export
-class JupyterMenu {
+class JupyterMainMenu {
 
+    /**
+     * Electron menu object. Contains the contents of the menu bar
+     */
     private menu: Electron.Menu;
 
     constructor() {
@@ -28,6 +34,11 @@ class JupyterMenu {
         Menu.setApplicationMenu(this.menu);
     }
 
+    /**
+     * Set the click event handler for all items in menu item tree
+     * 
+     * @param menu A menu being added to the menu bar. 
+     */
     private setClickEvents(menu: ItemOptions): void {
         if (menu.submenu === undefined) {
             menu.click = this.handleClick;
@@ -39,21 +50,41 @@ class JupyterMenu {
         });
     }
 
+    /**
+     * Register listeners on main menu events
+     */
     private registerListeners(): void {
-        ipcMain.on(JupyterMenuChannels.MENU_APPEND, (event: any, menu: ItemOptions) => {
-            this.setClickEvents(menu);
-            
-            /* Set position in the native menu bar */
-            let index = ArrayExt.upperBound(<ItemOptions[]>this.menu.items, menu, 
-                        (f: ItemOptions, s: ItemOptions) => {
-                            return Number(f.id) - Number(s.id)
-                        });
-            
-            this.menu.insert(index, new MenuItem(menu));
-            Menu.setApplicationMenu(this.menu);
+        /* Register MENU_ADD event */
+        ipcMain.on(JupyterMenuChannels.MENU_ADD, (event: any, menu: ItemOptions) => {
+            this.addMenu(event, menu);
         });
     }
 
+    /**
+     * Add a menu to the menubar. Sets up click handlers
+     * on all items in the submenu tree. Chooses menubar
+     * position based on the string store in the 'id' field.
+     * Lower numbers in the 'id' field float up in the menubar
+     * 
+     * @param event The ipc event object 
+     * @param menu The menu item configuration
+     */
+    private addMenu(event: any, menu: ItemOptions) {
+        this.setClickEvents(menu);
+        
+        /* Set position in the native menu bar */
+        let index = ArrayExt.upperBound(<ItemOptions[]>this.menu.items, menu, 
+                    (f: ItemOptions, s: ItemOptions) => {
+                        return Number(f.id) - Number(s.id)
+                    });
+        
+        this.menu.insert(index, new MenuItem(menu));
+        Menu.setApplicationMenu(this.menu);
+    }
+
+    /**
+     * Click event handler. Passes the event on the the rener process 
+     */
     private handleClick(menu: Electron.MenuItem, window: Electron.BrowserWindow): void {
         window.webContents.send(JupyterMenuChannels.CLICK_EVENT, menu as ItemOptions);
     }

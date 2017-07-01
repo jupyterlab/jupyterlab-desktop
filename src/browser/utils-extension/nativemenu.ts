@@ -59,6 +59,15 @@ class NativeMenu extends MenuBar implements IMainMenu {
         });
     }
 
+    /**
+     * Convert phosphorJS menu configuration to electron
+     * menu configuration.
+     * 
+     * @param menu The phosphorJS menu object
+     * 
+     * @return Array of electron menu items representing menu item
+     *         drop down contents 
+     */
     private buildNativeMenu(menu: Menu): NativeMenuItem[] {
         let nItems = menu.items.map((item: Menu.IItem) => {
             let nItem: NativeMenuItem = {item: item};
@@ -77,6 +86,12 @@ class NativeMenu extends MenuBar implements IMainMenu {
         return nItems;
     }
 
+    /**
+     * Add menu to native menu bar.
+     * 
+     * @param menu PhosphorJS menu to add to menu bar
+     * @param options Menu options
+     */
     addMenu(menu: Menu, options: IMainMenu.IAddOptions = {}): void {
         if (ArrayExt.firstIndexOf(this.menus, menu) > -1) {
             return;
@@ -85,7 +100,7 @@ class NativeMenu extends MenuBar implements IMainMenu {
         let rank = 'rank' in options ? options.rank : 100;
 
         /* Append the menu to the native menu */
-        ipc.send(JupyterMenuChannels.MENU_APPEND, {
+        ipc.send(JupyterMenuChannels.MENU_ADD, {
             id: String(rank),
             label: menu.title.label,
             submenu: this.buildNativeMenu(menu)

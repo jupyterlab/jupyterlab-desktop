@@ -10,7 +10,7 @@ namespace JupyterMenuChannels {
      * IPC channel for appending menus to the native menu bar
      */
     export
-    let MENU_APPEND = 'menu-append';
+    let MENU_ADD = 'menu-add';
 
     /**
      * IPC channel for recieveing click events

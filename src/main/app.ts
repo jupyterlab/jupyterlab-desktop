@@ -3,7 +3,7 @@
 
 import { dialog, app, BrowserWindow, ipcMain } from 'electron'
 import { ChildProcess, spawn } from 'child_process'
-import { JupyterMenu } from './menu';
+import { JupyterMainMenu } from './menu';
 import * as path from 'path'
 import * as url from 'url'
 
@@ -99,7 +99,7 @@ export class JupyterApplication {
     /**
      * Controls the native menubar
      */
-    private menu: JupyterMenu;
+    private menu: JupyterMainMenu;
 
     /**
      * The JupyterLab window
@@ -112,7 +112,7 @@ export class JupyterApplication {
     constructor() {
         this.registerListeners();
         this.server = new JupyterServer();
-        this.menu = new JupyterMenu();
+        this.menu = new JupyterMainMenu();
     }
 
     /**
