@@ -14,15 +14,32 @@ import {
 } from '@jupyterlab/application';
 
 import {
+    JupyterMenuChannels
+} from '../../ipc';
+
+import {
     IMainMenu
 } from '@jupyterlab/apputils';
 
+
+/**
+ * Require electron from window object to prevent
+ * webpack from trying to resolve it. window.require
+ * is defined in the electron environment.
+ */
 let ipc = (window as any).require('electron').ipcRenderer;
 
+/**
+ * Interface for natvie menu item configuration.
+ */
 interface NativeMenuItem extends Electron.MenuItemConstructorOptions {
     item: Menu.IItem;
 }
 
+/**
+ * The main menu class. Interacts with the electron main process
+ * to setup native menu bar.
+ */
 export
 class NativeMenu extends MenuBar implements IMainMenu {
 
@@ -31,23 +48,25 @@ class NativeMenu extends MenuBar implements IMainMenu {
         this.registerListeners();
     }
 
+    /**
+     * Register listeners for menu events
+     */
     private registerListeners(): void {
-        ipc.on('menu-click', (event: any, opts: NativeMenuItem) => {
+        /* Register listener on menu bar clicks */
+        ipc.on(JupyterMenuChannels.CLICK_EVENT, (event: any, opts: NativeMenuItem) => {
+            /* Execute the command associated with the click event */
             this.app.commands.execute(opts.item.command);
         });
-    }
-
-    private translateMenuType(type: Menu.ItemType): "normal" | "submenu" | "separator" {
-        if (type == "command")
-            return 'normal';
-        return type;
     }
 
     private buildNativeMenu(menu: Menu): NativeMenuItem[] {
         let nItems = menu.items.map((item: Menu.IItem) => {
             let nItem: NativeMenuItem = {item: item};
             
-            nItem.type = this.translateMenuType(item.type);
+            if (item.type == 'command')
+                nItem.type = 'normal';
+            else
+                nItem.type = item.type;
             nItem.label = item.label;
             
             if (item.submenu)
@@ -66,7 +85,7 @@ class NativeMenu extends MenuBar implements IMainMenu {
         let rank = 'rank' in options ? options.rank : 100;
 
         /* Append the menu to the native menu */
-        ipc.send('menu-append', {
+        ipc.send(JupyterMenuChannels.MENU_APPEND, {
             id: String(rank),
             label: menu.title.label,
             submenu: this.buildNativeMenu(menu)

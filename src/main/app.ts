@@ -104,8 +104,7 @@ export class JupyterApplication {
     /**
      * The JupyterLab window
      */
-   // private mainWindow: Electron.BrowserWindow;
-    private mainWindow: any;
+    private mainWindow: Electron.BrowserWindow;
 
     /**
      * Construct the Jupyter application
@@ -155,8 +154,7 @@ export class JupyterApplication {
             minHeight: 300,
             show: false
         });
-        this.mainWindow.openDevTools();
-
+        (this.mainWindow as any).openDevTools();
         this.mainWindow.loadURL(url.format({
             pathname: path.resolve(__dirname, '../../../src/browser/index.html'),
             protocol: 'file:',

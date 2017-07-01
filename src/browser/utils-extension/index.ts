@@ -34,10 +34,5 @@ const nativeMainMenuPlugin: JupyterLabPlugin<IMainMenu> = {
 /**
  * Override Main Menu plugin from apputils-extension
  */
-const elecPlugins: JupyterLabPlugin<any>[] = plugin;
-for (let i = 0; i < plugin.length; i++) {
-  if (plugin[i].id == 'jupyter.services.main-menu') {
-    elecPlugins[i] = nativeMainMenuPlugin; 
-  }
-}
-export default elecPlugins;
+plugin[1] = nativeMainMenuPlugin;
+export default plugin;

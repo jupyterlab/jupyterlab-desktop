@@ -9,7 +9,11 @@ import {
 
 import {
     ArrayExt
-} from '@phosphor/algorithm'
+} from '@phosphor/algorithm';
+
+import {
+    JupyterMenuChannels
+} from '../ipc';
 
 type ItemOptions = Electron.MenuItemConstructorOptions;
 
@@ -36,7 +40,7 @@ class JupyterMenu {
     }
 
     private registerListeners(): void {
-        ipcMain.on('menu-append', (event: any, menu: ItemOptions) => {
+        ipcMain.on(JupyterMenuChannels.MENU_APPEND, (event: any, menu: ItemOptions) => {
             this.setClickEvents(menu);
             
             /* Set position in the native menu bar */
@@ -51,6 +55,6 @@ class JupyterMenu {
     }
 
     private handleClick(menu: Electron.MenuItem, window: Electron.BrowserWindow): void {
-        window.webContents.send('menu-click', menu as ItemOptions);
+        window.webContents.send(JupyterMenuChannels.CLICK_EVENT, menu as ItemOptions);
     }
 }
