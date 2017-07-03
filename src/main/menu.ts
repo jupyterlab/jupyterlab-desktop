@@ -80,10 +80,17 @@ class JupyterMainMenu {
      * @param menu The menu item configuration
      */
     private addMenu(event: any, menu: ItemOptions) {
+        let items = this.menu.items;
+        /* Check if item has already been inserted */
+        for (let i = 0, n = items.length; i < n; i++) {
+            if (items[i].label == menu.label)
+                return;
+        }
+        
         this.setClickEvents(menu);
 
         /* Set position in the native menu bar */
-        let index = ArrayExt.upperBound(<ItemOptions[]>this.menu.items, menu, 
+        let index = ArrayExt.upperBound(<ItemOptions[]>items, menu, 
                     (f: ItemOptions, s: ItemOptions) => {
                         return Number(f.id) - Number(s.id)
                     });
