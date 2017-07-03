@@ -31,6 +31,15 @@ class JupyterMainMenu {
     constructor() {
         this.menu = new Menu();
         this.registerListeners();
+
+        if (process.platform !== 'darwin') {
+            this.menu.append(new MenuItem({
+                id: '-1',
+                label: 'JupyterLab',
+                submenu: null
+            }));
+        }
+
         Menu.setApplicationMenu(this.menu);
     }
 

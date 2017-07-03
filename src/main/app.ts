@@ -134,7 +134,8 @@ export class JupyterApplication {
             height: 600,
             minWidth: 400,
             minHeight: 300,
-            show: false
+            show: false,
+            title: 'JupyterLab'
         });
 
         this.mainWindow.loadURL(url.format({
