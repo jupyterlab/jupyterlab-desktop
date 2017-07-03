@@ -69,20 +69,19 @@ class NativeMenu extends MenuBar implements IMainMenu {
      *         drop down contents 
      */
     private buildNativeMenu(menu: Menu): NativeMenuItem[] {
-        let nItems = menu.items.map((item: Menu.IItem) => {
-            let nItem: NativeMenuItem = {item: item};
-            
-            if (item.type == 'command')
-                nItem.type = 'normal';
+        let items = menu.items;
+        let nItems = new Array<NativeMenuItem>(items.length);
+        ArrayExt.fill(nItems, {item: null, type: null, label: null, submenu: null});
+        for (let i = 0; i < nItems.length; i++) {
+            if (items[i].type == 'command')
+                nItems[i].type = 'normal';
             else
-                nItem.type = item.type;
-            nItem.label = item.label;
+                nItems[i].type = (items[i].type as 'normal' | 'submenu' | 'separator');
+            nItems[i].label = items[i].label;
             
-            if (item.submenu)
-                nItem.submenu = this.buildNativeMenu(item.submenu)
-
-            return nItem
-        })
+            if (items[i].submenu !== null)
+                nItems[i].submenu = this.buildNativeMenu(items[i].submenu);
+        }
         return nItems;
     }
 

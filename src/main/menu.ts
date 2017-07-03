@@ -40,7 +40,7 @@ class JupyterMainMenu {
      * @param menu A menu being added to the menu bar. 
      */
     private setClickEvents(menu: ItemOptions): void {
-        if (menu.submenu === undefined) {
+        if (menu.submenu === null) {
             menu.click = this.handleClick;
             return;
         }
@@ -71,7 +71,7 @@ class JupyterMainMenu {
      */
     private addMenu(event: any, menu: ItemOptions) {
         this.setClickEvents(menu);
-        
+
         /* Set position in the native menu bar */
         let index = ArrayExt.upperBound(<ItemOptions[]>this.menu.items, menu, 
                     (f: ItemOptions, s: ItemOptions) => {
