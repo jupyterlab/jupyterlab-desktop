@@ -34,7 +34,7 @@ class ElectronJupyterLab extends JupyterLab {
     /* Remove uneeded panels */
     each(this.shell.layout.iter(), (widget: Widget) => {
         if (widget.id == 'jp-top-panel') {
-            this.shell.layout.removeWidget(widget);
+            widget.parent = null;
             return false;
         }
     });
