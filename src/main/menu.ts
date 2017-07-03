@@ -15,7 +15,29 @@ import {
     JupyterMenuChannels
 } from '../ipc';
 
-type ItemOptions = Electron.MenuItemConstructorOptions;
+/**
+ * Jupyter main menu item description.
+ */
+export
+interface JupyterMenuItemOptions extends Electron.MenuItemConstructorOptions {
+
+    /**
+     * Rank of the menu item. Lower ranks float to the front of the menu.
+     * Default value is 100.
+     */
+    rank?: number;
+
+    /**
+     * The command to run when the item is clicked. Sent to the
+     * render process via IPC.
+     */
+    command?: string;
+
+    /**
+     * Optional arguments to the command
+     */
+    args?: any;
+}
 
 /**
  * Native main menu bar class
@@ -48,13 +70,13 @@ class JupyterMainMenu {
      * 
      * @param menu A menu being added to the menu bar. 
      */
-    private setClickEvents(menu: ItemOptions): void {
+    private setClickEvents(menu: JupyterMenuItemOptions): void {
         if (menu.submenu === null) {
             menu.click = this.handleClick;
             return;
         }
 
-        let items = <ItemOptions[]>menu.submenu;
+        let items = <JupyterMenuItemOptions[]>menu.submenu;
         for (let i = 0, n = items.length; i < n; i++) {
             this.setClickEvents(items[i]);
         }
@@ -65,7 +87,7 @@ class JupyterMainMenu {
      */
     private registerListeners(): void {
         /* Register MENU_ADD event */
-        ipcMain.on(JupyterMenuChannels.MENU_ADD, (event: any, menu: ItemOptions) => {
+        ipcMain.on(JupyterMenuChannels.MENU_ADD, (event: any, menu: JupyterMenuItemOptions) => {
             this.addMenu(event, menu);
         });
     }
@@ -79,20 +101,23 @@ class JupyterMainMenu {
      * @param event The ipc event object 
      * @param menu The menu item configuration
      */
-    private addMenu(event: any, menu: ItemOptions) {
+    private addMenu(event: any, menu: JupyterMenuItemOptions) {
         let items = this.menu.items;
         /* Check if item has already been inserted */
         for (let i = 0, n = items.length; i < n; i++) {
             if (items[i].label == menu.label)
                 return;
         }
-        
+
         this.setClickEvents(menu);
 
+        if (!menu.rank)
+            menu.rank = 100;
+
         /* Set position in the native menu bar */
-        let index = ArrayExt.upperBound(<ItemOptions[]>items, menu, 
-                    (f: ItemOptions, s: ItemOptions) => {
-                        return Number(f.id) - Number(s.id)
+        let index = ArrayExt.upperBound(<JupyterMenuItemOptions[]>items, menu, 
+                    (f: JupyterMenuItemOptions, s: JupyterMenuItemOptions) => {
+                        return f.rank - s.rank;
                     });
         
         this.menu.insert(index, new MenuItem(menu));
@@ -103,6 +128,6 @@ class JupyterMainMenu {
      * Click event handler. Passes the event on the render process 
      */
     private handleClick(menu: Electron.MenuItem, window: Electron.BrowserWindow): void {
-        window.webContents.send(JupyterMenuChannels.CLICK_EVENT, menu as ItemOptions);
+        window.webContents.send(JupyterMenuChannels.CLICK_EVENT, menu as JupyterMenuItemOptions);
     }
 }

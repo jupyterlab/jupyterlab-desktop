@@ -14,6 +14,10 @@ import {
 } from '@jupyterlab/application';
 
 import {
+    JupyterMenuItemOptions
+} from '../../main/menu';
+
+import {
     JupyterMenuChannels
 } from '../../ipc';
 
@@ -28,13 +32,6 @@ import {
  * environment.
  */
 let ipc = (window as any).require('electron').ipcRenderer;
-
-/**
- * Interface for native menu item configuration.
- */
-interface NativeMenuItem extends Electron.MenuItemConstructorOptions {
-    command: string;
-}
 
 /**
  * The main menu class. Interacts with the electron main process
@@ -53,7 +50,7 @@ class NativeMenu extends MenuBar implements IMainMenu {
      */
     private registerListeners(): void {
         /* Register listener on menu bar clicks */
-        ipc.on(JupyterMenuChannels.CLICK_EVENT, (event: any, opts: NativeMenuItem) => {
+        ipc.on(JupyterMenuChannels.CLICK_EVENT, (event: any, opts: JupyterMenuItemOptions) => {
             /* Execute the command associated with the click event */
             this.app.commands.execute(opts.command);
         });
@@ -68,9 +65,9 @@ class NativeMenu extends MenuBar implements IMainMenu {
      * @return Array of electron menu items representing menu item
      *         drop down contents 
      */
-    private buildNativeMenu(menu: Menu): NativeMenuItem[] {
+    private buildNativeMenu(menu: Menu): JupyterMenuItemOptions[] {
         let items = menu.items;
-        let nItems = new Array<NativeMenuItem>(items.length);
+        let nItems = new Array<JupyterMenuItemOptions>(items.length);
         for (let i = 0, n = nItems.length; i < n; i++) {
             nItems[i] = {command: null, type: null, label: null, submenu: null};
 
@@ -99,12 +96,12 @@ class NativeMenu extends MenuBar implements IMainMenu {
         }
 
         let rank = 'rank' in options ? options.rank : 100;
-
-        /* Append the menu to the native menu */
-        ipc.send(JupyterMenuChannels.MENU_ADD, {
-            id: String(rank),
+        let menuItem: JupyterMenuItemOptions = {
+            rank: rank,
             label: menu.title.label,
             submenu: this.buildNativeMenu(menu)
-        });
+        }
+        /* Append the menu to the native menu */
+        ipc.send(JupyterMenuChannels.MENU_ADD, menuItem);
     }
 }
