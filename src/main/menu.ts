@@ -24,7 +24,7 @@ export
 class JupyterMainMenu {
 
     /**
-     * Electron menu object. Contains the contents of the menu bar
+     * Electron menu object. Stores menu bar contents.
      */
     private menu: Electron.Menu;
 
@@ -61,9 +61,9 @@ class JupyterMainMenu {
     }
 
     /**
-     * Add a menu to the menubar. Sets up click handlers
-     * on all items in the submenu tree. Chooses menubar
-     * position based on the string store in the 'id' field.
+     * Add a menu to the menubar.
+     * Sets up click handlers on submenu tree items.
+     * Chooses menubar position of menu based on the 'id' field string.
      * Lower numbers in the 'id' field float up in the menubar
      * 
      * @param event The ipc event object 
@@ -83,7 +83,7 @@ class JupyterMainMenu {
     }
 
     /**
-     * Click event handler. Passes the event on the the rener process 
+     * Click event handler. Passes the event on the render process 
      */
     private handleClick(menu: Electron.MenuItem, window: Electron.BrowserWindow): void {
         window.webContents.send(JupyterMenuChannels.CLICK_EVENT, menu as ItemOptions);

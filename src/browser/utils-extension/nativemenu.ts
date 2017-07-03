@@ -23,14 +23,14 @@ import {
 
 
 /**
- * Require electron from window object to prevent
- * webpack from trying to resolve it. window.require
- * is defined in the electron environment.
+ * Require electron from window object. This prevents webpack from trying
+ * to resolve the window object. window.require is defined in the electron
+ * environment.
  */
 let ipc = (window as any).require('electron').ipcRenderer;
 
 /**
- * Interface for natvie menu item configuration.
+ * Interface for native menu item configuration.
  */
 interface NativeMenuItem extends Electron.MenuItemConstructorOptions {
     item: Menu.IItem;
@@ -60,7 +60,7 @@ class NativeMenu extends MenuBar implements IMainMenu {
     }
 
     /**
-     * Convert phosphorJS menu configuration to electron
+     * Convert phosphorJS menu configuration to a native electron
      * menu configuration.
      * 
      * @param menu The phosphorJS menu object
@@ -87,7 +87,7 @@ class NativeMenu extends MenuBar implements IMainMenu {
     }
 
     /**
-     * Add menu to native menu bar.
+     * Add PhosphorJS menu to native menu bar.
      * 
      * @param menu PhosphorJS menu to add to menu bar
      * @param options Menu options

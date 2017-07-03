@@ -7,7 +7,7 @@ export
 namespace JupyterAppChannels {
     
     /**
-     * IPC channel for render process signalling
+     * IPC channel for render process signaling
      */
     export
     let RENDER_PROCESS_READY = 'render-ready';
@@ -29,7 +29,7 @@ namespace JupyterMenuChannels {
     let MENU_ADD = 'menu-add';
 
     /**
-     * IPC channel for recieveing click events
+     * IPC channel for receiving click events
      */
     export
     let CLICK_EVENT = 'menu-click';
