@@ -32,7 +32,7 @@ class JupyterMainMenu {
         this.menu = new Menu();
         this.registerListeners();
 
-        if (process.platform !== 'darwin') {
+        if (process.platform === 'darwin') {
             this.menu.append(new MenuItem({
                 id: '-1',
                 label: 'JupyterLab',

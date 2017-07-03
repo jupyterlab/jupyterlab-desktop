@@ -33,7 +33,7 @@ let ipc = (window as any).require('electron').ipcRenderer;
  * Interface for native menu item configuration.
  */
 interface NativeMenuItem extends Electron.MenuItemConstructorOptions {
-    item: Menu.IItem;
+    command: string;
 }
 
 /**
@@ -55,7 +55,7 @@ class NativeMenu extends MenuBar implements IMainMenu {
         /* Register listener on menu bar clicks */
         ipc.on(JupyterMenuChannels.CLICK_EVENT, (event: any, opts: NativeMenuItem) => {
             /* Execute the command associated with the click event */
-            this.app.commands.execute(opts.item.command);
+            this.app.commands.execute(opts.command);
         });
     }
 
@@ -72,14 +72,15 @@ class NativeMenu extends MenuBar implements IMainMenu {
         let items = menu.items;
         let nItems = new Array<NativeMenuItem>(items.length);
         for (let i = 0, n = nItems.length; i < n; i++) {
-            nItems[i] = {item: null, type: null, label: null, submenu: null};
+            nItems[i] = {command: null, type: null, label: null, submenu: null};
 
             if (items[i].type == 'command')
                 nItems[i].type = 'normal';
             else
                 nItems[i].type = (items[i].type as 'normal' | 'submenu' | 'separator');
             nItems[i].label = items[i].label;
-            
+            nItems[i].command = items[i].command;
+
             if (items[i].submenu !== null)
                 nItems[i].submenu = this.buildNativeMenu(items[i].submenu);
         }
