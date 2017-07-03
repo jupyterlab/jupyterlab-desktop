@@ -45,9 +45,10 @@ class JupyterMainMenu {
             return;
         }
 
-        (<ItemOptions[]>menu.submenu).forEach((m: ItemOptions) => {
-            this.setClickEvents(m);
-        });
+        let items = <ItemOptions[]>menu.submenu;
+        for (let i = 0, n = items.length; i < n; i++) {
+            this.setClickEvents(items[i]);
+        }
     }
 
     /**

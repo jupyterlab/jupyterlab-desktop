@@ -71,8 +71,9 @@ class NativeMenu extends MenuBar implements IMainMenu {
     private buildNativeMenu(menu: Menu): NativeMenuItem[] {
         let items = menu.items;
         let nItems = new Array<NativeMenuItem>(items.length);
-        ArrayExt.fill(nItems, {item: null, type: null, label: null, submenu: null});
-        for (let i = 0; i < nItems.length; i++) {
+        for (let i = 0, n = nItems.length; i < n; i++) {
+            nItems[i] = {item: null, type: null, label: null, submenu: null};
+
             if (items[i].type == 'command')
                 nItems[i].type = 'normal';
             else
