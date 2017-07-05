@@ -52,7 +52,7 @@ class NativeMenu extends MenuBar implements IMainMenu {
         /* Register listener on menu bar clicks */
         ipc.on(JupyterMenuChannels.CLICK_EVENT, (event: any, opts: JupyterMenuItemOptions) => {
             /* Execute the command associated with the click event */
-            this.app.commands.execute(opts.command);
+            this.app.commands.execute(opts.command, opts.args);
         });
     }
 
@@ -77,6 +77,8 @@ class NativeMenu extends MenuBar implements IMainMenu {
                 nItems[i].type = (items[i].type as 'normal' | 'submenu' | 'separator');
             nItems[i].label = items[i].label;
             nItems[i].command = items[i].command;
+            console.log(items[i].args);
+            nItems[i].args = items[i].args;
 
             if (items[i].submenu !== null)
                 nItems[i].submenu = this.buildNativeMenu(items[i].submenu);
