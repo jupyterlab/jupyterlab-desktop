@@ -1,10 +1,24 @@
 // Copyright (c) Jupyter Development Team.
 // Distributed under the terms of the Modified BSD License.
 
-import { dialog, app, BrowserWindow, ipcMain } from 'electron'
-import { ChildProcess, spawn } from 'child_process'
-import * as path from 'path'
-import * as url from 'url'
+import { 
+    dialog, app, BrowserWindow, ipcMain
+} from 'electron';
+
+import {
+    ChildProcess, spawn
+} from 'child_process';
+
+import {
+    JupyterMainMenu
+} from './menu';
+
+import {
+    JupyterAppChannels as Channels
+} from '../ipc';
+
+import * as path from 'path';
+import * as url from 'url';
 
 class JupyterServer {
     /**
@@ -65,6 +79,11 @@ export class JupyterApplication {
     private server: JupyterServer;
 
     /**
+     * Controls the native menubar
+     */
+    private menu: JupyterMainMenu;
+
+    /**
      * The JupyterLab window
      */
     private mainWindow: Electron.BrowserWindow;
@@ -75,6 +94,7 @@ export class JupyterApplication {
     constructor() {
         this.registerListeners();
         this.server = new JupyterServer();
+        this.menu = new JupyterMainMenu();
     }
 
     /**
@@ -114,7 +134,8 @@ export class JupyterApplication {
             height: 600,
             minWidth: 400,
             minHeight: 300,
-            show: false
+            show: false,
+            title: 'JupyterLab'
         });
 
         this.mainWindow.loadURL(url.format({
@@ -157,9 +178,9 @@ export class JupyterApplication {
     public start(): void {
         let token: Promise<string>;
         
-        ipcMain.on("server-data-ready", (event: any, arg: any) => {
+        ipcMain.on(Channels.RENDER_PROCESS_READY, (event: any, arg: any) => {
             token.then((data) => {
-                event.sender.send("server-data", data);
+                event.sender.send(Channels.SERVER_DATA, data);
             });
         });
         this.createWindow();

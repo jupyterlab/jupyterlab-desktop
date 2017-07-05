@@ -1,40 +1,21 @@
 
-import {PageConfig} from '@jupyterlab/coreutils';
+import {
+    PageConfig
+} from '@jupyterlab/coreutils';
+
 import 'font-awesome/css/font-awesome.min.css';
 import '@jupyterlab/theming/style/index.css';
-import {JupyterLab as app} from '@jupyterlab/application';
+
+import {
+    ElectronJupyterLab as app
+} from './electron-extension';
+
+import {
+    JupyterAppChannels as Channels
+} from '../ipc';
+
 let ipcRenderer = (window as any).require('electron').ipcRenderer;
-
-let extensions = [
-    require("./electron-extension/index.js"),
-    require("@jupyterlab/apputils-extension"),
-    require("@jupyterlab/chatbox-extension"),
-    require("@jupyterlab/codemirror-extension"),
-    require("@jupyterlab/completer-extension"),
-    require("@jupyterlab/console-extension"),
-    require("@jupyterlab/csvviewer-extension"),
-    require("@jupyterlab/docmanager-extension"),
-    require("@jupyterlab/docregistry-extension"),
-    require("@jupyterlab/fileeditor-extension"),
-    require("@jupyterlab/faq-extension"),
-    require("@jupyterlab/filebrowser-extension"),
-    require("@jupyterlab/help-extension"),
-    require("@jupyterlab/imageviewer-extension"),
-    require("@jupyterlab/inspector-extension"),
-    require("@jupyterlab/launcher-extension"),
-    require("@jupyterlab/markdownviewer-extension"),
-    require("@jupyterlab/notebook-extension"),
-    require("@jupyterlab/rendermime-extension"),
-    require("@jupyterlab/running-extension"),
-    require("@jupyterlab/services-extension"),
-    require("@jupyterlab/settingeditor-extension"),
-    require("@jupyterlab/shortcuts-extension"),
-    require("@jupyterlab/tabmanager-extension"),
-    require("@jupyterlab/terminal-extension"),
-    require("@jupyterlab/theme-light-extension"),
-    require("@jupyterlab/tooltip-extension")
-];
-
+import extensions from './extensions'
 
 function main() : void {
     let version : string = PageConfig.getOption('appVersion') || 'unknown';
@@ -81,8 +62,7 @@ function main() : void {
     }
 
     // Get token from server
-    ipcRenderer.send("server-data-ready");
-    ipcRenderer.on("server-data", (event: any, data: any) => {
+    ipcRenderer.on(Channels.SERVER_DATA, (event: any, data: any) => {
         // Set token
         PageConfig.setOption("token", data.token);
         // Set baseUrl
@@ -98,6 +78,7 @@ function main() : void {
             }
         });
     });
+    ipcRenderer.send(Channels.RENDER_PROCESS_READY);
 }
 
 window.onload = main;
