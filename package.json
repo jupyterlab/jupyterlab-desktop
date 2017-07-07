@@ -25,7 +25,8 @@
       "!**/*.d.ts"
     ],
     "linux": {
-      "target" : ["deb", "rpm", "tar.gz"]
+      "target": ["deb", "rpm", "tar.gz"],
+      "category": "Science"
     }
   },
   "repository": {
