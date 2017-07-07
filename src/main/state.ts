@@ -7,22 +7,11 @@ import {
 
 import * as fs from 'fs';
 
-export
-namespace UserState {
-    export
-    interface StateIOError {
-
-        type: 'read' | 'write';
-        filename: string;
-        err: any;
-    }
-}
-
 /**
- * Read and write user data asynchronously.
+ * Read and write electron application data asynchronously.
  */
 export
-class UserState<T> {
+class ApplicationState<T> {
 
     /**
      * The path to the platform-specific user data directory.
@@ -45,9 +34,10 @@ class UserState<T> {
      */
     state: T;
 
-    constructor(private filename: string, state: T) {
+    constructor(private filename: string, state?: T) {
         this.dataFile = this.path + '/' + this.filename;
-        this.state = state;
+        if (state)
+            this.state = state;
     }
 
     /**
@@ -75,15 +65,11 @@ class UserState<T> {
      * @param data Javascript object to write to the file as JSON data
      * @param err_cb 
      */
-    private doWrite(err_cb?: (err: UserState.StateIOError) => void): void {
+    private doWrite(err_cb?: (err: NodeJS.ErrnoException) => void): void {
         this.writeInProgress = new Promise<void>((res, rej) => {
             fs.writeFile(this.dataFile, JSON.stringify(this.state), (err) => {
                 if (err && err_cb) {
-                    err_cb({
-                        type: 'write',
-                        filename: this.dataFile,
-                        err: err
-                    });
+                    err_cb(err);
                 }
                 res();
             });
@@ -96,7 +82,7 @@ class UserState<T> {
      * @param data javascript object to write.
      * @param err_cb callback called in case of error.
      */
-    write(err_cb?: (err: UserState.StateIOError) => void): void {
+    write(err_cb?: (err: NodeJS.ErrnoException) => void): void {
         this.checkWriteInProgress(() => {
             this.doWrite(err_cb);
         });
@@ -115,29 +101,21 @@ class UserState<T> {
             this.checkWriteInProgress(() => {
                 fs.readFile(this.dataFile, (err, data) => {
                     if (err) {
-                        /* Check if file just doesn't exist */
                         if (err.code === 'ENOENT') {
+                            /* The file doesn't exist, don't update state */
                             res();
                             return;
                         }
 
-                        rej({
-                            type: 'read',
-                            filename: this.dataFile,
-                            err: err
-                        });
+                        rej(err);
                         return;
                     }
 
                     let pData: T;
                     try {
-                        pData = JSON.parse(data.toString())
+                        pData = JSON.parse(data.toString());
                     } catch(err) {
-                        rej({
-                            type: 'read',
-                            filename: this.dataFile,
-                            err: err
-                        });
+                        rej(err);
                         return;
                     }
                     this.state = pData;

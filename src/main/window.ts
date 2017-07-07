@@ -6,7 +6,7 @@ import {
 } from 'electron';
 
 import {
-    UserState
+    ApplicationState
 } from './state';
 
 import * as path from 'path';
@@ -21,7 +21,7 @@ interface WindowState {
 export
 class JupyterLabWindow {
 
-    private windowState = new UserState<WindowState>('jupyter-window-data', {});
+    private windowState = new ApplicationState<WindowState>('jupyter-window-data', {});
 
     private statePromise: Promise<void>;
 
@@ -40,13 +40,12 @@ class JupyterLabWindow {
         this.statePromise = new Promise<void>((res, rej) => {
             this.windowState.read().then(() => {
                 let state = this.windowState.state
-
                 if (state.winBounds)
                     this.window.setBounds(state.winBounds);
                 else
                     this.window.center();
                 res();
-            }).catch(()=>{});
+            }).catch(()=>{ res(); });
         });
 
         this.registerListeners();
