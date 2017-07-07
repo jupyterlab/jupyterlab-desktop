@@ -26,7 +26,9 @@
     ],
     "linux": {
       "target": ["deb", "rpm", "tar.gz"],
-      "category": "Science"
+      "desktop": {
+        "Category": "Science;Development;"
+      }
     }
   },
   "repository": {
