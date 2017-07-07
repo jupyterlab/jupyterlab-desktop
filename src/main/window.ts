@@ -21,10 +21,20 @@ interface WindowState {
 export
 class JupyterLabWindow {
 
+    /**
+     * Object to store the size and position of the window.
+     */
     private windowState = new ApplicationState<WindowState>('jupyter-window-data', {});
 
-    private statePromise: Promise<void>;
+    /**
+     * Promise that is fulfilled when all application
+     * state is loaded from the filesystem.
+     */
+    private stateLoaded: Promise<void>;
 
+    /**
+     * Electron window
+     */
     private window: Electron.BrowserWindow;
 
     constructor() {
@@ -37,7 +47,15 @@ class JupyterLabWindow {
             title: 'JupyterLab'
         });
         
-        this.statePromise = new Promise<void>((res, rej) => {
+        this.registerListeners();
+
+        this.window.loadURL(url.format({
+            pathname: path.resolve(__dirname, '../../../src/browser/index.html'),
+            protocol: 'file:',
+            slashes: true
+        }));
+
+        this.stateLoaded = new Promise<void>((res, rej) => {
             this.windowState.read().then(() => {
                 let state = this.windowState.state
                 if (state.winBounds)
@@ -47,45 +65,47 @@ class JupyterLabWindow {
                 res();
             }).catch(()=>{ res(); });
         });
-
-        this.registerListeners();
-
-        this.window.loadURL(url.format({
-            pathname: path.resolve(__dirname, '../../../src/browser/index.html'),
-            protocol: 'file:',
-            slashes: true
-        }));
     }
     
+    /**
+     * Get window dimensions and position
+     * and write the data to a file.
+     */
     private updateState() {
-        let bounds = this.window.getBounds();
-        this.windowState.state.winBounds = bounds;
+        this.windowState.state.winBounds = this.window.getBounds();
         this.windowState.write();
     }
 
+    /**
+     * Register listeners on window events
+     */
     private registerListeners() {
+
         this.window.webContents.on('did-finish-load', () =>{
-            this.statePromise.then(() => {
+            this.stateLoaded.then(() => {
                 this.window.show();
             }).catch(()=>{});
         });
 
         // Register dialog on window close
         this.window.on('close', (event: Event) => {
-            /* Save window data */
-            this.updateState();
 
             let buttonClicked = dialog.showMessageBox({
-            type: 'warning',
-            message: 'Do you want to leave?',
-            detail: 'Changes you made may not be saved.',
-            buttons: ['Leave', 'Stay'],
-            defaultId: 0,
-            cancelId: 1
+                type: 'warning',
+                message: 'Do you want to leave?',
+                detail: 'Changes you made may not be saved.',
+                buttons: ['Leave', 'Stay'],
+                defaultId: 0,
+                cancelId: 1
             });
+        
             if (buttonClicked === 1) {
+                /* Stop the window from closing */
                 event.preventDefault();
+                return;
             }
+            /* Save window data */
+            this.updateState();
         });
     }
 }

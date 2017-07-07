@@ -24,10 +24,11 @@ class ApplicationState<T> {
     private dataFile: string;
 
     /**
-     * Promise to ensure writing is complete before reading/writing
-     * is iniitated.
+     * Promise fulfilled when a write finishes
      */
-    private writeInProgress: Promise<void>;
+    private written: Promise<void>;
+
+    private writeInProgress: boolean = false;
 
     /**
      * User data
@@ -41,15 +42,18 @@ class ApplicationState<T> {
     }
 
     /**
-     * Check if there is a write in progress.
+     * Check if there is a write currently in progress. If there is,
+     * wait until the write promise is fulfilled.
      * 
      * @param cb callback called when writing completes.
      */
     private checkWriteInProgress(cb: () => void): void {
         if (this.writeInProgress) {
-            this.writeInProgress.then((v) => {
+            this.written.then((v) => {
+                /* Check write state again to ensure another waiting function
+                 * didn't start another write.
+                 */
                 this.checkWriteInProgress(() => {
-                    this.writeInProgress = null;
                     cb();
                 });
             })
@@ -66,11 +70,12 @@ class ApplicationState<T> {
      * @param err_cb 
      */
     private doWrite(err_cb?: (err: NodeJS.ErrnoException) => void): void {
-        this.writeInProgress = new Promise<void>((res, rej) => {
+        this.writeInProgress = true;
+        this.written = new Promise<void>((res, rej) => {
             fs.writeFile(this.dataFile, JSON.stringify(this.state), (err) => {
-                if (err && err_cb) {
+                if (err && err_cb)
                     err_cb(err);
-                }
+                this.writeInProgress = false;
                 res();
             });
         });
@@ -90,11 +95,14 @@ class ApplicationState<T> {
 
     /**
      * Read json data from a file and parse into
-     * a javascript object.
+     * the `state` attribute. If the file does not
+     * exist, the `state` attribute remains as is.
      * 
      * @param cb callback called when data is avaiable.
      * 
-     * @return a promise that is fullfilled when the data is available
+     * @return a promise that is fullfilled when the data is available or when
+     *         the file is found to not exist. If reading fails, the promise
+     *         is rejected.
      */
     read(): Promise<void> {
         return new Promise<void>((res, rej) => {
@@ -106,7 +114,6 @@ class ApplicationState<T> {
                             res();
                             return;
                         }
-
                         rej(err);
                         return;
                     }
