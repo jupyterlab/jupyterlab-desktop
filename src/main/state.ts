@@ -22,7 +22,7 @@ namespace UserState {
  * Read and write user data asynchronously.
  */
 export
-class UserState {
+class UserState<T> {
 
     /**
      * The path to the platform-specific user data directory.
@@ -38,10 +38,16 @@ class UserState {
      * Promise to ensure writing is complete before reading/writing
      * is iniitated.
      */
-    private writeInProgress: Promise<any>;
+    private writeInProgress: Promise<void>;
 
-    constructor(private filename: 'string') {
+    /**
+     * User data
+     */
+    state: T;
+
+    constructor(private filename: string, state: T) {
         this.dataFile = this.path + '/' + this.filename;
+        this.state = state;
     }
 
     /**
@@ -69,9 +75,9 @@ class UserState {
      * @param data Javascript object to write to the file as JSON data
      * @param err_cb 
      */
-    private doWrite(data: any, err_cb?: (err: UserState.StateIOError) => void): void {
-        this.writeInProgress = new Promise((res, rej) => {
-            fs.writeFile(this.dataFile, JSON.stringify(data), (err) => {
+    private doWrite(err_cb?: (err: UserState.StateIOError) => void): void {
+        this.writeInProgress = new Promise<void>((res, rej) => {
+            fs.writeFile(this.dataFile, JSON.stringify(this.state), (err) => {
                 if (err && err_cb) {
                     err_cb({
                         type: 'write',
@@ -79,7 +85,7 @@ class UserState {
                         err: err
                     });
                 }
-                res({});
+                res();
             });
         });
     }
@@ -90,9 +96,9 @@ class UserState {
      * @param data javascript object to write.
      * @param err_cb callback called in case of error.
      */
-    write(data: any, err_cb?: (err: UserState.StateIOError) => void): void {
+    write(err_cb?: (err: UserState.StateIOError) => void): void {
         this.checkWriteInProgress(() => {
-            this.doWrite(data, err_cb);
+            this.doWrite(err_cb);
         });
     }
 
@@ -104,19 +110,26 @@ class UserState {
      * 
      * @return a promise that is fullfilled when the data is available
      */
-    read(): Promise<any> {
-        return new Promise((res, rej) => {
+    read(): Promise<void> {
+        return new Promise<void>((res, rej) => {
             this.checkWriteInProgress(() => {
                 fs.readFile(this.dataFile, (err, data) => {
                     if (err) {
+                        /* Check if file just doesn't exist */
+                        if (err.code === 'ENOENT') {
+                            res();
+                            return;
+                        }
+
                         rej({
                             type: 'read',
                             filename: this.dataFile,
                             err: err
                         });
+                        return;
                     }
 
-                    let pData: any;
+                    let pData: T;
                     try {
                         pData = JSON.parse(data.toString())
                     } catch(err) {
@@ -125,8 +138,10 @@ class UserState {
                             filename: this.dataFile,
                             err: err
                         });
+                        return;
                     }
-                    res(pData);
+                    this.state = pData;
+                    res();
                 });
         
             });
