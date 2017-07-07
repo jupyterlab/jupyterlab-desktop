@@ -18,5 +18,3 @@ __pycache__
 *.swp
 *.map
 .idea/
-
-yarn\.lock
