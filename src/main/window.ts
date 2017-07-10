@@ -24,7 +24,7 @@ class JupyterLabWindow {
     /**
      * Object to store the size and position of the window.
      */
-    private windowState = new ApplicationState<WindowState>('jupyter-window-data', {});
+    private windowState = new ApplicationState<WindowState>('jupyter-window-data');
 
     /**
      * Promise that is fulfilled when all application
@@ -35,9 +35,17 @@ class JupyterLabWindow {
     /**
      * Electron window
      */
-    private window: Electron.BrowserWindow;
+    private window: Electron.BrowserWindow = null;
 
-    constructor() {
+    get isWindowVisible(): boolean {
+        return this.window !== null;
+    }
+
+    createWindow(): void {
+
+        if (this.window)
+            return;
+        
         this.window = new BrowserWindow({
             width: 800,
             height: 600,
@@ -56,14 +64,19 @@ class JupyterLabWindow {
         }));
 
         this.stateLoaded = new Promise<void>((res, rej) => {
-            this.windowState.read().then(() => {
-                let state = this.windowState.state
-                if (state.winBounds)
-                    this.window.setBounds(state.winBounds);
-                else
-                    this.window.center();
+            if (this.windowState.state) {
+                this.window.setBounds(this.windowState.state.winBounds);
                 res();
-            }).catch(()=>{ res(); });
+            } else {
+                this.windowState.read().then(() => {
+                    let state = this.windowState.state
+                    if (state.winBounds)
+                        this.window.setBounds(state.winBounds);
+                    else
+                        this.window.center();
+                    res();
+                }).catch(()=>{ res(); });
+            }
         });
     }
     
@@ -106,6 +119,11 @@ class JupyterLabWindow {
             }
             /* Save window data */
             this.updateState();
+        });
+
+        this.window.on('closed', (event: Event) => {
+            /* Set window object to get GC to cleanup */
+            this.window = null;
         });
     }
 }

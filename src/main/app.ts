@@ -96,6 +96,7 @@ export class JupyterApplication {
     constructor() {
         this.registerListeners();
         this.server = new JupyterServer();
+        this.mainWindow = new JupyterLabWindow();
         this.menu = new JupyterMainMenu();
     }
 
@@ -115,9 +116,7 @@ export class JupyterApplication {
         // windows open.
         // Need to double check this code to ensure it has expected behaviour
         app.on('activate', () => {
-            if (this.mainWindow === null) {
-                this.createWindow();
-            }
+            this.createWindow();
         });
 
         app.on('quit', () => {
@@ -129,7 +128,8 @@ export class JupyterApplication {
      * Creates the primary application window
      */
     private createWindow(): void {
-        this.mainWindow = new JupyterLabWindow();
+        if (!this.mainWindow.isWindowVisible)
+            this.mainWindow.createWindow();
     }
 
     /**

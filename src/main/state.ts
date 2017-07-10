@@ -33,7 +33,7 @@ class ApplicationState<T> {
     /**
      * User data
      */
-    state: T;
+    state: T = null;
 
     constructor(private filename: string, state?: T) {
         this.dataFile = this.path + '/' + this.filename;
