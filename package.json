@@ -87,6 +87,7 @@
     "@jupyterlab/tooltip": "^0.8.1",
     "@jupyterlab/tooltip-extension": "^0.8.1",
     "@jupyterlab/vega2-extension": "^0.8.1",
+    "electron": "^1.6.11",
     "electron-debug": "^1.2.0",
     "es6-promise": "^4.1.0",
     "font-awesome": "^4.6.3"
