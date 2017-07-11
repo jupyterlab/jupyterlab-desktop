@@ -6,39 +6,27 @@ Distributed under the terms of the Modified BSD License.
 <html>
 
 <head>
-  <style>
-    @keyframes fade {
-    0% {
-        opacity: 1;
-    }
-    100% {
-        opacity: 0;
-    }
-}
-  </style>
   <meta charset="utf-8">
-  <link rel="stylesheet" href="../../src/browser/css/main.css" type="text/css">
 
   <title>JupyterLab</title>
 
   <script id="jupyter-config-data" type="application/json">{
-    "appVersion": "0.22.1",
-    "devMode": "False",
-    "settingsDir": "",
-    "ignorePlugins": "[]",
-    "terminalsAvailable": "True",
-    "assetsDir": "",
-    "appNamespace": "",
-    "appName": "JupyterLab",
-    "wsUrl": "",
-    "publicUrl": "../../build",
-    "token": "{{ token }}"
-  }</script>
-
-  <script>
-    require('../../build/main.bundle.js');
-  </script>
-
+        "appVersion": "0.22.1",
+        "devMode": "False",
+        "settingsDir": "",
+        "ignorePlugins": "[]",
+        "terminalsAvailable": "True",
+        "assetsDir": "",
+        "appNamespace": "",
+        "appName": "JupyterLab",
+        "wsUrl": "",
+        "publicUrl": "../../build",
+        "token": "{{ token }}"
+    }</script>
+    <script>
+        require('../../build/main.bundle.js');
+    </script>
+    <link rel="stylesheet" href="../../src/browser/css/main.css" type="text/css">
    <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS_CHTML-full,Safe&amp;delayStartupUntil=configured"></script>
 
 </head>
