@@ -1,5 +1,5 @@
 
-let extensions = [
+let jupyterlab = [
     require("./electron-extension"),
     require("./utils-extension"),
     require("@jupyterlab/chatbox-extension"),
@@ -27,4 +27,8 @@ let extensions = [
     require("@jupyterlab/tooltip-extension")
 ];
 
-export default extensions;
+let mime = [
+    require("@jupyterlab/vega2-extension")
+];
+
+export default {jupyterlab, mime};

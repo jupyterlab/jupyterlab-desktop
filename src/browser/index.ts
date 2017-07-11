@@ -24,6 +24,7 @@ function main() : void {
     let devMode : string  = PageConfig.getOption('devMode') || 'false';
     let settingsDir : string = PageConfig.getOption('settingsDir') || '';
     let assetsDir : string = PageConfig.getOption('assetsDir') || '';
+    
     if (version[0] === 'v') {
         version = version.slice(1);
     }
@@ -43,11 +44,12 @@ function main() : void {
         version: version,
         devMode: devMode.toLowerCase() === 'true',
         settingsDir: settingsDir,
-        assetsDir: assetsDir
+        assetsDir: assetsDir,
+        mimeExtensions: extensions.mime
     });
 
     try {
-        lab.registerPluginModules(extensions);
+        lab.registerPluginModules(extensions.jupyterlab);
     } catch (e) {
         console.error(e);
     }
