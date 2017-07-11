@@ -77,10 +77,6 @@ class NativeMenu extends MenuBar implements IMainMenu {
                 nItems[i].type = (items[i].type as 'normal' | 'submenu' | 'separator');
             nItems[i].label = items[i].label;
             nItems[i].command = items[i].command;
-<<<<<<< HEAD
-=======
-
->>>>>>> master
             nItems[i].args = items[i].args;
 
             if (items[i].submenu !== null)
