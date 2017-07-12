@@ -34,5 +34,5 @@ const nativeMainMenuPlugin: JupyterLabPlugin<IMainMenu> = {
 /**
  * Override Main Menu plugin from apputils-extension
  */
-plugin[1] = nativeMainMenuPlugin;
+plugin[0] = nativeMainMenuPlugin;
 export default plugin;
