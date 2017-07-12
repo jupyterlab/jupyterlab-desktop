@@ -19,6 +19,7 @@ import {
 
 import * as path from 'path';
 import * as url from 'url';
+//import * as log from 'electron-log';
 
 class JupyterServer {
     /**
@@ -38,7 +39,8 @@ class JupyterServer {
             let urlRegExp = /http:\/\/localhost:\d+\/\?token=\w+/g;
             let tokenRegExp = /token=\w+/g;
             let baseRegExp = /http:\/\/localhost:\d+\//g;
-            this.nbServer = spawn('jupyter', ['notebook', '--no-browser', '--port', String(port)]);
+
+            this.nbServer = spawn('bash', ['-i']);
 
             this.nbServer.on('error', (err: Error) => {
                 this.nbServer.stderr.removeAllListeners();
@@ -60,6 +62,8 @@ class JupyterServer {
                 }
                 resolve(serverData);
             });
+
+            this.nbServer.stdin.write('exec jupyter notebook --no-browser --port ' + port + '\n');
         });
     }
 
