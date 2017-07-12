@@ -2,7 +2,7 @@
 // Distributed under the terms of the Modified BSD License.
 
 import { 
-    dialog, app, BrowserWindow, ipcMain
+    app, ipcMain
 } from 'electron';
 
 import {
@@ -14,11 +14,13 @@ import {
 } from './menu';
 
 import {
+    JupyterLabWindow
+} from './window';
+
+import {
     JupyterAppChannels as Channels
 } from '../ipc';
 
-import * as path from 'path';
-import * as url from 'url';
 
 class JupyterServer {
     /**
@@ -89,7 +91,7 @@ export class JupyterApplication {
     /**
      * The JupyterLab window
      */
-    private mainWindow: Electron.BrowserWindow;
+    private mainWindow: JupyterLabWindow;
 
     /**
      * Construct the Jupyter application
@@ -97,6 +99,7 @@ export class JupyterApplication {
     constructor() {
         this.registerListeners();
         this.server = new JupyterServer();
+        this.mainWindow = new JupyterLabWindow();
         this.menu = new JupyterMainMenu();
     }
 
@@ -116,9 +119,7 @@ export class JupyterApplication {
         // windows open.
         // Need to double check this code to ensure it has expected behaviour
         app.on('activate', () => {
-            if (this.mainWindow === null) {
-                this.createWindow();
-            }
+            this.createWindow();
         });
 
         app.on('quit', () => {
@@ -127,51 +128,12 @@ export class JupyterApplication {
     }
 
     /**
-     * Creates the primary application window and loads the
-     * html
+     * Creates the primary application window
      */
     private createWindow(): void {
-        
-        this.mainWindow = new BrowserWindow({
-            width: 800,
-            height: 600,
-            minWidth: 400,
-            minHeight: 300,
-            show: false,
-            title: 'JupyterLab'
-        });
-
-        this.mainWindow.loadURL(url.format({
-            pathname: path.resolve(__dirname, '../../../src/browser/index.html'),
-            protocol: 'file:',
-            slashes: true
-        }));
-
-        this.mainWindow.webContents.on('did-finish-load', () =>{
-            this.mainWindow.show();
-        });
-
-        // Register dialog on window close
-        this.mainWindow.on('close', (event: Event) => {
-            let buttonClicked = dialog.showMessageBox({
-            type: 'warning',
-            message: 'Do you want to leave?',
-            detail: 'Changes you made may not be saved.',
-            buttons: ['Leave', 'Stay'],
-            defaultId: 0,
-            cancelId: 1
-            });
-            if (buttonClicked === 1) {
-                event.preventDefault();
-            }
-        });
-        
-        this.mainWindow.on('closed', () => {
-            this.mainWindow = null;
-        });
+        if (!this.mainWindow.isWindowVisible)
+            this.mainWindow.createWindow();
     }
-
-
 
     /**
      * Starts the Jupyter Server and launches the electron application.

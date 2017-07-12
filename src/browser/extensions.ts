@@ -1,5 +1,5 @@
 
-let extensions = [
+let jupyterlab = [
     require("./electron-extension"),
     require("./utils-extension"),
     require("@jupyterlab/chatbox-extension"),
@@ -8,7 +8,6 @@ let extensions = [
     require("@jupyterlab/console-extension"),
     require("@jupyterlab/csvviewer-extension"),
     require("@jupyterlab/docmanager-extension"),
-    require("@jupyterlab/docregistry-extension"),
     require("@jupyterlab/fileeditor-extension"),
     require("@jupyterlab/faq-extension"),
     require("@jupyterlab/filebrowser-extension"),
@@ -18,7 +17,6 @@ let extensions = [
     require("@jupyterlab/launcher-extension"),
     require("@jupyterlab/markdownviewer-extension"),
     require("@jupyterlab/notebook-extension"),
-    require("@jupyterlab/rendermime-extension"),
     require("@jupyterlab/running-extension"),
     require("@jupyterlab/services-extension"),
     require("@jupyterlab/settingeditor-extension"),
@@ -29,4 +27,8 @@ let extensions = [
     require("@jupyterlab/tooltip-extension")
 ];
 
-export default extensions;
+let mime = [
+    require("@jupyterlab/vega2-extension")
+];
+
+export default {jupyterlab, mime};
