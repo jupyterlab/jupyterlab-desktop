@@ -19,6 +19,7 @@
     "dockerdist" : "docker run --rm -ti -v ${PWD}:/project -v ${PWD##*/}-node-modules:/project/node_modules -v ~/.electron:/root/.electron electronuserland/electron-builder:wine /bin/bash -c \"yarn && yarn dist:linux\""
   },
   "build": {
+    "productName": "JupyterLab App",
     "directories" : {
       "buildResources" : "dist-resources" },
     "files": [
