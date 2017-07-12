@@ -6,17 +6,41 @@
   "scripts": {
     "start": "electron .",
     "test": "echo \"Error: no test specified\" && exit 1",
-    "clean": "rm -fr build",
+    "clean": "rm -fr build dist",
     "watch:tsc": "tsc -w",
     "watch:pack": "webpack --progress --colors --watch",
     "build": "tsc && webpack",
-    "build:all": "npm run build && npm start"
+    "build:all": "npm run build && npm start",
+    "pack": "npm run build && electron-builder --dir",
+    "dist": "npm run build && electron-builder",
+    "dist:linux": "npm run build && electron-builder",
+    "dist:mac": "npm run build && electron-builder",
+    "dist:win": "npm run build && electron-builder",
+    "dockerdist" : "docker run --rm -ti -v ${PWD}:/project -v ${PWD##*/}-node-modules:/project/node_modules -v ~/.electron:/root/.electron electronuserland/electron-builder:wine /bin/bash -c \"yarn && yarn dist:linux\""
+  },
+  "build": {
+    "productName": "JupyterLab App",
+    "directories" : {
+      "buildResources" : "dist-resources" },
+    "files": [
+      "!**/*.d.ts"
+    ],
+    "linux": {
+      "target": ["deb", "rpm", "tar.gz"],
+      "desktop": {
+        "Category": "Science;Development;"
+      }
+    }
   },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/jupyterlab/jupyterlab_app.git"
   },
-  "author": "Project Jupyter",
+  "author": {
+    "name": "Project Jupyter",
+    "email": "project.jupyter@gmail.com",
+    "url": "http://jupyter.org"
+  },
   "bugs": {
     "url": "https://github.com/jupyterlab/jupyterlab_app/issues"
   },
@@ -24,6 +48,8 @@
   "devDependencies": {
     "css-loader": "^0.27.3",
     "devtron": "^1.4.0",
+    "electron": "^1.6.11",
+    "electron-builder": "^19.13.0",
     "file-loader": "^0.10.1",
     "fs-extra": "^2.1.2",
     "json-loader": "^0.5.4",
@@ -87,7 +113,6 @@
     "@jupyterlab/tooltip": "^0.8.1",
     "@jupyterlab/tooltip-extension": "^0.8.1",
     "@jupyterlab/vega2-extension": "^0.8.1",
-    "electron": "^1.6.11",
     "electron-debug": "^1.2.0",
     "es6-promise": "^4.1.0",
     "font-awesome": "^4.6.3"
