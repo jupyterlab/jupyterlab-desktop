@@ -39,7 +39,7 @@ class JupyterServer {
             let tokenRegExp = /token=\w+/g;
             let baseRegExp = /http:\/\/localhost:\d+\//g;
 
-            this.nbServer = spawn('bash', ['-i']);
+            this.nbServer = spawn('/bin/bash', ['-i']);
 
             this.nbServer.on('error', (err: Error) => {
                 this.nbServer.stderr.removeAllListeners();
