@@ -19,7 +19,6 @@ import {
 
 import * as path from 'path';
 import * as url from 'url';
-//import * as log from 'electron-log';
 
 class JupyterServer {
     /**
