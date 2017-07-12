@@ -19,8 +19,8 @@ before_install:
   - sudo apt-get install -y -qq yarn
   - docker pull electronuserland/electron-builder:wine
 
-install:
-  - yarn install
+#install:
+#  - yarn install
 
 script:
   - yarn dockerdist
