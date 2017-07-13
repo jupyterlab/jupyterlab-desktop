@@ -40,8 +40,8 @@ class JupyterServer {
             let urlRegExp = /http:\/\/localhost:\d+\/\?token=\w+/g;
             let tokenRegExp = /token=\w+/g;
             let baseRegExp = /http:\/\/localhost:\d+\//g;
-
-            this.nbServer = spawn('/bin/bash', ['-i']);
+            let home = app.getPath("home");
+            this.nbServer = spawn('/bin/bash', ['-i'], {cwd: home});
 
             this.nbServer.on('error', (err: Error) => {
                 this.nbServer.stderr.removeAllListeners();
@@ -63,7 +63,6 @@ class JupyterServer {
                 }
                 resolve(serverData);
             });
-
             this.nbServer.stdin.write('exec jupyter notebook --no-browser --port ' + port + '\n');
         });
     }
