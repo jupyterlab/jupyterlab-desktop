@@ -5,23 +5,43 @@ import {
     app
 } from 'electron';
 
+import {
+    JSONObject
+} from '@phosphor/coreutils';
+
+import {
+    IStateDB, IStateItem
+} from '@jupyterlab/coreutils';
+
 import * as fs from 'fs';
 
 /**
  * Read and write electron application data asynchronously.
  */
 export
-class ApplicationState<T> {
+class ElectronStateDB implements IStateDB {
 
     /**
      * The path to the platform-specific user data directory.
      */
-    private path: string = app.getPath('userData');
+    readonly path: string = app.getPath('userData');
 
     /**
-     * The full data file.
+     * The name specific to the StateDb instance.
+     */
+    readonly namespace: string;
+
+    /**
+     * Unused field in ElectronStateDB
+     */
+    readonly maxLength: number;
+
+    /**
+     * The path to the data file.
      */
     private dataFile: string;
+
+    private cache: JSONObject = null;
 
     /**
      * Promise fulfilled when a write finishes
@@ -30,15 +50,10 @@ class ApplicationState<T> {
 
     private writeInProgress: boolean = false;
 
-    /**
-     * User data
-     */
-    state: T = null;
 
-    constructor(private filename: string, state?: T) {
-        this.dataFile = this.path + '/' + this.filename;
-        if (state)
-            this.state = state;
+    constructor(options: ElectronStateDB.IOptions) {
+        this.namespace = options.namespace;
+        this.dataFile = this.path + '/' + this.namespace;
     }
 
     /**
@@ -61,35 +76,69 @@ class ApplicationState<T> {
         }
         cb();
     }
-
+    
     /**
-     * Write data to the file. Creates promise that is fulfilled when
-     * writing is complete.
-     * 
-     * @param data Javascript object to write to the file as JSON data
-     * @param err_cb 
-     */
-    private doWrite(err_cb?: (err: NodeJS.ErrnoException) => void): void {
-        this.writeInProgress = true;
-        this.written = new Promise<void>((res, rej) => {
-            fs.writeFile(this.dataFile, JSON.stringify(this.state), (err) => {
-                if (err && err_cb)
-                    err_cb(err);
-                this.writeInProgress = false;
-                res();
-            });
-        });
-    }
-
-    /**
-     * Convert a javascript object to JSON, and write to a file.
+     * Convert a javascript object to JSON, and write to a file. 
+     * Creates promise that is fulfilled when writing is complete.
+     * Waits until all currently executing writes are complete.
      * 
      * @param data javascript object to write.
      * @param err_cb callback called in case of error.
      */
-    write(err_cb?: (err: NodeJS.ErrnoException) => void): void {
-        this.checkWriteInProgress(() => {
-            this.doWrite(err_cb);
+    save(id: string, value: JSONObject): Promise<void> {
+        return new Promise((res, rej) => {
+            this.updateCache()
+                .then(() => {
+                    this.cache[id] = value;
+                    /* Signal write in progress */
+                    this.writeInProgress = true;
+                    this.written = new Promise<void>((res, rej) => {
+                        fs.writeFile(this.dataFile, JSON.stringify(this.cache), (err) => {
+                            this.writeInProgress = false;
+                            if (err)
+                                rej(err);
+                            else
+                                res();
+                        });
+                    });
+                })
+                .catch(() => {
+                    rej();
+                })
+        });
+    }
+
+    private updateCache(): Promise<void> {
+        return new Promise<void>((res, rej) => {
+            this.checkWriteInProgress(() => {
+                if (this.cache)
+                    res();
+
+                this.cache = {};
+                fs.readFile(this.dataFile, (err, data) => {
+                    if (err) {
+                        if (err.code === 'ENOENT') {
+                            /* The file doesn't exist, don't update state */
+                            res(null);
+                            return;
+                        }
+                        rej(err);
+                        return;
+                    }
+
+                    let pData: JSONObject;
+                    try {
+                        pData = JSON.parse(data.toString());
+                    } catch(err) {
+                        rej(err);
+                        return;
+                    }
+                
+                    this.cache = pData;
+                    res();
+                });
+        
+            });
         });
     }
 
@@ -104,32 +153,66 @@ class ApplicationState<T> {
      *         the file is found to not exist. If reading fails, the promise
      *         is rejected.
      */
-    read(): Promise<void> {
-        return new Promise<void>((res, rej) => {
-            this.checkWriteInProgress(() => {
-                fs.readFile(this.dataFile, (err, data) => {
-                    if (err) {
-                        if (err.code === 'ENOENT') {
-                            /* The file doesn't exist, don't update state */
-                            res();
-                            return;
-                        }
-                        rej(err);
-                        return;
-                    }
-
-                    let pData: T;
-                    try {
-                        pData = JSON.parse(data.toString());
-                    } catch(err) {
-                        rej(err);
-                        return;
-                    }
-                    this.state = pData;
-                    res();
+    fetch(id: string): Promise<JSONObject | null> {
+        return new Promise<JSONObject | null>((res, rej) => {
+            this.updateCache()
+                .then(() => {
+                    if (this.cache[id] === undefined)
+                        res(null);
+                    else
+                        res(this.cache[id] as JSONObject);
+                    return;
+                })
+                .catch(() => {
+                    res(null);
                 });
-        
-            });
+            
         });
     }
+
+    fetchNamespace(namespace: string): Promise<IStateItem[]> {
+        return new Promise<IStateItem[]>((res, rej) => {
+            const prefix = `${this.namespace}:${namespace}:`;
+            const regex = new RegExp(`^${this.namespace}\:`);
+            let items: IStateItem[] = [];
+
+            this.updateCache()
+                .then(() => {
+                    for (let key in this.cache) {
+                        if (key.indexOf(prefix) === 0) {
+                            try {
+                                items.push({
+                                    id: key.replace(regex, ''),
+                                    value: JSON.parse(window.localStorage.getItem(key))
+                                });
+                            } catch (error) {
+                                console.warn(error);
+                            }
+                        }
+                    }
+                })
+                .catch(() => {
+                    res(null);
+                });
+            
+        });
+    }
+
+    remove(id: string) Promise<void> {
+
+    }
+}
+
+export
+namespace ElectronStateDB {
+  /**
+   * The instantiation options for a state database.
+   */
+  export
+  interface IOptions {
+    /**
+     * The namespace prefix for all state database entries.
+     */
+    namespace: string;
+  }
 }
