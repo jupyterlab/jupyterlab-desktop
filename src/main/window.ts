@@ -106,7 +106,6 @@ class JupyterLabWindow {
      */
     private updateState() {
         let winBounds = this.window.getBounds();
-        console.log(winBounds);
         this.windowState.x = winBounds.x;
         this.windowState.y = winBounds.y;
         this.windowState.width = winBounds.width;
