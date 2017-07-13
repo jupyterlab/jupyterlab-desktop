@@ -5,6 +5,7 @@ import {
 
 import 'font-awesome/css/font-awesome.min.css';
 import '@jupyterlab/theming/style/index.css';
+import './css/main.css'
 
 import {
     ElectronJupyterLab as app
@@ -13,6 +14,13 @@ import {
 import {
     JupyterAppChannels as Channels
 } from '../ipc';
+
+import {
+    SplashScreen
+} from './electron-launcher';
+
+import * as React from 'react';
+import * as ReactDOM from 'react-dom';
 
 let ipcRenderer = (window as any).require('electron').ipcRenderer;
 import extensions from './extensions'
@@ -35,18 +43,20 @@ function main() : void {
             resolve(args);
         });
     });
+    let labReady = false;
     
     if (version[0] === 'v') {
         version = version.slice(1);
     }
 
-    // The splash screen roation animation is infinite
-    // When the "fade" animation is triggererd and ends
-    // the splash screen is set to hidden
-    splash.addEventListener('animationend', function fade() {
-        splash.style.visibility = 'hidden';
-        splash.removeEventListener('animationend', fade);
-    });
+    function iterationDone() {
+        return !labReady;
+    }
+
+    ReactDOM.render(
+        <SplashScreen iterationDone={iterationDone} />,
+        document.getElementById('root')
+    );
 
     let lab = new app({
         namespace: namespace,
@@ -85,15 +95,13 @@ function main() : void {
                 PageConfig.setOption('terminalsAvailable', 'false');
             }
 
-            // Start lab and fade splash
-            lab.start({ "ignorePlugins": ignorePlugins })
-            .then( () => {
-                moon.addEventListener('animationiteration', function fade() {
-                    splash.style.animation = "fade .4s linear 0s forwards";
-                    moon.removeEventListener('animationiteration', fade);
-                });
-            });
-            ipcRenderer.removeListener(Channels.SERVER_DATA, startlab);
+            labReady = true;
+            try{
+                lab.start({ "ignorePlugins": ignorePlugins });
+            }
+            catch (e){
+                console.log(e);
+            }
         });
     });
 
