@@ -77,6 +77,24 @@ class ElectronStateDB implements IStateDB {
         cb();
     }
     
+
+    private _save(): Promise<void> {
+        return new Promise<void>((res, rej) => {
+            /* Signal write in progress */
+            this.writeInProgress = true;
+            this.written = new Promise<void>((res, rej) => {
+                fs.writeFile(this.dataFile, JSON.stringify(this.cache), (err) => {
+                    this.writeInProgress = false;
+                    if (err)
+                        rej(err);
+                    else
+                        res();
+                });
+            });
+
+        });
+    }
+
     /**
      * Convert a javascript object to JSON, and write to a file. 
      * Creates promise that is fulfilled when writing is complete.
@@ -86,21 +104,11 @@ class ElectronStateDB implements IStateDB {
      * @param err_cb callback called in case of error.
      */
     save(id: string, value: JSONObject): Promise<void> {
-        return new Promise((res, rej) => {
+        return new Promise<void>((res, rej) => {
             this.updateCache()
                 .then(() => {
                     this.cache[id] = value;
-                    /* Signal write in progress */
-                    this.writeInProgress = true;
-                    this.written = new Promise<void>((res, rej) => {
-                        fs.writeFile(this.dataFile, JSON.stringify(this.cache), (err) => {
-                            this.writeInProgress = false;
-                            if (err)
-                                rej(err);
-                            else
-                                res();
-                        });
-                    });
+                    res(this._save());
                 })
                 .catch(() => {
                     rej();
@@ -190,6 +198,7 @@ class ElectronStateDB implements IStateDB {
                             }
                         }
                     }
+                    res(items);
                 })
                 .catch(() => {
                     res(null);
@@ -198,8 +207,23 @@ class ElectronStateDB implements IStateDB {
         });
     }
 
-    remove(id: string) Promise<void> {
-
+    remove(id: string): Promise<void> {
+        return new Promise<void>((res, rej) => {
+            this.updateCache()
+                .then(() => {
+                    if (this.cache[id] === undefined) {
+                        res(null);
+                    } else {
+                        delete this.cache[id];
+                        res(this._save());
+                    }
+                    return;
+                })
+                .catch(() => {
+                    res(null);
+                });
+            
+        });
     }
 }
 

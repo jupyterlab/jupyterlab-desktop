@@ -6,16 +6,21 @@ import {
 } from 'electron';
 
 import {
-    ApplicationState
+    ElectronStateDB
 } from './state';
+
+import {
+    JSONObject
+} from '@phosphor/coreutils';
 
 import * as path from 'path';
 import * as url from 'url';
 
-type Rectangle = Electron.Rectangle;
-
-interface WindowState {
-    winBounds?: Rectangle;
+interface WindowState extends JSONObject {
+    x?: number;
+    y?: number;
+    width?: number;
+    height?: number;
 }
 
 export
@@ -24,7 +29,9 @@ class JupyterLabWindow {
     /**
      * Object to store the size and position of the window.
      */
-    private windowState = new ApplicationState<WindowState>('jupyter-window-data');
+    private windowStateDB = new ElectronStateDB({namespace: 'jupyter-window-data'});
+
+    private windowState: WindowState = null;
 
     /**
      * Promise that is fulfilled when all application
@@ -64,18 +71,25 @@ class JupyterLabWindow {
         }));
 
         this.stateLoaded = new Promise<void>((res, rej) => {
-            if (this.windowState.state) {
-                this.window.setBounds(this.windowState.state.winBounds);
+            if (this.windowState) {
+                this.window.setBounds(this.windowState as Electron.Rectangle);
                 res();
             } else {
-                this.windowState.read().then(() => {
-                    let state = this.windowState.state
-                    if (state.winBounds)
-                        this.window.setBounds(state.winBounds);
-                    else
-                        this.window.center();
-                    res();
-                }).catch(()=>{ res(); });
+                this.windowStateDB.fetch(JupyterLabWindow.STATE_NAMESPACE)
+                    .then((state: JSONObject) => {
+                        this.windowState = state;
+                        if (!state) {
+                            this.windowState = {};
+                            res();
+                            return;
+                        }
+
+                        if (state.x && state.y && state.width && state.height)
+                            this.window.setBounds(this.windowState as Electron.Rectangle);
+                        else
+                            this.window.center();
+                        res();
+                    }).catch(()=>{ res(); });
             }
         });
     }
@@ -85,8 +99,12 @@ class JupyterLabWindow {
      * and write the data to a file.
      */
     private updateState() {
-        this.windowState.state.winBounds = this.window.getBounds();
-        this.windowState.write();
+        let winBounds = this.window.getBounds();
+        this.windowState.x = winBounds.x;
+        this.windowState.y = winBounds.y;
+        this.windowState.width = winBounds.width;
+        this.windowState.height = winBounds.height;
+        this.windowStateDB.save(JupyterLabWindow.STATE_NAMESPACE, this.windowState);
     }
 
     /**
@@ -126,4 +144,10 @@ class JupyterLabWindow {
             this.window = null;
         });
     }
+}
+
+export
+namespace JupyterLabWindow {
+    export
+    let STATE_NAMESPACE = 'window-state';
 }
