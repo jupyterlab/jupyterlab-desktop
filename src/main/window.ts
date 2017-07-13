@@ -48,6 +48,12 @@ class JupyterLabWindow {
         return this.window !== null;
     }
 
+    /**
+     * Create a new window. If a window already exists, this
+     * function call is ignored. Loads the html into the window,
+     * registers all required event listeners, and loads any
+     * window state.
+     */
     createWindow(): void {
 
         if (this.window)
@@ -100,6 +106,7 @@ class JupyterLabWindow {
      */
     private updateState() {
         let winBounds = this.window.getBounds();
+        console.log(winBounds);
         this.windowState.x = winBounds.x;
         this.windowState.y = winBounds.y;
         this.windowState.width = winBounds.width;
@@ -148,6 +155,10 @@ class JupyterLabWindow {
 
 export
 namespace JupyterLabWindow {
+
+    /**
+     * The id of window state in the stateDB
+     */
     export
     let STATE_NAMESPACE = 'window-state';
 }
