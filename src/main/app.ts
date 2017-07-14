@@ -155,13 +155,22 @@ export class JupyterApplication {
      */
     public start(): void {
         let token: Promise<string>;
+
+        // Send platorm information to renderer process
+        ipcMain.on(Channels.GET_PLATFORM, (event: any, arg: any) => {
+            event.sender.send(Channels.SEND_PLATFORM, process.platform);
+        });
         
+        // Send server token to renderer process
         ipcMain.on(Channels.RENDER_PROCESS_READY, (event: any, arg: any) => {
             token.then((data) => {
                 event.sender.send(Channels.SERVER_DATA, data);
             });
+            event.sender.send(Channels.SEND_PLATFORM, process.platform);
         });
+
         this.createWindow();
+
         
         token = new Promise((resolve, reject) => {
             this.server.start(8888)
