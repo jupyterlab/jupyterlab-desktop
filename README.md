@@ -10,4 +10,5 @@ A native app for [JupyterLab](https://github.com/jupyterlab/jupyterlab), based o
 
 ### Building for distribution
 
-To test building for distribution install [Docker](https://docs.docker.com/engine/installation/) and run `yarn dockerdist` or `npm run dockerdist`
+To test building for distribution install [Docker](https://docs.docker.com/engine/installation/) and run `yarn dockerdist:platform` or `npm run dockerdist:platform` where "platform"
+ is either "linux", "win" or "mac".
