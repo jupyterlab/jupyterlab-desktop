@@ -35,6 +35,9 @@
       "desktop": {
         "Category": "Science;Development;"
       }
+    },
+    "rpm": {
+      "depends": ["libXScrnSaver"]
     }
   },
   "repository": {
