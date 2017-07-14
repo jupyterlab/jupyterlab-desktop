@@ -14,7 +14,7 @@ import {
 } from '../ipc';
 
 import {
-    SplashScreen
+    SplashScreen, ServerManager
 } from './electron-launcher';
 
 import * as React from 'react';
@@ -36,7 +36,7 @@ namespace Application {
 
     export
     interface State {
-        labRunning: boolean;
+        renderState: () => any;
     }
 }
 
@@ -49,7 +49,7 @@ class Application extends React.Component<Application.Props, Application.State> 
 
     constructor(props: Application.Props) {
         super(props);
-        this.state = {labRunning: false};
+        this.state = {renderState: this.renderLauncher};
         this.setupLab();
 
         /* Setup server data response handler */
@@ -117,18 +117,32 @@ class Application extends React.Component<Application.Props, Application.State> 
         }
     }
 
-    render() {
-        if (this.state.labRunning)
-            return null;
+    private renderLauncher(): any {
+        const cardProps = {
+            serverSelected: (server: ServerManager.Connection) => {
+                this.setState({renderState: this.renderSplash});
+            }
+        }
+        return <ServerManager cardProps={cardProps} />;
+    }
 
+    private renderSplash() {
         /* Request Jupyter server data from main process, then render
          * splash screen
          */
         ipcRenderer.send(Channels.RENDER_PROCESS_READY);
         return (
             <SplashScreen  ref='splash' finished={() => {
-                this.setState({labRunning: true});}
-            }/>
+                this.setState({renderState: this.renderLab});}
+            } />
         );
+    }
+
+    private renderLab(): any {
+        return null;
+    }
+
+    render() {
+        return this.state.renderState.call(this);
     }
 }

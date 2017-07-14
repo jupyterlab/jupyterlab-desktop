@@ -1,0 +1,140 @@
+/*-----------------------------------------------------------------------------
+| Copyright (c) Jupyter Development Team.
+| Distributed under the terms of the Modified BSD License.
+|----------------------------------------------------------------------------*/
+
+.jpe-SplashScreen-body {
+    z-index: 1;
+    position: absolute;
+    overflow: hidden;
+    width: 100%;
+    height: 100%;
+    background-position: center 40%;
+    background-repeat: no-repeat;
+    background-size: cover;
+    background-color: #ffffff;
+}
+
+.jpe-SplashScreen-content {
+    position: relative;
+    width: 100%;
+    height: 100%;
+}
+
+.jpe-SplashScreen-main-logo {
+    background-image: url(../img/main.svg);
+    background-repeat: no-repeat;
+    background-size: 100px;
+    position: absolute;
+    background-position: center;
+    width: 100%;
+    height: 100%;
+    z-index: 1;
+}
+
+
+.jpe-SplashScreen-orbit {
+    animation-iteration-count: 1;
+    animation: orbit 3.5s ease -1.0s infinite;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    border-radius: 50%;
+}
+
+.jpe-SplashScreen-moon {
+    background-repeat: no-repeat;
+    background-size: cover;
+    animation-iteration-count: infinite;
+    animation-name: orbit;
+}
+
+#moon1.jpe-SplashScreen-orbit {
+    width: 200px;
+    height: 140px;
+    margin-top: -53px;
+    margin-left: -54px;
+}
+
+#moon2.jpe-SplashScreen-orbit {
+    width: 132px;
+    height: 180px;
+    margin-top: -66px;
+    margin-left: -85px;
+}
+
+#moon3.jpe-SplashScreen-orbit {
+    display: flex;
+    align-items: flex-end;
+    width: 220px;
+    height: 166px;
+    margin-top: -96px;
+    margin-left: -50px;
+}
+
+#moon1 .jpe-SplashScreen-moon {
+    background-color: #6F7070;
+    height: 12px;
+    width: 12px;
+    border-radius: 50%;
+}
+
+#moon2 .jpe-SplashScreen-moon {
+    background-color: #767677;
+    height: 16px;
+    width: 16px;
+    border-radius: 50%;
+    float: right;
+}
+
+#moon3 .jpe-SplashScreen-moon {
+    background-color: #989798;
+    height: 20px;
+    width: 20px;
+    border-radius: 50%;
+}
+
+@-webkit-keyframes sk-rotate { 100% { -webkit-transform: rotate(360deg) }}
+@keyframes sk-rotate { 100% { transform: rotate(360deg); -webkit-transform: rotate(360deg) }}
+
+@-webkit-keyframes sk-bounce {
+  0%, 50%, 100% { -webkit-transform: scale(0.0) }
+  75% { -webkit-transform: scale(1.0) }
+}
+
+@keyframes sk-bounce {
+  0%, 50%, 100% { 
+    transform: scale(0.0);
+    -webkit-transform: scale(0.0);
+  } 75% { 
+    transform: scale(1.0);
+    -webkit-transform: scale(1.0);
+  }
+}
+@keyframes orbit {
+    0%, 50% {
+        transform: rotateZ(0deg);
+    }
+    100% {
+        transform: rotateZ(-360deg);
+    }
+}
+
+@keyframes orbit2 {
+    0%, 50% {
+        transform: rotateZ(0deg);
+    }
+    100% {
+        transform: rotateZ(360deg);
+    }
+}
+
+@keyframes fade {
+    0% {
+        opacity: 1;
+    }
+    100% {
+        opacity: 0;
+        visibility: hidden;
+    }
+}

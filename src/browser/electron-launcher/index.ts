@@ -4,3 +4,4 @@
 import './style/index.css';
 
 export * from './splash';
+export * from './servermanager';
