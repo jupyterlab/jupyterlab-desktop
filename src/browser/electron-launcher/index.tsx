@@ -15,6 +15,7 @@ class ElectronLauncher extends React.Component {
 export
 interface SplashScreenProps {
     iterationDone: () => boolean;
+    splashComplete: () => void;
 }
 
 export
@@ -32,33 +33,35 @@ class SplashScreen extends React.Component<SplashScreenProps, SplashScreenState>
     }
 
     private finishIteration() {
-        let runAgain: boolean;
+        if (!this.state.runAgain) {
+            this.props.splashComplete();
+            return;
+        }
 
-        if (this.props.iterationDone)
-            runAgain = this.props.iterationDone();
-        this.setState({runAgain: runAgain});
+        this.setState({runAgain: this.props.iterationDone()});
     }
         
     render() {
-        if (!this.state.runAgain)
-            return null;
+        const style = {
+            animation: (!this.state.runAgain ? 'fade .4s linear 0s forwards' : '')
+        };
 
         return (
-            <div id="universe">
-            <div id="galaxy">
-            <div id="main-logo">
+            <div id="universe" style={style}>
+                <div id="galaxy">
+                <div id="main-logo">
+                </div>
+                    <div id="moon1" className="moon orbit" onAnimationIteration={this.finishIteration}>
+                        <div className="planet"></div>
+                    </div>
+                    <div id="moon2" className="moon orbit">
+                        <div className="planet"></div>
+                    </div>
+                    <div id="moon3" className="moon orbit">
+                        <div className="planet"></div>
+                    </div>
+                </div>
             </div>
-                <div id="moon1" className="moon orbit" onAnimationIteration={this.finishIteration}>
-                    <div className="planet"></div>
-                </div>
-                <div id="moon2" className="moon orbit">
-                    <div className="planet"></div>
-                </div>
-                <div id="moon3" className="moon orbit">
-                    <div className="planet"></div>
-                </div>
-            </div>
-        </div>
         );
     }
 }

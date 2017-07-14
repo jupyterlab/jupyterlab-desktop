@@ -53,8 +53,14 @@ function main() : void {
         return !labReady;
     }
 
+    function splashComplete() {
+        ReactDOM.unmountComponentAtNode(
+            document.getElementById('root')
+        );
+    }
+
     ReactDOM.render(
-        <SplashScreen iterationDone={iterationDone} />,
+        <SplashScreen iterationDone={iterationDone} splashComplete={splashComplete} />,
         document.getElementById('root')
     );
 
