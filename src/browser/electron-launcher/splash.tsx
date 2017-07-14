@@ -3,47 +3,44 @@
 
 import * as React from 'react';
 
-import './style/index.css';
+export namespace SplashScreen {
+    export
+    interface Props {
+        finished: () => void;
+    }
 
-export
-class ElectronLauncher extends React.Component {
-  render() {
-    return <h1>Welcome to the Launcehr</h1>;
-  }
+    export
+    interface State {
+        fadeSplash: boolean;
+    }
 }
 
 export
-interface SplashScreenProps {
-    iterationDone: () => boolean;
-    splashComplete: () => void;
-}
+class SplashScreen extends React.Component<SplashScreen.Props, SplashScreen.State> {
 
-export
-interface SplashScreenState {
-    runAgain: boolean;
-}
+    private fadeSplash: boolean = false;
 
-export
-class SplashScreen extends React.Component<SplashScreenProps, SplashScreenState> {
-
-    constructor(props: SplashScreenProps) {
+    constructor(props: SplashScreen.Props) {
         super(props);
-        this.state = {runAgain: true};
+        this.state = {fadeSplash: false};
         this.finishIteration = this.finishIteration.bind(this);
     }
 
     private finishIteration() {
-        if (!this.state.runAgain) {
-            this.props.splashComplete();
-            return;
-        }
+        if (this.state.fadeSplash)
+            this.props.finished();
 
-        this.setState({runAgain: this.props.iterationDone()});
+        if (this.fadeSplash)
+            this.setState({fadeSplash: true});
     }
-        
+    
+    fadeSplashScreen() {
+        this.fadeSplash = true;
+    }
+    
     render() {
         const style = {
-            animation: (!this.state.runAgain ? 'fade .4s linear 0s forwards' : '')
+            animation: (this.state.fadeSplash ? 'fade .4s linear 0s forwards' : '')
         };
 
         return (
