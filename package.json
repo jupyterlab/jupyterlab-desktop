@@ -21,7 +21,7 @@
     "dockerdist:win": "docker run --rm -ti -v ${PWD}:/project -v ${PWD##*/}-node-modules:/project/node_modules -v ~/.electron:/root/.electron electronuserland/electron-builder:wine /bin/bash -c \"yarn && yarn dist:win\"",
     "dist:all": "npm run build && electron-builder --linux --win",
     "dockerdist:all": "docker run --rm -ti -v ${PWD}:/project -v ${PWD##*/}-node-modules:/project/node_modules -v ~/.electron:/root/.electron electronuserland/electron-builder:wine /bin/bash -c \"yarn && yarn dist:all\"",
-    "dockerdist": "npm run dockerdist"
+    "dockerdist": "docker run --rm -ti -v ${PWD}:/project -v ${PWD##*/}-node-modules:/project/node_modules -v ~/.electron:/root/.electron electronuserland/electron-builder:wine /bin/bash -c \"yarn && yarn dist:linux && yarn dist:win\"",
   },
   "build": {
     "productName": "JupyterLab App",
@@ -49,7 +49,8 @@
     },
     "nsis": {
       "oneClick": "false",
-      "deleteAppDataOnUninstall": true
+      "deleteAppDataOnUninstall": true,
+      "license": "LICENSE"
     }
   },
   "repository": {
