@@ -16,17 +16,22 @@
     "dist:linux": "npm run build && electron-builder",
     "dist:mac": "npm run build && electron-builder",
     "dist:win": "npm run build && electron-builder",
-    "dockerdist" : "docker run --rm -ti -v ${PWD}:/project -v ${PWD##*/}-node-modules:/project/node_modules -v ~/.electron:/root/.electron electronuserland/electron-builder:wine /bin/bash -c \"yarn && yarn dist:linux\""
+    "dockerdist": "docker run --rm -ti -v ${PWD}:/project -v ${PWD##*/}-node-modules:/project/node_modules -v ~/.electron:/root/.electron electronuserland/electron-builder:wine /bin/bash -c \"yarn && yarn dist:linux\""
   },
   "build": {
     "productName": "JupyterLab App",
-    "directories" : {
-      "buildResources" : "dist-resources" },
+    "directories": {
+      "buildResources": "dist-resources"
+    },
     "files": [
       "!**/*.d.ts"
     ],
     "linux": {
-      "target": ["deb", "rpm", "tar.gz"],
+      "target": [
+        "deb",
+        "rpm",
+        "tar.gz"
+      ],
       "desktop": {
         "Category": "Science;Development;"
       }
