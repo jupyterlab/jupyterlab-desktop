@@ -17,6 +17,18 @@ namespace JupyterAppChannels {
      */
     export
     let SERVER_DATA = 'server-data';
+
+    /**
+     * IPC channel for querying platform from renderer
+     */
+    export
+    let GET_PLATFORM = 'get-platform';
+
+    /**
+     * IPC channel for sending platform information
+     */
+    export
+    let SEND_PLATFORM = 'send-platform';
 }
 
 export

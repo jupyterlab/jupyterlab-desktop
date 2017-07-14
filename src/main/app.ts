@@ -41,7 +41,14 @@ class JupyterServer {
             let tokenRegExp = /token=\w+/g;
             let baseRegExp = /http:\/\/localhost:\d+\//g;
             let home = app.getPath("home");
-            this.nbServer = spawn('/bin/bash', ['-i'], {cwd: home});
+
+            /* Windows will return win32 (even for 64-bit) */
+            if (process.platform === "win32"){
+                this.nbServer = spawn('cmd', ['-i'], {cwd: home});
+            }
+            else{
+                this.nbServer = spawn('/bin/bash', ['-i'], {cwd: home});
+            }
 
             this.nbServer.on('error', (err: Error) => {
                 this.nbServer.stderr.removeAllListeners();
@@ -63,7 +70,14 @@ class JupyterServer {
                 }
                 resolve(serverData);
             });
-            this.nbServer.stdin.write('exec jupyter notebook --no-browser --port ' + port + '\n');
+
+            /* Windows doesn't support exec */ 
+            if (process.platform === "win32"){
+                this.nbServer.stdin.write('jupyter notebook --no-browser --port ' + port + '\n');
+            }
+            else{
+                this.nbServer.stdin.write('exec jupyter notebook --no-browser --port ' + port + '\n');
+            }
         });
     }
 
@@ -141,13 +155,22 @@ export class JupyterApplication {
      */
     public start(): void {
         let token: Promise<string>;
+
+        // Send platorm information to renderer process
+        ipcMain.on(Channels.GET_PLATFORM, (event: any, arg: any) => {
+            event.sender.send(Channels.SEND_PLATFORM, process.platform);
+        });
         
+        // Send server token to renderer process
         ipcMain.on(Channels.RENDER_PROCESS_READY, (event: any, arg: any) => {
             token.then((data) => {
                 event.sender.send(Channels.SERVER_DATA, data);
             });
+            event.sender.send(Channels.SEND_PLATFORM, process.platform);
         });
+
         this.createWindow();
+
         
         token = new Promise((resolve, reject) => {
             this.server.start(8888)
