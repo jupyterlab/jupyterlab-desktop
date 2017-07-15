@@ -82,3 +82,8 @@
     text-align: center;
     font-size: 10px;
 }
+
+.jpe-ServerManager-manage-btn {
+    display: block;
+    margin: 10px auto 10px auto;
+}

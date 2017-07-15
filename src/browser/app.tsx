@@ -118,12 +118,11 @@ class Application extends React.Component<Application.Props, Application.State> 
     }
 
     private renderLauncher(): any {
-        const cardProps = {
-            serverSelected: (server: ServerManager.Connection) => {
-                this.setState({renderState: this.renderSplash});
-            }
+        let serverSelected = (server: ServerManager.Connection) => {
+            this.setState({renderState: this.renderSplash});
         }
-        return <ServerManager cardProps={cardProps} />;
+
+        return <ServerManager serverSelected={serverSelected} />;
     }
 
     private renderSplash() {
