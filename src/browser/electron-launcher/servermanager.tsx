@@ -38,6 +38,14 @@ class ServerManager extends React.Component<ServerManager.Props, ServerManager.S
 
     constructor(props: ServerManager.Props) {
         super(props);
+
+        this.addConnection = this.addConnection.bind(this);
+        this.manageConnections = this.manageConnections.bind(this);
+        this.connectionAdded = this.connectionAdded.bind(this);
+        this.saveState = this.saveState.bind(this);
+        this.renderServerManager = this.renderServerManager.bind(this);
+        this.renderAddConnectionForm = this.renderAddConnectionForm.bind(this);
+
         this.state = {
             conns: {servers: [{id: String(this.nextId++), type: 'local', name: 'Local'}]},
             renderState: this.renderServerManager
@@ -54,11 +62,6 @@ class ServerManager extends React.Component<ServerManager.Props, ServerManager.S
             .catch((e) => {
                 console.log(e);
             })
-        
-        this.addConnection = this.addConnection.bind(this);
-        this.manageConnections = this.manageConnections.bind(this);
-        this.connectionAdded = this.connectionAdded.bind(this);
-        this.saveState = this.saveState.bind(this);
     }
     
     private saveState() {
@@ -77,7 +80,6 @@ class ServerManager extends React.Component<ServerManager.Props, ServerManager.S
     private connectionAdded(server: ServerManager.Connection) {
         this.setState((prev: ServerManager.State) => {
             server.id = String(this.nextId++);
-            console.log(server);
             let conns = this.state.conns.servers.concat(server);
             return({
                 renderState: this.renderServerManager,
@@ -120,7 +122,7 @@ class ServerManager extends React.Component<ServerManager.Props, ServerManager.S
     }
 
     render() {
-        let content = this.state.renderState.call(this);
+        let content = this.state.renderState();
 
         return (
             <div className='jpe-ServerManager-body'>
@@ -182,6 +184,8 @@ namespace ServerManager {
          * Server url
          */
         url?: string;
+
+        token?: string;
     }
 
     /**
@@ -313,7 +317,7 @@ namespace ServerManager {
 
         constructor(props: AddConnctionForm.Props) {
             super(props);
-            this.state = {url: null, name: null};
+            this.state = {url: null, name: null, token: null};
 
             this.handleInputChange = this.handleInputChange.bind(this);
             this.handleSubmit = this.handleSubmit.bind(this);
@@ -321,7 +325,7 @@ namespace ServerManager {
 
         handleSubmit(event: any) {
             event.preventDefault();
-            if (!this.state.url || !this.state.name) {
+            if (!this.state.url || !this.state.name || !this.state.token) {
                 return;
             }
 
@@ -329,7 +333,8 @@ namespace ServerManager {
                 id: null,
                 type: 'remote',
                 url: this.state.url,
-                name: this.state.name
+                name: this.state.name,
+                token: this.state.token
             });
         }
 
@@ -349,6 +354,11 @@ namespace ServerManager {
                         <label>
                             URL:
                             <input type='text' name='url' placeholder='Enter URL' onChange={this.handleInputChange} required/>
+                        </label>
+                        <br />
+                        <label>
+                            Token:
+                            <input type='text' name='token' placeholder='Enter Token' onChange={this.handleInputChange} required/>
                         </label>
                         <br />
                         <label>
@@ -375,6 +385,7 @@ namespace ServerManager {
         interface State {
             url: string;
             name: string;
+            token: string;
         }
     }
 

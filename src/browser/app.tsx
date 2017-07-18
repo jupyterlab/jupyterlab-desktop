@@ -49,6 +49,12 @@ class Application extends React.Component<Application.Props, Application.State> 
 
     constructor(props: Application.Props) {
         super(props);
+
+        this.renderLauncher = this.renderLauncher.bind(this);
+        this.renderSplash = this.renderSplash.bind(this);
+        this.renderLab = this.renderLab.bind(this);
+        this.serverSelected = this.serverSelected.bind(this);
+
         this.state = {renderState: this.renderLauncher};
         this.setupLab();
 
@@ -117,19 +123,31 @@ class Application extends React.Component<Application.Props, Application.State> 
         }
     }
 
-    private renderLauncher(): any {
-        let serverSelected = (server: ServerManager.Connection) => {
+    private serverSelected(server: ServerManager.Connection) {
+        if (server.type == 'local') {
+            ipcRenderer.send(Channels.RENDER_PROCESS_READY);
             this.setState({renderState: this.renderSplash});
+        } else {
+            PageConfig.setOption('baseUrl', server.url);
+            PageConfig.setOption('token', server.token);
+            try{
+                this.lab.start({ "ignorePlugins": this.ignorePlugins});
+            }
+            catch (e){
+                console.log(e);
+            }
+            this.setState({renderState: this.renderLab});
         }
+    }
 
-        return <ServerManager serverSelected={serverSelected} />;
+    private renderLauncher(): any {
+        return <ServerManager serverSelected={this.serverSelected} />;
     }
 
     private renderSplash() {
         /* Request Jupyter server data from main process, then render
          * splash screen
          */
-        ipcRenderer.send(Channels.RENDER_PROCESS_READY);
         return (
             <SplashScreen  ref='splash' finished={() => {
                 this.setState({renderState: this.renderLab});}
@@ -142,6 +160,6 @@ class Application extends React.Component<Application.Props, Application.State> 
     }
 
     render() {
-        return this.state.renderState.call(this);
+        return this.state.renderState();
     }
 }
