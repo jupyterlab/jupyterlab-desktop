@@ -24,17 +24,6 @@ const SERVER_DATA_ID = 'servers';
 
 
 /**
- * Enumeration for tracking
- * ServerManager UI state.
- */
-enum UIState {
-    cards,
-    add,
-    manage
-};
-
-
-/**
  * The main ServerManager component. This component
  * allows configuring multiple Jupyter connections.
  * 
@@ -51,7 +40,7 @@ class ServerManager extends React.Component<ServerManager.Props, ServerManager.S
         super(props);
         this.state = {
             conns: {servers: [{id: String(this.nextId++), type: 'local', name: 'Local'}]},
-            uiState: UIState.cards
+            renderState: this.renderServerManager
         };
         this.managerState = new StateDB({namespace: SERVER_MANAGER_NAMESPACE});
 
@@ -91,45 +80,47 @@ class ServerManager extends React.Component<ServerManager.Props, ServerManager.S
             console.log(server);
             let conns = this.state.conns.servers.concat(server);
             return({
-                uiState: UIState.cards,
+                renderState: this.renderServerManager,
                 conns: {servers: conns}
             });
         });
     }
 
     private addConnection() {
-        this.setState({uiState: UIState.add});
+        this.setState({renderState: this.renderAddConnectionForm});
     }
 
     private manageConnections() {
         console.log('Manage connections');
     }
 
-    render() {
+    private renderServerManager() {
         const cardProps = {
             serverSelected: this.props.serverSelected,
             servers: this.state.conns.servers,
             addConnection: this.addConnection
         };
 
-        let content: any;
+        return (
+            <div className='jpe-ServerManager-content'>
+                <ServerManager.Header />
+                <ServerManager.Cards {...cardProps}/>
+                <ServerManager.Footer manageClicked={this.manageConnections}/>
+            </div>
+        )
+    }
 
-        if (this.state.uiState == UIState.cards) {
-            content = (
-                <div className='jpe-ServerManager-content'>
-                    <ServerManager.Header />
-                    <ServerManager.Cards {...cardProps}/>
-                    <ServerManager.Footer manageClicked={this.manageConnections}/>
-                </div>
-            );
-        } else {
-            content = (
-                <div className='jpe-ServerManager-content'>
-                    <ServerManager.Header />
-                    <ServerManager.AddConnctionForm submit={this.connectionAdded}/>
-                </div>
-            )
-        }
+    private renderAddConnectionForm() {
+        return (
+            <div className='jpe-ServerManager-content'>
+                <ServerManager.Header />
+                <ServerManager.AddConnctionForm submit={this.connectionAdded}/>
+            </div>
+        );
+    }
+
+    render() {
+        let content = this.state.renderState.call(this);
 
         return (
             <div className='jpe-ServerManager-body'>
@@ -159,7 +150,7 @@ namespace ServerManager {
     export
     interface State {
         conns: Connections;
-        uiState: UIState;
+        renderState: () => any;
     }
     
     export
