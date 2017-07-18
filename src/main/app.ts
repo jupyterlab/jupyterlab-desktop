@@ -6,7 +6,7 @@ import {
 } from 'electron';
 
 import {
-    ChildProcess, spawn
+    ChildProcess, spawn, execFile
 } from 'child_process';
 
 import {
@@ -20,7 +20,6 @@ import {
 import {
     JupyterAppChannels as Channels
 } from '../ipc';
-
 
 class JupyterServer {
     /**
@@ -44,7 +43,8 @@ class JupyterServer {
 
             /* Windows will return win32 (even for 64-bit) */
             if (process.platform === "win32"){
-                this.nbServer = spawn('cmd', ['-i'], {cwd: home});
+                /* Dont spawns shell for Windows */
+                this.nbServer = spawn('jupyter', ['notebook', '--no-browser', '--port', port.toString()], {cwd: home});
             }
             else{
                 this.nbServer = spawn('/bin/bash', ['-i'], {cwd: home});
@@ -71,11 +71,8 @@ class JupyterServer {
                 resolve(serverData);
             });
 
-            /* Windows doesn't support exec */ 
-            if (process.platform === "win32"){
-                this.nbServer.stdin.write('jupyter notebook --no-browser --port ' + port + '\n');
-            }
-            else{
+  
+            if (process.platform !== "win32"){
                 this.nbServer.stdin.write('exec jupyter notebook --no-browser --port ' + port + '\n');
             }
         });
@@ -85,8 +82,20 @@ class JupyterServer {
      * Stop the currently executing Jupyter server
      */
     public stop(): void {
-        if (this.nbServer !== undefined)
-            this.nbServer.kill();
+        if (this.nbServer !== undefined){
+            if (process.platform === "win32"){
+                execFile('taskkill', ['/PID', this.nbServer.pid, '/T', '/F'], () => {
+                    process.exit();
+                });
+            }
+            else{
+                this.nbServer.kill();
+                process.exit();
+            }
+        }
+        else{
+            process.exit();
+        }
     }
 }
 
@@ -135,8 +144,10 @@ export class JupyterApplication {
             this.createWindow();
         });
 
-        app.on('quit', () => {
+        app.on('will-quit', (event) => {
+            event.preventDefault();
             this.server.stop();
+            
         });
     }
 
