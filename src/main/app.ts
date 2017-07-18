@@ -6,7 +6,7 @@ import {
 } from 'electron';
 
 import {
-    ChildProcess, spawn
+    ChildProcess, spawn, execFile
 } from 'child_process';
 
 import {
@@ -20,7 +20,6 @@ import {
 import {
     JupyterAppChannels as Channels
 } from '../ipc';
-
 
 class JupyterServer {
     /**
@@ -41,7 +40,15 @@ class JupyterServer {
             let tokenRegExp = /token=\w+/g;
             let baseRegExp = /http:\/\/localhost:\d+\//g;
             let home = app.getPath("home");
-            this.nbServer = spawn('/bin/bash', ['-i'], {cwd: home});
+
+            /* Windows will return win32 (even for 64-bit) */
+            if (process.platform === "win32"){
+                /* Dont spawns shell for Windows */
+                this.nbServer = spawn('jupyter', ['notebook', '--no-browser', '--port', port.toString()], {cwd: home});
+            }
+            else{
+                this.nbServer = spawn('/bin/bash', ['-i'], {cwd: home});
+            }
 
             this.nbServer.on('error', (err: Error) => {
                 this.nbServer.stderr.removeAllListeners();
@@ -63,7 +70,11 @@ class JupyterServer {
                 }
                 resolve(serverData);
             });
-            this.nbServer.stdin.write('exec jupyter notebook --no-browser --port ' + port + '\n');
+  
+            /* Windows doesn't support exec */ 
+            if (process.platform !== "win32"){
+                this.nbServer.stdin.write('exec jupyter notebook --no-browser --port ' + port + '\n');
+            }
         });
     }
 
@@ -71,8 +82,20 @@ class JupyterServer {
      * Stop the currently executing Jupyter server
      */
     public stop(): void {
-        if (this.nbServer !== undefined)
-            this.nbServer.kill();
+        if (this.nbServer !== undefined){
+            if (process.platform === "win32"){
+                execFile('taskkill', ['/PID', this.nbServer.pid, '/T', '/F'], () => {
+                    process.exit();
+                });
+            }
+            else{
+                this.nbServer.kill();
+                process.exit();
+            }
+        }
+        else{
+            process.exit();
+        }
     }
 }
 
@@ -121,8 +144,10 @@ export class JupyterApplication {
             this.createWindow();
         });
 
-        app.on('quit', () => {
+        app.on('will-quit', (event) => {
+            event.preventDefault();
             this.server.stop();
+            
         });
     }
 
@@ -141,13 +166,22 @@ export class JupyterApplication {
      */
     public start(): void {
         let token: Promise<string>;
+
+        // Send platorm information to renderer process
+        ipcMain.on(Channels.GET_PLATFORM, (event: any, arg: any) => {
+            event.sender.send(Channels.SEND_PLATFORM, process.platform);
+        });
         
+        // Send server token to renderer process
         ipcMain.on(Channels.RENDER_PROCESS_READY, (event: any, arg: any) => {
             token.then((data) => {
                 event.sender.send(Channels.SERVER_DATA, data);
             });
+            event.sender.send(Channels.SEND_PLATFORM, process.platform);
         });
+
         this.createWindow();
+
         
         token = new Promise((resolve, reject) => {
             this.server.start(8888)
