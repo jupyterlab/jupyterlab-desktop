@@ -209,9 +209,9 @@ namespace ServerManager {
         return (
             <div className='jpe-ServerManager-footer'>
                 <button className='jpe-ServerManager-manage-btn' onClick={props.manageClicked}>
-                    Manage Connections
+                    MANAGE CONNECTIONS
                 </button>
-                <p className='jpe-ServerManager-copyright'>Don't steal this</p>
+                <p className='jpe-ServerManager-copyright'>	&copy; Project Jupyter 2017</p>
             </div>
         );
     }

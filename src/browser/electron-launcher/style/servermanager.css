@@ -121,17 +121,31 @@
 
 
 .jpe-ServerManager-footer {
-    height: 40px;
+    height: 80px;
 }
 
 .jpe-ServerManager-copyright {
     text-align: center;
-    font-size: 10px;
+    font-size: 13px;
+    margin-top: 20px;
 }
 
 .jpe-ServerManager-manage-btn {
+    cursor: pointer;
     display: block;
+    color: #F37726;
+    background-color: var(--md-grey-50);
     margin: 10px auto 10px auto;
+    font-size: 13px;
+    border: none;
+    border-radius: 4px;
+    padding: 12px;
+    transition: .12s background-color;
+}
+
+
+.jpe-ServerManager-manage-btn:hover {
+    background-color: rgba(153,153,153,.12);
 }
 
 .jpe-ServerManager-Add-container {
