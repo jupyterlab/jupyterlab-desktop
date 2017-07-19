@@ -173,7 +173,7 @@ namespace ServerManager {
         /**
          * The tyoe of server
          */
-        type: 'remote' | 'local' | null;
+        type: 'remote' | 'local';
 
         /**
          * Name that appears in the html
@@ -196,7 +196,7 @@ namespace ServerManager {
         return (
         <div className='jpe-ServerManager-header'>
             <div className='jpe-ServerManager-header-logo'></div>
-            <h1 className='jpe-ServerManager-header-title'>Welcome to JupyterLab</h1>
+            <h1 className='jpe-ServerManager-header-title'>Server Manager</h1>
         </div>
         );
     }
@@ -257,8 +257,11 @@ namespace ServerManager {
             );
 
             return (
-                <div className='jpe-ServerManager-cards'>
-                    {servers}
+                <div className='jpe-ServerManager-card-container'>
+                    <h2 className='jpe-ServerManager-card-header'>Start a new server</h2>
+                    <div className='jpe-ServerManager-cards'>
+                        {servers}
+                    </div>
                 </div>
             );
         }
@@ -287,14 +290,25 @@ namespace ServerManager {
      * @param props Card properties.
      */
     function Card(props: Card.Props) {
-        let className: string = 'jpe-ServerManager-card';
+        let cardClass: string = 'jpe-ServerManager-card';
         if (props.addCard)
-            className += ' jpe-mod-dashed';
+            cardClass += ' jpe-mod-dashed';
 
+        let iconClass : string = 'jpe-ServerManager-card-icon';
+        let titleClass : string;
+        if (props.addCard) {
+            iconClass += ' jpe-ServerManager-card-new-icon';
+            titleClass = 'jpe-ServerManager-card-title';
+        } else if (props.server.type == 'remote'){
+            iconClass += ' jpe-ServerManager-card-remote-icon';
+        } else {
+            iconClass += ' jpe-ServerManager-card-local-icon';
+        }
+        
         return (
-            <div className={className} onClick={() => {props.onClick(props.server)}}>
-                <div className="jpe-ServerManager-card-content"></div>
-                <p>{props.server.name}</p>
+            <div className={cardClass} onClick={() => {props.onClick(props.server)}}>
+                <div className={iconClass}></div>
+                <p className={titleClass}>{props.server.name}</p>
             </div>
         )
     }

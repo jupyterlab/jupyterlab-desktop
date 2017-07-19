@@ -4,78 +4,124 @@
 |----------------------------------------------------------------------------*/
 
 .jpe-ServerManager-body {
+    display: flex;
+    align-items: center;
     position: absolute;
     overflow: hidden;
     width: 100%;
     height: 100%;
-    background-color: #ffffff;
+    background-color: var(--md-grey-50);
 }
 
 .jpe-ServerManager-content {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    margin: -300px 0 0 -400px;
-    width: 800px;
-    height: 600px;
-    background-color: #f5f5f5;
+    display: block;
+    margin: 0 auto;
+    max-height: 800px;
+    background-color: var(--md-grey-50);
 }
 
 .jpe-ServerManager-header {
-    height: 33%;
+    height: 150px;
     text-align: center;
 }
 
 .jpe-ServerManager-header-logo {
-    background-image: url(../img/main.svg);
+    background-image: url(../img/logo-main.svg);
     background-repeat: no-repeat;
-    background-size: 100px;
+    background-size: 80px;
     background-position: center;
-    width: 100%;
-    height: 70%;
+    width: 80px;
+    height: 104px;
+    margin: auto;
 }
 
 .jpe-ServerManager-header-title {
-    width: 100%;
-    height: 30%;
+    font-size: 24px;
+    font-weight: 400;
+    margin-top: 16px;
 }
+
+
+.jpe-ServerManager-card-container {
+    padding: 36px 0px;
+}
+
+
+.jpe-ServerManager-card-header {
+    text-align: center;
+    margin-bottom: 12px;
+    font-weight: 500;
+}
+
 
 .jpe-ServerManager-cards {
     display: flex;
     justify-content: center;
     align-items: center;
-    height: 33%;
 }
 
 .jpe-ServerManager-card {
-    background-color: #FFFFFF;
-    border: 1px solid #000000;
-    height: 100px;
-    width: 70px;
-    margin: 10px 10px 10px 10px;
-    text-align: center ;
+    background-color: var(--jp-layout-color1);
+    border: 1px solid var(--jp-border-color1);
+    height: 150px;
+    width: 150px;
+    margin: 8px;
+    cursor: pointer;
+    text-align: center;
     vertical-align: center;
+    box-shadow: 0px 1px 1px 1px rgba(0,0,0,.08);
+    transition: .2s box-shadow;
 }
+
+
+.jpe-ServerManager-card:hover {
+    box-shadow: 0px 2px 4px 1px rgba(0,0,0,.2);
+}
+
 
 .jpe-ServerManager-card.jpe-mod-dashed {
     border-style: dashed;
-    background-color: #FAFAFA;
+    background-color: var(--md-grey-50);
+    box-shadow: none;
 }
 
-.jpe-ServerManager-card:hover {
-    background-color: #a1a1a1;
+
+.jpe-ServerManager-card-icon {
+    width: 100%;
+    height: 112px;
 }
 
-.jpe-ServerManager-card-content {
-    background-image: url(../img/main.svg);
+.jpe-ServerManager-card-new-icon {
+    background-image: url('../img/add-remote-server-icon.svg');
+    background-size: 64px;
+    background-position: 40px 32px;
     background-repeat: no-repeat;
-    background-size: 50px;
-    background-position: center;
-    height: 70%;
 }
+
+
+.jpe-ServerManager-card-title {
+    color: var(--md-grey-600);
+}
+
+
+.jpe-ServerManager-card-remote-icon {
+    background-image: url('../img/remote-server-icon.svg');
+    background-size: 56px;
+    background-position: 48px 32px;
+    background-repeat: no-repeat;
+}
+
+
+.jpe-ServerManager-card-local-icon {
+    background-image: url('../img/local-server-icon.svg');
+    background-size: 72px;
+    background-position: 40px 36px;
+    background-repeat: no-repeat;
+}
+
 
 .jpe-ServerManager-footer {
-    height: 33%;
+    height: 40px;
 }
 
 .jpe-ServerManager-copyright {
