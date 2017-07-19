@@ -29,6 +29,8 @@ class JupyterLabWindow {
         this._window = new BrowserWindow({
             width: options.width || 800,
             height: options.height || 600,
+            x: options.x,
+            y: options.y,
             minWidth: 400,
             minHeight: 300,
             show: false,

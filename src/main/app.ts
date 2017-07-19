@@ -139,16 +139,44 @@ class JupyterServerFactory {
         this.registerListeners();
     }
 
+    private _createFreeServer(): JupyterServerFactory.FactoryItem {
+        let server = new JupyterServer()
+        let id = this.nextId++;
+        let item: JupyterServerFactory.FactoryItem = {id: id, server: server, status: 'free'};
+        this.servers.push(item);
+        return item;
+    }
+
+    private _getFreeServer(): JupyterServerFactory.FactoryItem | null {
+        let idx = ArrayExt.findFirstIndex(this.servers, (server: JupyterServerFactory.FactoryItem, idx: number) => {
+            if (server.status == 'free')
+                return true;
+            return false;
+        });
+
+        if (idx < 0)
+            return null;
+
+        this.servers[idx].status = 'used';
+        return this.servers[idx];
+    }
+
+    public getFreeServer(): JupyterServer | null {
+        return this._getFreeServer().server;
+    }
+    
+    public createFreeServer(): JupyterServer {
+        return this._createFreeServer().server;
+    }
+
     private registerListeners() {
         ipcMain.on(JupyterServerIPC.Channels.REQUEST_SERVER_START, (event: any, arg: any) => {
-            let server = new JupyterServer()
-            let id = this.nextId++;
-            this.servers.push({id: id, server: server});
+            let server = this._getFreeServer() || this._createFreeServer();
 
-            server.start()
+            server.server.start()
                 .then((data: JupyterServer.ServerDesc) => {
                     event.sender.send(JupyterServerIPC.Channels.SERVER_STARTED, 
-                                    {id: id, server: server.desc});
+                                    {id: server.id, server: server.server.desc});
                 })
                 .catch(() => {
                     event.sender.send(JupyterServerIPC.Channels.SERVER_STARTED,
@@ -174,6 +202,7 @@ namespace JupyterServerFactory {
 
     export
     interface FactoryItem {
+        status: 'used' | 'free';
         id: number;
         server: JupyterServer;
     }
@@ -295,12 +324,13 @@ export class JupyterApplication {
     private start(state: ApplicationState): void {
         if (!state || !state.windows || state.windows.length == 0) {
             /* Start JupyterLab with local sever by sending local server id */
+            /* Prelaunch local server to improve performance */
+            this.serverFactory.createFreeServer();
             this.createWindow({serverID: 1});
             return;
         }
         
         for (let window of state.windows) {
-            console.log(window);
             this.createWindow(window)
         }
     }
