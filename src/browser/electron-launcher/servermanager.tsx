@@ -364,24 +364,20 @@ namespace ServerManager {
         render() {
             return (
                 <div className='jpe-ServerManager-Add-container'>
-                    <form className='jpe-ServerManager-Add-form' onSubmit={this.handleSubmit}>
-                        <label>
-                            URL:
-                            <input type='text' name='url' placeholder='Enter URL' onChange={this.handleInputChange} required/>
-                        </label>
+                    <form className='jpe-ServerManager-Add-card' onSubmit={this.handleSubmit}>
+                        <h2 className='jpe-ServerManager-Add-card-header'>Add a new server</h2>
+                        <input className='jpe-ServerManager-input' type='text' name='name' placeholder='Enter server name' onChange={this.handleInputChange} required/>
                         <br />
-                        <label>
-                            Token:
-                            <input type='text' name='token' placeholder='Enter Token' onChange={this.handleInputChange} required/>
-                        </label>
+                        <input className='jpe-ServerManager-input' type='text' name='url' placeholder='Enter server URL' onChange={this.handleInputChange} required/>
                         <br />
-                        <label>
-                            Name:
-                            <input type='text' name='name' placeholder='Enter Name' onChange={this.handleInputChange} required/>
-                        </label>
-                        <br />
-                        <input type='submit' value='Connect' />
+                        <div className='jpe-ServerManager-Add-footer'>
+                            <input className='jpe-ServerManager-Add-cancel-btn' type='button' value='CANCEL' />
+                            <input className='jpe-ServerManager-Add-connect-btn' type='submit' value='CONNECT' />
+                        </div>
                     </form>
+                    <div className='jpe-ServerManager-footer'>
+                        <p className='jpe-ServerManager-copyright'>	&copy; Project Jupyter 2017</p>
+                    </div>
                 </div>
             );
         }
