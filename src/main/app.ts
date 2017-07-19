@@ -18,7 +18,8 @@ import {
 } from './window';
 
 import {
-    JupyterServerIPC
+    JupyterServerIPC,
+    JupyterApplicationIPC as AppIPC
 } from '../ipc';
 
 import {
@@ -315,6 +316,10 @@ export class JupyterApplication {
         ipcMain.on(AppIPC.Channels.GET_PLATFORM, (event: any, arg: any) => {
             event.sender.send(AppIPC.Channels.SEND_PLATFORM, process.platform);
         });
+
+        ipcMain.on(AppIPC.Channels.START_SERVER_MANAGER_WINDOW, (event: any, arg: any) => {
+            this.createWindow({serverID: -1});
+        })
     }
 
     /**

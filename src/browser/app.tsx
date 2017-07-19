@@ -1,10 +1,6 @@
 // Copyright (c) Jupyter Development Team.
 // Distributed under the terms of the Modified BSD License.
 
-// import {
-//   ICommandPalette, IMainMenu
-// } from '@jupyterlab/apputils';
-
 import {
     PageConfig
 } from '@jupyterlab/coreutils';
@@ -14,7 +10,7 @@ import {
 } from './electron-extension';
 
 import {
-    JupyterServerIPC as ServerIPC
+    JupyterServerIPC as ServerIPC,
 } from '../ipc';
 
 import {
@@ -43,23 +39,6 @@ namespace Application {
         renderState: () => any;
     }
 }
-
-// namespace CommandIDs {
-//     export
-//     const activateServerManager = 'electron-jupyterlab:activate-server-manager';
-// }
-
-// const serverManagerPlugin = {
-//   id: 'jupyter.extensions.servermanager',
-//   requires: [ICommandPalette, IMainMenu],
-//   activate: (app: ElectronJupyterLab, palette: ICommandPalette) => {
-//     app.commands.addCommand(CommandIDs.activateServerManager, {
-//         label: 'Connect to Server',
-//         execute: () => {ipcRenderer.send()}
-//     });
-//   },
-//   autoStart: true
-// }
 
 export
 class Application extends React.Component<Application.Props, Application.State> {
