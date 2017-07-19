@@ -11,8 +11,10 @@ import * as React from 'react';
 import * as ReactDOM from 'react-dom';
 
 function main() : void {
+    let serverIdStr = decodeURIComponent((global as any).location.search);
+    let serverId = JSON.parse(serverIdStr.slice(1));
     ReactDOM.render(
-        <Application />,
+        <Application serverId={serverId.serverId} />,
         document.getElementById('root')
     );
 }

@@ -1,6 +1,10 @@
 // Copyright (c) Jupyter Development Team.
 // Distributed under the terms of the Modified BSD License.
 
+// import {
+//   ICommandPalette, IMainMenu
+// } from '@jupyterlab/apputils';
+
 import {
     PageConfig
 } from '@jupyterlab/coreutils';
@@ -10,7 +14,7 @@ import {
 } from './electron-extension';
 
 import {
-    JupyterAppChannels as Channels
+    JupyterServerIPC as ServerIPC
 } from '../ipc';
 
 import {
@@ -31,7 +35,7 @@ export
 namespace Application {
     export
     interface Props {
-
+        serverId: number;
     }
 
     export
@@ -39,6 +43,23 @@ namespace Application {
         renderState: () => any;
     }
 }
+
+// namespace CommandIDs {
+//     export
+//     const activateServerManager = 'electron-jupyterlab:activate-server-manager';
+// }
+
+// const serverManagerPlugin = {
+//   id: 'jupyter.extensions.servermanager',
+//   requires: [ICommandPalette, IMainMenu],
+//   activate: (app: ElectronJupyterLab, palette: ICommandPalette) => {
+//     app.commands.addCommand(CommandIDs.activateServerManager, {
+//         label: 'Connect to Server',
+//         execute: () => {ipcRenderer.send()}
+//     });
+//   },
+//   autoStart: true
+// }
 
 export
 class Application extends React.Component<Application.Props, Application.State> {
@@ -49,83 +70,97 @@ class Application extends React.Component<Application.Props, Application.State> 
 
     constructor(props: Application.Props) {
         super(props);
-
-        this.renderLauncher = this.renderLauncher.bind(this);
+        this.renderServerManager = this.renderServerManager.bind(this);
         this.renderSplash = this.renderSplash.bind(this);
         this.renderLab = this.renderLab.bind(this);
         this.serverSelected = this.serverSelected.bind(this);
 
-        this.state = {renderState: this.renderLauncher};
-        this.setupLab();
+        if (this.props.serverId == 1) {
+            this.state = {renderState: this.renderSplash};
 
-        /* Setup server data response handler */
-        ipcRenderer.on(Channels.SERVER_DATA, (event: any, data: any) => {
-            PageConfig.setOption("token", data.token);
-            PageConfig.setOption("baseUrl", data.baseUrl);
-            try{
-                this.lab.start({ "ignorePlugins": this.ignorePlugins});
-            }
-            catch (e){
-                console.log(e);
-            }
-            (this.refs.splash as SplashScreen).fadeSplashScreen();
-        });
+            let labReady = this.setupLab();
+            /* Setup server data response handler */
+            ipcRenderer.on(ServerIPC.Channels.SERVER_STARTED, (event: any, data: ServerIPC.Data.JupyterServer) => {
+                window.addEventListener('beforeunload', () => {
+                    ipcRenderer.send(ServerIPC.Channels.REQUEST_SERVER_STOP, data);
+                });
+
+                PageConfig.setOption("token", data.server.token);
+                PageConfig.setOption("baseUrl", data.server.url);
+                try{
+                    labReady.then(() => {
+                        this.lab.start({ "ignorePlugins": this.ignorePlugins});
+                        (this.refs.splash as SplashScreen).fadeSplashScreen();
+                    });
+                }
+                catch (e){
+                    console.log(e);
+                }
+            });
+            
+            ipcRenderer.send(ServerIPC.Channels.REQUEST_SERVER_START, "start");
+        } else {
+            this.state = {renderState: this.renderServerManager}
+        }
+
     }
 
-    private setupLab(): void {
-        let version : string = PageConfig.getOption('appVersion') || 'unknown';
-        let name : string = PageConfig.getOption('appName') || 'JupyterLab';
-        let namespace : string = PageConfig.getOption('appNamespace') || 'jupyterlab';
-        let devMode : string  = PageConfig.getOption('devMode') || 'false';
-        let settingsDir : string = PageConfig.getOption('settingsDir') || '';
-        let assetsDir : string = PageConfig.getOption('assetsDir') || '';
+    private setupLab(): Promise<void> {
+        return new Promise<void>((res, rej) => {
+            let version : string = PageConfig.getOption('appVersion') || 'unknown';
+            let name : string = PageConfig.getOption('appName') || 'JupyterLab';
+            let namespace : string = PageConfig.getOption('appNamespace') || 'jupyterlab';
+            let devMode : string  = PageConfig.getOption('devMode') || 'false';
+            let settingsDir : string = PageConfig.getOption('settingsDir') || '';
+            let assetsDir : string = PageConfig.getOption('assetsDir') || '';
 
-        // Get platform information from main process
-        ipcRenderer.send(Channels.GET_PLATFORM);
-        let platformSet = new Promise( (resolve, reject) => {
-            ipcRenderer.on(Channels.SEND_PLATFORM, (event: any, args: string) => {
-                resolve(args);
+            // Get platform information from main process
+            ipcRenderer.send(AppIPC.Channels.GET_PLATFORM);
+            let platformSet = new Promise( (resolve, reject) => {
+                ipcRenderer.on(AppIPC.Channels.SEND_PLATFORM, (event: any, args: string) => {
+                    resolve(args);
+                });
             });
+
+            platformSet.then((platform) => {
+                if (platform == 'win32')
+                    PageConfig.setOption('terminalsAvailable', 'false');
+            })
+
+            if (version[0] === 'v') {
+                version = version.slice(1);
+            }
+
+            this.lab = new ElectronJupyterLab({
+                namespace: namespace,
+                name: name,
+                version: version,
+                devMode: devMode.toLowerCase() === 'true',
+                settingsDir: settingsDir,
+                assetsDir: assetsDir,
+                mimeExtensions: extensions.mime
+            });
+
+            try {
+                this.lab.registerPluginModules(extensions.jupyterlab);
+            } catch (e) {
+                console.error(e);
+            }
+            
+            // Ignore Plugins
+            this.ignorePlugins = [];
+            try {
+                let option = PageConfig.getOption('ignorePlugins');
+                this.ignorePlugins = JSON.parse(option);
+            } catch (e) {
+                // No-op
+            }
+            res();
         });
-
-        platformSet.then((platform) => {
-            if (platform == 'win32')
-                PageConfig.setOption('terminalsAvailable', 'false');
-        })
-
-        if (version[0] === 'v') {
-            version = version.slice(1);
-        }
-
-        this.lab = new ElectronJupyterLab({
-            namespace: namespace,
-            name: name,
-            version: version,
-            devMode: devMode.toLowerCase() === 'true',
-            settingsDir: settingsDir,
-            assetsDir: assetsDir,
-            mimeExtensions: extensions.mime
-        });
-
-        try {
-            this.lab.registerPluginModules(extensions.jupyterlab);
-        } catch (e) {
-            console.error(e);
-        }
-        
-        // Ignore Plugins
-        this.ignorePlugins = [];
-        try {
-            let option = PageConfig.getOption('ignorePlugins');
-            this.ignorePlugins = JSON.parse(option);
-        } catch (e) {
-            // No-op
-        }
     }
 
     private serverSelected(server: ServerManager.Connection) {
         if (server.type == 'local') {
-            ipcRenderer.send(Channels.RENDER_PROCESS_READY);
             this.setState({renderState: this.renderSplash});
         } else {
             PageConfig.setOption('baseUrl', server.url);
@@ -140,7 +175,7 @@ class Application extends React.Component<Application.Props, Application.State> 
         }
     }
 
-    private renderLauncher(): any {
+    private renderServerManager(): any {
         return <ServerManager serverSelected={this.serverSelected} />;
     }
 

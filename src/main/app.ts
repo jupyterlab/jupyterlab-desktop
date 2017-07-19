@@ -2,7 +2,7 @@
 // Distributed under the terms of the Modified BSD License.
 
 import { 
-    app, ipcMain
+    app, ipcMain, dialog
 } from 'electron';
 
 import {
@@ -18,14 +18,34 @@ import {
 } from './window';
 
 import {
-    JupyterAppChannels as Channels
+    JupyterServerIPC
 } from '../ipc';
 
+import {
+    ElectronStateDB
+} from './state';
+
+import {
+    JSONObject
+} from '@phosphor/coreutils';
+
+import {
+    ArrayExt
+} from '@phosphor/algorithm';
+
+
+export
 class JupyterServer {
     /**
      * The child process object for the Jupyter server
      */
     private nbServer: ChildProcess;
+
+    private _desc: JupyterServer.ServerDesc;
+
+    get desc() {
+        return this._desc;
+    }
     
     /**
      * Start a local Jupyer server on the specified port. Returns
@@ -34,7 +54,7 @@ class JupyterServer {
      * collected. This data is collected from the data written to
      * std out upon sever creation
      */
-    public start(port: number): Promise<any> {
+    public start(): Promise<JupyterServer.ServerDesc> {
         return new Promise((resolve, reject) => {
             let urlRegExp = /http:\/\/localhost:\d+\/\?token=\w+/g;
             let tokenRegExp = /token=\w+/g;
@@ -61,14 +81,14 @@ class JupyterServer {
                     return; 
 
                 let url = urlMatch[0].toString();
+                this._desc = {
+                    token: (url.match(tokenRegExp))[0].replace("token=", ""),
+                    url: (url.match(baseRegExp))[0]
+                }
                 this.nbServer.removeAllListeners();
                 this.nbServer.stderr.removeAllListeners();
 
-                let serverData = {
-                    token: (url.match(tokenRegExp))[0].replace("token=", ""),
-                    baseUrl: (url.match(baseRegExp))[0]
-                }
-                resolve(serverData);
+                resolve(this._desc);
             });
 
   
@@ -99,30 +119,142 @@ class JupyterServer {
     }
 }
 
+export
+namespace JupyterServer {
+
+    export
+    interface ServerDesc {
+        url: string;
+        token: string;
+    }
+}
+
+class JupyterServerFactory {
+    
+    private servers: JupyterServerFactory.FactoryItem[] = [];
+
+    private nextId: number = 1;
+
+    constructor() {
+        this.registerListeners();
+    }
+
+    private registerListeners() {
+        ipcMain.on(JupyterServerIPC.Channels.REQUEST_SERVER_START, (event: any, arg: any) => {
+            let server = new JupyterServer()
+            let id = this.nextId++;
+            this.servers.push({id: id, server: server});
+
+            server.start()
+                .then((data: JupyterServer.ServerDesc) => {
+                    event.sender.send(JupyterServerIPC.Channels.SERVER_STARTED, 
+                                    {id: id, server: server.desc});
+                })
+                .catch(() => {
+                    event.sender.send(JupyterServerIPC.Channels.SERVER_STARTED,
+                                    {id: -1, server: null});
+                })
+        });
+        
+        ipcMain.on(JupyterServerIPC.Channels.REQUEST_SERVER_STOP,
+                    (event: any, arg: JupyterServerIPC.Data.JupyterServer) => {
+
+            let idx = ArrayExt.findFirstIndex(this.servers, (value: JupyterServerFactory.FactoryItem, idx: number) => {
+                if (value.id === arg.id)
+                    return true;
+                return false;
+            });
+            this.servers[idx].server.stop();
+        });
+
+    }
+}
+
+namespace JupyterServerFactory {
+
+    export
+    interface FactoryItem {
+        id: number;
+        server: JupyterServer;
+    }
+}
+
+const APPLICATION_STATE_NAMESPACE = 'jupyter-lab-app';
+
+interface ApplicationState extends JSONObject {
+    windows: JupyterLabWindow.WindowState[];
+}
+
 export class JupyterApplication {
-    /**
-     * The JupyterServer the application will use
-     */
-    private server: JupyterServer;
 
     /**
      * Controls the native menubar
      */
     private menu: JupyterMainMenu;
 
+    private serverFactory: JupyterServerFactory;
+
+    /**
+     * Object to store the size and position of the window.
+     */
+    private appStateDB = new ElectronStateDB({namespace: 'jupyterlab-application-data'});
+
+    private appState: ApplicationState;
+
     /**
      * The JupyterLab window
      */
-    private mainWindow: JupyterLabWindow;
+    private windows: JupyterLabWindow[] = [];
 
     /**
      * Construct the Jupyter application
      */
     constructor() {
         this.registerListeners();
-        this.server = new JupyterServer();
-        this.mainWindow = new JupyterLabWindow();
         this.menu = new JupyterMainMenu();
+        this.serverFactory = new JupyterServerFactory();
+        
+        this.appStateDB.fetch(APPLICATION_STATE_NAMESPACE)
+            .then((state: ApplicationState) => {
+                this.appState = state;
+                this.start(state);
+            })
+    }
+
+    private createWindow(state: JupyterLabWindow.WindowState) {
+        let window = new JupyterLabWindow(state);
+        
+        // Register dialog on window close
+        window.browserWindow.on('close', (event: Event) => {
+            let buttonClicked = dialog.showMessageBox({
+                type: 'warning',
+                message: 'Do you want to leave?',
+                detail: 'Changes you made may not be saved.',
+                buttons: ['Leave', 'Stay'],
+                defaultId: 0,
+                cancelId: 1
+            });
+        
+            if (buttonClicked === 1) {
+                /* Stop the window from closing */
+                event.preventDefault();
+                return;
+            }
+            
+            /* If this is the last open window, save the state so we can reopen it */
+            if (this.windows.length == 1) {
+                if (!this.appState) this.appState = {windows: null};
+                this.appState.windows = this.windows.map((w: JupyterLabWindow) => {
+                    return w.windowState;
+                });
+            }
+            
+            ArrayExt.removeFirstOf(this.windows, window);
+            window = null;
+        });
+        
+        this.windows.push(window);
+
     }
 
     /**
@@ -141,60 +273,35 @@ export class JupyterApplication {
         // windows open.
         // Need to double check this code to ensure it has expected behaviour
         app.on('activate', () => {
-            this.createWindow();
+            /* This should check the window array to see if a window
+            is already open */
+            this.createWindow({});
         });
 
         app.on('will-quit', (event) => {
             event.preventDefault();
-            this.server.stop();
-            
+            this.appStateDB.save(APPLICATION_STATE_NAMESPACE, this.appState);
+        });
+        
+        ipcMain.on(AppIPC.Channels.GET_PLATFORM, (event: any, arg: any) => {
+            event.sender.send(AppIPC.Channels.SEND_PLATFORM, process.platform);
         });
     }
 
     /**
-     * Creates the primary application window
+     * Creates windows based on data in application state. If no data is avalable
+     * we start the initial start state.
      */
-    private createWindow(): void {
-        if (!this.mainWindow.isWindowVisible)
-            this.mainWindow.createWindow();
-    }
-
-    /**
-     * Starts the Jupyter Server and launches the electron application.
-     * When the Jupyter Sevrer start promise is fulfilled, the baseUrl
-     * and the token is send to the browser window.
-     */
-    public start(): void {
-        let token: Promise<string>;
-
-        // Send platorm information to renderer process
-        ipcMain.on(Channels.GET_PLATFORM, (event: any, arg: any) => {
-            event.sender.send(Channels.SEND_PLATFORM, process.platform);
-        });
+    private start(state: ApplicationState): void {
+        if (!state || !state.windows || state.windows.length == 0) {
+            /* Start JupyterLab with local sever by sending local server id */
+            this.createWindow({serverID: 1});
+            return;
+        }
         
-        // Send server token to renderer process
-        ipcMain.on(Channels.RENDER_PROCESS_READY, (event: any, arg: any) => {
-            token.then((data) => {
-                event.sender.send(Channels.SERVER_DATA, data);
-            });
-            event.sender.send(Channels.SEND_PLATFORM, process.platform);
-        });
-
-        this.createWindow();
-
-        
-        token = new Promise((resolve, reject) => {
-            this.server.start(8888)
-            .then((serverData) => {
-                console.log("Jupyter Server started at: " + serverData.baseUrl + "?token=" + serverData.token);
-                resolve(serverData);
-
-            })
-            .catch((err) => {
-                console.error("Failed to start Jupyter Server");
-                console.error(err);
-                reject(err);
-            });
-        });
+        for (let window of state.windows) {
+            console.log(window);
+            this.createWindow(window)
+        }
     }
 }
