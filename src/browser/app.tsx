@@ -11,6 +11,7 @@ import {
 
 import {
     JupyterServerIPC as ServerIPC,
+    JupyterApplicationIPC as AppIPC
 } from '../ipc';
 
 import {

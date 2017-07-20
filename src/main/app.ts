@@ -65,7 +65,7 @@ class JupyterServer {
             /* Windows will return win32 (even for 64-bit) */
             if (process.platform === "win32"){
                 /* Dont spawns shell for Windows */
-                this.nbServer = spawn('jupyter', ['notebook', '--no-browser', '--port', port.toString()], {cwd: home});
+                this.nbServer = spawn('jupyter', ['notebook', '--no-browser'], {cwd: home});
             }
             else{
                 this.nbServer = spawn('/bin/bash', ['-i'], {cwd: home});
@@ -94,7 +94,7 @@ class JupyterServer {
 
   
             if (process.platform !== "win32"){
-                this.nbServer.stdin.write('exec jupyter notebook --no-browser --port ' + port + '\n');
+                this.nbServer.stdin.write('exec jupyter notebook --no-browser\n');
             }
         });
     }
@@ -105,7 +105,7 @@ class JupyterServer {
     public stop(): void {
         if (this.nbServer !== undefined){
             if (process.platform === "win32"){
-                execFile('taskkill', ['/PID', this.nbServer.pid, '/T', '/F'], () => {
+                execFile('taskkill', ['/PID', String(this.nbServer.pid), '/T', '/F'], () => {
                     process.exit();
                 });
             }
@@ -270,7 +270,6 @@ export class JupyterApplication {
                 event.preventDefault();
                 return;
             }
-            
             /* If this is the last open window, save the state so we can reopen it */
             if (this.windows.length == 1) {
                 if (!this.appState) this.appState = {windows: null};
@@ -284,7 +283,6 @@ export class JupyterApplication {
         });
         
         this.windows.push(window);
-
     }
 
     /**
