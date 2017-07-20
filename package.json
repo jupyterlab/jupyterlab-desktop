@@ -13,10 +13,14 @@
     "build:all": "npm run build && npm start",
     "pack": "npm run build && electron-builder --dir",
     "dist": "npm run build && electron-builder",
-    "dist:linux": "npm run build && electron-builder",
-    "dist:mac": "npm run build && electron-builder",
-    "dist:win": "npm run build && electron-builder",
-    "dockerdist": "docker run --rm -ti -v ${PWD}:/project -v ${PWD##*/}-node-modules:/project/node_modules -v ~/.electron:/root/.electron electronuserland/electron-builder:wine /bin/bash -c \"yarn && yarn dist:linux\""
+    "dist:linux": "npm run build && electron-builder --linux",
+    "dockerdist:linux": "docker run --rm -ti -v ${PWD}:/project -v ${PWD##*/}-node-modules:/project/node_modules -v ~/.electron:/root/.electron electronuserland/electron-builder:wine /bin/bash -c \"yarn && yarn dist:linux\"",
+    "dist:mac": "npm run build && electron-builder --macos",
+    "dockerdist:mac": "docker run --rm -ti -v ${PWD}:/project -v ${PWD##*/}-node-modules:/project/node_modules -v ~/.electron:/root/.electron electronuserland/electron-builder:wine /bin/bash -c \"yarn && yarn dist:mac\"",
+    "dist:win": "npm run build && electron-builder --win",
+    "dockerdist:win": "docker run --rm -ti -v ${PWD}:/project -v ${PWD##*/}-node-modules:/project/node_modules -v ~/.electron:/root/.electron electronuserland/electron-builder:wine /bin/bash -c \"yarn && yarn dist:win\"",
+    "dist:all": "npm run build && electron-builder --linux --win",
+    "dockerdist:all": "docker run --rm -ti -v ${PWD}:/project -v ${PWD##*/}-node-modules:/project/node_modules -v ~/.electron:/root/.electron electronuserland/electron-builder:wine /bin/bash -c \"yarn && yarn dist:all\""
   },
   "build": {
     "productName": "JupyterLab App",
@@ -36,8 +40,16 @@
         "Category": "Science;Development;"
       }
     },
+    "win": {
+      "target": ["nsis","portable"]
+    },
     "rpm": {
       "depends": ["libXScrnSaver"]
+    },
+    "nsis": {
+      "oneClick": "false",
+      "deleteAppDataOnUninstall": true,
+      "license": "LICENSE"
     }
   },
   "repository": {

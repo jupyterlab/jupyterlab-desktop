@@ -70,8 +70,8 @@ class JupyterServer {
                 }
                 resolve(serverData);
             });
+
   
-            /* Windows doesn't support exec */ 
             if (process.platform !== "win32"){
                 this.nbServer.stdin.write('exec jupyter notebook --no-browser --port ' + port + '\n');
             }
