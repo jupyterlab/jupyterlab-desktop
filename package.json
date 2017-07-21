@@ -46,18 +46,12 @@
       "target": ["nsis","portable"]
     },
     "rpm": {
-<<<<<<< f8809f07755dacd8868161a7a8c29218e7cfa379
       "depends": ["libXScrnSaver"]
     },
     "nsis": {
       "oneClick": "false",
       "deleteAppDataOnUninstall": true,
       "license": "LICENSE"
-=======
-      "depends": [
-        "libXScrnSaver"
-      ]
->>>>>>> Finish rebasing onto master
     }
   },
   "repository": {
