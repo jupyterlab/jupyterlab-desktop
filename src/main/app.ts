@@ -18,8 +18,9 @@ import {
 } from './window';
 
 import {
-    JupyterServerIPC,
-    JupyterApplicationIPC as AppIPC
+    JupyterServerIPC as ServerIPC,
+    JupyterApplicationIPC as AppIPC,
+    JupyterWindowIPC as WindowIPC
 } from '../ipc';
 
 import {
@@ -42,10 +43,26 @@ class JupyterServer {
      */
     private nbServer: ChildProcess;
 
-    private _desc: JupyterServer.ServerDesc;
+    private _desc: ServerIPC.Data.ServerDesc = {name: null, id: null, type: 'local'};
 
-    get desc() {
+    get desc(): ServerIPC.Data.ServerDesc {
         return this._desc;
+    }
+
+    get id(): number {
+        return this._desc.id;
+    }
+    
+    set id(id: number) {
+        this._desc.id = id;
+    }
+
+    get name(): string {
+        return this._desc.name;
+    }
+
+    set name(name: string) {
+        this._desc.name = name;
     }
     
     /**
@@ -55,8 +72,8 @@ class JupyterServer {
      * collected. This data is collected from the data written to
      * std out upon sever creation
      */
-    public start(): Promise<JupyterServer.ServerDesc> {
-        return new Promise((resolve, reject) => {
+    public start(): Promise<ServerIPC.Data.ServerDesc> {
+        return new Promise<ServerIPC.Data.ServerDesc>((resolve, reject) => {
             let urlRegExp = /http:\/\/localhost:\d+\/\?token=\w+/g;
             let tokenRegExp = /token=\w+/g;
             let baseRegExp = /http:\/\/localhost:\d+\//g;
@@ -83,6 +100,9 @@ class JupyterServer {
 
                 let url = urlMatch[0].toString();
                 this._desc = {
+                    name: null,
+                    id: null,
+                    type: 'local',
                     token: (url.match(tokenRegExp))[0].replace("token=", ""),
                     url: (url.match(baseRegExp))[0]
                 }
@@ -120,21 +140,9 @@ class JupyterServer {
     }
 }
 
-export
-namespace JupyterServer {
-
-    export
-    interface ServerDesc {
-        url: string;
-        token: string;
-    }
-}
-
 class JupyterServerFactory {
     
     private servers: JupyterServerFactory.FactoryItem[] = [];
-
-    private nextId: number = 1;
 
     constructor() {
         this.registerListeners();
@@ -142,8 +150,7 @@ class JupyterServerFactory {
 
     private _createFreeServer(): JupyterServerFactory.FactoryItem {
         let server = new JupyterServer()
-        let id = this.nextId++;
-        let item: JupyterServerFactory.FactoryItem = {id: id, server: server, status: 'free'};
+        let item: JupyterServerFactory.FactoryItem = {server: server, status: 'free'};
         this.servers.push(item);
         return item;
     }
@@ -171,25 +178,25 @@ class JupyterServerFactory {
     }
 
     private registerListeners() {
-        ipcMain.on(JupyterServerIPC.Channels.REQUEST_SERVER_START, (event: any, arg: any) => {
+        ipcMain.on(ServerIPC.Channels.REQUEST_SERVER_START, (event: any, arg: ServerIPC.Data.RequestServerStart) => {
             let server = this._getFreeServer() || this._createFreeServer();
-
             server.server.start()
-                .then((data: JupyterServer.ServerDesc) => {
-                    event.sender.send(JupyterServerIPC.Channels.SERVER_STARTED, 
-                                    {id: server.id, server: server.server.desc});
+                .then((data: ServerIPC.Data.ServerDesc) => {
+                    server.server.name = arg.name;
+                    server.server.id = arg.id;
+                    event.sender.send(ServerIPC.Channels.SERVER_STARTED, server.server.desc);
                 })
                 .catch(() => {
-                    event.sender.send(JupyterServerIPC.Channels.SERVER_STARTED,
+                    event.sender.send(ServerIPC.Channels.SERVER_STARTED,
                                     {id: -1, server: null});
                 })
         });
         
-        ipcMain.on(JupyterServerIPC.Channels.REQUEST_SERVER_STOP,
-                    (event: any, arg: JupyterServerIPC.Data.JupyterServer) => {
+        ipcMain.on(ServerIPC.Channels.REQUEST_SERVER_STOP,
+                    (event: any, arg: ServerIPC.Data.ServerDesc) => {
 
-            let idx = ArrayExt.findFirstIndex(this.servers, (value: JupyterServerFactory.FactoryItem, idx: number) => {
-                if (value.id === arg.id)
+            let idx = ArrayExt.findFirstIndex(this.servers, (s: JupyterServerFactory.FactoryItem, idx: number) => {
+                if (s.server.id === arg.id)
                     return true;
                 return false;
             });
@@ -204,7 +211,6 @@ namespace JupyterServerFactory {
     export
     interface FactoryItem {
         status: 'used' | 'free';
-        id: number;
         server: JupyterServer;
     }
 }
@@ -212,7 +218,7 @@ namespace JupyterServerFactory {
 const APPLICATION_STATE_NAMESPACE = 'jupyter-lab-app';
 
 interface ApplicationState extends JSONObject {
-    windows: JupyterLabWindow.WindowState[];
+    windows: WindowIPC.Data.WindowOptions[];
 }
 
 export class JupyterApplication {
@@ -251,7 +257,7 @@ export class JupyterApplication {
             })
     }
 
-    private createWindow(state: JupyterLabWindow.WindowState) {
+    private createWindow(state: WindowIPC.Data.WindowOptions) {
         let window = new JupyterLabWindow(state);
         
         // Register dialog on window close
@@ -266,11 +272,11 @@ export class JupyterApplication {
             });
         
             if (buttonClicked === 1) {
-                /* Stop the window from closing */
+                // Stop the window from closing
                 event.preventDefault();
                 return;
             }
-            /* If this is the last open window, save the state so we can reopen it */
+            // If this is the last open window, save the state so we can reopen it
             if (this.windows.length == 1) {
                 if (!this.appState) this.appState = {windows: null};
                 this.appState.windows = this.windows.map((w: JupyterLabWindow) => {
@@ -303,7 +309,7 @@ export class JupyterApplication {
         app.on('activate', () => {
             /* This should check the window array to see if a window
             is already open */
-            this.createWindow({});
+            this.createWindow({state: 'local'});
         });
 
         app.on('will-quit', (event) => {
@@ -315,8 +321,16 @@ export class JupyterApplication {
             event.sender.send(AppIPC.Channels.SEND_PLATFORM, process.platform);
         });
 
-        ipcMain.on(AppIPC.Channels.START_SERVER_MANAGER_WINDOW, (event: any, arg: any) => {
-            this.createWindow({serverID: -1});
+        ipcMain.on(AppIPC.Channels.ADD_SERVER, (event: any, arg: any) => {
+            this.createWindow({state: 'new'});
+        })
+        
+        ipcMain.on(AppIPC.Channels.OPEN_CONNECTION, (event: any, arg: ServerIPC.Data.ServerDesc) => {
+            console.log(arg);
+            if (arg.type == 'remote')
+                this.createWindow({state: 'remote', serverId: arg.id});
+            else
+                this.createWindow({state: 'local'});
         })
     }
 
@@ -326,10 +340,10 @@ export class JupyterApplication {
      */
     private start(state: ApplicationState): void {
         if (!state || !state.windows || state.windows.length == 0) {
-            /* Start JupyterLab with local sever by sending local server id */
-            /* Prelaunch local server to improve performance */
+            // Start JupyterLab with local sever by sending local server id
+            // Prelaunch local server to improve performance
             this.serverFactory.createFreeServer();
-            this.createWindow({serverID: 1});
+            this.createWindow({state: 'local'});
             return;
         }
         

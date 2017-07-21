@@ -2,12 +2,12 @@
 // Distributed under the terms of the Modified BSD License.
 
 import { 
-    BrowserWindow
+    BrowserWindow, ipcMain
 } from 'electron';
 
 import {
-    JSONObject
-} from '@phosphor/coreutils';
+    JupyterWindowIPC as WindowIPC
+} from '../ipc';
 
 import * as path from 'path';
 import * as url from 'url';
@@ -16,14 +16,14 @@ import * as url from 'url';
 export
 class JupyterLabWindow {
 
-    private _windowState: JupyterLabWindow.WindowState = null;
+    private _windowState: WindowIPC.Data.WindowOptions = null;
 
     /**
      * Electron window
      */
     private _window: Electron.BrowserWindow = null;
 
-    constructor(options: JupyterLabWindow.WindowState) {
+    constructor(options: WindowIPC.Data.WindowOptions) {
         this._windowState = options;
 
         this._window = new BrowserWindow({
@@ -37,6 +37,13 @@ class JupyterLabWindow {
             title: 'JupyterLab'
         });
         
+        ipcMain.on(WindowIPC.Channels.STATE_UPDATE, (evt: any, arg: any) => {
+            for (let key in arg) {
+                if ((this._windowState as any)[key])
+                    (this._windowState as any)[key] = (arg as any)[key];
+            }
+        })
+        
         this._window.webContents.on('did-finish-load', () =>{
             this._window.show();
         });
@@ -45,9 +52,8 @@ class JupyterLabWindow {
             pathname: path.resolve(__dirname, '../../../src/browser/index.html'),
             protocol: 'file:',
             slashes: true,
-            search: encodeURIComponent(JSON.stringify({serverId: options.serverID || -1}))
+            search: encodeURIComponent(JSON.stringify(options))
         }));
-
     }
     
 
@@ -55,7 +61,7 @@ class JupyterLabWindow {
         return this._window !== null;
     }
 
-    get windowState(): JupyterLabWindow.WindowState {
+    get windowState(): WindowIPC.Data.WindowOptions {
         let winBounds = this._window.getBounds();
         this._windowState.x = winBounds.x;
         this._windowState.y = winBounds.y;
@@ -66,18 +72,5 @@ class JupyterLabWindow {
 
     get browserWindow(): Electron.BrowserWindow {
         return this._window;
-    }
-}
-
-export
-namespace JupyterLabWindow {
-
-    export
-    interface WindowState extends JSONObject {
-        x?: number;
-        y?: number;
-        width?: number;
-        height?: number;
-        serverID?: number;
     }
 }

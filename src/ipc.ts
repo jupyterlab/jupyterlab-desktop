@@ -4,28 +4,56 @@
 |----------------------------------------------------------------------------*/
 
 import {
-    JupyterServer as ServerDesc
-} from './main/app';
+    JSONObject
+} from '@phosphor/coreutils';
 
 export
 namespace JupyterApplicationIPC {
 
     export
     namespace Channels {
-        export
-        const START_SERVER_MANAGER_WINDOW = 'start-server-manager-window';
         
         /**
          * IPC channel for querying platform from renderer
          */
         export
-        let GET_PLATFORM = 'get-platform';
+        const GET_PLATFORM = 'get-platform';
 
         /**
          * IPC channel for sending platform information
          */
         export
-        let SEND_PLATFORM = 'send-platform';
+        const SEND_PLATFORM = 'send-platform';
+        
+        export
+        const ADD_SERVER = 'add-server';
+
+        export
+        const OPEN_CONNECTION = 'new-connection';
+    }
+}
+
+export
+namespace JupyterWindowIPC {
+
+    export
+    namespace Channels {
+        export
+        const STATE_UPDATE = 'window-state-update';
+    }
+
+    export
+    namespace Data {
+
+        export
+        interface WindowOptions extends JSONObject{
+            state: 'new' | 'local' | 'remote';
+            x?: number;
+            y?: number;
+            width?: number;
+            height?: number;
+            serverId?: number;
+        }
     }
 }
 
@@ -56,12 +84,37 @@ namespace JupyterServerIPC {
     export
     namespace Data {
         /**
-         * Interface for Jupyter Server data
+         * Server connection descriptor.
          */
         export
-        interface JupyterServer {
+        interface ServerDesc extends JSONObject {
+            /**
+             * Server ID. Should be unique to each server.
+             */
             id: number;
-            server: ServerDesc.ServerDesc;
+
+            /**
+             * The tyoe of server
+             */
+            type: 'remote' | 'local';
+
+            /**
+             * Name that appears in the html
+             */
+            name: string;
+
+            /**
+             * Server url
+             */
+            url?: string;
+
+            token?: string;
+        }
+
+        export
+        interface RequestServerStart {
+            id: number;
+            name: string;
         }
     }
 }

@@ -2,91 +2,31 @@
 // Distributed under the terms of the Modified BSD License.
 
 import {
-    JSONObject
-} from '@phosphor/coreutils';
-
-import {
-    StateDB
-} from '@jupyterlab/coreutils';
+    JupyterServerIPC as ServerIPC
+} from '../../ipc';
 
 import * as React from 'react';
-
-
-/**
- * Namspace for server manager state stored in StateDB
- */
-const SERVER_MANAGER_NAMESPACE =  'ServerManager-state';
-
-/**
- * ID for ServerManager server data in StateDB
- */
-const SERVER_DATA_ID = 'servers';
 
 
 /**
  * The main ServerManager component. This component
  * allows configuring multiple Jupyter connections.
  * 
- * @param props ServerManage properties 
+ * @param props ServerManager properties 
  */
 export
 class ServerManager extends React.Component<ServerManager.Props, ServerManager.State> {
     
-    private managerState: StateDB;
-
-    private nextId: number = 1;
-
     constructor(props: ServerManager.Props) {
         super(props);
-
         this.addConnection = this.addConnection.bind(this);
         this.manageConnections = this.manageConnections.bind(this);
-        this.connectionAdded = this.connectionAdded.bind(this);
-        this.saveState = this.saveState.bind(this);
         this.renderServerManager = this.renderServerManager.bind(this);
         this.renderAddConnectionForm = this.renderAddConnectionForm.bind(this);
-
-        this.state = {
-            conns: {servers: [{id: String(this.nextId++), type: 'local', name: 'Local'}]},
-            renderState: this.renderServerManager
-        };
-        this.managerState = new StateDB({namespace: SERVER_MANAGER_NAMESPACE});
-
-        this.managerState.fetch(SERVER_DATA_ID)
-            .then((data: ServerManager.Connections | null) => {
-                if (data) {
-                    this.setState({conns: data});
-                    this.nextId = data.servers.length + 1;
-                }
-            })
-            .catch((e) => {
-                console.log(e);
-            })
+        
+        this.state = {renderState: this.renderServerManager};
     }
     
-    private saveState() {
-        this.managerState.save(SERVER_DATA_ID, this.state.conns);
-    }
-
-    componentWillMount() {
-        window.addEventListener('beforeunload', this.saveState);
-    }
-
-    componentWillUnmount() {
-        this.saveState;
-        window.removeEventListener('beforeunload', this.saveState);
-    }
-
-    private connectionAdded(server: ServerManager.Connection) {
-        this.setState((prev: ServerManager.State) => {
-            server.id = String(this.nextId++);
-            let conns = this.state.conns.servers.concat(server);
-            return({
-                renderState: this.renderServerManager,
-                conns: {servers: conns}
-            });
-        });
-    }
 
     private addConnection() {
         this.setState({renderState: this.renderAddConnectionForm});
@@ -99,7 +39,7 @@ class ServerManager extends React.Component<ServerManager.Props, ServerManager.S
     private renderServerManager() {
         const cardProps = {
             serverSelected: this.props.serverSelected,
-            servers: this.state.conns.servers,
+            servers: this.props.servers,
             addConnection: this.addConnection
         };
 
@@ -116,7 +56,7 @@ class ServerManager extends React.Component<ServerManager.Props, ServerManager.S
         return (
             <div className='jpe-ServerManager-content'>
                 <ServerManager.Header />
-                <ServerManager.AddConnctionForm submit={this.connectionAdded}/>
+                <ServerManager.AddConnctionForm submit={this.props.serverAdded}/>
             </div>
         );
     }
@@ -143,7 +83,9 @@ namespace ServerManager {
      */
     export
     interface Props {
-        serverSelected: (server: Connection) => void;
+        serverSelected: (server: ServerIPC.Data.ServerDesc) => void;
+        serverAdded: (server: ServerIPC.Data.ServerDesc) => void;
+        servers: ServerIPC.Data.ServerDesc[];
     }
 
     /**
@@ -151,43 +93,9 @@ namespace ServerManager {
      */
     export
     interface State {
-        conns: Connections;
         renderState: () => any;
     }
     
-    export
-    interface Connections extends JSONObject {
-        servers: Connection[];
-    }
-
-    /**
-     * Server connection descriptor.
-     */
-    export
-    interface Connection extends JSONObject {
-        /**
-         * Server ID. Should be unique to each server.
-         */
-        id: string;
-
-        /**
-         * The tyoe of server
-         */
-        type: 'remote' | 'local';
-
-        /**
-         * Name that appears in the html
-         */
-        name: string;
-
-        /**
-         * Server url
-         */
-        url?: string;
-
-        token?: string;
-    }
-
     /**
      * ServerManager header component.
      */
@@ -244,13 +152,13 @@ namespace ServerManager {
 
         render() {
             const servers = this.props.servers.map((server) => 
-                <Card key={server.id} server={server} onClick={(server: Connection) => {
+                <Card key={server.id} server={server} onClick={(server: ServerIPC.Data.ServerDesc) => {
                         this.props.serverSelected(server)
                     }}/>
             )
 
             // Add the 'new connection' card
-            const newServer: Connection = {id: 'new', type: null, name: 'New'}
+            const newServer: ServerIPC.Data.ServerDesc = {id: null, type: null, name: 'New'}
             servers.push(
                 <Card addCard={true} key={newServer.id} 
                     server={newServer} onClick={this.props.addConnection}/>
@@ -279,8 +187,8 @@ namespace ServerManager {
         export
         interface Props {
             addConnection: () => void;
-            serverSelected: (server: ServerManager.Connection) => void;
-            servers: ServerManager.Connection[];
+            serverSelected: (server: ServerIPC.Data.ServerDesc) => void;
+            servers: ServerIPC.Data.ServerDesc[];
         }
     }
 
@@ -320,9 +228,9 @@ namespace ServerManager {
         
         export
         interface Props {
-            server: Connection;
+            server: ServerIPC.Data.ServerDesc;
             addCard?: boolean;
-            onClick: (server: Connection) => void;
+            onClick: (server: ServerIPC.Data.ServerDesc) => void;
         }
     }
 
@@ -388,7 +296,7 @@ namespace ServerManager {
 
         export
         interface Props {
-            submit: (server: Connection) => void;
+            submit: (server: ServerIPC.Data.ServerDesc) => void;
         }
 
         export

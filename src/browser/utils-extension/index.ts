@@ -12,8 +12,17 @@ import {
 } from '../electron-extension';
 
 import {
-    JupyterApplicationIPC as AppIPC
+    JupyterApplicationIPC as AppIPC,
+    JupyterServerIPC as ServerIPC
 } from '../../ipc';
+
+import {
+  Application
+} from '../app';
+
+import {
+    StateDB
+} from '@jupyterlab/coreutils';
 
 import {
   Menu
@@ -39,37 +48,62 @@ let ipcRenderer = (window as any).require('electron').ipcRenderer;
 namespace CommandIDs {
     export
     const activateServerManager = 'electron-jupyterlab:activate-server-manager';
+
+    export 
+    const connectToServer = 'electron-jupyterlab:connect-to-server';
 }
 
 const serverManagerPlugin: JupyterLabPlugin<void> = {
   id: 'jupyter.extensions.servermanager',
   requires: [ICommandPalette, IMainMenu],
   activate: (app: ElectronJupyterLab, palette: ICommandPalette, menu: IMainMenu) => {
-    app.commands.addCommand(CommandIDs.activateServerManager, {
-        label: 'Connect to Server',
-        execute: () => {ipcRenderer.send(AppIPC.Channels.START_SERVER_MANAGER_WINDOW, 'start')}
-    });
-    palette.addItem({command: CommandIDs.activateServerManager, category: 'Main Area'});
-    menu.addMenu(createMenu(app), {rank: 25});
+    let serverState = new StateDB({namespace: Application.STATE_NAMESPACE});
+    let servers: ServerIPC.Data.ServerDesc[] = [{id: null, name: 'Local', type: 'local'}];
+
+    serverState.fetch(Application.SERVER_STATE_ID)
+        .then((data: Application.Connections | null) => {
+            if (!data)
+                createServerManager(app, palette, menu, servers);
+            else
+                createServerManager(app, palette, menu, data.servers);
+        })
+        .catch((e) => {
+            console.log(e);
+            createServerManager(app, palette, menu, servers);
+        });
+
 
     return null;
   },
   autoStart: true
 }
 
-/**
- * Creates a menu for the server manager.
- */
-function createMenu(app: ElectronJupyterLab): Menu {
-  const { commands } = app;
-  const menu = new Menu({ commands });
+function createServerManager(app: ElectronJupyterLab, palette: ICommandPalette,
+                            menu: IMainMenu, servers: ServerIPC.Data.ServerDesc[]) {
+    
+    app.commands.addCommand(CommandIDs.activateServerManager, {
+        label: 'Add Server',
+        execute: () => {ipcRenderer.send(AppIPC.Channels.ADD_SERVER, 'start')}
+    });
 
-  menu.title.label = 'Servers';
-  menu.addItem({ command: CommandIDs.activateServerManager });
-//   menu.addItem({ type: 'separator' });
-//   menu.addItem({ command: 'settingeditor:open' });
+    const { commands } = app;
+    const serverMenu = new Menu({ commands });
+    serverMenu.title.label = 'Servers';
 
-  return menu;
+    for (let s of servers) {
+        serverMenu.addItem({command: CommandIDs.connectToServer, args: s});
+        palette.addItem({command: CommandIDs.connectToServer, args: s, category: 'Servers'});
+    }
+    app.commands.addCommand(CommandIDs.connectToServer, {
+        label: (args) => args.name as string,
+        execute: (args) => {ipcRenderer.send(AppIPC.Channels.OPEN_CONNECTION, args)}
+    });
+
+    serverMenu.addItem({ type: 'separator' });
+    serverMenu.addItem({ command: CommandIDs.activateServerManager });
+    menu.addMenu(serverMenu, {rank: 25});
+
+    palette.addItem({command: CommandIDs.activateServerManager, category: 'Servers'});
 }
 
 /**

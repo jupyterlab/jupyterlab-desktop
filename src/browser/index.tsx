@@ -10,11 +10,15 @@ import {
 import * as React from 'react';
 import * as ReactDOM from 'react-dom';
 
+import {
+    JupyterWindowIPC as WindowIPC
+} from '../ipc';
+
 function main() : void {
-    let serverIdStr = decodeURIComponent((global as any).location.search);
-    let serverId = JSON.parse(serverIdStr.slice(1));
+    let optionsStr = decodeURIComponent((global as any).location.search);
+    let options: WindowIPC.Data.WindowOptions = JSON.parse(optionsStr.slice(1));
     ReactDOM.render(
-        <Application serverId={serverId.serverId} />,
+        <Application options={options} />,
         document.getElementById('root')
     );
 }
