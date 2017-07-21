@@ -19,7 +19,6 @@ import {
 
 import {
     JupyterServerIPC as ServerIPC,
-    JupyterApplicationIPC as AppIPC,
     JupyterWindowIPC as WindowIPC
 } from '../ipc';
 
@@ -44,7 +43,7 @@ class Application extends React.Component<Application.Props, Application.State> 
 
     private ignorePlugins: string[];
 
-    private server: ServerIPC.Data.ServerDesc = null;
+    private server: ServerIPC.ServerDesc = null;
 
     private nextServerId: number = 1;
     
@@ -62,11 +61,16 @@ class Application extends React.Component<Application.Props, Application.State> 
 
         
         /* Setup server data response handler */
-        ipcRenderer.on(ServerIPC.Channels.SERVER_STARTED, (event: any, data: ServerIPC.Data.ServerStarted) => {
+        ipcRenderer.on(ServerIPC.RESPOND_SERVER_STARTED, (event: any, data: ServerIPC.ServerStarted) => {
+            if (data.err) {
+                console.log('Error starting local server, show error screen');
+                return;
+            }
+            
             window.addEventListener('beforeunload', () => {
-                ipcRenderer.send(ServerIPC.Channels.REQUEST_SERVER_STOP, data.factoryId);
+                ipcRenderer.send(ServerIPC.REQUEST_SERVER_STOP, data.factoryId);
             });
-            console.log(data.server);
+            
             this.server = data.server;
             PageConfig.setOption("token", this.server.token);
             PageConfig.setOption("baseUrl", this.server.url);
@@ -83,7 +87,7 @@ class Application extends React.Component<Application.Props, Application.State> 
 
         if (this.props.options.state == 'local') {
             this.state = {renderState: this.renderSplash, remotes: {servers: []}};
-            ipcRenderer.send(ServerIPC.Channels.REQUEST_SERVER_START);
+            ipcRenderer.send(ServerIPC.REQUEST_SERVER_START);
         } else {
             this.state = {renderState: this.renderServerManager, remotes: {servers: []}};
         }
@@ -119,18 +123,8 @@ class Application extends React.Component<Application.Props, Application.State> 
             let settingsDir : string = PageConfig.getOption('settingsDir') || '';
             let assetsDir : string = PageConfig.getOption('assetsDir') || '';
 
-            // Get platform information from main process
-            ipcRenderer.send(AppIPC.Channels.GET_PLATFORM);
-            let platformSet = new Promise( (resolve, reject) => {
-                ipcRenderer.on(AppIPC.Channels.SEND_PLATFORM, (event: any, args: string) => {
-                    resolve(args);
-                });
-            });
-
-            platformSet.then((platform) => {
-                if (platform == 'win32')
-                    PageConfig.setOption('terminalsAvailable', 'false');
-            })
+            if (this.props.options.platform == 'win32')
+                PageConfig.setOption('terminalsAvailable', 'false');
 
             if (version[0] === 'v') {
                 version = version.slice(1);
@@ -164,7 +158,7 @@ class Application extends React.Component<Application.Props, Application.State> 
         });
     }
 
-    private connectionAdded(server: ServerIPC.Data.ServerDesc) {
+    private connectionAdded(server: ServerIPC.ServerDesc) {
         this.setState((prev: ServerManager.State) => {
             server.id = this.nextServerId++;
             let conns = this.state.remotes.servers.concat(server);
@@ -175,13 +169,13 @@ class Application extends React.Component<Application.Props, Application.State> 
         });
     }
 
-    private serverSelected(server: ServerIPC.Data.ServerDesc) {
+    private serverSelected(server: ServerIPC.ServerDesc) {
         this.saveState();
         if (server.type == 'local') {
             // Request local server start from main process
-            ipcRenderer.send(ServerIPC.Channels.REQUEST_SERVER_START);
+            ipcRenderer.send(ServerIPC.REQUEST_SERVER_START);
             // Update window state in main process
-            ipcRenderer.send(WindowIPC.Channels.STATE_UPDATE, {state: 'local'});
+            ipcRenderer.send(WindowIPC.REQUEST_STATE_UPDATE, {state: 'local'});
             // Render the splash screen
             this.setState({renderState: this.renderSplash});
             return;
@@ -197,7 +191,7 @@ class Application extends React.Component<Application.Props, Application.State> 
             console.log(e);
         }
         // Update window state in main process
-        ipcRenderer.send(WindowIPC.Channels.STATE_UPDATE, {state: 'remote', serverId: server.id});
+        ipcRenderer.send(WindowIPC.REQUEST_STATE_UPDATE, {state: 'remote', serverId: server.id});
         // Render JupyterLab
         this.setState({renderState: this.renderLab});
     }
@@ -245,7 +239,7 @@ namespace Application {
 
     export
     interface Props {
-        options: WindowIPC.Data.WindowOptions;
+        options: WindowIPC.WindowOptions;
     }
 
     export
@@ -256,7 +250,7 @@ namespace Application {
     
     export
     interface Connections extends JSONObject {
-        servers: ServerIPC.Data.ServerDesc[];
+        servers: ServerIPC.ServerDesc[];
     }
 
 }

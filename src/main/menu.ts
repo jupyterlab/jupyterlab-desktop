@@ -12,32 +12,13 @@ import {
 } from '@phosphor/algorithm';
 
 import {
-    JupyterMenuChannels
+    JupyterMenuIPC as MenuIPC
 } from '../ipc';
 
-/**
- * Jupyter main menu item description.
- */
+type JupyterMenuItemOptions = MenuIPC.JupyterMenuItemOptions;
+
 export
-interface JupyterMenuItemOptions extends Electron.MenuItemConstructorOptions {
-
-    /**
-     * Rank of the menu item. Lower ranks float to the front of the menu.
-     * Default value is 100.
-     */
-    rank?: number;
-
-    /**
-     * The command to run when the item is clicked. Sent to the
-     * render process via IPC.
-     */
-    command?: string;
-
-    /**
-     * Optional arguments to the command
-     */
-    args?: any;
-}
+type MenuItemConstructorOptions = Electron.MenuItemConstructorOptions;
 
 /**
  * Native main menu bar class
@@ -87,7 +68,7 @@ class JupyterMainMenu {
      */
     private registerListeners(): void {
         /* Register MENU_ADD event */
-        ipcMain.on(JupyterMenuChannels.MENU_ADD, (event: any, menu: JupyterMenuItemOptions) => {
+        ipcMain.on(MenuIPC.REQUEST_MENU_ADD, (event: any, menu: JupyterMenuItemOptions) => {
             this.addMenu(event, menu);
         });
     }
@@ -128,6 +109,6 @@ class JupyterMainMenu {
      * Click event handler. Passes the event on the render process 
      */
     private handleClick(menu: Electron.MenuItem, window: Electron.BrowserWindow): void {
-        window.webContents.send(JupyterMenuChannels.CLICK_EVENT, menu as JupyterMenuItemOptions);
+        window.webContents.send(MenuIPC.POST_CLICK_EVENT, menu as JupyterMenuItemOptions);
     }
 }

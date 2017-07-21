@@ -59,7 +59,7 @@ const serverManagerPlugin: JupyterLabPlugin<void> = {
   activate: (app: ElectronJupyterLab, palette: ICommandPalette, menu: IMainMenu) => {
     let serverState = new StateDB({namespace: Application.STATE_NAMESPACE});
     // Always insert a local server
-    let servers: ServerIPC.Data.ServerDesc[] = [{id: null, name: 'Local', type: 'local'}];
+    let servers: ServerIPC.ServerDesc[] = [{id: null, name: 'Local', type: 'local'}];
 
     serverState.fetch(Application.SERVER_STATE_ID)
         .then((data: Application.Connections | null) => {
@@ -80,11 +80,11 @@ const serverManagerPlugin: JupyterLabPlugin<void> = {
 }
 
 function createServerManager(app: ElectronJupyterLab, palette: ICommandPalette,
-                            menu: IMainMenu, servers: ServerIPC.Data.ServerDesc[]) {
+                            menu: IMainMenu, servers: ServerIPC.ServerDesc[]) {
     
     app.commands.addCommand(CommandIDs.activateServerManager, {
         label: 'Add Server',
-        execute: () => {ipcRenderer.send(AppIPC.Channels.ADD_SERVER, 'start')}
+        execute: () => {ipcRenderer.send(AppIPC.REQUEST_ADD_SERVER, 'start')}
     });
 
     const { commands } = app;
@@ -97,7 +97,7 @@ function createServerManager(app: ElectronJupyterLab, palette: ICommandPalette,
     }
     app.commands.addCommand(CommandIDs.connectToServer, {
         label: (args) => args.name as string,
-        execute: (args) => {ipcRenderer.send(AppIPC.Channels.OPEN_CONNECTION, args)}
+        execute: (args) => {ipcRenderer.send(AppIPC.REQUEST_OPEN_CONNECTION, args)}
     });
 
     serverMenu.addItem({ type: 'separator' });

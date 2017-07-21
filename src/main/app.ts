@@ -45,9 +45,9 @@ class JupyterServer {
 
     private stopServer: Promise<void> = null;
 
-    private _desc: ServerIPC.Data.ServerDesc = {name: null, id: null, type: 'local'};
+    private _desc: ServerIPC.ServerDesc = {name: null, id: null, type: 'local'};
 
-    get desc(): ServerIPC.Data.ServerDesc {
+    get desc(): ServerIPC.ServerDesc {
         return this._desc;
     }
 
@@ -74,8 +74,8 @@ class JupyterServer {
      * collected. This data is collected from the data written to
      * std out upon sever creation
      */
-    public start(): Promise<ServerIPC.Data.ServerDesc> {
-        return new Promise<ServerIPC.Data.ServerDesc>((resolve, reject) => {
+    public start(): Promise<ServerIPC.ServerDesc> {
+        return new Promise<ServerIPC.ServerDesc>((resolve, reject) => {
             let urlRegExp = /http:\/\/localhost:\d+\/\?token=\w+/g;
             let tokenRegExp = /token=\w+/g;
             let baseRegExp = /http:\/\/localhost:\d+\//g;
@@ -206,7 +206,7 @@ class JupyterServerFactory {
     }
 
     private registerListeners() {
-        ipcMain.on(ServerIPC.Channels.REQUEST_SERVER_START, (event: any) => {
+        ipcMain.on(ServerIPC.REQUEST_SERVER_START, (event: any) => {
             let server = this._getFreeServer()
             
             if (!server) {
@@ -215,26 +215,33 @@ class JupyterServerFactory {
             }
 
             server.server.start()
-                .then((data: ServerIPC.Data.ServerDesc) => {
-                    event.sender.send(ServerIPC.Channels.SERVER_STARTED, {
+                .then((data: ServerIPC.ServerDesc) => {
+                    event.sender.send(ServerIPC.RESPOND_SERVER_STARTED, {
                         factoryId: server,
                         server: server.server.desc
                     })
                 })
-                .catch(() => {
-                    event.sender.send(ServerIPC.Channels.SERVER_STARTED,
-                                    {id: -1, server: null});
-                })
+                .catch((e) => {
+                    event.sender.send(ServerIPC.RESPOND_SERVER_STARTED,{
+                        id: -1,
+                        server: null,
+                        err: e || new Error('Server creation error')
+                    });
+                });
         });
         
-        ipcMain.on(ServerIPC.Channels.REQUEST_SERVER_STOP,
-                    (event: any, arg: ServerIPC.Data.RequestServerStop) => {
+        ipcMain.on(ServerIPC.REQUEST_SERVER_STOP,
+                    (event: any, arg: ServerIPC.RequestServerStop) => {
 
             let idx = ArrayExt.findFirstIndex(this.servers, (s: JupyterServerFactory.FactoryItem, idx: number) => {
                 if (s.factoryId === arg.factoryId)
                     return true;
                 return false;
             });
+
+            if (idx < 0)
+                return;
+
             this.servers[idx].server.stop()
                 .then(() => {
                     ArrayExt.removeAt(this.servers, idx);
@@ -261,7 +268,7 @@ namespace JupyterServerFactory {
 const APPLICATION_STATE_NAMESPACE = 'jupyter-lab-app';
 
 interface ApplicationState extends JSONObject {
-    windows: WindowIPC.Data.WindowOptions[];
+    windows: WindowIPC.WindowOptions[];
 }
 
 export class JupyterApplication {
@@ -300,7 +307,7 @@ export class JupyterApplication {
             })
     }
 
-    private createWindow(state: WindowIPC.Data.WindowOptions) {
+    private createWindow(state: WindowIPC.WindowOptions) {
         let window = new JupyterLabWindow(state);
         // Register dialog on window close
         window.browserWindow.on('close', (event: Event) => {
@@ -352,8 +359,6 @@ export class JupyterApplication {
         // windows open.
         // Need to double check this code to ensure it has expected behaviour
         app.on('activate', () => {
-            /* This should check the window array to see if a window
-            is already open */
             this.createWindow({state: 'local'});
         });
 
@@ -377,15 +382,11 @@ export class JupyterApplication {
                 });
         });
         
-        ipcMain.on(AppIPC.Channels.GET_PLATFORM, (event: any, arg: any) => {
-            event.sender.send(AppIPC.Channels.SEND_PLATFORM, process.platform);
-        });
-
-        ipcMain.on(AppIPC.Channels.ADD_SERVER, (event: any, arg: any) => {
+        ipcMain.on(AppIPC.REQUEST_ADD_SERVER, (event: any, arg: any) => {
             this.createWindow({state: 'new'});
         })
         
-        ipcMain.on(AppIPC.Channels.OPEN_CONNECTION, (event: any, arg: ServerIPC.Data.ServerDesc) => {
+        ipcMain.on(AppIPC.REQUEST_OPEN_CONNECTION, (event: any, arg: ServerIPC.ServerDesc) => {
             if (arg.type == 'remote')
                 this.createWindow({state: 'remote', serverId: arg.id});
             else

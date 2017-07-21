@@ -83,9 +83,9 @@ namespace ServerManager {
      */
     export
     interface Props {
-        serverSelected: (server: ServerIPC.Data.ServerDesc) => void;
-        serverAdded: (server: ServerIPC.Data.ServerDesc) => void;
-        servers: ServerIPC.Data.ServerDesc[];
+        serverSelected: (server: ServerIPC.ServerDesc) => void;
+        serverAdded: (server: ServerIPC.ServerDesc) => void;
+        servers: ServerIPC.ServerDesc[];
     }
 
     /**
@@ -152,13 +152,13 @@ namespace ServerManager {
 
         render() {
             const servers = this.props.servers.map((server) => 
-                <Card key={server.id} server={server} onClick={(server: ServerIPC.Data.ServerDesc) => {
+                <Card key={server.id} server={server} onClick={(server: ServerIPC.ServerDesc) => {
                         this.props.serverSelected(server)
                     }}/>
             )
 
             // Add the 'new connection' card
-            const newServer: ServerIPC.Data.ServerDesc = {id: null, type: null, name: 'New'}
+            const newServer: ServerIPC.ServerDesc = {id: null, type: null, name: 'New'}
             servers.push(
                 <Card addCard={true} key={newServer.id} 
                     server={newServer} onClick={this.props.addConnection}/>
@@ -187,8 +187,8 @@ namespace ServerManager {
         export
         interface Props {
             addConnection: () => void;
-            serverSelected: (server: ServerIPC.Data.ServerDesc) => void;
-            servers: ServerIPC.Data.ServerDesc[];
+            serverSelected: (server: ServerIPC.ServerDesc) => void;
+            servers: ServerIPC.ServerDesc[];
         }
     }
 
@@ -228,9 +228,9 @@ namespace ServerManager {
         
         export
         interface Props {
-            server: ServerIPC.Data.ServerDesc;
+            server: ServerIPC.ServerDesc;
             addCard?: boolean;
-            onClick: (server: ServerIPC.Data.ServerDesc) => void;
+            onClick: (server: ServerIPC.ServerDesc) => void;
         }
     }
 
@@ -296,7 +296,7 @@ namespace ServerManager {
 
         export
         interface Props {
-            submit: (server: ServerIPC.Data.ServerDesc) => void;
+            submit: (server: ServerIPC.ServerDesc) => void;
         }
 
         export

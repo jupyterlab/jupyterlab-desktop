@@ -16,15 +16,18 @@ import * as url from 'url';
 export
 class JupyterLabWindow {
 
-    private _windowState: WindowIPC.Data.WindowOptions = null;
+    private _windowState: WindowIPC.WindowOptions = null;
 
     /**
      * Electron window
      */
     private _window: Electron.BrowserWindow = null;
 
-    constructor(options: WindowIPC.Data.WindowOptions) {
+    constructor(options: WindowIPC.WindowOptions) {
         this._windowState = options;
+
+        if (!this._windowState.platform)
+            this._windowState.platform = process.platform;
 
         this._window = new BrowserWindow({
             width: options.width || 800,
@@ -37,7 +40,7 @@ class JupyterLabWindow {
             title: 'JupyterLab'
         });
         
-        ipcMain.on(WindowIPC.Channels.STATE_UPDATE, (evt: any, arg: any) => {
+        ipcMain.on(WindowIPC.REQUEST_STATE_UPDATE, (evt: any, arg: any) => {
             for (let key in arg) {
                 if ((this._windowState as any)[key])
                     (this._windowState as any)[key] = (arg as any)[key];
@@ -61,7 +64,7 @@ class JupyterLabWindow {
         return this._window !== null;
     }
 
-    get windowState(): WindowIPC.Data.WindowOptions {
+    get windowState(): WindowIPC.WindowOptions {
         let winBounds = this._window.getBounds();
         this._windowState.x = winBounds.x;
         this._windowState.y = winBounds.y;
