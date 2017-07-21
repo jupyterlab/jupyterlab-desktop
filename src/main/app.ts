@@ -43,6 +43,8 @@ class JupyterServer {
      */
     private nbServer: ChildProcess;
 
+    private stopServer: Promise<void> = null;
+
     private _desc: ServerIPC.Data.ServerDesc = {name: null, id: null, type: 'local'};
 
     get desc(): ServerIPC.Data.ServerDesc {
@@ -122,21 +124,28 @@ class JupyterServer {
     /**
      * Stop the currently executing Jupyter server
      */
-    public stop(): void {
-        if (this.nbServer !== undefined){
-            if (process.platform === "win32"){
-                execFile('taskkill', ['/PID', String(this.nbServer.pid), '/T', '/F'], () => {
-                    process.exit();
-                });
+    public stop(): Promise<void> {
+        // If stop has already been initiated, just return the promise
+        if (this.stopServer)
+            return this.stopServer;
+
+        this.stopServer = new Promise<void>((res, rej) => {
+            if (this.nbServer !== undefined){
+                if (process.platform === "win32"){
+                    execFile('taskkill', ['/PID', String(this.nbServer.pid), '/T', '/F'], () => {
+                        res();
+                    });
+                }
+                else{
+                    this.nbServer.kill();
+                    res();
+                }
             }
             else{
-                this.nbServer.kill();
-                process.exit();
+                res();
             }
-        }
-        else{
-            process.exit();
-        }
+        });
+        return this.stopServer;
     }
 }
 
@@ -144,13 +153,19 @@ class JupyterServerFactory {
     
     private servers: JupyterServerFactory.FactoryItem[] = [];
 
+    private nextId: number = 1;
+
     constructor() {
         this.registerListeners();
     }
 
     private _createFreeServer(): JupyterServerFactory.FactoryItem {
         let server = new JupyterServer()
-        let item: JupyterServerFactory.FactoryItem = {server: server, status: 'free'};
+        let item: JupyterServerFactory.FactoryItem = {
+            factoryId: this.nextId++,
+            server: server,
+            status: 'free'
+        };
         this.servers.push(item);
         return item;
     }
@@ -173,18 +188,38 @@ class JupyterServerFactory {
         return this._getFreeServer().server;
     }
     
-    public createFreeServer(): JupyterServer {
-        return this._createFreeServer().server;
+    public createFreeServer(): void {
+        this._createFreeServer();
+    }
+
+    killAllServers(): Promise<void> {
+        /* Get stop promises from all servers */
+        let stopPromises = this.servers.map((val) => {
+            return val.server.stop();
+        });
+
+        return new Promise<void>((res, rej) => {
+            Promise.all(stopPromises)
+                .then(() => res())
+                .catch((e) => rej(e));
+        });
     }
 
     private registerListeners() {
-        ipcMain.on(ServerIPC.Channels.REQUEST_SERVER_START, (event: any, arg: ServerIPC.Data.RequestServerStart) => {
-            let server = this._getFreeServer() || this._createFreeServer();
+        ipcMain.on(ServerIPC.Channels.REQUEST_SERVER_START, (event: any) => {
+            let server = this._getFreeServer()
+            
+            if (!server) {
+                server = this._createFreeServer();
+                server.status = 'used';
+            }
+
             server.server.start()
                 .then((data: ServerIPC.Data.ServerDesc) => {
-                    server.server.name = arg.name;
-                    server.server.id = arg.id;
-                    event.sender.send(ServerIPC.Channels.SERVER_STARTED, server.server.desc);
+                    event.sender.send(ServerIPC.Channels.SERVER_STARTED, {
+                        factoryId: server,
+                        server: server.server.desc
+                    })
                 })
                 .catch(() => {
                     event.sender.send(ServerIPC.Channels.SERVER_STARTED,
@@ -193,14 +228,21 @@ class JupyterServerFactory {
         });
         
         ipcMain.on(ServerIPC.Channels.REQUEST_SERVER_STOP,
-                    (event: any, arg: ServerIPC.Data.ServerDesc) => {
+                    (event: any, arg: ServerIPC.Data.RequestServerStop) => {
 
             let idx = ArrayExt.findFirstIndex(this.servers, (s: JupyterServerFactory.FactoryItem, idx: number) => {
-                if (s.server.id === arg.id)
+                if (s.factoryId === arg.factoryId)
                     return true;
                 return false;
             });
-            this.servers[idx].server.stop();
+            this.servers[idx].server.stop()
+                .then(() => {
+                    ArrayExt.removeAt(this.servers, idx);
+                })
+                .catch((e) => {
+                    console.error(e);
+                    ArrayExt.removeAt(this.servers, idx);
+                });
         });
 
     }
@@ -210,6 +252,7 @@ namespace JupyterServerFactory {
 
     export
     interface FactoryItem {
+        factoryId: number;
         status: 'used' | 'free';
         server: JupyterServer;
     }
@@ -259,7 +302,6 @@ export class JupyterApplication {
 
     private createWindow(state: WindowIPC.Data.WindowOptions) {
         let window = new JupyterLabWindow(state);
-        
         // Register dialog on window close
         window.browserWindow.on('close', (event: Event) => {
             let buttonClicked = dialog.showMessageBox({
@@ -270,12 +312,13 @@ export class JupyterApplication {
                 defaultId: 0,
                 cancelId: 1
             });
-        
+            
             if (buttonClicked === 1) {
                 // Stop the window from closing
                 event.preventDefault();
                 return;
             }
+            
             // If this is the last open window, save the state so we can reopen it
             if (this.windows.length == 1) {
                 if (!this.appState) this.appState = {windows: null};
@@ -283,7 +326,9 @@ export class JupyterApplication {
                     return w.windowState;
                 });
             }
-            
+        });
+        
+        window.browserWindow.on('closed', (event: Event) => {
             ArrayExt.removeFirstOf(this.windows, window);
             window = null;
         });
@@ -314,7 +359,22 @@ export class JupyterApplication {
 
         app.on('will-quit', (event) => {
             event.preventDefault();
-            this.appStateDB.save(APPLICATION_STATE_NAMESPACE, this.appState);
+            this.appStateDB.save(APPLICATION_STATE_NAMESPACE, this.appState)
+                .then(() => {
+                    this.serverFactory.killAllServers()
+                        .then(() => process.exit())
+                        .catch((e) => {
+                            console.error(e);
+                            process.exit();
+                        });
+                }).catch(() => {
+                    this.serverFactory.killAllServers()
+                        .then(() => process.exit())
+                        .catch((e) => {
+                            console.error(e);
+                            process.exit();
+                        });
+                });
         });
         
         ipcMain.on(AppIPC.Channels.GET_PLATFORM, (event: any, arg: any) => {
@@ -326,7 +386,6 @@ export class JupyterApplication {
         })
         
         ipcMain.on(AppIPC.Channels.OPEN_CONNECTION, (event: any, arg: ServerIPC.Data.ServerDesc) => {
-            console.log(arg);
             if (arg.type == 'remote')
                 this.createWindow({state: 'remote', serverId: arg.id});
             else

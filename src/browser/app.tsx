@@ -37,8 +37,6 @@ import extensions from './extensions';
 let ipcRenderer = (window as any).require('electron').ipcRenderer;
 
 
-
-
 export
 class Application extends React.Component<Application.Props, Application.State> {
     
@@ -62,18 +60,32 @@ class Application extends React.Component<Application.Props, Application.State> 
 
         let labReady = this.setupLab();
 
-        // Always insert local connection into connections state
-        let conns: Application.Connections = {servers: [{
-            id: this.nextServerId,
-            name: 'Local',
-            type: 'local'
-        }]};
+        
+        /* Setup server data response handler */
+        ipcRenderer.on(ServerIPC.Channels.SERVER_STARTED, (event: any, data: ServerIPC.Data.ServerStarted) => {
+            window.addEventListener('beforeunload', () => {
+                ipcRenderer.send(ServerIPC.Channels.REQUEST_SERVER_STOP, data.factoryId);
+            });
+            console.log(data.server);
+            this.server = data.server;
+            PageConfig.setOption("token", this.server.token);
+            PageConfig.setOption("baseUrl", this.server.url);
+            try{
+                labReady.then(() => {
+                    this.lab.start({ "ignorePlugins": this.ignorePlugins});
+                    (this.refs.splash as SplashScreen).fadeSplashScreen();
+                });
+            }
+            catch (e){
+                console.log(e);
+            }
+        });
 
         if (this.props.options.state == 'local') {
-            this.state = {renderState: this.renderSplash, conns: conns}
-            ipcRenderer.send(ServerIPC.Channels.REQUEST_SERVER_START, "start");
+            this.state = {renderState: this.renderSplash, remotes: {servers: []}};
+            ipcRenderer.send(ServerIPC.Channels.REQUEST_SERVER_START);
         } else {
-            this.state = {renderState: this.renderServerManager, conns: conns}
+            this.state = {renderState: this.renderServerManager, remotes: {servers: []}};
         }
         
         this.serverState = new StateDB({namespace: Application.STATE_NAMESPACE});
@@ -87,34 +99,15 @@ class Application extends React.Component<Application.Props, Application.State> 
                     maxID = Math.max(maxID, val.id);
                 this.nextServerId = maxID + 1;
                 // Render UI with saved servers
-                this.setState({conns: data});
+                this.setState({remotes: data});
             })
             .catch((e) => {
                 console.log(e);
             });
-        
-        /* Setup server data response handler */
-        ipcRenderer.on(ServerIPC.Channels.SERVER_STARTED, (event: any, data: ServerIPC.Data.ServerDesc) => {
-            window.addEventListener('beforeunload', () => {
-                ipcRenderer.send(ServerIPC.Channels.REQUEST_SERVER_STOP, data);
-            });
-            this.server = data;
-            PageConfig.setOption("token", data.token);
-            PageConfig.setOption("baseUrl", data.url);
-            try{
-                labReady.then(() => {
-                    this.lab.start({ "ignorePlugins": this.ignorePlugins});
-                    (this.refs.splash as SplashScreen).fadeSplashScreen();
-                });
-            }
-            catch (e){
-                console.log(e);
-            }
-        });
     }
 
     private saveState() {
-        this.serverState.save(Application.SERVER_STATE_ID, this.state.conns);
+        this.serverState.save(Application.SERVER_STATE_ID, this.state.remotes);
     }
 
     private setupLab(): Promise<void> {
@@ -174,7 +167,7 @@ class Application extends React.Component<Application.Props, Application.State> 
     private connectionAdded(server: ServerIPC.Data.ServerDesc) {
         this.setState((prev: ServerManager.State) => {
             server.id = this.nextServerId++;
-            let conns = this.state.conns.servers.concat(server);
+            let conns = this.state.remotes.servers.concat(server);
             return({
                 renderState: this.renderServerManager,
                 conns: {servers: conns}
@@ -186,8 +179,7 @@ class Application extends React.Component<Application.Props, Application.State> 
         this.saveState();
         if (server.type == 'local') {
             // Request local server start from main process
-            ipcRenderer.send(ServerIPC.Channels.REQUEST_SERVER_START, 
-                            server as ServerIPC.Data.RequestServerStart);
+            ipcRenderer.send(ServerIPC.Channels.REQUEST_SERVER_START);
             // Update window state in main process
             ipcRenderer.send(WindowIPC.Channels.STATE_UPDATE, {state: 'local'});
             // Render the splash screen
@@ -211,7 +203,7 @@ class Application extends React.Component<Application.Props, Application.State> 
     }
 
     private renderServerManager(): any {
-        return <ServerManager servers={this.state.conns.servers} 
+        return <ServerManager servers={this.state.remotes.servers} 
                               serverSelected={this.serverSelected}
                               serverAdded={this.connectionAdded} />;
     }
@@ -259,7 +251,7 @@ namespace Application {
     export
     interface State {
         renderState: () => any;
-        conns: Connections;
+        remotes: Connections;
     }
     
     export

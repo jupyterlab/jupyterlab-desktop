@@ -58,6 +58,7 @@ const serverManagerPlugin: JupyterLabPlugin<void> = {
   requires: [ICommandPalette, IMainMenu],
   activate: (app: ElectronJupyterLab, palette: ICommandPalette, menu: IMainMenu) => {
     let serverState = new StateDB({namespace: Application.STATE_NAMESPACE});
+    // Always insert a local server
     let servers: ServerIPC.Data.ServerDesc[] = [{id: null, name: 'Local', type: 'local'}];
 
     serverState.fetch(Application.SERVER_STATE_ID)
@@ -65,7 +66,7 @@ const serverManagerPlugin: JupyterLabPlugin<void> = {
             if (!data)
                 createServerManager(app, palette, menu, servers);
             else
-                createServerManager(app, palette, menu, data.servers);
+                createServerManager(app, palette, menu, servers.concat(data.servers));
         })
         .catch((e) => {
             console.log(e);

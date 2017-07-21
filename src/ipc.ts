@@ -112,9 +112,14 @@ namespace JupyterServerIPC {
         }
 
         export
-        interface RequestServerStart {
-            id: number;
-            name: string;
+        interface ServerStarted {
+            factoryId: number;
+            server: ServerDesc;
+        }
+
+        export
+        interface RequestServerStop {
+            factoryId: number;
         }
     }
 }

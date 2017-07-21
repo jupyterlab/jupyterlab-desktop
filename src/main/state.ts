@@ -101,20 +101,18 @@ class ElectronStateDB implements IStateDB {
      * @return A promise that is fulfilled when data is written.
      */
     private _save(): Promise<void> {
-        return new Promise<void>((res, rej) => {
-            /* Signal write in progress */
-            this.writeInProgress = true;
-            this.written = new Promise<void>((res, rej) => {
-                fs.writeFile(this.dataFile, JSON.stringify(this.cache), (err) => {
-                    this.writeInProgress = false;
-                    if (err)
-                        rej(err);
-                    else
-                        res();
-                });
+        /* Signal write in progress */
+        this.writeInProgress = true;
+        this.written = new Promise<void>((res, rej) => {
+            fs.writeFile(this.dataFile, JSON.stringify(this.cache), (err) => {
+                this.writeInProgress = false;
+                if (err)
+                    rej(err);
+                else
+                    res();
             });
-
         });
+        return this.written;
     }
 
     /**
