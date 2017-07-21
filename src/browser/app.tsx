@@ -197,7 +197,12 @@ class Application extends React.Component<Application.Props, Application.State> 
     }
 
     private renderServerManager(): any {
-        return <ServerManager servers={this.state.remotes.servers} 
+        // Temporary fix to allow users to get out of server manager
+        let servers: ServerIPC.ServerDesc[] = [{id: this.nextServerId++, name: 'Local', type: 'local'}];
+        servers.concat(this.state.remotes.servers);
+        ////////
+
+        return <ServerManager servers={servers} 
                               serverSelected={this.serverSelected}
                               serverAdded={this.connectionAdded} />;
     }

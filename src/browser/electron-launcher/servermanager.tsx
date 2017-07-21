@@ -151,7 +151,7 @@ namespace ServerManager {
         }
 
         render() {
-            const servers = this.props.servers.map((server) => 
+            let servers = this.props.servers.map((server) => 
                 <Card key={server.id} server={server} onClick={(server: ServerIPC.ServerDesc) => {
                         this.props.serverSelected(server)
                     }}/>
