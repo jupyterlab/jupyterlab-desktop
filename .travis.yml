@@ -23,4 +23,5 @@ before_install:
 #  - yarn install
 
 script:
-  - yarn dockerdist
+  - yarn dockerdist:linux
+  - yarn dockerdist:win
