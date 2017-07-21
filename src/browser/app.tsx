@@ -197,10 +197,9 @@ class Application extends React.Component<Application.Props, Application.State> 
     }
 
     private renderServerManager(): any {
-        // Temporary fix to allow users to get out of server manager
+        // Always insert Local server card
         let servers: ServerIPC.ServerDesc[] = [{id: this.nextServerId++, name: 'Local', type: 'local'}];
         servers.concat(this.state.remotes.servers);
-        ////////
 
         return <ServerManager servers={servers} 
                               serverSelected={this.serverSelected}

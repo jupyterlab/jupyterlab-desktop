@@ -164,7 +164,7 @@ namespace ServerManager {
             // Add the 'new connection' card
             const newServer: ServerIPC.ServerDesc = {id: null, type: null, name: 'New'}
             servers.push(
-                <Card addCard={true} key={newServer.id} 
+                <Card addNewCard={true} key={newServer.id} 
                     server={newServer} onClick={this.props.addConnection}/>
             );
 
@@ -203,12 +203,12 @@ namespace ServerManager {
      */
     function Card(props: Card.Props) {
         let cardClass: string = 'jpe-ServerManager-card';
-        if (props.addCard)
+        if (props.addNewCard)
             cardClass += ' jpe-mod-dashed';
 
         let iconClass : string = 'jpe-ServerManager-card-icon';
         let titleClass : string;
-        if (props.addCard) {
+        if (props.addNewCard) {
             iconClass += ' jpe-ServerManager-card-new-icon';
             titleClass = 'jpe-ServerManager-card-title';
         } else if (props.server.type == 'remote'){
@@ -233,7 +233,7 @@ namespace ServerManager {
         export
         interface Props {
             server: ServerIPC.ServerDesc;
-            addCard?: boolean;
+            addNewCard?: boolean;
             onClick: (server: ServerIPC.ServerDesc) => void;
         }
     }
