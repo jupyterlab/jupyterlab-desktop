@@ -23,11 +23,15 @@ class ServerManager extends React.Component<ServerManager.Props, ServerManager.S
         this.manageConnections = this.manageConnections.bind(this);
         this.renderServerManager = this.renderServerManager.bind(this);
         this.renderAddConnectionForm = this.renderAddConnectionForm.bind(this);
+        this.addFormCancel = this.addFormCancel.bind(this);
         
-        this.state = {renderState: this.renderServerManager};
+        this.state = {renderState: this.renderAddConnectionForm};
     }
     
-
+    private addFormCancel() {
+        this.setState({renderState: this.renderServerManager});
+    }
+    
     private addConnection() {
         this.setState({renderState: this.renderAddConnectionForm});
     }
@@ -56,7 +60,7 @@ class ServerManager extends React.Component<ServerManager.Props, ServerManager.S
         return (
             <div className='jpe-ServerManager-content'>
                 <ServerManager.Header />
-                <ServerManager.AddConnctionForm submit={this.props.serverAdded}/>
+                <ServerManager.AddConnctionForm cancel={this.addFormCancel} submit={this.props.serverAdded}/>
             </div>
         );
     }
@@ -279,8 +283,8 @@ namespace ServerManager {
                         <input className='jpe-ServerManager-input' type='text' name='url' placeholder='Enter server URL' onChange={this.handleInputChange} required/>
                         <br />
                         <div className='jpe-ServerManager-Add-footer'>
-                            <input className='jpe-ServerManager-Add-cancel-btn' type='button' value='CANCEL' />
-                            <input className='jpe-ServerManager-Add-connect-btn' type='submit' value='CONNECT' />
+                            <input className='jpe-ServerManager-Add-cancel-btn' type='button' value='CANCEL' onClick={this.props.cancel} />
+                            <input className='jpe-ServerManager-Add-connect-btn' type='submit' value='CONNECT' name='submit' />
                         </div>
                     </form>
                     <div className='jpe-ServerManager-footer'>
@@ -297,6 +301,7 @@ namespace ServerManager {
         export
         interface Props {
             submit: (server: ServerIPC.ServerDesc) => void;
+            cancel: () => void;
         }
 
         export
