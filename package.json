@@ -7,9 +7,11 @@
     "start": "electron .",
     "test": "echo \"Error: no test specified\" && exit 1",
     "clean": "rm -fr build dist",
-    "watch:tsc": "tsc -w",
+    "watch:tsc": "tsc -w -p ./src/main/tsconfig.json",
     "watch:pack": "webpack --progress --colors --watch",
-    "build": "tsc && webpack",
+    "build:main": "tsc -p ./src/main/tsconfig.json",
+    "build:browser": "webpack",
+    "build": "npm run build:main && npm run build:browser",
     "build:all": "npm run build && npm start",
     "pack": "npm run build && electron-builder --dir",
     "dist": "npm run build && electron-builder",
@@ -66,6 +68,7 @@
   },
   "homepage": "https://github.com/jupyterlab/jupyterlab_app#readme",
   "devDependencies": {
+    "awesome-typescript-loader": "^3.2.1",
     "css-loader": "^0.27.3",
     "devtron": "^1.4.0",
     "electron": "^1.6.11",
@@ -133,9 +136,13 @@
     "@jupyterlab/tooltip": "^0.8.1",
     "@jupyterlab/tooltip-extension": "^0.8.1",
     "@jupyterlab/vega2-extension": "^0.8.1",
+    "@types/react": "^15.0.38",
+    "@types/react-dom": "^15.5.1",
     "electron-debug": "^1.2.0",
     "es6-promise": "^4.1.0",
-    "font-awesome": "^4.6.3"
+    "font-awesome": "^4.6.3",
+    "react": "^15.6.1",
+    "react-dom": "^15.6.1"
   },
   "jupyterlab": {
     "extensions": [

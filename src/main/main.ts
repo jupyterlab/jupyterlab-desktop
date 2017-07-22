@@ -7,8 +7,9 @@ import {JupyterApplication} from './app';
  */
 require('electron-debug')({showDevTools: false});
 
+let jupyterApp;
+
 app.on('ready', () => {
-  let jupyterApp = new JupyterApplication();
-  jupyterApp.start();
+  jupyterApp = new JupyterApplication();
 });
 
