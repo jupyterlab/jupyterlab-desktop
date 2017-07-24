@@ -66,7 +66,7 @@ class NativeMenu extends MenuBar implements IMainMenu {
         let items = menu.items;
         let nItems = new Array<JupyterMenuItemOptions>(items.length);
         for (let i = 0, n = nItems.length; i < n; i++) {
-            nItems[i] = {command: null, type: null, label: null, submenu: null};
+            nItems[i] = {command: null, type: null, label: null, submenu: null, accelerator: null};
 
             if (items[i].type == 'command')
                 nItems[i].type = 'normal';
@@ -75,6 +75,12 @@ class NativeMenu extends MenuBar implements IMainMenu {
             nItems[i].label = items[i].label;
             nItems[i].command = items[i].command;
             nItems[i].args = items[i].args;
+
+            if (items[i].keyBinding !== null){
+                // Doesn't handle shortcuts made of multiple key codes
+                let keys = items[i].keyBinding.keys.join(",");
+                nItems[i].accelerator = keys.replace(/ /g, "+");
+            }
 
             if (items[i].submenu !== null)
                 nItems[i].submenu = this.buildNativeMenu(items[i].submenu);
