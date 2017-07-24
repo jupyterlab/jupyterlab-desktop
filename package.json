@@ -36,7 +36,8 @@
       "target": [
         "deb",
         "rpm",
-        "tar.gz"
+        "tar.gz",
+        "AppImage"
       ],
       "desktop": {
         "Category": "Science;Development;"
