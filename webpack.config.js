@@ -23,7 +23,10 @@ module.exports = {
     publicPath: '../../build/'
   },
   resolve: {
-    extensions: ['.ts', '.tsx', '.js', '.jsx']
+    extensions: ['.ts', '.tsx', '.js', '.jsx'],
+    alias: {
+      jupyterlab_app: path.resolve(__dirname)
+    }
   },
   module: {
     rules: [

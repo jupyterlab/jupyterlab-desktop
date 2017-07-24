@@ -9,16 +9,16 @@ import {
 
 import {
     ElectronJupyterLab
-} from '../electron-extension';
+} from 'jupyterlab_app/src/browser/electron-extension';
 
 import {
     JupyterApplicationIPC as AppIPC,
     JupyterServerIPC as ServerIPC
-} from '../../ipc';
+} from 'jupyterlab_app/src/ipc';
 
 import {
   Application
-} from '../app';
+} from 'jupyterlab_app/src/browser/app';
 
 import {
     StateDB
@@ -35,7 +35,7 @@ import {
 
 import {
     NativeMenu
-} from './nativemenu'
+} from 'jupyterlab_app/src/browser/utils-extension/nativemenu'
 
 import plugin from '@jupyterlab/apputils-extension';
 

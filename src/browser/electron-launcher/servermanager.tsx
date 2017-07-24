@@ -3,7 +3,7 @@
 
 import {
     JupyterServerIPC as ServerIPC
-} from '../../ipc';
+} from 'jupyterlab_app/src/ipc';
 
 import * as React from 'react';
 
