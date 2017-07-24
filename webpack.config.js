@@ -5,6 +5,9 @@ var crypto = require('crypto');
 var package_data = require('./package.json');
 var buildDir = './build';
 
+// Ensure a clear build directory.
+fs.ensureDirSync(buildDir);
+
 // Create the hash
 var hash = crypto.createHash('md5');
 hash.update(fs.readFileSync('./package.json'));
@@ -13,16 +16,21 @@ fs.writeFileSync(path.resolve(buildDir, 'hash.md5'), digest);
 
 
 module.exports = {
-  entry:  path.resolve(buildDir, 'lib/browser/index.js'),
+  entry:  './src/browser/index.tsx',
   output: {
     path: path.resolve(buildDir),
     filename: '[name].bundle.js',
     publicPath: '../../build/'
   },
+  resolve: {
+    extensions: ['.ts', '.tsx', '.js', '.jsx']
+  },
   module: {
     rules: [
       { test: /\.css$/, use: ['style-loader', 'css-loader'] },
       { test: /\.json$/, use: 'json-loader' },
+      { test: /\.ts$/, use: 'awesome-typescript-loader?configFileName=./src/browser/tsconfig.json' },
+      { test: /\.tsx$/, use: 'awesome-typescript-loader?configFileName=./src/browser/tsconfig.json' },
       { test: /\.html$/, use: 'file-loader' },
       { test: /\.(jpg|png|gif)$/, use: 'file-loader' },
       { test: /\.js.map$/, use: 'file-loader' },

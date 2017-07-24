@@ -14,17 +14,14 @@ import {
 } from '@jupyterlab/application';
 
 import {
-    JupyterMenuItemOptions
-} from '../../main/menu';
-
-import {
-    JupyterMenuChannels
+    JupyterMenuIPC as MenuIPC
 } from '../../ipc';
 
 import {
     IMainMenu
 } from '@jupyterlab/apputils';
 
+type JupyterMenuItemOptions = MenuIPC.JupyterMenuItemOptions;
 
 /**
  * Require electron from window object. This prevents webpack from trying
@@ -50,7 +47,7 @@ class NativeMenu extends MenuBar implements IMainMenu {
      */
     private registerListeners(): void {
         /* Register listener on menu bar clicks */
-        ipc.on(JupyterMenuChannels.CLICK_EVENT, (event: any, opts: JupyterMenuItemOptions) => {
+        ipc.on(MenuIPC.POST_CLICK_EVENT, (event: any, opts: JupyterMenuItemOptions) => {
             /* Execute the command associated with the click event */
             this.app.commands.execute(opts.command, opts.args);
         });
@@ -103,6 +100,6 @@ class NativeMenu extends MenuBar implements IMainMenu {
             submenu: this.buildNativeMenu(menu)
         }
         /* Append the menu to the native menu */
-        ipc.send(JupyterMenuChannels.MENU_ADD, menuItem);
+        ipc.send(MenuIPC.REQUEST_MENU_ADD, menuItem);
     }
 }

@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="90px" height="60px" viewBox="0 0 90 60" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+    <!-- Generator: Sketch 45.2 (43514) - http://www.bohemiancoding.com/sketch -->
+    <title>ic_computer_black_24px</title>
+    <desc>Created with Sketch.</desc>
+    <defs></defs>
+    <g id="Page-1" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+        <g id="Desktop-HD" transform="translate(-443.000000, -508.000000)" fill-rule="nonzero" fill="#F57C00">
+            <g id="Group-10" transform="translate(388.000000, 393.000000)">
+                <g id="Group-5" transform="translate(0.000000, 59.000000)">
+                    <g id="Group-9">
+                        <g id="ic_computer_black_24px" transform="translate(55.000000, 56.000000)">
+                            <path d="M75,52.5 C79.125,52.5 82.4625,49.125 82.4625,45 L82.5,7.5 C82.5,3.375 79.125,0 75,0 L15,0 C10.875,0 7.5,3.375 7.5,7.5 L7.5,45 C7.5,49.125 10.875,52.5 15,52.5 L0,52.5 L0,60 L90,60 L90,52.5 L75,52.5 Z M15,7.5 L75,7.5 L75,45 L15,45 L15,7.5 Z" id="Shape"></path>
+                        </g>
+                    </g>
+                </g>
+            </g>
+        </g>
+    </g>
+</svg>
