@@ -42,8 +42,8 @@ class JupyterMainMenu {
                 submenu: null
             }));
         }
-
         Menu.setApplicationMenu(this.menu);
+        this.addEditMenu();
     }
 
     /**
@@ -52,7 +52,7 @@ class JupyterMainMenu {
      * @param menu A menu being added to the menu bar. 
      */
     private setClickEvents(menu: JupyterMenuItemOptions): void {
-        if (menu.submenu === null) {
+        if (menu.submenu === null || menu.submenu === undefined) {
             menu.click = this.handleClick;
             return;
         }
@@ -110,5 +110,20 @@ class JupyterMainMenu {
      */
     private handleClick(menu: Electron.MenuItem, window: Electron.BrowserWindow): void {
         window.webContents.send(MenuIPC.POST_CLICK_EVENT, menu as JupyterMenuItemOptions);
+    }
+
+    private addEditMenu(){
+        let edit: Electron.MenuItemConstructorOptions[] = [
+                {role: 'undo'},
+                {role: 'redo'},
+                {type: 'separator'},
+                {role: 'cut'},
+                {role: 'copy'},
+                {role: 'paste'},
+                {role: 'pasteandmatchstyle'},
+                {role: 'delete'},
+                {role: 'selectall'}
+        ];
+        this.addMenu(null, {rank: 2, label: "Edit", submenu: edit});
     }
 }
