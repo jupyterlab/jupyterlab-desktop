@@ -7,7 +7,7 @@ import {
 
 import {
     JupyterWindowIPC as WindowIPC
-} from '../ipc';
+} from 'jupyterlab_app/src/ipc';
 
 import * as path from 'path';
 import * as url from 'url';
@@ -50,9 +50,9 @@ class JupyterLabWindow {
         this._window.webContents.on('did-finish-load', () =>{
             this._window.show();
         });
-
+        
         this._window.loadURL(url.format({
-            pathname: path.resolve(__dirname, '../../../src/browser/index.html'),
+            pathname: path.resolve(__dirname, '../src/browser/index.html'),
             protocol: 'file:',
             slashes: true,
             search: encodeURIComponent(JSON.stringify(options))

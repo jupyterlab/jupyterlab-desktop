@@ -1,5 +1,5 @@
 import {app} from 'electron'
-import {JupyterApplication} from './app';
+import {JupyterApplication} from 'jupyterlab_app/src/main/app';
 
 /**
  * Require debugging tools. Only

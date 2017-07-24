@@ -19,8 +19,7 @@ module.exports = {
   entry:  './src/browser/index.tsx',
   output: {
     path: path.resolve(buildDir),
-    filename: '[name].bundle.js',
-    publicPath: '../../build/'
+    filename: 'browser.bundle.js'
   },
   resolve: {
     extensions: ['.ts', '.tsx', '.js', '.jsx'],
@@ -45,7 +44,9 @@ module.exports = {
     ],
   },
   node: {
-    fs: 'empty'
+    fs: 'empty',
+    __dirname: false,
+    __filename: false
   },
   bail: true,
   devtool: 'cheap-source-map'

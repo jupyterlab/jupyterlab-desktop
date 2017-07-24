@@ -11,21 +11,21 @@ import {
 
 import {
     JupyterMainMenu
-} from './menu';
+} from 'jupyterlab_app/src/main/menu';
 
 import {
     JupyterLabWindow
-} from './window';
+} from 'jupyterlab_app/src/main/window';
 
 import {
     JupyterServerIPC as ServerIPC,
     JupyterApplicationIPC as AppIPC,
     JupyterWindowIPC as WindowIPC
-} from '../ipc';
+} from 'jupyterlab_app/src/ipc';
 
 import {
     ElectronStateDB
-} from './state';
+} from 'jupyterlab_app/src/main/state';
 
 import {
     JSONObject
