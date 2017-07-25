@@ -359,7 +359,12 @@ export class JupyterApplication {
         // windows open.
         // Need to double check this code to ensure it has expected behaviour
         app.on('activate', () => {
-            this.createWindow({state: 'local'});
+            if (this.windows.length === 0) {
+                this.createWindow({state: 'local'});
+            }
+            else {
+                this.windows[0].browserWindow.focus();
+            }
         });
 
         app.on('will-quit', (event) => {
