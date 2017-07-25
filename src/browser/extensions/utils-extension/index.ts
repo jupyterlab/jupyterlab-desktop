@@ -14,19 +14,11 @@ import {
 import {
     JupyterApplicationIPC as AppIPC,
     JupyterServerIPC as ServerIPC
-<<<<<<< fd653b8eed0dd4a18faa5d882f5782e606397c5c:src/browser/extensions/utils-extension/index.ts
 } from 'jupyterlab_app/src/ipc';
 
 import {
   Application
 } from 'jupyterlab_app/src/browser/app';
-=======
-} from '../../../ipc';
-
-import {
-  Application
-} from '../../app';
->>>>>>> Change to frameless window:src/browser/extensions/utils-extension/index.ts
 
 import {
     StateDB

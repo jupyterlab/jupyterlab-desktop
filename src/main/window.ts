@@ -37,13 +37,9 @@ class JupyterLabWindow {
             y: options.y,
             minWidth: 400,
             minHeight: 300,
-<<<<<<< fd653b8eed0dd4a18faa5d882f5782e606397c5c
-            show: false
-=======
             frame: false,
             show: false,
             title: 'JupyterLab'
->>>>>>> Change to frameless window
         });
         
         ipcMain.on(WindowIPC.REQUEST_STATE_UPDATE, (evt: any, arg: any) => {

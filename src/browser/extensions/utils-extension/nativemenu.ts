@@ -15,11 +15,7 @@ import {
 
 import {
     JupyterMenuIPC as MenuIPC
-<<<<<<< fd653b8eed0dd4a18faa5d882f5782e606397c5c:src/browser/extensions/utils-extension/nativemenu.ts
 } from 'jupyterlab_app/src/ipc';
-=======
-} from '../../../ipc';
->>>>>>> Change to frameless window:src/browser/extensions/utils-extension/nativemenu.ts
 
 import {
     IMainMenu
