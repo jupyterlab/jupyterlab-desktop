@@ -9,7 +9,7 @@ import {
 
 import {
     ElectronJupyterLab
-} from 'jupyterlab_app/src/browser/electron-extension';
+} from 'jupyterlab_app/src/browser/extensions/electron-extension';
 
 import {
     JupyterApplicationIPC as AppIPC,
@@ -35,7 +35,7 @@ import {
 
 import {
     NativeMenu
-} from 'jupyterlab_app/src/browser/utils-extension/nativemenu'
+} from './nativemenu'
 
 import plugin from '@jupyterlab/apputils-extension';
 

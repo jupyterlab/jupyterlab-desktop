@@ -1,7 +1,7 @@
 
 let jupyterlab = [
-    require("jupyterlab_app/src/browser/electron-extension"),
-    require("jupyterlab_app/src/browser/utils-extension"),
+    require("./electron-extension"),
+    require("./utils-extension"),
     require("@jupyterlab/chatbox-extension"),
     require("@jupyterlab/codemirror-extension"),
     require("@jupyterlab/completer-extension"),
