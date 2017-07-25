@@ -9,37 +9,7 @@ import {
   ICommandPalette
 } from '@jupyterlab/apputils';
 
-import {
-  each
-} from '@phosphor/algorithm';
-
-import {
-  Widget
-} from '@phosphor/widgets';
-
-
 import plugins from '@jupyterlab/application-extension';
-
-/**
- * JupyterLab is the main application class. It is instantiated once and shared.
- */
-export
-class ElectronJupyterLab extends JupyterLab {
-  /**
-   * Construct a new JupyterLab object.
-   */
-  constructor(options: JupyterLab.IOptions = {}) {
-    super();
-
-    /* Remove uneeded panels */
-    // each(this.shell.layout.iter(), (widget: Widget) => {
-    //     if (widget.id == 'jp-top-panel') {
-    //         widget.parent = null;
-    //         return false;
-    //     }
-    // });
-  }
-}
 
 /**
  * The command IDs used by the application plugin.

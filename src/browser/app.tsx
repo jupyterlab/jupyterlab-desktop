@@ -10,8 +10,8 @@ import {
 } from '@jupyterlab/coreutils';
 
 import {
-    ElectronJupyterLab
-} from 'jupyterlab_app/src/browser/extensions/electron-extension';
+    JupyterLab
+} from '@jupyterlab/application';
 
 import {
     StateDB
@@ -39,7 +39,7 @@ let ipcRenderer = (window as any).require('electron').ipcRenderer;
 export
 class Application extends React.Component<Application.Props, Application.State> {
     
-    private lab: ElectronJupyterLab;
+    private lab: JupyterLab;
 
     private ignorePlugins: string[];
 
@@ -133,7 +133,7 @@ class Application extends React.Component<Application.Props, Application.State> 
                 version = version.slice(1);
             }
 
-            this.lab = new ElectronJupyterLab({
+            this.lab = new JupyterLab({
                 namespace: namespace,
                 name: name,
                 version: version,
@@ -232,7 +232,6 @@ class Application extends React.Component<Application.Props, Application.State> 
 
         return (
             <div className='jpe-body'>
-                <TitleBar clicked={() => {}} />
                 <div id='jpe-lab-root' />
                 {content}
             </div>

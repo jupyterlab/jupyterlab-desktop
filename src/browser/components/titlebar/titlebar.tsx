@@ -12,23 +12,12 @@ export namespace TitleBar {
 }
 
 export
-class TitleBar extends React.Component<TitleBar.Props, undefined> {
-
-    constructor(props: TitleBar.Props) {
-        super(props);
-    }
-
-    private onClick(event: any) {
-        console.log(event);
-    }
-
-    render() {
-        return (
-            <div className="jpe-TitleBar-body">
-                <div className='jpe-TitleBar-button jpe-TitleBar-close' onClick={this.onClick} />
-                <div className='jpe-TitleBar-button jpe-TitleBar-min' onClick={this.onClick} />
-                <div className='jpe-TitleBar-button jpe-TitleBar-max' onClick={this.onClick} />
-            </div>
-        );
-    }
+function TitleBar(props: TitleBar.Props) {
+    return (
+        <div className="jpe-TitleBar-body">
+            <div className='jpe-TitleBar-button jpe-TitleBar-close' onClick={() => {props.clicked('close')}} />
+            <div className='jpe-TitleBar-button jpe-TitleBar-min' onClick={() => {props.clicked('minimize')}} />
+            <div className='jpe-TitleBar-button jpe-TitleBar-max' onClick={() => {props.clicked('maximize')}} />
+        </div>
+    );
 }
