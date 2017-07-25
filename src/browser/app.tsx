@@ -11,7 +11,7 @@ import {
 
 import {
     ElectronJupyterLab
-} from './electron-extension';
+} from 'jupyterlab_app/src/browser/electron-extension';
 
 import {
     StateDB
@@ -20,14 +20,14 @@ import {
 import {
     JupyterServerIPC as ServerIPC,
     JupyterWindowIPC as WindowIPC
-} from '../ipc';
+} from 'jupyterlab_app/src/ipc';
 
 import {
     SplashScreen, ServerManager
-} from './electron-launcher';
+} from 'jupyterlab_app/src/browser/electron-launcher';
 
 import * as React from 'react';
-import extensions from './extensions';
+import extensions from 'jupyterlab_app/src/browser/extensions';
 
 /**
  * Use window.require to prevent webpack

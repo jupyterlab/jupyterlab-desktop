@@ -1,18 +1,18 @@
 
 import 'font-awesome/css/font-awesome.min.css';
 import '@jupyterlab/theming/style/index.css';
-import './css/main.css';
+import 'jupyterlab_app/src/browser/css/main.css';
 
 import {
     Application
-} from './app';
+} from 'jupyterlab_app/src/browser/app';
 
 import * as React from 'react';
 import * as ReactDOM from 'react-dom';
 
 import {
     JupyterWindowIPC as WindowIPC
-} from '../ipc';
+} from 'jupyterlab_app/src/ipc';
 
 function main() : void {
     let optionsStr = decodeURIComponent((global as any).location.search);

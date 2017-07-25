@@ -1,0 +1,20 @@
+{
+  "compilerOptions": {
+    "declaration": false,
+    "noImplicitAny": true,
+    "noEmitOnError": true,
+    "noUnusedLocals": true,
+    "module": "commonjs",
+    "moduleResolution": "node",
+    "jsx": "react",
+    "target": "es5",
+    "lib": ["es5", "es2015.collection", "es2015.promise", "dom"],
+    "baseUrl": ".",
+    "paths": {
+        "jupyterlab_app/*": ["./*"]
+    },
+    "include": [
+      "./src/**/*.*"
+    ]
+  }
+}

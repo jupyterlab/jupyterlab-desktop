@@ -19,18 +19,20 @@ module.exports = {
   entry:  './src/browser/index.tsx',
   output: {
     path: path.resolve(buildDir),
-    filename: '[name].bundle.js',
-    publicPath: '../../build/'
+    filename: 'browser.bundle.js'
   },
   resolve: {
-    extensions: ['.ts', '.tsx', '.js', '.jsx']
+    extensions: ['.ts', '.tsx', '.js', '.jsx'],
+    alias: {
+      jupyterlab_app: path.resolve(__dirname)
+    }
   },
   module: {
     rules: [
       { test: /\.css$/, use: ['style-loader', 'css-loader'] },
       { test: /\.json$/, use: 'json-loader' },
-      { test: /\.ts$/, use: 'awesome-typescript-loader?configFileName=./src/browser/tsconfig.json' },
-      { test: /\.tsx$/, use: 'awesome-typescript-loader?configFileName=./src/browser/tsconfig.json' },
+      { test: /\.ts$/, use: 'awesome-typescript-loader?configFileName=./tsconfig.json' },
+      { test: /\.tsx$/, use: 'awesome-typescript-loader?configFileName=./tsconfig.json' },
       { test: /\.html$/, use: 'file-loader' },
       { test: /\.(jpg|png|gif)$/, use: 'file-loader' },
       { test: /\.js.map$/, use: 'file-loader' },
@@ -42,7 +44,9 @@ module.exports = {
     ],
   },
   node: {
-    fs: 'empty'
+    fs: 'empty',
+    __dirname: false,
+    __filename: false
   },
   bail: true,
   devtool: 'cheap-source-map'
