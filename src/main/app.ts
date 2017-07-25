@@ -2,7 +2,7 @@
 // Distributed under the terms of the Modified BSD License.
 
 import { 
-    app, ipcMain, dialog
+    app, ipcMain, dialog, BrowserWindow
 } from 'electron';
 
 import {
@@ -362,7 +362,7 @@ export class JupyterApplication {
             if (this.windows.length === 0) {
                 this.createWindow({state: 'local'});
             }
-            else {
+            else if (BrowserWindow.getFocusedWindow() === null){
                 this.windows[0].browserWindow.focus();
             }
         });
