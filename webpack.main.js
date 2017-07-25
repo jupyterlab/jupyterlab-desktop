@@ -33,9 +33,9 @@ module.exports = {
     rules: [
       { test: /\.css$/, use: ['style-loader', 'css-loader'] },
       { test: /\.json$/, use: 'json-loader' },
-      { test: /\.ts$/, use: 'awesome-typescript-loader?configFileName=./src/main/tsconfig.json' },
-      { test: /\.tsx$/, use: 'awesome-typescript-loader?configFileName=./src/main/tsconfig.json' },
-      { test: /\.html$/, use: 'file-loader' },
+      { test: /\.ts$/, use: 'awesome-typescript-loader?configFileName=./tsconfig.json' },
+      { test: /\.tsx$/, use: 'awesome-typescript-loader?configFileName=./tsconfig.json' },
+      { test: /\.html$/, use: 'file-loader?name=[name].[ext]' },
       { test: /\.(jpg|png|gif)$/, use: 'file-loader' },
       { test: /\.js.map$/, use: 'file-loader' },
       { test: /\.woff2(\?v=\d+\.\d+\.\d+)?$/, use: 'url-loader?limit=10000&mimetype=application/font-woff' },

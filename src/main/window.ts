@@ -11,6 +11,7 @@ import {
 
 import * as path from 'path';
 import * as url from 'url';
+import 'jupyterlab_app/src/browser/index.html';
 
 
 export
@@ -36,8 +37,7 @@ class JupyterLabWindow {
             y: options.y,
             minWidth: 400,
             minHeight: 300,
-            show: false,
-            title: 'JupyterLab'
+            show: false
         });
         
         ipcMain.on(WindowIPC.REQUEST_STATE_UPDATE, (evt: any, arg: any) => {
@@ -52,7 +52,7 @@ class JupyterLabWindow {
         });
         
         this._window.loadURL(url.format({
-            pathname: path.resolve(__dirname, '../src/browser/index.html'),
+            pathname: path.resolve(__dirname, "index.html"),
             protocol: 'file:',
             slashes: true,
             search: encodeURIComponent(JSON.stringify(options))
