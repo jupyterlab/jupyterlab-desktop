@@ -11,7 +11,7 @@ import {
 
 import {
     ElectronJupyterLab
-} from 'jupyterlab_app/src/browser/electron-extension';
+} from 'jupyterlab_app/src/browser/extensions/electron-extension';
 
 import {
     StateDB
@@ -24,7 +24,7 @@ import {
 
 import {
     SplashScreen, ServerManager
-} from 'jupyterlab_app/src/browser/electron-launcher';
+} from 'jupyterlab_app/src/browser/components';
 
 import * as React from 'react';
 import extensions from 'jupyterlab_app/src/browser/extensions';
