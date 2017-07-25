@@ -32,12 +32,12 @@ class ElectronJupyterLab extends JupyterLab {
     super();
 
     /* Remove uneeded panels */
-    each(this.shell.layout.iter(), (widget: Widget) => {
-        if (widget.id == 'jp-top-panel') {
-            widget.parent = null;
-            return false;
-        }
-    });
+    // each(this.shell.layout.iter(), (widget: Widget) => {
+    //     if (widget.id == 'jp-top-panel') {
+    //         widget.parent = null;
+    //         return false;
+    //     }
+    // });
   }
 }
 

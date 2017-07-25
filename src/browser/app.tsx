@@ -76,7 +76,10 @@ class Application extends React.Component<Application.Props, Application.State> 
             PageConfig.setOption("baseUrl", this.server.url);
             try{
                 labReady.then(() => {
-                    this.lab.start({ "ignorePlugins": this.ignorePlugins});
+                    this.lab.start({
+                        "ignorePlugins": this.ignorePlugins,
+                        hostID: 'jpe-lab-root'
+                    });
                     (this.refs.splash as SplashScreen).fadeSplashScreen();
                 });
             }
@@ -185,7 +188,10 @@ class Application extends React.Component<Application.Props, Application.State> 
         PageConfig.setOption('baseUrl', server.url);
         PageConfig.setOption('token', server.token);
         try {
-            this.lab.start({ "ignorePlugins": this.ignorePlugins});
+            this.lab.start({
+                "ignorePlugins": this.ignorePlugins,
+                hostID: 'jpe-lab-root'
+            });
         }
         catch (e){
             console.log(e);
@@ -222,7 +228,15 @@ class Application extends React.Component<Application.Props, Application.State> 
     }
 
     render() {
-        return this.state.renderState();
+        let content = this.state.renderState();
+
+        return (
+            <div className='jpe-body'>
+                <TitleBar clicked={() => {}} />
+                <div id='jpe-lab-root' />
+                {content}
+            </div>
+        );
     }
 }
 
