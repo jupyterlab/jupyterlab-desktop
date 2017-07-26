@@ -57,6 +57,15 @@ namespace JupyterWindowIPC {
     const REQUEST_STATE_UPDATE = 'window-state-update';
 
     export
+    const REQUEST_WINDOW_CLOSE = 'window-close';
+
+    export
+    const REQUEST_WINDOW_MINIMIZE = 'window-minimize';
+
+    export
+    const REQUEST_WINDOW_MAXIMIZE = 'window-maximize'
+
+    export
     interface WindowOptions extends JSONObject{
         state: 'new' | 'local' | 'remote';
         platform?: string;

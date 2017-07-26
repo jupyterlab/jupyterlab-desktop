@@ -49,6 +49,18 @@ class JupyterLabWindow {
             }
         })
         
+        ipcMain.on(WindowIPC.REQUEST_WINDOW_CLOSE, (evt: any, arg: any) => {
+            this._window.close();
+        });
+
+        ipcMain.on(WindowIPC.REQUEST_WINDOW_MINIMIZE, (evt: any, arg: any) => {
+            this._window.minimize();
+        });
+
+        ipcMain.on(WindowIPC.REQUEST_WINDOW_MAXIMIZE, (evt: any, arg: any) => {
+            this._window.maximize();
+        });
+
         this._window.webContents.on('did-finish-load', () =>{
             this._window.show();
         });

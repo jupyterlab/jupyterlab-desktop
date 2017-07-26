@@ -23,7 +23,7 @@ import {
 } from 'jupyterlab_app/src/ipc';
 
 import {
-    SplashScreen, ServerManager
+    SplashScreen, ServerManager, TitleBar
 } from 'jupyterlab_app/src/browser/components';
 
 import * as React from 'react';
@@ -76,10 +76,7 @@ class Application extends React.Component<Application.Props, Application.State> 
             PageConfig.setOption("baseUrl", this.server.url);
             try{
                 labReady.then(() => {
-                    this.lab.start({
-                        "ignorePlugins": this.ignorePlugins,
-                        hostID: 'jpe-lab-root'
-                    });
+                    this.lab.start({"ignorePlugins": this.ignorePlugins});
                     (this.refs.splash as SplashScreen).fadeSplashScreen();
                 });
             }
@@ -188,10 +185,7 @@ class Application extends React.Component<Application.Props, Application.State> 
         PageConfig.setOption('baseUrl', server.url);
         PageConfig.setOption('token', server.token);
         try {
-            this.lab.start({
-                "ignorePlugins": this.ignorePlugins,
-                hostID: 'jpe-lab-root'
-            });
+            this.lab.start({"ignorePlugins": this.ignorePlugins});
         }
         catch (e){
             console.log(e);
@@ -207,9 +201,14 @@ class Application extends React.Component<Application.Props, Application.State> 
         let servers: ServerIPC.ServerDesc[] = [{id: this.nextServerId++, name: 'Local', type: 'local'}];
         servers.concat(this.state.remotes.servers);
 
-        return <ServerManager servers={servers} 
+        return (
+            <div className='jpe-content'>
+                <TitleBar clicked={() => {console.log('clicked')}}/>
+                <ServerManager servers={servers} 
                               serverSelected={this.serverSelected}
                               serverAdded={this.connectionAdded} />;
+            </div>
+        );
     }
 
     private renderSplash() {
@@ -217,9 +216,12 @@ class Application extends React.Component<Application.Props, Application.State> 
          * splash screen
          */
         return (
-            <SplashScreen  ref='splash' finished={() => {
-                this.setState({renderState: this.renderLab});}
-            } />
+            <div className='jpe-content'>
+                <TitleBar clicked={() => {console.log('clicked')}}/>
+                <SplashScreen  ref='splash' finished={() => {
+                    this.setState({renderState: this.renderLab});}
+                } />
+            </div>
         );
     }
 
@@ -232,7 +234,6 @@ class Application extends React.Component<Application.Props, Application.State> 
 
         return (
             <div className='jpe-body'>
-                <div id='jpe-lab-root' />
                 {content}
             </div>
         );
