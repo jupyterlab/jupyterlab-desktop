@@ -6,8 +6,12 @@ import {
 } from '@jupyterlab/application';
 
 import {
-  ICommandPalette
+  ICommandPalette, IMainMenu
 } from '@jupyterlab/apputils';
+
+import {
+    Menu
+} from '@phosphor/widgets';
 
 import plugins from '@jupyterlab/application-extension';
 
@@ -36,9 +40,30 @@ namespace CommandIDs {
  */
 const mainPlugin: JupyterLabPlugin<void> = {
   id: 'jupyter.extensions.main',
-  requires: [ICommandPalette],
-  activate: (app: JupyterLab, palette: ICommandPalette) => {
+  requires: [ICommandPalette, IMainMenu],
+  activate: (app: JupyterLab, palette: ICommandPalette, menu: IMainMenu) => {
     addCommands(app, palette);
+
+    // Add the edit menu
+    const { commands } = app;
+    const editMenu = new Menu({ commands });
+    editMenu.title.label = 'Edit';
+    [
+      {args: {role: 'undo'}},
+      {args: {role: 'redo'}},
+      {args: {type: 'separator'}},
+      {args: {role: 'cut'}},
+      {args: {role: 'copy'}},
+      {args: {role: 'paste'}},
+      {args: {role: 'pasteandmatchstyle'}},
+      {args: {role: 'delete'}},
+      {args: {role: 'selectall'}}
+    ].forEach((item: Menu.IItemOptions) => {
+      editMenu.addItem(item);
+    })
+
+    menu.addMenu(editMenu, {rank: 5});
+
   },
   autoStart: true
 };
