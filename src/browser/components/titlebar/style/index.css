@@ -6,7 +6,7 @@
 :root {
     --jpe-TitleBar-height-linux: 15px;
     --jpe-TitleBar-height-mac: 15px;
-    --jpe-TitleBar-height-windows: 25px;
+    --jpe-TitleBar-height-windows: var(--jp-private-menubar-height);
 }
 
 /* Set top panel height based on the platform */

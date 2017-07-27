@@ -205,7 +205,7 @@ class Application extends React.Component<Application.Props, Application.State> 
 
         return (
             <div className='jpe-content'>
-                <TitleBar clicked={() => {console.log('clicked')}} uiState={this.props.options.uiState} />
+                <TitleBar uiState={this.props.options.uiState} />
                 <ServerManager servers={servers} 
                               serverSelected={this.serverSelected}
                               serverAdded={this.connectionAdded} />;
@@ -219,8 +219,7 @@ class Application extends React.Component<Application.Props, Application.State> 
          */
         return (
             <div className='jpe-content'>
-                <TitleBar clicked={() => {console.log('clicked')}} uiState={this.props.options.uiState} />
-                <SplashScreen  ref='splash' finished={() => {
+                <SplashScreen  ref='splash' uiState={this.props.options.uiState} finished={() => {
                     this.setState({renderState: this.renderLab});}
                 } />
             </div>

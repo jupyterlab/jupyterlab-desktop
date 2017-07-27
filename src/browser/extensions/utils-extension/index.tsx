@@ -10,7 +10,6 @@ import {
 import {
     JupyterApplicationIPC as AppIPC,
     JupyterServerIPC as ServerIPC,
-    JupyterWindowIPC as WindowIPC,
 } from 'jupyterlab_app/src/ipc';
 
 import {
@@ -45,7 +44,6 @@ import * as React from 'react';
 import * as ReactDOM from 'react-dom';
 import plugin from '@jupyterlab/apputils-extension';
 
-let ipc = (window as any).require('electron').ipcRenderer;
 
 /**
  * Use window.require to prevent webpack
@@ -118,15 +116,8 @@ function createServerManager(app: ElectronJupyterLab, palette: ICommandPalette,
 function buildTitleBar(app: ElectronJupyterLab): Widget {
     let titleBar = new Widget();
     ReactDOM.render(
-        <TitleBar uiState={app.info.uiState} clicked={(type: string) => {
-            if (type == 'close') {
-                ipc.send(WindowIPC.REQUEST_WINDOW_CLOSE);
-            } else if (type == 'minimize') {
-                ipc.send(WindowIPC.REQUEST_WINDOW_MINIMIZE);
-            } else {
-                ipc.send(WindowIPC.REQUEST_WINDOW_MAXIMIZE);
-            }
-        }}/>, titleBar.node
+        <TitleBar uiState={app.info.uiState} />,
+        titleBar.node
     );
     return titleBar;
 }
