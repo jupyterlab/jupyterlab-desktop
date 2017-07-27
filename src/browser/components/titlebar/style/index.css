@@ -45,18 +45,18 @@
     display: flex;
     align-items: center;
     float: left;
+    padding: 0 3px 0 3px;
 }
 
 .jpe-TitleBar-button-container.jpe-mod-windows {
     float: right;
-    margin-right: 10px;
 }
 
 .jpe-TitleBar-button {
     border-radius: 50%;
-    height: 10px;
-    width: 10px;
-    margin-left: 10px;
+    height: 7px;
+    width: 7px;
+    margin: 0 3px 0 3px;
     -webkit-app-region: no-drag;
 }
 
