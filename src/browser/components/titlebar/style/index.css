@@ -4,11 +4,25 @@
 |----------------------------------------------------------------------------*/
 
 :root {
-    --jp-private-menubar-height: 15px;
+    --jpe-TitleBar-height-linux: 15px;
+    --jpe-TitleBar-height-mac: 15px;
+    --jpe-TitleBar-height-windows: 25px;
 }
 
 #jp-top-panel {
     display: flex;
+}
+
+#jp-top-panel.jpe-mod-linux {
+    height: var(--jpe-TitleBar-height-linux);
+}
+
+#jp-top-panel.jpe-mod-mac {
+    height: var(--jpe-TitleBar-height-mac);
+}
+
+#jp-top-panel.jpe-mod-windows {
+    height: var(--jpe-TitleBar-height-windows);
 }
 
 #jpe-TitleBar-widget {
@@ -17,7 +31,6 @@
 
 .jpe-TitleBar-body {
     position: relative;
-    width: 100%;
     height: var(--jp-private-menubar-height);
     background-color: #ffffff;
     z-index: 1;

@@ -13,6 +13,14 @@ import {
   JupyterLabWindow
 } from 'jupyterlab_app/src/main/window';
 
+import {
+  each
+} from '@phosphor/algorithm';
+
+import {
+  Widget
+} from '@phosphor/widgets';
+
 import plugins from '@jupyterlab/application-extension';
 
 /**
@@ -42,6 +50,12 @@ class ElectronJupyterLab extends JupyterLab {
 
   constructor(options: ElectronJupyterLab.IOptions) {
     super(options);
+
+    // Make top panel modifiable based on the platform
+    each(this.shell.layout.iter(), (widget: Widget) => {
+      if (widget.id == 'jp-top-panel')
+        widget.addClass('jpe-mod-' + options.uiState)
+    });
 
     this._electronInfo = {
       name: options.name || 'JupyterLab',
