@@ -53,8 +53,8 @@ class SplashScreen extends React.Component<SplashScreen.Props, SplashScreen.Stat
 
         return (
             <div className="jpe-SplashScreen-body" style={style} onAnimationEnd={fadeAnim}>
+                <TitleBar uiState={this.props.uiState} />
                 <div className="jpe-SplashScreen-content">
-                    <TitleBar uiState={this.props.uiState} />
                     <div className="jpe-SplashScreen-main-logo"></div>
                     <Moon name={'moon1'} orbitComplete={orbitComplete}/>
                     <Moon name={'moon2'}/>
