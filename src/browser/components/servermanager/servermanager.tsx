@@ -2,11 +2,14 @@
 // Distributed under the terms of the Modified BSD License.
 
 import {
-    JupyterServerIPC as ServerIPC
+    JupyterServerIPC as ServerIPC,
+    JupyterWindowIPC as WindowIPC
 } from 'jupyterlab_app/src/ipc';
 
 import * as React from 'react';
 
+
+let ipc = (window as any).require('electron').ipcRenderer;
 
 /**
  * The main ServerManager component. This component
@@ -23,9 +26,10 @@ class ServerManager extends React.Component<ServerManager.Props, ServerManager.S
         this.manageConnections = this.manageConnections.bind(this);
         this.renderServerManager = this.renderServerManager.bind(this);
         this.renderAddConnectionForm = this.renderAddConnectionForm.bind(this);
+        this.serverAdded = this.serverAdded.bind(this);
         this.addFormCancel = this.addFormCancel.bind(this);
         
-        this.state = {renderState: this.renderAddConnectionForm};
+        this.state = {renderState: this.renderAddConnectionForm, addedServer: null};
     }
     
     private addFormCancel() {
@@ -38,6 +42,10 @@ class ServerManager extends React.Component<ServerManager.Props, ServerManager.S
 
     private manageConnections() {
         console.log('Manage connections');
+    }
+
+    private serverAdded(server: ServerIPC.ServerDesc) {
+        ipc.send(WindowIPC.REQUEST_AUTHENTICATION_WINDOW, {url: server.url});
     }
 
     private renderServerManager() {
@@ -60,7 +68,7 @@ class ServerManager extends React.Component<ServerManager.Props, ServerManager.S
         return (
             <div className='jpe-ServerManager-content'>
                 <ServerManager.Header />
-                <ServerManager.AddConnctionForm cancel={this.addFormCancel} submit={this.props.serverAdded}/>
+                <ServerManager.AddConnctionForm cancel={this.addFormCancel} submit={this.serverAdded}/>
             </div>
         );
     }
@@ -98,6 +106,7 @@ namespace ServerManager {
     export
     interface State {
         renderState: () => any;
+        addedServer: ServerIPC.ServerDesc;
     }
     
     /**
@@ -243,7 +252,7 @@ namespace ServerManager {
 
         constructor(props: AddConnctionForm.Props) {
             super(props);
-            this.state = {url: null, name: null, token: null};
+            this.state = {url: null, name: null};
 
             this.handleInputChange = this.handleInputChange.bind(this);
             this.handleSubmit = this.handleSubmit.bind(this);
@@ -251,7 +260,7 @@ namespace ServerManager {
 
         handleSubmit(event: any) {
             event.preventDefault();
-            if (!this.state.url || !this.state.name || !this.state.token) {
+            if (!this.state.url || !this.state.name) {
                 return;
             }
 
@@ -260,7 +269,6 @@ namespace ServerManager {
                 type: 'remote',
                 url: this.state.url,
                 name: this.state.name,
-                token: this.state.token
             });
         }
 
@@ -308,8 +316,7 @@ namespace ServerManager {
         interface State {
             url: string;
             name: string;
-            token: string;
         }
     }
-
+    
 }

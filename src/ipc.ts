@@ -16,7 +16,7 @@ import {
 } from 'jupyterlab_app/src/main/menu';
 
 import {
-    JupyterLabWindow
+    JupyterLabWindow, AuthenticationWindow
 } from 'jupyterlab_app/src/main/window';
 
 export
@@ -61,6 +61,7 @@ namespace JupyterWindowIPC {
     const REQUEST_STATE_UPDATE = 'window-state-update';
 
     export
+<<<<<<< 54723ccbcd37e9b071ba2fd54fafa34363fd39b8
     interface WindowOptions extends JSONObject{
         state: 'new' | 'local' | 'remote';
         platform?: NodeJS.Platform;
@@ -71,6 +72,24 @@ namespace JupyterWindowIPC {
         height?: number;
         serverId?: number;
     }
+=======
+    const REQUEST_WINDOW_CLOSE = 'window-close';
+
+    export
+    const REQUEST_WINDOW_MINIMIZE = 'window-minimize';
+
+    export
+    const REQUEST_WINDOW_MAXIMIZE = 'window-maximize';
+
+    export
+    const REQUEST_AUTHENTICATION_WINDOW = 'window-auhtenticate-server';
+
+    export
+    interface AuthenticationWindowOptions extends JSONObject, AuthenticationWindow.IOptions{}
+
+    export
+    interface WindowOptions extends JSONObject, JupyterLabWindow.IInfo{}
+>>>>>>> Add new window for server authentication
 }
 
 export

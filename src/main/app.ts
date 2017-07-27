@@ -2,7 +2,7 @@
 // Distributed under the terms of the Modified BSD License.
 
 import { 
-    app, ipcMain, dialog, BrowserWindow
+    app, ipcMain, dialog, BrowserWindow, session
 } from 'electron';
 
 import {
@@ -14,7 +14,7 @@ import {
 } from 'jupyterlab_app/src/main/menu';
 
 import {
-    JupyterLabWindow
+    JupyterLabWindow, AuthenticationWindow
 } from 'jupyterlab_app/src/main/window';
 
 import {
@@ -304,6 +304,8 @@ export class JupyterApplication {
 
     private shortcutManager: KeyboardShortcutManager;
 
+    private authenticationWindow: AuthenticationWindow;
+
     /**
      * Construct the Jupyter application
      */
@@ -320,7 +322,7 @@ export class JupyterApplication {
             })
     }
 
-    private createWindow(state: WindowIPC.WindowOptions) {
+    private createWindow(state: JupyterLabWindow.IOptions) {
 
         let uiState: JupyterLabWindow.UIState;
         for (let arg of process.argv) {
@@ -355,8 +357,8 @@ export class JupyterApplication {
             // If this is the last open window, save the state so we can reopen it
             if (this._windows.length == 1) {
                 if (!this.appState) this.appState = {windows: null};
-                this.appState.windows = this._windows.map((w: JupyterLabWindow) => {
-                    return w.windowState;
+                this.appState.windows = this.windows.map((w: JupyterLabWindow) => {
+                    return w.info as WindowIPC.WindowOptions;
                 });
             }
         });
@@ -415,7 +417,24 @@ export class JupyterApplication {
         
         ipcMain.on(AppIPC.REQUEST_ADD_SERVER, (event: any, arg: any) => {
             this.createWindow({state: 'new'});
+<<<<<<< f8bfc87c8c3ed5b76196bea3534f528dbe55278b
         });
+=======
+
+
+        });
+
+        ipcMain.on(WindowIPC.REQUEST_AUTHENTICATION_WINDOW, (evt: Electron.Event, data: WindowIPC.AuthenticationWindowOptions) => {
+            this.authenticationWindow = new AuthenticationWindow(data as AuthenticationWindow.IOptions);
+
+            session.defaultSession.cookies.on('changed', () => {
+                session.defaultSession.cookies.get({url: data.url}, (event: Error, cookies: Electron.Cookies[]) => {
+                    console.log(cookies);
+                    console.log('In get function');
+                });
+            });
+        })
+>>>>>>> Add new window for server authentication
         
         ipcMain.on(AppIPC.REQUEST_OPEN_CONNECTION, (event: any, arg: ServerIPC.ServerDesc) => {
             if (arg.type == 'remote')
