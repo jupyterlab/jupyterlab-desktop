@@ -65,13 +65,15 @@ class NativeMenu extends MenuBar implements IMainMenu {
     private buildNativeMenu(menu: Menu): JupyterMenuItemOptions[] {
         let items = menu.items;
         let nItems = new Array<JupyterMenuItemOptions>(items.length);
-        for (let i = 0, n = nItems.length; i < n; i++) {
+        for (let i = 0; i < items.length; i++) {
             nItems[i] = {command: null, type: null, label: null, submenu: null, accelerator: null};
 
-            if (items[i].type == 'command')
+            if (items[i].type == 'command') {
                 nItems[i].type = 'normal';
-            else
+            }
+            else {
                 nItems[i].type = (items[i].type as 'normal' | 'submenu' | 'separator');
+            }
             nItems[i].label = items[i].label;
             nItems[i].command = items[i].command;
             nItems[i].args = items[i].args;

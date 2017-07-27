@@ -43,7 +43,6 @@ class JupyterMainMenu {
             }));
         }
         Menu.setApplicationMenu(this.menu);
-        this.addEditMenu();
     }
 
     /**
@@ -110,20 +109,5 @@ class JupyterMainMenu {
      */
     private handleClick(menu: Electron.MenuItem, window: Electron.BrowserWindow): void {
         window.webContents.send(MenuIPC.POST_CLICK_EVENT, menu as JupyterMenuItemOptions);
-    }
-
-    private addEditMenu(){
-        let edit: Electron.MenuItemConstructorOptions[] = [
-                {role: 'undo'},
-                {role: 'redo'},
-                {type: 'separator'},
-                {role: 'cut'},
-                {role: 'copy'},
-                {role: 'paste'},
-                {role: 'pasteandmatchstyle'},
-                {role: 'delete'},
-                {role: 'selectall'}
-        ];
-        this.addMenu(null, {rank: 2, label: "Edit", submenu: edit});
     }
 }
