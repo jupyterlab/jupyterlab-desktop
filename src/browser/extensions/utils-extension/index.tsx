@@ -4,17 +4,17 @@
 |----------------------------------------------------------------------------*/
 
 import {
-  ICommandPalette, IMainMenu
+  ICommandPalette, IMainMenu, MainMenu
 } from '@jupyterlab/apputils';
 
 import {
     JupyterApplicationIPC as AppIPC,
     JupyterServerIPC as ServerIPC,
-    JupyterWindowIPC as WindowIPC
+    JupyterWindowIPC as WindowIPC,
 } from 'jupyterlab_app/src/ipc';
 
 import {
-  Application
+    Application
 } from 'jupyterlab_app/src/browser/app';
 
 import {
@@ -22,13 +22,16 @@ import {
 } from '@jupyterlab/coreutils';
 
 import {
-  Menu, Widget
+    Menu, Widget
 } from '@phosphor/widgets';
 
 import {
-  JupyterLab, 
-  JupyterLabPlugin
+    JupyterLabPlugin
 } from '@jupyterlab/application';
+
+import {
+    ElectronJupyterLab
+} from 'jupyterlab_app/src/browser/extensions/electron-extension';
 
 import {
     NativeMenu
@@ -61,7 +64,7 @@ namespace CommandIDs {
 const serverManagerPlugin: JupyterLabPlugin<void> = {
   id: 'jupyter.extensions.server-manager',
   requires: [ICommandPalette, IMainMenu],
-  activate: (app: JupyterLab, palette: ICommandPalette, menu: IMainMenu) => {
+  activate: (app: ElectronJupyterLab, palette: ICommandPalette, menu: IMainMenu) => {
     let serverState = new StateDB({namespace: Application.STATE_NAMESPACE});
     // Always insert a local server
     let servers: ServerIPC.ServerDesc[] = [{id: null, name: 'Local', type: 'local'}];
@@ -84,7 +87,7 @@ const serverManagerPlugin: JupyterLabPlugin<void> = {
   autoStart: true
 }
 
-function createServerManager(app: JupyterLab, palette: ICommandPalette,
+function createServerManager(app: ElectronJupyterLab, palette: ICommandPalette,
                             menu: IMainMenu, servers: ServerIPC.ServerDesc[]) {
     
     app.commands.addCommand(CommandIDs.activateServerManager, {
@@ -112,29 +115,10 @@ function createServerManager(app: JupyterLab, palette: ICommandPalette,
     palette.addItem({command: CommandIDs.activateServerManager, category: 'Servers'});
 }
 
-/**
- * A service providing an native menu bar.
- */
-const nativeMainMenuPlugin: JupyterLabPlugin<IMainMenu> = {
-  id: 'jupyter.services.main-menu',
-  provides: IMainMenu,
-  activate: (app: JupyterLab): IMainMenu => {
-    let menu = new NativeMenu(app);
-    menu.id = 'jp-MainMenu';
-    return menu;
-  }
-};
-
-/**
- * A service providing an native menu bar.
- */
-const titleBarPlugin: JupyterLabPlugin<void> = {
-  id: 'jupyter.services.title-bar',
-  activate: (app: JupyterLab): void => {
+function buildTitleBar(app: ElectronJupyterLab): Widget {
     let titleBar = new Widget();
-    titleBar.id = 'jpe-TitleBar-widget';
     ReactDOM.render(
-        <TitleBar clicked={(type: string) => {
+        <TitleBar uiState={app.info.uiState} clicked={(type: string) => {
             if (type == 'close') {
                 ipc.send(WindowIPC.REQUEST_WINDOW_CLOSE);
             } else if (type == 'minimize') {
@@ -144,15 +128,57 @@ const titleBarPlugin: JupyterLabPlugin<void> = {
             }
         }}/>, titleBar.node
     );
+    return titleBar;
+}
+
+function buildPhosphorMenu(app: ElectronJupyterLab): IMainMenu {
+    let menu = new MainMenu();
+    let titleBar = buildTitleBar(app);
+
+    menu.id = 'jpe-MainMenu-widget';
+    titleBar.id = 'jpe-TitleBar-widget';
+
+    titleBar.addClass('jpe-mod-' + app.info.uiState);
+
+    app.shell.addToTopArea(menu);
     app.shell.addToTopArea(titleBar);
-  },
-  autoStart: true
+    return menu;
+}
+
+function buildNativeMenu(app: ElectronJupyterLab): IMainMenu {
+    let menu = new NativeMenu(app);
+    let titleBar = buildTitleBar(app);
+    titleBar.id = 'jpe-TitleBar-widget';
+    titleBar.addClass('jpe-mod-' + app.info.uiState);
+
+    app.shell.addToTopArea(titleBar);
+    
+    return menu;
+}
+
+/**
+ * A service providing an native menu bar.
+ */
+const nativeMainMenuPlugin: JupyterLabPlugin<IMainMenu> = {
+  id: 'jupyter.services.main-menu',
+  provides: IMainMenu,
+  activate: (app: ElectronJupyterLab): IMainMenu => {
+    // Create the menu
+    let menu: IMainMenu;
+    let uiState = app.info.uiState;
+    if (uiState == 'linux' || uiState == 'mac') {
+        menu = buildNativeMenu(app);
+    } else {
+        menu = buildPhosphorMenu(app);
+    }
+
+    return menu;
+  }
 };
 
 /**
  * Override Main Menu plugin from apputils-extension
  */
 plugin[0] = nativeMainMenuPlugin;
-plugin.push(titleBarPlugin);
 plugin.push(serverManagerPlugin);
 export default plugin;

@@ -13,7 +13,11 @@ import {
 
 import {
     MenuItemConstructorOptions
-} from './main/menu';
+} from 'jupyterlab_app/src/main/menu';
+
+import {
+    JupyterLabWindow
+} from 'jupyterlab_app/src/main/window';
 
 export
 namespace JupyterApplicationIPC {
@@ -68,7 +72,8 @@ namespace JupyterWindowIPC {
     export
     interface WindowOptions extends JSONObject{
         state: 'new' | 'local' | 'remote';
-        platform?: string;
+        platform?: NodeJS.Platform;
+        uiState?: JupyterLabWindow.UIState;
         x?: number;
         y?: number;
         width?: number;

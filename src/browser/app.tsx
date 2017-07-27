@@ -10,10 +10,6 @@ import {
 } from '@jupyterlab/coreutils';
 
 import {
-    JupyterLab
-} from '@jupyterlab/application';
-
-import {
     StateDB
 } from '@jupyterlab/coreutils';
 
@@ -25,6 +21,10 @@ import {
 import {
     SplashScreen, ServerManager, TitleBar
 } from 'jupyterlab_app/src/browser/components';
+
+import {
+    ElectronJupyterLab
+} from 'jupyterlab_app/src/browser/extensions/electron-extension';
 
 import * as React from 'react';
 import extensions from 'jupyterlab_app/src/browser/extensions';
@@ -39,7 +39,7 @@ let ipcRenderer = (window as any).require('electron').ipcRenderer;
 export
 class Application extends React.Component<Application.Props, Application.State> {
     
-    private lab: JupyterLab;
+    private lab: ElectronJupyterLab;
 
     private ignorePlugins: string[];
 
@@ -58,7 +58,6 @@ class Application extends React.Component<Application.Props, Application.State> 
         this.connectionAdded = this.connectionAdded.bind(this);
 
         let labReady = this.setupLab();
-
         
         /* Setup server data response handler */
         ipcRenderer.on(ServerIPC.RESPOND_SERVER_STARTED, (event: any, data: ServerIPC.ServerStarted) => {
@@ -130,15 +129,18 @@ class Application extends React.Component<Application.Props, Application.State> 
                 version = version.slice(1);
             }
 
-            this.lab = new JupyterLab({
+            this.lab = new ElectronJupyterLab({
                 namespace: namespace,
                 name: name,
                 version: version,
                 devMode: devMode.toLowerCase() === 'true',
                 settingsDir: settingsDir,
                 assetsDir: assetsDir,
-                mimeExtensions: extensions.mime
+                mimeExtensions: extensions.mime,
+                platform: this.props.options.platform,
+                uiState: this.props.options.uiState
             });
+
 
             try {
                 this.lab.registerPluginModules(extensions.jupyterlab);
@@ -203,7 +205,7 @@ class Application extends React.Component<Application.Props, Application.State> 
 
         return (
             <div className='jpe-content'>
-                <TitleBar clicked={() => {console.log('clicked')}}/>
+                <TitleBar clicked={() => {console.log('clicked')}} uiState={this.props.options.uiState} />
                 <ServerManager servers={servers} 
                               serverSelected={this.serverSelected}
                               serverAdded={this.connectionAdded} />;
@@ -217,7 +219,7 @@ class Application extends React.Component<Application.Props, Application.State> 
          */
         return (
             <div className='jpe-content'>
-                <TitleBar clicked={() => {console.log('clicked')}}/>
+                <TitleBar clicked={() => {console.log('clicked')}} uiState={this.props.options.uiState} />
                 <SplashScreen  ref='splash' finished={() => {
                     this.setState({renderState: this.renderLab});}
                 } />

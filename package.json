@@ -5,6 +5,9 @@
   "main": "build/main.bundle.js",
   "scripts": {
     "start": "electron .",
+    "start:windows": "electron . --windows-ui",
+    "start:linux": "electron . --linux-ui",
+    "start:mac": "electron . --mac-ui",
     "test": "echo \"Error: no test specified\" && exit 1",
     "clean": "rm -fr build dist",
     "watch:browser": "webpack --progress --colors --watch --config webpack.browser.js",

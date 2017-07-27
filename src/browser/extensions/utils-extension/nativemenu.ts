@@ -46,9 +46,9 @@ class NativeMenu extends MenuBar implements IMainMenu {
      * Register listeners for menu events
      */
     private registerListeners(): void {
-        /* Register listener on menu bar clicks */
+        // Register listener on menu bar clicks
         ipc.on(MenuIPC.POST_CLICK_EVENT, (event: any, opts: JupyterMenuItemOptions) => {
-            /* Execute the command associated with the click event */
+            // Execute the command associated with the click event
             this.app.commands.execute(opts.command, opts.args);
         });
     }
@@ -78,19 +78,6 @@ class NativeMenu extends MenuBar implements IMainMenu {
             nItems[i].command = items[i].command;
             nItems[i].args = items[i].args;
 
-<<<<<<< 3911b70071131a899bade17bee1008a18292c19b
-=======
-            // Add 'role' option to electron menu item
-            if (items[i].args && items[i].args.role)
-                nItems[i].role = nItems[i].args.role;
-
-            if (items[i].keyBinding !== null){
-                // Doesn't handle shortcuts made of multiple key codes
-                let keys = items[i].keyBinding.keys.join(",");
-                nItems[i].accelerator = keys.replace(/ /g, "+");
-            }
-
->>>>>>> Change edit menu to be added by render process
             if (items[i].submenu !== null)
                 nItems[i].submenu = this.buildNativeMenu(items[i].submenu);
         }

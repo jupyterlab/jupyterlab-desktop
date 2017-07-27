@@ -321,6 +321,19 @@ export class JupyterApplication {
     }
 
     private createWindow(state: WindowIPC.WindowOptions) {
+
+        let uiState: JupyterLabWindow.UIState;
+        for (let arg of process.argv) {
+            if (arg == '--windows-ui') {
+                uiState = 'windows';
+            } else if (arg == '--mac-ui') {
+                uiState = 'mac';
+            } else if (arg == '--linux-ui') {
+                uiState = 'linux';
+            }
+        }
+        state.uiState = uiState;
+
         let window = new JupyterLabWindow(state);
         // Register dialog on window close
         window.browserWindow.on('close', (event: Event) => {

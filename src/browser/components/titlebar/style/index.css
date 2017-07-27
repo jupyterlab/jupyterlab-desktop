@@ -7,9 +7,12 @@
     --jp-private-menubar-height: 15px;
 }
 
+#jp-top-panel {
+    display: flex;
+}
+
 #jpe-TitleBar-widget {
-    width: 100%;
-    height: 100%;
+    flex-grow: 1;
 }
 
 .jpe-TitleBar-body {
@@ -18,10 +21,24 @@
     height: var(--jp-private-menubar-height);
     background-color: #ffffff;
     z-index: 1;
-    display: flex;
-    align-items: center;
     -webkit-app-region: drag;
     border-bottom: 1px black solid;
+}
+
+.jpe-TitleBar-body.jpe-mod-windows {
+    justify-content: flex-end;
+}
+
+.jpe-TitleBar-button-container {
+    height: 100%;
+    display: flex;
+    align-items: center;
+    float: left;
+}
+
+.jpe-TitleBar-button-container.jpe-mod-windows {
+    float: right;
+    margin-right: 10px;
 }
 
 .jpe-TitleBar-button {
@@ -32,14 +49,21 @@
     -webkit-app-region: no-drag;
 }
 
+.jpe-TitleBar-button:hover {
+    box-shadow: 1px 1px 1px #555555;
+}
+
 .jpe-TitleBar-close {
-    background-color: red;
+    background-color: #ff2222;
+    border: 1px solid #882222
 }
 
 .jpe-TitleBar-min {
-    background-color: yellow;
+    background-color: #f4d742;
+    border: 1px solid #c49412;
 }
 
 .jpe-TitleBar-max {
-    background-color: green;
+    background-color: #22ff22;
+    border: 1px solid #228822;
 }

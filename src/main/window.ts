@@ -30,6 +30,16 @@ class JupyterLabWindow {
         if (!this._windowState.platform)
             this._windowState.platform = process.platform;
 
+        if (!this._windowState.uiState) {
+            if (this._windowState.platform == 'darwin')
+                this._windowState.uiState = 'mac';
+            else if (this._windowState.platform == 'linux')
+                this._windowState.uiState = 'linux';
+            else
+                this._windowState.uiState = 'windows';
+
+        }
+
         this._window = new BrowserWindow({
             width: options.width || 800,
             height: options.height || 600,
@@ -90,4 +100,11 @@ class JupyterLabWindow {
     get browserWindow(): Electron.BrowserWindow {
         return this._window;
     }
+}
+
+export
+namespace JupyterLabWindow {
+
+    export
+    type UIState = 'linux' | 'mac' | 'windows';
 }

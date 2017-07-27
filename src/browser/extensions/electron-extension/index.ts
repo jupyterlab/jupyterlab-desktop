@@ -6,12 +6,12 @@ import {
 } from '@jupyterlab/application';
 
 import {
-  ICommandPalette, IMainMenu
+  ICommandPalette
 } from '@jupyterlab/apputils';
 
 import {
-    Menu
-} from '@phosphor/widgets';
+  JupyterLabWindow
+} from 'jupyterlab_app/src/main/window';
 
 import plugins from '@jupyterlab/application-extension';
 
@@ -35,35 +35,57 @@ namespace CommandIDs {
   const toggleMode: string = 'main-jupyterlab:toggle-mode';
 };
 
+
+
+export
+class ElectronJupyterLab extends JupyterLab {
+
+  constructor(options: ElectronJupyterLab.IOptions) {
+    super(options);
+
+    this._electronInfo = {
+      name: options.name || 'JupyterLab',
+      namespace: options.namespace || 'jupyterlab',
+      version:  options.version || 'unknown',
+      devMode: options.devMode || false,
+      settingsDir: options.settingsDir || '',
+      assetsDir: options.assetsDir || '',
+      platform: options.platform,
+      uiState: options.uiState || 'windows'
+    };
+  }
+
+  get info(): ElectronJupyterLab.IInfo {
+    return this._electronInfo;
+  }
+
+  private _electronInfo: ElectronJupyterLab.IInfo;
+}
+
+export
+namespace ElectronJupyterLab {
+
+  export
+  interface IOptions extends JupyterLab.IOptions {
+    uiState?: JupyterLabWindow.UIState;
+    platform: NodeJS.Platform;
+  }
+
+  export
+  interface IInfo extends JupyterLab.IInfo {
+    uiState: JupyterLabWindow.UIState;
+    platform: NodeJS.Platform;
+  }
+}
+
 /**
  * The main extension.
  */
 const mainPlugin: JupyterLabPlugin<void> = {
   id: 'jupyter.extensions.main',
-  requires: [ICommandPalette, IMainMenu],
-  activate: (app: JupyterLab, palette: ICommandPalette, menu: IMainMenu) => {
+  requires: [ICommandPalette],
+  activate: (app: JupyterLab, palette: ICommandPalette) => {
     addCommands(app, palette);
-
-    // Add the edit menu
-    const { commands } = app;
-    const editMenu = new Menu({ commands });
-    editMenu.title.label = 'Edit';
-    [
-      {args: {role: 'undo'}},
-      {args: {role: 'redo'}},
-      {args: {type: 'separator'}},
-      {args: {role: 'cut'}},
-      {args: {role: 'copy'}},
-      {args: {role: 'paste'}},
-      {args: {role: 'pasteandmatchstyle'}},
-      {args: {role: 'delete'}},
-      {args: {role: 'selectall'}}
-    ].forEach((item: Menu.IItemOptions) => {
-      editMenu.addItem(item);
-    })
-
-    menu.addMenu(editMenu, {rank: 5});
-
   },
   autoStart: true
 };
