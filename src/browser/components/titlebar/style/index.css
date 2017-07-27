@@ -54,16 +54,16 @@
 }
 
 .jpe-TitleBar-close {
-    background-color: #ff2222;
+    background-color: red;
     border: 1px solid #882222
 }
 
 .jpe-TitleBar-min {
-    background-color: #f4d742;
+    background-color: yellow;
     border: 1px solid #c49412;
 }
 
 .jpe-TitleBar-max {
-    background-color: #22ff22;
-    border: 1px solid #228822;
+    background-color: green;
+    border: 1px solid #115511;
 }
