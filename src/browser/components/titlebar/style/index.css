@@ -9,21 +9,22 @@
     --jpe-TitleBar-height-windows: 25px;
 }
 
-#jp-top-panel {
-    display: flex;
-}
-
-#jp-top-panel.jpe-mod-linux {
+/* Set top panel height based on the platform */
+.jpe-TitleBar-body.jpe-mod-linux, #jp-top-panel.jpe-mod-linux {
     min-height: var(--jpe-TitleBar-height-linux);
+    height: var(--jpe-TitleBar-height-linux);
 }
 
-#jp-top-panel.jpe-mod-mac {
+.jpe-TitleBar-body.jpe-mod-mac, #jp-top-panel.jpe-mod-mac {
     min-height: var(--jpe-TitleBar-height-mac);
+    height: var(--jpe-TitleBar-height-mac);
 }
 
-#jp-top-panel.jpe-mod-windows {
+.jpe-TitleBar-body.jpe-mod-windows, #jp-top-panel.jpe-mod-windows {
     min-height: var(--jpe-TitleBar-height-windows);
+    height: var(--jpe-TitleBar-height-windows);
 }
+/*--------------------------------------------*/
 
 #jpe-TitleBar-widget {
     flex-grow: 1;
@@ -32,21 +33,10 @@
 .jpe-TitleBar-body {
     position: relative;
     background-color: #ffffff;
-    z-index: 1;
     -webkit-app-region: drag;
-    border-bottom: 1px black solid;
-}
-
-.jpe-TitleBar-body.jpe-mod-linux {
-    height: var(--jpe-TitleBar-height-linux);    
-}
-
-.jpe-TitleBar-body.jpe-mod-mac {
-    height: var(--jpe-TitleBar-height-mac);    
 }
 
 .jpe-TitleBar-body.jpe-mod-windows {
-    height: var(--jpe-TitleBar-height-windows);    
     justify-content: flex-end;
 }
 

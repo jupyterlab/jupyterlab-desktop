@@ -54,7 +54,7 @@ class ElectronJupyterLab extends JupyterLab {
     // Make top panel modifiable based on the platform
     each(this.shell.layout.iter(), (widget: Widget) => {
       if (widget.id == 'jp-top-panel')
-        widget.addClass('jpe-mod-' + options.uiState)
+        widget.addClass('jpe-mod-' + options.uiState);
     });
 
     this._electronInfo = {
