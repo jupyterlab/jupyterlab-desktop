@@ -46,6 +46,10 @@ class ServerManager extends React.Component<ServerManager.Props, ServerManager.S
 
     private serverAdded(server: ServerIPC.ServerDesc) {
         ipc.send(WindowIPC.REQUEST_AUTHENTICATION_WINDOW, {url: server.url});
+
+        ipc.on(ServerIPC.RESPOND_SERVER_AUTHENTICATED, (event: Electron.Event, data: ServerIPC.ServerDesc) => {
+            this.props.serverAdded(data);
+        })
     }
 
     private renderServerManager() {

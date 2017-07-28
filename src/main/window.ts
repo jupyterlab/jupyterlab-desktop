@@ -2,11 +2,12 @@
 // Distributed under the terms of the Modified BSD License.
 
 import { 
-    BrowserWindow, ipcMain
+    BrowserWindow, ipcMain, session
 } from 'electron';
 
 import {
-    JupyterWindowIPC as WindowIPC
+    JupyterWindowIPC as WindowIPC,
+    JupyterServerIPC as ServerIPC
 } from 'jupyterlab_app/src/ipc';
 
 import * as path from 'path';
@@ -135,6 +136,8 @@ class AuthenticationWindow {
 
     private _info: AuthenticationWindow.IInfo = null;
 
+    private _authenticated: Promise<ServerIPC.ServerDesc>;
+    
     /**
      * Electron window
      */
@@ -144,6 +147,21 @@ class AuthenticationWindow {
         this._info = {
             url: options.url
         }
+
+        this._authenticated = new Promise<ServerIPC.ServerDesc>((res, rej) => {
+            session.defaultSession.cookies.on('changed', (evt: Electron.Event, cookie: Electron.Cookie) => {
+                if (this._info.url.search(cookie.domain) != -1 && cookie.path.search('/hub') == -1) {
+                    let server: ServerIPC.ServerDesc = {
+                        url: 'http://' + cookie.domain + cookie.path,
+                        type: 'remote',
+                        token: '',
+                        id: 0,
+                        name: null
+                    };
+                    res(server);
+                }
+            });
+        })
 
         this._window = new BrowserWindow({
             width: 400,
@@ -163,6 +181,10 @@ class AuthenticationWindow {
 
     get browserWindow(): Electron.BrowserWindow {
         return this._window;
+    }
+
+    get authenticated(): Promise<ServerIPC.ServerDesc> {
+        return this._authenticated;
     }
 }
 

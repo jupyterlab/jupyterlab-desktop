@@ -117,6 +117,9 @@ namespace JupyterServerIPC {
      */
     export
     const RESPOND_SERVER_STARTED = 'server-started';
+
+    export
+    const RESPOND_SERVER_AUTHENTICATED = 'remote-server-authenitcated';
     
     /**
      * Request that a server spwaned by the main process

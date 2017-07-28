@@ -45,9 +45,11 @@ class Application extends React.Component<Application.Props, Application.State> 
 
     private server: ServerIPC.ServerDesc = null;
 
-    private nextServerId: number = 1;
+    private nextRemoteId: number = 1;
     
     private serverState: StateDB;
+
+    private labReady: Promise<void>;
 
     constructor(props: Application.Props) {
         super(props);
@@ -57,7 +59,7 @@ class Application extends React.Component<Application.Props, Application.State> 
         this.serverSelected = this.serverSelected.bind(this);
         this.connectionAdded = this.connectionAdded.bind(this);
 
-        let labReady = this.setupLab();
+        this.labReady = this.setupLab();
         
         /* Setup server data response handler */
         ipcRenderer.on(ServerIPC.RESPOND_SERVER_STARTED, (event: any, data: ServerIPC.ServerStarted) => {
@@ -73,15 +75,15 @@ class Application extends React.Component<Application.Props, Application.State> 
             this.server = data.server;
             PageConfig.setOption("token", this.server.token);
             PageConfig.setOption("baseUrl", this.server.url);
-            try{
-                labReady.then(() => {
+            
+            this.labReady.then(() => {
+                try {
                     this.lab.start({"ignorePlugins": this.ignorePlugins});
-                    (this.refs.splash as SplashScreen).fadeSplashScreen();
-                });
-            }
-            catch (e){
-                console.log(e);
-            }
+                } catch(e) {
+                    console.log(e);
+                }
+                (this.refs.splash as SplashScreen).fadeSplashScreen();
+            });
         });
 
         if (this.props.options.state == 'local') {
@@ -100,7 +102,7 @@ class Application extends React.Component<Application.Props, Application.State> 
                 let maxID = 0;
                 for (let val of data.servers)
                     maxID = Math.max(maxID, val.id);
-                this.nextServerId = maxID + 1;
+                this.nextRemoteId = maxID + 1;
                 // Render UI with saved servers
                 this.setState({remotes: data});
             })
@@ -161,46 +163,37 @@ class Application extends React.Component<Application.Props, Application.State> 
     }
 
     private connectionAdded(server: ServerIPC.ServerDesc) {
+        PageConfig.setOption('baseUrl', server.url);
+        PageConfig.setOption('token', server.token);
+        
+        // Update window state in main process
+        ipcRenderer.send(WindowIPC.REQUEST_STATE_UPDATE, {state: 'remote', serverId: server.id});
+
+        this.labReady.then(() => {
+            try {
+                this.lab.start({"ignorePlugins": this.ignorePlugins});
+            } catch(e) {
+                console.log(e);
+            }
+        });
+
         this.setState((prev: ServerManager.State) => {
-            server.id = this.nextServerId++;
+            server.id = this.nextRemoteId++;
             let conns = this.state.remotes.servers.concat(server);
             return({
-                renderState: this.renderServerManager,
+                renderState: this.renderLab,
                 conns: {servers: conns}
             });
         });
     }
 
     private serverSelected(server: ServerIPC.ServerDesc) {
-        this.saveState();
-        if (server.type == 'local') {
-            // Request local server start from main process
-            ipcRenderer.send(ServerIPC.REQUEST_SERVER_START);
-            // Update window state in main process
-            ipcRenderer.send(WindowIPC.REQUEST_STATE_UPDATE, {state: 'local'});
-            // Render the splash screen
-            this.setState({renderState: this.renderSplash});
-            return;
-        }
-        
-        // Connect JupyterLab to remote server
-        PageConfig.setOption('baseUrl', server.url);
-        PageConfig.setOption('token', server.token);
-        try {
-            this.lab.start({"ignorePlugins": this.ignorePlugins});
-        }
-        catch (e){
-            console.log(e);
-        }
-        // Update window state in main process
-        ipcRenderer.send(WindowIPC.REQUEST_STATE_UPDATE, {state: 'remote', serverId: server.id});
-        // Render JupyterLab
-        this.setState({renderState: this.renderLab});
+        console.log('This function will be deprecated');
     }
 
     private renderServerManager(): any {
         // Always insert Local server card
-        let servers: ServerIPC.ServerDesc[] = [{id: this.nextServerId++, name: 'Local', type: 'local'}];
+        let servers: ServerIPC.ServerDesc[] = [{id: this.nextRemoteId++, name: 'Local', type: 'local'}];
         servers.concat(this.state.remotes.servers);
 
         return (
@@ -214,9 +207,6 @@ class Application extends React.Component<Application.Props, Application.State> 
     }
 
     private renderSplash() {
-        /* Request Jupyter server data from main process, then render
-         * splash screen
-         */
         return (
             <div className='jpe-content'>
                 <SplashScreen  ref='splash' uiState={this.props.options.uiState} finished={() => {
@@ -227,6 +217,8 @@ class Application extends React.Component<Application.Props, Application.State> 
     }
 
     private renderLab(): any {
+        this.saveState();
+
         return null;
     }
 
