@@ -12,9 +12,12 @@ import {
 } from '@phosphor/algorithm';
 
 import {
-    JupyterMenuIPC as MenuIPC,
-    JupyterApplicationIPC as AppIPC
+    JupyterMenuIPC as MenuIPC
 } from 'jupyterlab_app/src/ipc';
+
+import {
+    JupyterApplication
+} from './app';
 
 type JupyterMenuItemOptions = MenuIPC.JupyterMenuItemOptions;
 
@@ -32,8 +35,11 @@ class JupyterMainMenu {
      */
     private menu: Electron.Menu;
 
-    constructor() {
+    private jupyterApp: JupyterApplication;
+
+    constructor(jupyterApp: JupyterApplication) {
         this.menu = new Menu();
+        this.jupyterApp = jupyterApp;
         this.registerListeners();
 
         if (process.platform === 'darwin') {
@@ -53,8 +59,9 @@ class JupyterMainMenu {
      * @param menu A menu being added to the menu bar. 
      */
     private setClickEvents(menu: JupyterMenuItemOptions): void {
+        let boundClick = this.handleClick.bind(this);
         if (menu.submenu === null || menu.submenu === undefined) {
-            menu.click = this.handleClick;
+            menu.click = boundClick;
             return;
         }
 
@@ -111,6 +118,7 @@ class JupyterMainMenu {
      */
     private handleClick(menu: Electron.MenuItem, window: Electron.BrowserWindow): void {
         let windows: Electron.BrowserWindow[] = null;
+        // Application window is in focus
         if (window){
              window.webContents.send(MenuIPC.POST_CLICK_EVENT, menu as JupyterMenuItemOptions);
         }
@@ -118,13 +126,13 @@ class JupyterMainMenu {
         else if ((windows = BrowserWindow.getAllWindows()).length > 0){
             windows[0].webContents.send(MenuIPC.POST_CLICK_EVENT, menu as JupyterMenuItemOptions);
         }
-        // No window
+        // No application windows available
         else {
             if (menu.label === 'Add Server'){
-                ipcMain.emit(AppIPC.REQUEST_ADD_SERVER);
+                this.jupyterApp.addServer();
             }
             else if (menu.label === 'Local'){
-                ipcMain.emit(AppIPC.REQUEST_OPEN_CONNECTION, null, {type: 'local'});
+                this.jupyterApp.newLocalServer();
             }
 
         }

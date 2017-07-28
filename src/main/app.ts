@@ -299,7 +299,7 @@ export class JupyterApplication {
      */
     constructor() {
         this.registerListeners();
-        this.menu = new JupyterMainMenu();
+        this.menu = new JupyterMainMenu(this);
         this.serverFactory = new JupyterServerFactory();
         
         this.appStateDB.fetch(APPLICATION_STATE_NAMESPACE)
@@ -417,5 +417,20 @@ export class JupyterApplication {
         for (let window of state.windows) {
             this.createWindow(window)
         }
+    }
+
+    /**
+    * Create a new window running on a new local server 
+    */
+    public newLocalServer(){
+        this.createWindow({state: 'local'});
+    }
+
+    /**
+    * Create a new window prompting user for server information
+    * Does not start a new local server (unless prompted by user)
+    */
+    public addServer(){
+        this.createWindow({state: 'new'});
     }
 }
