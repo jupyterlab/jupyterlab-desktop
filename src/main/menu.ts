@@ -4,7 +4,7 @@
 |----------------------------------------------------------------------------*/
 
 import {
-    Menu, MenuItem, ipcMain
+    Menu, MenuItem, ipcMain, BrowserWindow
 } from 'electron';
 
 import {
@@ -12,7 +12,8 @@ import {
 } from '@phosphor/algorithm';
 
 import {
-    JupyterMenuIPC as MenuIPC
+    JupyterMenuIPC as MenuIPC,
+    JupyterApplicationIPC as AppIPC
 } from 'jupyterlab_app/src/ipc';
 
 type JupyterMenuItemOptions = MenuIPC.JupyterMenuItemOptions;
@@ -109,7 +110,24 @@ class JupyterMainMenu {
      * Click event handler. Passes the event on the render process 
      */
     private handleClick(menu: Electron.MenuItem, window: Electron.BrowserWindow): void {
-        window.webContents.send(MenuIPC.POST_CLICK_EVENT, menu as JupyterMenuItemOptions);
+        let windows: Electron.BrowserWindow[] = null;
+        if (window){
+             window.webContents.send(MenuIPC.POST_CLICK_EVENT, menu as JupyterMenuItemOptions);
+        }
+        // No focused window
+        else if ((windows = BrowserWindow.getAllWindows()).length > 0){
+            windows[0].webContents.send(MenuIPC.POST_CLICK_EVENT, menu as JupyterMenuItemOptions);
+        }
+        // No window
+        else {
+            if (menu.label === 'Add Server'){
+                ipcMain.emit(AppIPC.REQUEST_ADD_SERVER);
+            }
+            else if (menu.label === 'Local'){
+                ipcMain.emit(AppIPC.REQUEST_OPEN_CONNECTION, null, {type: 'local'});
+            }
+
+        }
     }
 
     private addEditMenu(){

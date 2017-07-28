@@ -36,6 +36,8 @@ import {
 } from '@phosphor/algorithm';
 
 
+
+
 export
 class JupyterServer {
     /**
@@ -389,14 +391,14 @@ export class JupyterApplication {
         
         ipcMain.on(AppIPC.REQUEST_ADD_SERVER, (event: any, arg: any) => {
             this.createWindow({state: 'new'});
-        })
+        });
         
         ipcMain.on(AppIPC.REQUEST_OPEN_CONNECTION, (event: any, arg: ServerIPC.ServerDesc) => {
             if (arg.type == 'remote')
                 this.createWindow({state: 'remote', serverId: arg.id});
             else
                 this.createWindow({state: 'local'});
-        })
+        });
     }
 
     /**
