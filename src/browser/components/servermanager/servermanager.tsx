@@ -3,13 +3,11 @@
 
 import {
     JupyterServerIPC as ServerIPC,
-    JupyterWindowIPC as WindowIPC
 } from 'jupyterlab_app/src/ipc';
 
 import * as React from 'react';
 
 
-let ipc = (window as any).require('electron').ipcRenderer;
 
 /**
  * The main ServerManager component. This component
@@ -45,11 +43,7 @@ class ServerManager extends React.Component<ServerManager.Props, ServerManager.S
     }
 
     private serverAdded(server: ServerIPC.ServerDesc) {
-        ipc.send(WindowIPC.REQUEST_AUTHENTICATION_WINDOW, {url: server.url});
-
-        ipc.on(ServerIPC.RESPOND_SERVER_AUTHENTICATED, (event: Electron.Event, data: ServerIPC.ServerDesc) => {
-            this.props.serverAdded(data);
-        })
+        this.props.serverAdded(server);
     }
 
     private renderServerManager() {
@@ -256,7 +250,7 @@ namespace ServerManager {
 
         constructor(props: AddConnctionForm.Props) {
             super(props);
-            this.state = {url: null, name: null};
+            this.state = {url: null, name: null, token: null};
 
             this.handleInputChange = this.handleInputChange.bind(this);
             this.handleSubmit = this.handleSubmit.bind(this);
@@ -264,7 +258,7 @@ namespace ServerManager {
 
         handleSubmit(event: any) {
             event.preventDefault();
-            if (!this.state.url || !this.state.name) {
+            if (!this.state.url || !this.state.name || !this.state.token) {
                 return;
             }
 
@@ -273,6 +267,7 @@ namespace ServerManager {
                 type: 'remote',
                 url: this.state.url,
                 name: this.state.name,
+                token: this.state.token
             });
         }
 
@@ -293,6 +288,8 @@ namespace ServerManager {
                         <input className='jpe-ServerManager-input' type='text' name='name' placeholder='Enter server name' onChange={this.handleInputChange} required/>
                         <br />
                         <input className='jpe-ServerManager-input' type='text' name='url' placeholder='Enter server URL' onChange={this.handleInputChange} required/>
+                        <br />
+                        <input className='jpe-ServerManager-input' type='text' name='token' placeholder='Enter server token' onChange={this.handleInputChange} required/>
                         <br />
                         <div className='jpe-ServerManager-Add-footer'>
                             <input className='jpe-ServerManager-Add-cancel-btn' type='button' value='CANCEL' onClick={this.props.cancel} />
@@ -320,6 +317,7 @@ namespace ServerManager {
         interface State {
             url: string;
             name: string;
+            token: string;
         }
     }
     

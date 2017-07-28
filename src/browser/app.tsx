@@ -166,9 +166,6 @@ class Application extends React.Component<Application.Props, Application.State> 
         PageConfig.setOption('baseUrl', server.url);
         PageConfig.setOption('token', server.token);
         
-        // Update window state in main process
-        ipcRenderer.send(WindowIPC.REQUEST_STATE_UPDATE, {state: 'remote', serverId: server.id});
-
         this.labReady.then(() => {
             try {
                 this.lab.start({"ignorePlugins": this.ignorePlugins});

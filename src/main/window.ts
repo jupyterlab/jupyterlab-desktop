@@ -147,22 +147,7 @@ class AuthenticationWindow {
         this._info = {
             url: options.url
         }
-
-        this._authenticated = new Promise<ServerIPC.ServerDesc>((res, rej) => {
-            session.defaultSession.cookies.on('changed', (evt: Electron.Event, cookie: Electron.Cookie) => {
-                if (this._info.url.search(cookie.domain) != -1 && cookie.path.search('/hub') == -1) {
-                    let server: ServerIPC.ServerDesc = {
-                        url: 'http://' + cookie.domain + cookie.path,
-                        type: 'remote',
-                        token: '',
-                        id: 0,
-                        name: null
-                    };
-                    res(server);
-                }
-            });
-        })
-
+        
         this._window = new BrowserWindow({
             width: 400,
             height: 200,
@@ -173,6 +158,27 @@ class AuthenticationWindow {
         });
         
         this._window.loadURL(this._info.url);
+
+        this._authenticated = new Promise<ServerIPC.ServerDesc>((res, rej) => {
+            session.defaultSession.cookies.on('changed', (evt: Electron.Event) => {
+                session.defaultSession.cookies.get({name: '_xsrf'}, (error: Error, cookies: any[]) => {
+                    if (error || cookies.length == 0)
+                        return;
+
+                    console.log(cookies[0]);
+                    let server: ServerIPC.ServerDesc = {
+                        url: 'http://localhost:8000/user/luc/',
+                        type: 'remote',
+                        token: cookies[0].value,
+                        id: 0,
+                        name: null
+                    };
+                    session.defaultSession.cookies.removeAllListeners();
+                    res(server);
+                });
+            });
+        })
+
     }
     
     get info(): AuthenticationWindow.IInfo {
