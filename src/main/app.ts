@@ -14,7 +14,7 @@ import {
 } from 'jupyterlab_app/src/main/menu';
 
 import {
-    JupyterLabWindow, AuthenticationWindow
+    JupyterLabWindow
 } from 'jupyterlab_app/src/main/window';
 
 import {

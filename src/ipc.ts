@@ -16,7 +16,7 @@ import {
 } from 'jupyterlab_app/src/main/menu';
 
 import {
-    JupyterLabWindow, AuthenticationWindow
+    JupyterLabWindow
 } from 'jupyterlab_app/src/main/window';
 
 export
@@ -80,12 +80,6 @@ namespace JupyterWindowIPC {
 
     export
     const REQUEST_WINDOW_MAXIMIZE = 'window-maximize';
-
-    export
-    const REQUEST_AUTHENTICATION_WINDOW = 'window-auhtenticate-server';
-
-    export
-    interface AuthenticationWindowOptions extends JSONObject, AuthenticationWindow.IOptions{}
 
     export
     interface WindowOptions extends JSONObject, JupyterLabWindow.IInfo{}

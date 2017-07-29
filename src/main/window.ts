@@ -2,12 +2,11 @@
 // Distributed under the terms of the Modified BSD License.
 
 import { 
-    BrowserWindow, ipcMain, session
+    BrowserWindow, ipcMain
 } from 'electron';
 
 import {
     JupyterWindowIPC as WindowIPC,
-    JupyterServerIPC as ServerIPC
 } from 'jupyterlab_app/src/ipc';
 
 import * as path from 'path';
@@ -128,82 +127,5 @@ namespace JupyterLabWindow {
         width: number;
         height: number;
         serverId?: number;
-    }
-}
-
-export
-class AuthenticationWindow {
-
-    private _info: AuthenticationWindow.IInfo = null;
-
-    private _authenticated: Promise<ServerIPC.ServerDesc>;
-    
-    /**
-     * Electron window
-     */
-    private _window: Electron.BrowserWindow = null;
-
-    constructor(options: AuthenticationWindow.IOptions) {
-        this._info = {
-            url: options.url
-        }
-        
-        this._window = new BrowserWindow({
-            width: 400,
-            height: 200,
-            minWidth: 400,
-            minHeight: 200,
-            show: true,
-            title: 'JupyterLab'
-        });
-        
-        this._window.loadURL(this._info.url);
-
-        this._authenticated = new Promise<ServerIPC.ServerDesc>((res, rej) => {
-            session.defaultSession.cookies.on('changed', (evt: Electron.Event) => {
-                session.defaultSession.cookies.get({name: '_xsrf'}, (error: Error, cookies: any[]) => {
-                    if (error || cookies.length == 0)
-                        return;
-
-                    console.log(cookies[0]);
-                    let server: ServerIPC.ServerDesc = {
-                        url: 'http://localhost:8000/user/luc/',
-                        type: 'remote',
-                        token: cookies[0].value,
-                        id: 0,
-                        name: null
-                    };
-                    session.defaultSession.cookies.removeAllListeners();
-                    res(server);
-                });
-            });
-        })
-
-    }
-    
-    get info(): AuthenticationWindow.IInfo {
-        return this._info;
-    }
-
-    get browserWindow(): Electron.BrowserWindow {
-        return this._window;
-    }
-
-    get authenticated(): Promise<ServerIPC.ServerDesc> {
-        return this._authenticated;
-    }
-}
-
-export
-namespace AuthenticationWindow {
-
-    export
-    interface IOptions {
-        url: string;
-    }
-
-    export
-    interface IInfo {
-        url: string;
     }
 }
