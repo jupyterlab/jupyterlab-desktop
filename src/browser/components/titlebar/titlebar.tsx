@@ -2,16 +2,12 @@
 // Distributed under the terms of the Modified BSD License.
 
 import {
-    JupyterWindowIPC as WindowIPC,
-} from 'jupyterlab_app/src/ipc';
-
-import {
     JupyterLabWindow
 } from 'jupyterlab_app/src/main/window';
 
 import * as React from 'react';
 
-let ipc = (window as any).require('electron').ipcRenderer;
+let remote: Electron.Remote = (window as any).require('electron').remote;
 
 
 export namespace TitleBar {
@@ -29,11 +25,11 @@ function TitleBar(props: TitleBar.Props) {
 
     let clicked = (type: string) => {
         if (type == 'close') {
-            ipc.send(WindowIPC.REQUEST_WINDOW_CLOSE);
+            remote.getCurrentWindow().close();
         } else if (type == 'minimize') {
-            ipc.send(WindowIPC.REQUEST_WINDOW_MINIMIZE);
+            remote.getCurrentWindow().minimize();
         } else {
-            ipc.send(WindowIPC.REQUEST_WINDOW_MAXIMIZE);
+            remote.getCurrentWindow().maximize();
         }
     }
 

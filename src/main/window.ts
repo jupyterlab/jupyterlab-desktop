@@ -51,7 +51,7 @@ class JupyterLabWindow {
             show: false,
             title: 'JupyterLab'
         });
-        
+
         ipcMain.on(WindowIPC.REQUEST_STATE_UPDATE, (evt: any, arg: any) => {
             for (let key in arg) {
                 if ((this._windowState as any)[key])
@@ -59,18 +59,6 @@ class JupyterLabWindow {
             }
         })
         
-        ipcMain.on(WindowIPC.REQUEST_WINDOW_CLOSE, (evt: any, arg: any) => {
-            this._window.close();
-        });
-
-        ipcMain.on(WindowIPC.REQUEST_WINDOW_MINIMIZE, (evt: any, arg: any) => {
-            this._window.minimize();
-        });
-
-        ipcMain.on(WindowIPC.REQUEST_WINDOW_MAXIMIZE, (evt: any, arg: any) => {
-            this._window.maximize();
-        });
-
         this._window.webContents.on('did-finish-load', () =>{
             this._window.show();
         });
