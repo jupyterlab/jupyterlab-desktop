@@ -4,7 +4,7 @@
 |----------------------------------------------------------------------------*/
 
 import {
-    Menu, MenuItem, ipcMain, BrowserWindow
+    Menu, MenuItem, ipcMain
 } from 'electron';
 
 import {
@@ -18,6 +18,10 @@ import {
 import {
     JupyterApplication
 } from './app';
+
+import {
+    JupyterLabWindow
+} from './window';
 
 type JupyterMenuItemOptions = MenuIPC.JupyterMenuItemOptions;
 
@@ -117,14 +121,16 @@ class JupyterMainMenu {
      * Click event handler. Passes the event on the render process 
      */
     private handleClick(menu: Electron.MenuItem, window: Electron.BrowserWindow): void {
-        let windows: Electron.BrowserWindow[] = null;
+        let windows: JupyterLabWindow[] = null;
         // Application window is in focus
         if (window){
              window.webContents.send(MenuIPC.POST_CLICK_EVENT, menu as JupyterMenuItemOptions);
         }
         // No focused window
-        else if ((windows = BrowserWindow.getAllWindows()).length > 0){
-            windows[0].webContents.send(MenuIPC.POST_CLICK_EVENT, menu as JupyterMenuItemOptions);
+        else if ((windows = this.jupyterApp.windows).length > 0){
+            if (menu.label === 'Add Server' || menu.label === 'Local'){
+                windows[0].browserWindow.webContents.send(MenuIPC.POST_CLICK_EVENT, menu as JupyterMenuItemOptions);
+            }
         }
         // No application windows available
         else {

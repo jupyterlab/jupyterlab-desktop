@@ -292,7 +292,11 @@ export class JupyterApplication {
     /**
      * The JupyterLab window
      */
-    private windows: JupyterLabWindow[] = [];
+    private _windows: JupyterLabWindow[] = [];
+    
+    get windows(): JupyterLabWindow[] {
+        return this._windows;
+    }
 
     /**
      * Construct the Jupyter application
@@ -329,20 +333,20 @@ export class JupyterApplication {
             }
             
             // If this is the last open window, save the state so we can reopen it
-            if (this.windows.length == 1) {
+            if (this._windows.length == 1) {
                 if (!this.appState) this.appState = {windows: null};
-                this.appState.windows = this.windows.map((w: JupyterLabWindow) => {
+                this.appState.windows = this._windows.map((w: JupyterLabWindow) => {
                     return w.windowState;
                 });
             }
         });
         
         window.browserWindow.on('closed', (event: Event) => {
-            ArrayExt.removeFirstOf(this.windows, window);
+            ArrayExt.removeFirstOf(this._windows, window);
             window = null;
         });
         
-        this.windows.push(window);
+        this._windows.push(window);
     }
 
     /**
@@ -361,11 +365,11 @@ export class JupyterApplication {
         // windows open.
         // Need to double check this code to ensure it has expected behaviour
         app.on('activate', () => {
-            if (this.windows.length === 0) {
+            if (this._windows.length === 0) {
                 this.createWindow({state: 'local'});
             }
             else if (BrowserWindow.getFocusedWindow() === null){
-                this.windows[0].browserWindow.focus();
+                this._windows[0].browserWindow.focus();
             }
         });
 
