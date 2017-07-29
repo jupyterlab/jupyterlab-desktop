@@ -1,47 +1,52 @@
 osx_image: xcode8.3
-
 dist: trusty
 sudo: required
-
 services:
-  - docker
-
+- docker
 language: node_js
-node_js: "6"
-
+node_js: '6'
 os:
-  - linux
-  - osx
-
+- linux
+- osx
 env:
   global:
-    - ELECTRON_CACHE=$HOME/.cache/electron
-    - ELECTRON_BUILDER_CACHE=$HOME/.cache/electron-builder
-  
+  - ELECTRON_CACHE=$HOME/.cache/electron
+  - ELECTRON_BUILDER_CACHE=$HOME/.cache/electron-builder
 cache:
   directories:
-   - $HOME/.yarn-cache
-  
+  - "$HOME/.yarn-cache"
 before_install:
-  # Repo for Yarn
-  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then sudo apt-key adv --keyserver pgp.mit.edu --recv D101F7899D41F3C3; fi
-  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then echo "deb http://dl.yarnpkg.com/debian/ stable main" | sudo tee /etc/apt/sources.list.d/yarn.list; fi
-  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then sudo apt-get update -qq; fi
-  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then sudo apt-get install -y -qq yarn; fi
-  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then docker pull electronuserland/electron-builder:wine ; fi
-  - if [[ "$TRAVIS_OS_NAME" == "osx"   ]]; then brew install --ignore-dependencies yarn ; fi
-  
+- if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then sudo apt-key adv --keyserver pgp.mit.edu
+  --recv D101F7899D41F3C3; fi
+- if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then echo "deb http://dl.yarnpkg.com/debian/
+  stable main" | sudo tee /etc/apt/sources.list.d/yarn.list; fi
+- if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then sudo apt-get update -qq; fi
+- if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then sudo apt-get install -y -qq yarn; fi
+- if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then docker pull electronuserland/electron-builder:wine
+  ; fi
+- if [[ "$TRAVIS_OS_NAME" == "osx"   ]]; then brew install --ignore-dependencies yarn
+  ; fi
 install:
-  - yarn install
-
+- yarn install
 script:
-  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then yarn dockerdist:linux; fi
-  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then yarn dockerdist:win; fi
-  - if [[ "$TRAVIS_OS_NAME" == "osx"   ]]; then yarn dist:mac; fi
-
-
+- if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then yarn dockerdist:linux; fi
+- if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then yarn dockerdist:win; fi
+- if [[ "$TRAVIS_OS_NAME" == "osx"   ]]; then yarn dist:mac; fi
 before_cache:
-  - rm -rf $HOME/.cache/electron-builder/wine
-    
+- rm -rf $HOME/.cache/electron-builder/wine
 notifications:
   email: false
+  
+  
+deploy:
+  provider: releases
+  api_key:
+    secure: JyiiIlzx5Z4IZY/otId/fatDdXOQLXx7eW0DR+4frnfebMN9Keaj0O/e24Gk4qGamcdBUcwaYr1f6WFm4zM2VprDuekMRZbP3vbYa4YfK10k5PG1OMB2eMnuKrjyCCgwDKKYkqwJ4XrzoVofRcOPSDYniKSmroXoqGcJsJWbj2DWgWlSD3hRQVRFG3oG+JxH3pknMP4+e6WImumHWLrCcJgov1fQHqIdInVZ8k99oYKGeIaiASQ7y1VJgB+wxbo1IQXSAgkD1R3EOE/yMY/woyxstwjpNTlWR4T6XpUlCxia9yDfQokDUAU7sULY7kg4CMCQx8qQwsGa8BTmsPhgDPHrOeysHRW3F0wP55JfsJv6d58ImBbKTjOOqt7/m7eBuIV58I6dSc7zXak+HfyO2Z2kQsxKpVgBFEQ8Eloexx1IjFGWPaDjPqia8vOFb7F+i2I8nZMW2a1PQerywy5WRX9GRqJEAHEcDREmlrD5t6Uxge3tpFMm7MgdLND4Bh13yJB8uihsby/ViW6y4nVbBPj2w8jeEvnx426APUxkJKQYy8k3mZWnSnzNtaDvcR1F0YSQSCEFv3kXNtaCWjpJ6A9gHTlCjYwKMvZ32H8SNlYRrP90y0EUGFui4bmw5DJl+4HOKy/EHJVm6LDzhWgGmuoT46ZxexE+s7Dy3+aq13M=
+  file_glob: true
+  file: 
+    - dist/*.exe
+    - dist/*.AppImage
+    - dist/*.tar.gz
+    - dist/*.zip
+    - dist/*.dmg
+  skip_cleanup: true
