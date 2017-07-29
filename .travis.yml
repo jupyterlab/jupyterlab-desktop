@@ -50,3 +50,5 @@ deploy:
     - dist/*.zip
     - dist/*.dmg
   skip_cleanup: true
+  on:
+    branch: gitreleases
