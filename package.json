@@ -42,10 +42,13 @@
       }
     },
     "win": {
-      "target": ["nsis","portable"]
+      "target": [
+        "nsis",
+        "portable"
+      ]
     },
     "rpm": {
-      "depends": ["libXScrnSaver"]
+      "depends": [
     },
     "nsis": {
       "oneClick": "false",

@@ -16,22 +16,24 @@ cache:
   directories:
   - "$HOME/.yarn-cache"
 before_install:
-- if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then sudo apt-key adv --keyserver pgp.mit.edu
-  --recv D101F7899D41F3C3; fi
-- if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then echo "deb http://dl.yarnpkg.com/debian/
-  stable main" | sudo tee /etc/apt/sources.list.d/yarn.list; fi
+- if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then sudo apt-key adv --keyserver pgp.mit.edu  --recv D101F7899D41F3C3; fi
+- if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then echo "deb http://dl.yarnpkg.com/debian/  stable main" | sudo tee /etc/apt/sources.list.d/yarn.list; fi
 - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then sudo apt-get update -qq; fi
 - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then sudo apt-get install -y -qq yarn; fi
-- if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then docker pull electronuserland/electron-builder:wine
-  ; fi
-- if [[ "$TRAVIS_OS_NAME" == "osx"   ]]; then brew install --ignore-dependencies yarn
-  ; fi
+- if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then docker pull electronuserland/electron-builder:wine; fi
+- if [[ "$TRAVIS_OS_NAME" == "osx"   ]]; then brew install --ignore-dependencies yarn  ; fi
+- if [[ "$TRAVIS_OS_NAME" == "osx"   ]]; then brew install rpm  ; fi
+
 install:
 - yarn install
 script:
 - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then yarn dockerdist:linux; fi
 - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then yarn dockerdist:win; fi
 - if [[ "$TRAVIS_OS_NAME" == "osx"   ]]; then yarn dist:mac; fi
+- if [[ "$TRAVIS_OS_NAME" == "osx"   ]]; then yarn dist:linux; fi
+- if [[ "$TRAVIS_OS_NAME" == "osx"   ]]; then yarn dist:win; fi
+
+
 before_cache:
 - rm -rf $HOME/.cache/electron-builder/wine
 notifications:
@@ -56,3 +58,4 @@ deploy:
   on:
     tags: true
     all_branches: true
+    condition: "$TRAVIS_OS_NAME = osx"
