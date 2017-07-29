@@ -2,7 +2,7 @@
 // Distributed under the terms of the Modified BSD License.
 
 import { 
-    app, ipcMain, BrowserWindow
+    app, ipcMain, dialog, BrowserWindow
 } from 'electron';
 
 import {
@@ -337,20 +337,20 @@ export class JupyterApplication {
         let window = new JupyterLabWindow(state);
         // Register dialog on window close
         window.browserWindow.on('close', (event: Event) => {
-            // let buttonClicked = dialog.showMessageBox({
-            //     type: 'warning',
-            //     message: 'Do you want to leave?',
-            //     detail: 'Changes you made may not be saved.',
-            //     buttons: ['Leave', 'Stay'],
-            //     defaultId: 0,
-            //     cancelId: 1
-            // });
+            let buttonClicked = dialog.showMessageBox({
+                type: 'warning',
+                message: 'Do you want to leave?',
+                detail: 'Changes you made may not be saved.',
+                buttons: ['Leave', 'Stay'],
+                defaultId: 0,
+                cancelId: 1
+            });
             
-            // if (buttonClicked === 1) {
-            //     // Stop the window from closing
-            //     event.preventDefault();
-            //     return;
-            // }
+            if (buttonClicked === 1) {
+                // Stop the window from closing
+                event.preventDefault();
+                return;
+            }
             
             // If this is the last open window, save the state so we can reopen it
             if (this._windows.length == 1) {
