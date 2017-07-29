@@ -39,7 +39,17 @@ script:
   - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then yarn dockerdist:linux; fi
   - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then yarn dockerdist:win; fi
   - if [[ "$TRAVIS_OS_NAME" == "osx"   ]]; then yarn dist:mac; fi
-  - ls dist
+
+after_success:
+  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then ./transfer upload dist/jupyterlab_app-*.AppImage; fi
+  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then ./transfer upload dist/jupyterlab_app-*.tar.gz; fi
+  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then ./transfer upload dist/jupyterlab_app-*.deb; fi
+  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then ./transfer upload dist/jupyterlab_app-*.rpm; fi
+  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then ./transfer upload dist/JupyterLab\ App\ *.exe; fi
+  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then ./transfer upload dist/JupyterLab\ App\ Setup\ *.exe; fi
+  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then ./transfer upload dist/JupyterLab App-*.dmg; fi
+
+
   
 
 before_cache:
