@@ -49,6 +49,8 @@
     },
     "rpm": {
       "depends": [
+        "libXScrnSaver"
+      ]
     },
     "nsis": {
       "oneClick": "false",
