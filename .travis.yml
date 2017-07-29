@@ -49,7 +49,6 @@ after_success:
   - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then ./transfer upload dist/JupyterLab\ App\ Setup\ +([0-9]).+([0-9]).+([0-9]).exe; fi
   - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then ./transfer upload dist/JupyterLab\ App-*.dmg; fi
 
-+([0-9])
   
 
 before_cache:
