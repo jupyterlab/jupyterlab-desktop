@@ -30,6 +30,7 @@ before_install:
   - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then sudo apt-get install -y -qq yarn; fi
   - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then docker pull electronuserland/electron-builder:wine ; fi
   - if [[ "$TRAVIS_OS_NAME" == "osx"   ]]; then brew install --ignore-dependencies yarn ; fi
+  - curl -O https://raw.githubusercontent.com/rockymadden/transfer-cli/master/src/transfer && chmod +x transfer
   
 install:
   - yarn install
@@ -38,6 +39,7 @@ script:
   - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then yarn dockerdist:linux; fi
   - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then yarn dockerdist:win; fi
   - if [[ "$TRAVIS_OS_NAME" == "osx"   ]]; then yarn dist:mac; fi
+  - ls dist
   
 
 before_cache:
