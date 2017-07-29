@@ -54,5 +54,5 @@ deploy:
     - dist/*.rpm
   skip_cleanup: true
   on:
-    branch: gitreleases
     tags: true
+    all_branches: true
