@@ -35,6 +35,10 @@ import {
     ArrayExt
 } from '@phosphor/algorithm';
 
+import {
+    KeyboardShortcutManager
+} from 'jupyterlab_app/src/main/shortcuts'
+
 
 export
 class JupyterServer {
@@ -292,10 +296,13 @@ export class JupyterApplication {
      */
     private windows: JupyterLabWindow[] = [];
 
+    private shortcutManager: KeyboardShortcutManager;
+
     /**
      * Construct the Jupyter application
      */
     constructor() {
+        this.shortcutManager = new KeyboardShortcutManager(this.windows);
         this.registerListeners();
         this.menu = new JupyterMainMenu();
         this.serverFactory = new JupyterServerFactory();
