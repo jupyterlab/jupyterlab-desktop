@@ -78,12 +78,6 @@ class NativeMenu extends MenuBar implements IMainMenu {
             nItems[i].command = items[i].command;
             nItems[i].args = items[i].args;
 
-            if (items[i].keyBinding !== null){
-                // Doesn't handle shortcuts made of multiple key codes
-                let keys = items[i].keyBinding.keys.join(",");
-                nItems[i].accelerator = keys.replace(/ /g, "+");
-            }
-
             if (items[i].submenu !== null)
                 nItems[i].submenu = this.buildNativeMenu(items[i].submenu);
         }
