@@ -14,15 +14,13 @@
     "build": "npm run build:main && npm run build:browser",
     "build:all": "npm run build && npm start",
     "pack": "npm run build && electron-builder --dir",
-    "dist": "npm run build && electron-builder",
-    "dist:linux": "npm run build && electron-builder --linux",
+    "dist": "npm run build && electron-builder --publish never",
+    "dist:linux": "npm run build && electron-builder --linux --publish never",
     "dockerdist:linux": "docker run --rm -ti -v ${PWD}:/project -v ${PWD##*/}-node-modules:/project/node_modules -v ~/.electron:/root/.electron electronuserland/electron-builder:wine /bin/bash -c \"yarn && yarn dist:linux\"",
-    "dist:mac": "npm run build && electron-builder --macos",
-    "dockerdist:mac": "docker run --rm -ti -v ${PWD}:/project -v ${PWD##*/}-node-modules:/project/node_modules -v ~/.electron:/root/.electron electronuserland/electron-builder:wine /bin/bash -c \"yarn && yarn dist:mac\"",
-    "dist:win": "npm run build && electron-builder --win",
+    "dist:mac": "npm run build && electron-builder --macos --publish never",
+    "dist:win": "npm run build && electron-builder --win --publish never",
     "dockerdist:win": "docker run --rm -ti -v ${PWD}:/project -v ${PWD##*/}-node-modules:/project/node_modules -v ~/.electron:/root/.electron electronuserland/electron-builder:wine /bin/bash -c \"yarn && yarn dist:win\"",
-    "dist:all": "npm run build && electron-builder --linux --win",
-    "dockerdist:all": "docker run --rm -ti -v ${PWD}:/project -v ${PWD##*/}-node-modules:/project/node_modules -v ~/.electron:/root/.electron electronuserland/electron-builder:wine /bin/bash -c \"yarn && yarn dist:all\""
+    "release": "electron-builder --publish onTagOrDraft"
   },
   "build": {
     "productName": "JupyterLab App",
@@ -44,10 +42,15 @@
       }
     },
     "win": {
-      "target": ["nsis","portable"]
+      "target": [
+        "nsis",
+        "portable"
+      ]
     },
     "rpm": {
-      "depends": ["libXScrnSaver"]
+      "depends": [
+        "libXScrnSaver"
+      ]
     },
     "nsis": {
       "oneClick": "false",
