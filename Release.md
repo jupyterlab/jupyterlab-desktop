@@ -1,11 +1,19 @@
 # Releasing through Travis-CI
 
-1. Commit and push all your changes, you need to have a clean git repo locally
-2. Run `npm version minor/major/patch` to update the version in package.json and create a tag and an individual commit
-3. Push the newly created commit and tag 
-4. Travis-CI will build for macOS, Linux, and Windows and release them in a Github release Draft, that will need to be hand-polished and published.
+### Workflow 1
 
-At the present time in Travis-CI due to a [bug](https://github.com/electron-userland/electron-builder/issues/1871) in electron-builder all artifacts are built on macOS and deployed by travis as a Github release draft.
+1. Draft a new release on Github. Set the "Tag version" to the value of version in your application package.json, and prefix it with v. "Release title" can be anything you want.
+For example, if your application package.json version is 1.0, your draft's "Tag version" would be v1.0.
+2. Push some commits. Every CI build will update the artifacts attached to this draft.
+3. Once you are done, publish the release. GitHub will tag the latest commit for you.
+
+The benefit of this workflow is that it allows you to always have the latest artifacts, and the release can be published once it is ready.
+
+### Workflow 2
+
+1. run `npm version major/minor/patch` to tag and generate a commit
+2. push the commit and the tag
+3. The CI will draft a release with the correct "Tag version" from your package.json file
 
 
 # Dependencies
