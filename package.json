@@ -14,11 +14,11 @@
     "build": "npm run build:main && npm run build:browser",
     "build:all": "npm run build && npm start",
     "pack": "npm run build && electron-builder --dir",
-    "dist": "npm run build && electron-builder --publish never",
-    "dist:linux": "npm run build && electron-builder --linux --publish never",
+    "dist": "npm run build && electron-builder",
+    "dist:linux": "npm run build && electron-builder --linux",
     "dockerdist:linux": "docker run --rm -ti -v ${PWD}:/project -v ${PWD##*/}-node-modules:/project/node_modules -v ~/.electron:/root/.electron electronuserland/electron-builder:wine /bin/bash -c \"yarn && yarn dist:linux\"",
-    "dist:mac": "npm run build && electron-builder --macos --publish never",
-    "dist:win": "npm run build && electron-builder --win --publish never",
+    "dist:mac": "npm run build && electron-builder --macos",
+    "dist:win": "npm run build && electron-builder --win",
     "dockerdist:win": "docker run --rm -ti -v ${PWD}:/project -v ${PWD##*/}-node-modules:/project/node_modules -v ~/.electron:/root/.electron electronuserland/electron-builder:wine /bin/bash -c \"yarn && yarn dist:win\"",
     "release": "electron-builder --publish onTagOrDraft"
   },
@@ -57,10 +57,6 @@
       "deleteAppDataOnUninstall": true,
       "license": "LICENSE"
     }
-  },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/jupyterlab/jupyterlab_app.git"
   },
   "author": {
     "name": "Project Jupyter",
