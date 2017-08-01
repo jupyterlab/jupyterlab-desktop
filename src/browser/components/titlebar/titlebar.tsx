@@ -20,6 +20,11 @@ export namespace TitleBar {
 
 export
 function TitleBar(props: TitleBar.Props) {
+    
+    // Don't render titlebar on linux since we're using the
+    // native title bar.
+    if (props.uiState == 'linux')
+        return null;
 
     let modClass = 'jpe-mod-' + props.uiState;
 
