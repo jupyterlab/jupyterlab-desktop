@@ -34,26 +34,22 @@ type MenuItemConstructorOptions = Electron.MenuItemConstructorOptions;
 export
 class JupyterMainMenu {
 
-    /**
-     * Electron menu object. Stores menu bar contents.
-     */
-    private menu: Electron.Menu;
-
-    private jupyterApp: JupyterApplication;
-
-    constructor(jupyterApp: JupyterApplication) {
-        this.menu = new Menu();
-        this.jupyterApp = jupyterApp;
-        this.registerListeners();
+    constructor() {
+        this._menu = new Menu();
+        
+        /* Register MENU_ADD event */
+        ipcMain.on(MenuIPC.REQUEST_MENU_ADD, (event: any, menu: JupyterMenuItemOptions) => {
+            this._addMenu(event, menu);
+        });
 
         if (process.platform === 'darwin') {
-            this.menu.append(new MenuItem({
+            this._menu.append(new MenuItem({
                 id: '-1',
                 label: 'JupyterLab',
                 submenu: null
             }));
         }
-        Menu.setApplicationMenu(this.menu);
+        Menu.setApplicationMenu(this._menu);
     }
 
     /**
@@ -61,7 +57,7 @@ class JupyterMainMenu {
      * 
      * @param menu A menu being added to the menu bar. 
      */
-    private setClickEvents(menu: JupyterMenuItemOptions): void {
+    private _setClickEvents(menu: JupyterMenuItemOptions): void {
         let boundClick = this.handleClick.bind(this);
         if (menu.submenu === null || menu.submenu === undefined) {
             menu.click = boundClick;
@@ -70,18 +66,8 @@ class JupyterMainMenu {
 
         let items = <JupyterMenuItemOptions[]>menu.submenu;
         for (let i = 0, n = items.length; i < n; i++) {
-            this.setClickEvents(items[i]);
+            this._setClickEvents(items[i]);
         }
-    }
-
-    /**
-     * Register listeners on main menu events
-     */
-    private registerListeners(): void {
-        /* Register MENU_ADD event */
-        ipcMain.on(MenuIPC.REQUEST_MENU_ADD, (event: any, menu: JupyterMenuItemOptions) => {
-            this.addMenu(event, menu);
-        });
     }
 
     /**
@@ -93,15 +79,15 @@ class JupyterMainMenu {
      * @param event The ipc event object 
      * @param menu The menu item configuration
      */
-    private addMenu(event: any, menu: JupyterMenuItemOptions) {
-        let items = this.menu.items;
+    private _addMenu(event: any, menu: JupyterMenuItemOptions) {
+        let items = this._menu.items;
         /* Check if item has already been inserted */
         for (let i = 0, n = items.length; i < n; i++) {
             if (items[i].label == menu.label)
                 return;
         }
 
-        this.setClickEvents(menu);
+        this._setClickEvents(menu);
 
         if (!menu.rank)
             menu.rank = 100;
@@ -112,8 +98,8 @@ class JupyterMainMenu {
                         return f.rank - s.rank;
                     });
         
-        this.menu.insert(index, new MenuItem(menu));
-        Menu.setApplicationMenu(this.menu);
+        this._menu.insert(index, new MenuItem(menu));
+        Menu.setApplicationMenu(this._menu);
     }
 
     /**
@@ -142,4 +128,10 @@ class JupyterMainMenu {
 
         }
     }
+
+    /**
+     * Electron menu object. Stores menu bar contents.
+     */
+    private _menu: Electron.Menu;
+
 }

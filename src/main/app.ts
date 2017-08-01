@@ -184,7 +184,7 @@ class JupyterApplication {
     * Create a new window running on a new local server 
     */
     public newLocalServer(){
-        this.createWindow({state: 'local'});
+        this._createWindow({state: 'local'});
     }
 
     /**
@@ -192,7 +192,7 @@ class JupyterApplication {
     * Does not start a new local server (unless prompted by user)
     */
     public addServer(){
-        this.createWindow({state: 'new'});
+        this._createWindow({state: 'new'});
     }
     
     private _menu: JupyterMainMenu;
