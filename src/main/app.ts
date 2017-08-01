@@ -45,47 +45,25 @@ export
 class JupyterApplication {
 
     /**
-     * Controls the native menubar
+     * Construct the Jupyter application
      */
-    private menu: JupyterMainMenu;
+    constructor() {
+        this._registerListeners();
+        this._menu = new JupyterMainMenu(this);
+        this._serverFactory = new JupyterServerFactory({});
+        
+        this._appStateDB.fetch(JupyterApplication.APP_STATE_NAMESPACE)
+            .then((state: JupyterApplication.IState) => {
+                this._appState = state;
+                this._start(state);
+            })
+    }
 
-    private serverFactory: JupyterServerFactory;
-
-    /**
-     * Object to store the size and position of the window.
-     */
-    private appStateDB = new ElectronStateDB({namespace: 'jupyterlab-application-data'});
-
-    private appState: JupyterApplication.IState;
-
-    /**
-     * The JupyterLab window
-     */
-    private _windows: JupyterLabWindow[] = [];
-    
     get windows(): JupyterLabWindow[] {
         return this._windows;
     }
 
-    private shortcutManager: KeyboardShortcutManager;
-
-    /**
-     * Construct the Jupyter application
-     */
-    constructor() {
-        this.shortcutManager = new KeyboardShortcutManager(this.windows);
-        this.registerListeners();
-        this.menu = new JupyterMainMenu(this);
-        this.serverFactory = new JupyterServerFactory({});
-        
-        this.appStateDB.fetch(JupyterApplication.APP_STATE_NAMESPACE)
-            .then((state: JupyterApplication.IState) => {
-                this.appState = state;
-                this.start(state);
-            })
-    }
-
-    private createWindow(state: JupyterLabWindow.IOptions) {
+    private _createWindow(state: JupyterLabWindow.IOptions) {
         let uiState: JupyterLabWindow.UIState;
         for (let arg of process.argv) {
             if (arg == '--windows-ui') {
@@ -118,8 +96,7 @@ class JupyterApplication {
             
             // If this is the last open window, save the state so we can reopen it
             if (this._windows.length == 1) {
-                if (!this.appState) this.appState = {windows: null};
-                this.appState.windows = this.windows.map((w: JupyterLabWindow) => {
+                this._appState.windows = this._windows.map((w: JupyterLabWindow) => {
                     return w.state();
                 });
             }
@@ -136,7 +113,7 @@ class JupyterApplication {
     /**
      * Register all application event listeners
      */
-    private registerListeners(): void {
+    private _registerListeners(): void {
         // On OS X it is common for applications and their menu bar to stay 
         // active until the user quits explicitly with Cmd + Q.
         app.on('window-all-closed', () => {
@@ -150,7 +127,7 @@ class JupyterApplication {
         // Need to double check this code to ensure it has expected behaviour
         app.on('activate', () => {
             if (this._windows.length === 0) {
-                this.createWindow({state: 'local'});
+                this._createWindow({state: 'local'});
             }
             else if (BrowserWindow.getFocusedWindow() === null){
                 this._windows[0].browserWindow.focus();
@@ -159,16 +136,16 @@ class JupyterApplication {
 
         app.on('will-quit', (event) => {
             event.preventDefault();
-            this.appStateDB.save(JupyterApplication.APP_STATE_NAMESPACE, this.appState)
+            this._appStateDB.save(JupyterApplication.APP_STATE_NAMESPACE, this._appState)
                 .then(() => {
-                    this.serverFactory.killAllServers()
+                    this._serverFactory.killAllServers()
                         .then(() => process.exit())
                         .catch((e) => {
                             console.error(e);
                             process.exit();
                         });
                 }).catch(() => {
-                    this.serverFactory.killAllServers()
+                    this._serverFactory.killAllServers()
                         .then(() => process.exit())
                         .catch((e) => {
                             console.error(e);
@@ -178,32 +155,32 @@ class JupyterApplication {
         });
         
         ipcMain.on(AppIPC.REQUEST_ADD_SERVER, (event: any, arg: any) => {
-            this.createWindow({state: 'new'});
+            this._createWindow({state: 'new'});
         });
         
         ipcMain.on(AppIPC.REQUEST_OPEN_CONNECTION, (event: any, arg: AppIPC.IOpenConnection) => {
             if (arg.type == 'remote')
-                this.createWindow({state: 'remote', remoteServerId: arg.remoteServerId});
+                this._createWindow({state: 'remote', remoteServerId: arg.remoteServerId});
             else
-                this.createWindow({state: 'local'});
-        });
+                this._createWindow({state: 'local'});
+        })
     }
 
     /**
      * Creates windows based on data in application state. If no data is avalable
      * we start the initial start state.
      */
-    private start(state: JupyterApplication.IState): void {
+    private _start(state: JupyterApplication.IState): void {
         if (!state || !state.windows || state.windows.length == 0) {
             // Start JupyterLab with local sever by sending local server id
             // Prelaunch local server to improve performance
-            this.serverFactory.createFreeServer();
-            this.createWindow({state: 'local'});
+            this._serverFactory.startFreeServer();
+            this._createWindow({state: 'local'});
             return;
         }
         
         for (let window of state.windows) {
-            this.createWindow(window)
+            this._createWindow(window)
         }
     }
 
@@ -221,6 +198,17 @@ class JupyterApplication {
     public addServer(){
         this.createWindow({state: 'new'});
     }
+    
+    private _menu: JupyterMainMenu;
+
+    private _serverFactory: JupyterServerFactory;
+
+    private _appStateDB = new ElectronStateDB({namespace: 'jupyterlab-application-data'});
+
+    private _appState: JupyterApplication.IState;
+
+    private _windows: JupyterLabWindow[] = [];
+
 }
 
 export

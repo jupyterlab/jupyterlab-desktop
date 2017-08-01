@@ -24,14 +24,17 @@ class JupyterServer {
     }
     
     /**
-     * Start a local Jupyer server. Returns
-     * a promise that is fulfilled when the Jupyter server has
-     * started and all the required data (url, token, etc.) is
-     * collected. This data is collected from the data written to
-     * std out upon sever creation
+     * Start a local Jupyer server. This method can be
+     * called multiple times without initiating multiple starts.
+     * 
+     * @return a promise that is resolved when the server has started.
      */
     public start(): Promise<JupyterServer.IInfo> {
-        return new Promise<JupyterServer.IInfo>((resolve, reject) => {
+        if (this._startServer) {
+            return this._startServer;
+        }
+
+        this._startServer = new Promise<JupyterServer.IInfo>((resolve, reject) => {
             let urlRegExp = /http:\/\/localhost:\d+\/\?token=\w+/g;
             let tokenRegExp = /token=\w+/g;
             let baseRegExp = /http:\/\/localhost:\d+\//g;
@@ -72,10 +75,14 @@ class JupyterServer {
                 this._nbServer.stdin.write('exec jupyter notebook --no-browser\n');
             }
         });
+
+        return this._startServer;
     }
 
     /**
-     * Stop the currently executing Jupyter server
+     * Stop the currently executing Jupyter server.
+     * 
+     * @return a promise that is resolved when the server has stopped.
      */
     public stop(): Promise<void> {
         // If stop has already been initiated, just return the promise
@@ -107,6 +114,8 @@ class JupyterServer {
     private _nbServer: ChildProcess;
 
     private _stopServer: Promise<void> = null;
+
+    private _startServer: Promise<JupyterServer.IInfo> = null;
 
     private _info: JupyterServer.IInfo = {url: null, token: null};
 }
@@ -160,13 +169,14 @@ class JupyterServerFactory {
         });
     }
 
-    createFreeServer(): JupyterServerFactory.IFactoryItem {
+    startFreeServer(): JupyterServerFactory.IFactoryItem {
         let server = new JupyterServer({})
         let item: JupyterServerFactory.IFactoryItem = {
             factoryId: this._nextId++,
             server: server,
             status: 'free'
         };
+        server.start();
         this._servers.push(item);
         return item;
     }
@@ -186,7 +196,7 @@ class JupyterServerFactory {
     }
 
     requestServerStart(): Promise<JupyterServerFactory.IFactoryItem> {
-        let server = this.getFreeServer() || this.createFreeServer();
+        let server = this.getFreeServer() || this.startFreeServer();
         server.status = 'used';
 
         return new Promise<JupyterServerFactory.IFactoryItem>((res, rej) => {

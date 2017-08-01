@@ -160,7 +160,11 @@ function addCommands(app: JupyterLab, palette: ICommandPalette): void {
 
 
 /**
- * Export the plugins as default.
+ * Override default jupyterlab plugins
  */
-plugins[0] = mainPlugin;
-export default plugins;
+let nPlugins = plugins.map((p: JupyterLabPlugin<any>) => {
+    if (p.id == 'jupyter.extensions.main')
+        return mainPlugin;
+    return p;
+});
+export default nPlugins;
