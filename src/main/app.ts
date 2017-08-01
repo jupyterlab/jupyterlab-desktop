@@ -166,10 +166,6 @@ class JupyterApplication {
         })
     }
 
-    /**
-     * Creates windows based on data in application state. If no data is avalable
-     * we start the initial start state.
-     */
     private _start(state: JupyterApplication.IState): void {
         if (!state || !state.windows || state.windows.length == 0) {
             // Start JupyterLab with local sever by sending local server id

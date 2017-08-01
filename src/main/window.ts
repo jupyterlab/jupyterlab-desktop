@@ -21,13 +21,6 @@ import 'jupyterlab_app/src/browser/index.html';
 export
 class JupyterLabWindow {
 
-    private _info: JupyterLabWindow.IInfo = null;
-
-    /**
-     * Electron window
-     */
-    private _window: Electron.BrowserWindow = null;
-
     constructor(options: JupyterLabWindow.IOptions) {
         this._info = {
             state: options.state,
@@ -41,17 +34,19 @@ class JupyterLabWindow {
         }
 
         if (!this._info.uiState) {
-            if (this._info.platform == 'darwin')
+            if (this._info.platform == 'darwin') {
                 this._info.uiState = 'mac';
-            else if (this._info.platform == 'linux')
+            } else if (this._info.platform == 'linux') {
                 this._info.uiState = 'linux';
-            else
+            } else {
                 this._info.uiState = 'windows';
+            }
         }
         
         let showFrame = false;
         if (this._info.uiState == 'linux') {
             showFrame = true;
+        }
 
 
         this._window = new BrowserWindow({
@@ -102,6 +97,10 @@ class JupyterLabWindow {
         this._info.height = winBounds.height;
         return this._info;
     }
+    
+    get browserWindow(): Electron.BrowserWindow {
+        return this._window;
+    }
 
     state(): JupyterLabWindow.IState {
         let info = this.info;
@@ -116,9 +115,10 @@ class JupyterLabWindow {
         }
     }
 
-    get browserWindow(): Electron.BrowserWindow {
-        return this._window;
-    }
+    private _info: JupyterLabWindow.IInfo = null;
+
+    private _window: Electron.BrowserWindow = null;
+
 }
 
 export
