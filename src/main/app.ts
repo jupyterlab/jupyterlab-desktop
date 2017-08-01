@@ -38,9 +38,6 @@ import {
 } from 'jupyterlab_app/src/main/shortcuts'
 
 
-
-
-
 export
 class JupyterApplication {
 
@@ -49,6 +46,7 @@ class JupyterApplication {
      */
     constructor() {
         this._registerListeners();
+        this._shortcutManager = new KeyboardShortcutManager(this.windows);
         this._menu = new JupyterMainMenu(this);
         this._serverFactory = new JupyterServerFactory({});
         
@@ -204,6 +202,8 @@ class JupyterApplication {
     private _appState: JupyterApplication.IState;
 
     private _windows: JupyterLabWindow[] = [];
+
+    private _shortcutManager: KeyboardShortcutManager;
 
 }
 

@@ -34,8 +34,9 @@ type MenuItemConstructorOptions = Electron.MenuItemConstructorOptions;
 export
 class JupyterMainMenu {
 
-    constructor() {
+    constructor(jupyterApp: JupyterApplication) {
         this._menu = new Menu();
+        this._jupyterApp = jupyterApp;
         
         /* Register MENU_ADD event */
         ipcMain.on(MenuIPC.REQUEST_MENU_ADD, (event: any, menu: JupyterMenuItemOptions) => {
@@ -112,7 +113,7 @@ class JupyterMainMenu {
              window.webContents.send(MenuIPC.POST_CLICK_EVENT, menu as JupyterMenuItemOptions);
         }
         // No focused window
-        else if ((windows = this.jupyterApp.windows).length > 0){
+        else if ((windows = this._jupyterApp.windows).length > 0){
             if (menu.label === 'Add Server' || menu.label === 'Local'){
                 windows[0].browserWindow.webContents.send(MenuIPC.POST_CLICK_EVENT, menu as JupyterMenuItemOptions);
             }
@@ -120,10 +121,10 @@ class JupyterMainMenu {
         // No application windows available
         else {
             if (menu.label === 'Add Server'){
-                this.jupyterApp.addServer();
+                this._jupyterApp.addServer();
             }
             else if (menu.label === 'Local'){
-                this.jupyterApp.newLocalServer();
+                this._jupyterApp.newLocalServer();
             }
 
         }
@@ -134,4 +135,5 @@ class JupyterMainMenu {
      */
     private _menu: Electron.Menu;
 
+    private _jupyterApp: JupyterApplication;
 }
