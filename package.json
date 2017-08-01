@@ -57,7 +57,7 @@
       "deleteAppDataOnUninstall": true,
       "license": "LICENSE",
       "language": "1033",
-      "installerSidebar": "dist-resources/installerSidebar"
+      "installerSidebar": "installerSidebar.bmp"
     }
   },
   "author": {
