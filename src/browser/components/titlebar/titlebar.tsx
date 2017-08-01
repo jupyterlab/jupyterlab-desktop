@@ -21,11 +21,6 @@ export namespace TitleBar {
 export
 function TitleBar(props: TitleBar.Props) {
     
-    // Don't render titlebar on linux since we're using the
-    // native title bar.
-    if (props.uiState == 'linux')
-        return null;
-
     let modClass = 'jpe-mod-' + props.uiState;
 
     let clicked = (type: string) => {
@@ -38,13 +33,23 @@ function TitleBar(props: TitleBar.Props) {
         }
     }
 
-    return (
-        <div className={'jpe-TitleBar-body ' + modClass}>
+    // Don't render titlebar on buttons on linux or mac
+    let content: JSX.Element;
+    if (props.uiState == 'linux' || props.uiState == 'mac') {
+        content = null;
+    } else {
+        content = (
             <div className={'jpe-TitleBar-button-container ' + modClass}>
                 <div className={'jpe-TitleBar-button jpe-TitleBar-close ' + modClass} onClick={() => {clicked('close')}} />
                 <div className={'jpe-TitleBar-button jpe-TitleBar-min ' + modClass} onClick={() => {clicked('minimize')}} />
                 <div className={'jpe-TitleBar-button jpe-TitleBar-max ' + modClass} onClick={() => {clicked('maximize')}} />
             </div>
+        );
+    }
+
+    return (
+        <div className={'jpe-TitleBar-body ' + modClass}>
+            {content}
         </div>
     );
 }
