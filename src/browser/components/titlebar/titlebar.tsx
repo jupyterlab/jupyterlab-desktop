@@ -33,7 +33,7 @@ function TitleBar(props: TitleBar.Props) {
         }
     }
 
-    // Don't render titlebar on buttons on linux or mac
+    // Don't render titlebar buttons on linux or mac
     let content: JSX.Element;
     if (props.uiState == 'linux' || props.uiState == 'mac') {
         content = null;
