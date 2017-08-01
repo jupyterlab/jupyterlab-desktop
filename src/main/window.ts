@@ -6,6 +6,10 @@ import {
 } from 'electron';
 
 import {
+    JSONObject
+} from '@phosphor/coreutils';
+
+import {
     JupyterWindowIPC as WindowIPC,
 } from 'jupyterlab_app/src/ipc';
 
@@ -33,7 +37,7 @@ class JupyterLabWindow {
             y: options.y,
             width: options.width,
             height: options.width,
-            serverId: options.serverId
+            remoteServerId: options.remoteServerId
         }
 
         if (!this._info.uiState) {
@@ -74,11 +78,19 @@ class JupyterLabWindow {
             this._window.show();
         });
         
+        // Create window state object to pass to the render process
+        let windowState: WindowIPC.IWindowState = {
+            serverState: this._info.state,
+            remoteServerId: this._info.remoteServerId,
+            uiState: this._info.uiState,
+            platform: this._info.platform
+        }
+
         this._window.loadURL(url.format({
             pathname: path.resolve(__dirname, "index.html"),
             protocol: 'file:',
             slashes: true,
-            search: encodeURIComponent(JSON.stringify(this._info))
+            search: encodeURIComponent(JSON.stringify(windowState))
         }));
     }
     
@@ -89,6 +101,19 @@ class JupyterLabWindow {
         this._info.width = winBounds.width;
         this._info.height = winBounds.height;
         return this._info;
+    }
+
+    state(): JupyterLabWindow.IState {
+        let info = this.info;
+
+        return {
+            x: info.x,
+            y: info.y,
+            width: info.width,
+            height: info.height,
+            state: info.state,
+            remoteServerId: info.remoteServerId
+        }
     }
 
     get browserWindow(): Electron.BrowserWindow {
@@ -109,23 +134,33 @@ namespace JupyterLabWindow {
     interface IOptions {
         state: ServerState;
         platform?: NodeJS.Platform;
-        uiState?: JupyterLabWindow.UIState;
+        uiState?: UIState;
         x?: number;
         y?: number;
         width?: number;
         height?: number;
-        serverId?: number;
+        remoteServerId?: number;
     }
 
     export
     interface IInfo {
         state: ServerState;
         platform: NodeJS.Platform;
-        uiState: JupyterLabWindow.UIState;
+        uiState: UIState;
         x: number;
         y: number;
         width: number;
         height: number;
-        serverId?: number;
+        remoteServerId?: number;
+    }
+
+    export
+    interface IState extends JSONObject {
+        state: ServerState;
+        x: number;
+        y: number;
+        width: number;
+        height: number;
+        remoteServerId?: number;
     }
 }

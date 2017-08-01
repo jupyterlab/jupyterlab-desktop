@@ -21,14 +21,11 @@ import {
     IMainMenu
 } from '@jupyterlab/apputils';
 
-type JupyterMenuItemOptions = MenuIPC.JupyterMenuItemOptions;
+import {
+    ipcRenderer as ipc
+} from 'jupyterlab_app/src/browser/utils';
 
-/**
- * Require electron from window object. This prevents webpack from trying
- * to resolve the window object. window.require is defined in the electron
- * environment.
- */
-let ipc = (window as any).require('electron').ipcRenderer;
+type JupyterMenuItemOptions = MenuIPC.JupyterMenuItemOptions;
 
 /**
  * The main menu class. Interacts with the electron main process

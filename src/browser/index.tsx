@@ -16,10 +16,9 @@ import {
 
 function main() : void {
     let optionsStr = decodeURIComponent((global as any).location.search);
-    let options: WindowIPC.WindowOptions = JSON.parse(optionsStr.slice(1));
-    console.log(options);
+    let options: WindowIPC.IWindowState = JSON.parse(optionsStr.slice(1));
     ReactDOM.render(
-        <Application options={options} />,
+        <Application options={options as Application.IOptions} />,
         document.getElementById('root')
     );
 }

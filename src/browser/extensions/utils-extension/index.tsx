@@ -9,8 +9,11 @@ import {
 
 import {
     JupyterApplicationIPC as AppIPC,
-    JupyterServerIPC as ServerIPC,
 } from 'jupyterlab_app/src/ipc';
+
+import {
+    JSONObject
+} from '@phosphor/coreutils';
 
 import {
     Application
@@ -40,16 +43,14 @@ import {
     TitleBar
 } from 'jupyterlab_app/src/browser/components';
 
+import {
+    ipcRenderer
+} from 'jupyterlab_app/src/browser/utils';
+
 import * as React from 'react';
 import * as ReactDOM from 'react-dom';
-import plugin from '@jupyterlab/apputils-extension';
+import plugins from '@jupyterlab/apputils-extension';
 
-
-/**
- * Use window.require to prevent webpack
- * from trying to resolve the electron library
- */
-let ipcRenderer = (window as any).require('electron').ipcRenderer;
 
 namespace CommandIDs {
     export
@@ -59,20 +60,32 @@ namespace CommandIDs {
     const connectToServer = 'electron-jupyterlab:connect-to-server';
 }
 
+interface ServerManagerMenuArgs extends JSONObject, AppIPC.IOpenConnection {
+    name: string;
+}
+
 const serverManagerPlugin: JupyterLabPlugin<void> = {
-  id: 'jupyter.extensions.server-manager',
-  requires: [ICommandPalette, IMainMenu],
-  activate: (app: ElectronJupyterLab, palette: ICommandPalette, menu: IMainMenu) => {
+    id: 'jupyter.extensions.server-manager',
+    requires: [ICommandPalette, IMainMenu],
+    activate: (app: ElectronJupyterLab, palette: ICommandPalette, menu: IMainMenu) => {
     let serverState = new StateDB({namespace: Application.STATE_NAMESPACE});
-    // Always insert a local server
-    let servers: ServerIPC.ServerDesc[] = [{id: null, name: 'Local', type: 'local'}];
+    // Insert a local server
+    let servers: ServerManagerMenuArgs[] = [{name: 'Local', type: 'local'}];
 
     serverState.fetch(Application.SERVER_STATE_ID)
-        .then((data: Application.Connections | null) => {
-            if (!data)
+        .then((data: Application.IRemoteServerState | null) => {
+            if (!data) {
                 createServerManager(app, palette, menu, servers);
-            else
-                createServerManager(app, palette, menu, servers.concat(data.servers));
+            } else {
+                servers.concat(data.remotes.map((remote) => {
+                    return {
+                        type: 'remote',
+                        name: remote.name,
+                        id: remote.id
+                    } as ServerManagerMenuArgs;
+                }));
+                createServerManager(app, palette, menu, servers);
+            }
         })
         .catch((e) => {
             console.log(e);
@@ -86,11 +99,14 @@ const serverManagerPlugin: JupyterLabPlugin<void> = {
 }
 
 function createServerManager(app: ElectronJupyterLab, palette: ICommandPalette,
-                            menu: IMainMenu, servers: ServerIPC.ServerDesc[]) {
-    
+                            menu: IMainMenu, servers: ServerManagerMenuArgs[]) {
     app.commands.addCommand(CommandIDs.activateServerManager, {
         label: 'Add Server',
-        execute: () => {ipcRenderer.send(AppIPC.REQUEST_ADD_SERVER, 'start')}
+        execute: () => {ipcRenderer.send(AppIPC.REQUEST_ADD_SERVER)}
+    });
+    app.commands.addCommand(CommandIDs.connectToServer, {
+        label: (args) => args.name as string,
+        execute: (args) => {ipcRenderer.send(AppIPC.REQUEST_OPEN_CONNECTION, args)}
     });
 
     const { commands } = app;
@@ -101,10 +117,6 @@ function createServerManager(app: ElectronJupyterLab, palette: ICommandPalette,
         serverMenu.addItem({command: CommandIDs.connectToServer, args: s});
         palette.addItem({command: CommandIDs.connectToServer, args: s, category: 'Servers'});
     }
-    app.commands.addCommand(CommandIDs.connectToServer, {
-        label: (args) => args.name as string,
-        execute: (args) => {ipcRenderer.send(AppIPC.REQUEST_OPEN_CONNECTION, args)}
-    });
 
     serverMenu.addItem({ type: 'separator' });
     serverMenu.addItem({ command: CommandIDs.activateServerManager });
@@ -170,6 +182,10 @@ const nativeMainMenuPlugin: JupyterLabPlugin<IMainMenu> = {
 /**
  * Override Main Menu plugin from apputils-extension
  */
-plugin[0] = nativeMainMenuPlugin;
-plugin.push(serverManagerPlugin);
-export default plugin;
+let nPlugins = plugins.map((p: JupyterLabPlugin<any>) => {
+    if (p.id == 'jupyter.services.main-menu')
+        return nativeMainMenuPlugin;
+    return p;
+});
+nPlugins.push(serverManagerPlugin);
+export default nPlugins;

@@ -2,8 +2,8 @@
 // Distributed under the terms of the Modified BSD License.
 
 import {
-    JupyterServerIPC as ServerIPC,
-} from 'jupyterlab_app/src/ipc';
+    JupyterServer
+} from 'jupyterlab_app/src/browser/utils';
 
 import * as React from 'react';
 
@@ -20,63 +20,25 @@ class ServerManager extends React.Component<ServerManager.Props, ServerManager.S
     
     constructor(props: ServerManager.Props) {
         super(props);
-        this.addConnection = this.addConnection.bind(this);
-        this.manageConnections = this.manageConnections.bind(this);
-        this.renderServerManager = this.renderServerManager.bind(this);
-        this.renderAddConnectionForm = this.renderAddConnectionForm.bind(this);
         this.serverAdded = this.serverAdded.bind(this);
         this.addFormCancel = this.addFormCancel.bind(this);
-        
-        this.state = {renderState: this.renderAddConnectionForm, addedServer: null};
     }
     
     private addFormCancel() {
-        this.setState({renderState: this.renderServerManager});
+        console.log('Cancel')
     }
     
-    private addConnection() {
-        this.setState({renderState: this.renderAddConnectionForm});
-    }
-
-    private manageConnections() {
-        console.log('Manage connections');
-    }
-
-    private serverAdded(server: ServerIPC.ServerDesc) {
+    private serverAdded(server: JupyterServer.IServer) {
         this.props.serverAdded(server);
     }
 
-    private renderServerManager() {
-        const cardProps = {
-            serverSelected: this.props.serverSelected,
-            servers: this.props.servers,
-            addConnection: this.addConnection
-        };
-
-        return (
-            <div className='jpe-ServerManager-content'>
-                <ServerManager.Header />
-                <ServerManager.Cards {...cardProps}/>
-                <ServerManager.Footer manageClicked={this.manageConnections}/>
-            </div>
-        )
-    }
-
-    private renderAddConnectionForm() {
-        return (
-            <div className='jpe-ServerManager-content'>
-                <ServerManager.Header />
-                <ServerManager.AddConnctionForm cancel={this.addFormCancel} submit={this.serverAdded}/>
-            </div>
-        );
-    }
-
     render() {
-        let content = this.state.renderState();
-
         return (
             <div className='jpe-ServerManager-body'>
-                {content}
+                <div className='jpe-ServerManager-content'>
+                    <ServerManager.Header />
+                    <ServerManager.AddConnctionForm cancel={this.addFormCancel} submit={this.serverAdded}/>
+                </div>
             </div>
         );
     }
@@ -93,9 +55,7 @@ namespace ServerManager {
      */
     export
     interface Props {
-        serverSelected: (server: ServerIPC.ServerDesc) => void;
-        serverAdded: (server: ServerIPC.ServerDesc) => void;
-        servers: ServerIPC.ServerDesc[];
+        serverAdded: (server: JupyterServer.IServer) => void;
     }
 
     /**
@@ -103,8 +63,6 @@ namespace ServerManager {
      */
     export
     interface State {
-        renderState: () => any;
-        addedServer: ServerIPC.ServerDesc;
     }
     
     /**
@@ -149,100 +107,6 @@ namespace ServerManager {
             manageClicked: () => void
         }
 
-    }
-
-    /**
-     * ServerManager card container. Contains configurable server descriptions.
-     */
-    export
-    class Cards extends React.Component<Cards.Props, undefined> {
-
-        constructor(props: Cards.Props) {
-            super(props);
-        }
-
-        render() {
-            let servers = this.props.servers.map((server) => 
-                <Card key={server.id} server={server} onClick={(server: ServerIPC.ServerDesc) => {
-                        this.props.serverSelected(server)
-                    }}/>
-            )
-
-            // Add the 'new connection' card
-            const newServer: ServerIPC.ServerDesc = {id: null, type: null, name: 'New'}
-            servers.push(
-                <Card addNewCard={true} key={newServer.id} 
-                    server={newServer} onClick={this.props.addConnection}/>
-            );
-
-            return (
-                <div className='jpe-ServerManager-card-container'>
-                    <h2 className='jpe-ServerManager-card-header'>Start a new server</h2>
-                    <div className='jpe-ServerManager-cards'>
-                        {servers}
-                    </div>
-                </div>
-            );
-        }
-    }
-
-    /**
-     * Cards component data.
-     */
-    export
-    namespace Cards {
-
-        /**
-         * Cards component properties.
-         */
-        export
-        interface Props {
-            addConnection: () => void;
-            serverSelected: (server: ServerIPC.ServerDesc) => void;
-            servers: ServerIPC.ServerDesc[];
-        }
-    }
-
-    /**
-     * Card component. Displays server data.
-     * 
-     * @param props Card properties.
-     */
-    function Card(props: Card.Props) {
-        let cardClass: string = 'jpe-ServerManager-card';
-        if (props.addNewCard)
-            cardClass += ' jpe-mod-dashed';
-
-        let iconClass : string = 'jpe-ServerManager-card-icon';
-        let titleClass : string;
-        if (props.addNewCard) {
-            iconClass += ' jpe-ServerManager-card-new-icon';
-            titleClass = 'jpe-ServerManager-card-title';
-        } else if (props.server.type == 'remote'){
-            iconClass += ' jpe-ServerManager-card-remote-icon';
-        } else {
-            iconClass += ' jpe-ServerManager-card-local-icon';
-        }
-        
-        return (
-            <div className={cardClass} onClick={() => {props.onClick(props.server)}}>
-                <div className={iconClass}></div>
-                <p className={titleClass}>{props.server.name}</p>
-            </div>
-        )
-    }
-
-    /**
-     * Card component data.
-     */
-    namespace Card {
-        
-        export
-        interface Props {
-            server: ServerIPC.ServerDesc;
-            addNewCard?: boolean;
-            onClick: (server: ServerIPC.ServerDesc) => void;
-        }
     }
 
     export
@@ -309,7 +173,7 @@ namespace ServerManager {
 
         export
         interface Props {
-            submit: (server: ServerIPC.ServerDesc) => void;
+            submit: (server: JupyterServer.IServer) => void;
             cancel: () => void;
         }
 
