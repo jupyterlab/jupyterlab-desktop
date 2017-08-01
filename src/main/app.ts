@@ -40,6 +40,8 @@ import {
 } from 'jupyterlab_app/src/main/shortcuts'
 
 
+
+
 export
 class JupyterServer {
     /**
@@ -294,7 +296,11 @@ export class JupyterApplication {
     /**
      * The JupyterLab window
      */
-    private windows: JupyterLabWindow[] = [];
+    private _windows: JupyterLabWindow[] = [];
+    
+    get windows(): JupyterLabWindow[] {
+        return this._windows;
+    }
 
     private shortcutManager: KeyboardShortcutManager;
 
@@ -304,7 +310,7 @@ export class JupyterApplication {
     constructor() {
         this.shortcutManager = new KeyboardShortcutManager(this.windows);
         this.registerListeners();
-        this.menu = new JupyterMainMenu();
+        this.menu = new JupyterMainMenu(this);
         this.serverFactory = new JupyterServerFactory();
         
         this.appStateDB.fetch(APPLICATION_STATE_NAMESPACE)
@@ -334,20 +340,20 @@ export class JupyterApplication {
             }
             
             // If this is the last open window, save the state so we can reopen it
-            if (this.windows.length == 1) {
+            if (this._windows.length == 1) {
                 if (!this.appState) this.appState = {windows: null};
-                this.appState.windows = this.windows.map((w: JupyterLabWindow) => {
+                this.appState.windows = this._windows.map((w: JupyterLabWindow) => {
                     return w.windowState;
                 });
             }
         });
         
         window.browserWindow.on('closed', (event: Event) => {
-            ArrayExt.removeFirstOf(this.windows, window);
+            ArrayExt.removeFirstOf(this._windows, window);
             window = null;
         });
         
-        this.windows.push(window);
+        this._windows.push(window);
     }
 
     /**
@@ -366,11 +372,11 @@ export class JupyterApplication {
         // windows open.
         // Need to double check this code to ensure it has expected behaviour
         app.on('activate', () => {
-            if (this.windows.length === 0) {
+            if (this._windows.length === 0) {
                 this.createWindow({state: 'local'});
             }
             else if (BrowserWindow.getFocusedWindow() === null){
-                this.windows[0].browserWindow.focus();
+                this._windows[0].browserWindow.focus();
             }
         });
 
@@ -396,14 +402,14 @@ export class JupyterApplication {
         
         ipcMain.on(AppIPC.REQUEST_ADD_SERVER, (event: any, arg: any) => {
             this.createWindow({state: 'new'});
-        })
+        });
         
         ipcMain.on(AppIPC.REQUEST_OPEN_CONNECTION, (event: any, arg: ServerIPC.ServerDesc) => {
             if (arg.type == 'remote')
                 this.createWindow({state: 'remote', serverId: arg.id});
             else
                 this.createWindow({state: 'local'});
-        })
+        });
     }
 
     /**
@@ -422,5 +428,20 @@ export class JupyterApplication {
         for (let window of state.windows) {
             this.createWindow(window)
         }
+    }
+
+    /**
+    * Create a new window running on a new local server 
+    */
+    public newLocalServer(){
+        this.createWindow({state: 'local'});
+    }
+
+    /**
+    * Create a new window prompting user for server information
+    * Does not start a new local server (unless prompted by user)
+    */
+    public addServer(){
+        this.createWindow({state: 'new'});
     }
 }
