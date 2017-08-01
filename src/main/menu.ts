@@ -34,9 +34,9 @@ type MenuItemConstructorOptions = Electron.MenuItemConstructorOptions;
 export
 class JupyterMainMenu {
 
-    constructor(jupyterApp: JupyterApplication) {
+    constructor(options: JupyterMainMenu.IOptions) {
         this._menu = new Menu();
-        this._jupyterApp = jupyterApp;
+        this._jupyterApp = options.jupyterApp;
         
         /* Register MENU_ADD event */
         ipcMain.on(MenuIPC.REQUEST_MENU_ADD, (event: any, menu: JupyterMenuItemOptions) => {
@@ -136,4 +136,12 @@ class JupyterMainMenu {
     private _menu: Electron.Menu;
 
     private _jupyterApp: JupyterApplication;
+}
+
+export
+namespace JupyterMainMenu {
+    export
+    interface IOptions {
+        jupyterApp: JupyterApplication;
+    }
 }

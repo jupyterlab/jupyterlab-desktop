@@ -46,8 +46,8 @@ class JupyterApplication {
      */
     constructor() {
         this._registerListeners();
-        this._shortcutManager = new KeyboardShortcutManager(this.windows);
-        this._menu = new JupyterMainMenu(this);
+        this._shortcutManager = new KeyboardShortcutManager({jupyterApp: this});
+        this._menu = new JupyterMainMenu({jupyterApp: this});
         this._serverFactory = new JupyterServerFactory({});
         
         this._appStateDB.fetch(JupyterApplication.APP_STATE_NAMESPACE)

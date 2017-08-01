@@ -9,54 +9,38 @@ import {
     JupyterLabWindow
 } from './window';
 
+import {
+    JupyterApplication
+} from './app';
+
 /**
  * Interface for keyboard shortcuts recognized by the shortcut manager
  */
-export interface KeyboardShortcut{
+export
+interface KeyboardShortcut {
     accelerator: string,
     command: () => void
 }
 
-export class KeyboardShortcutManager{
-
-    /**
-     * Whether or not an application window exists and is in focus
-     */
-    private active: boolean;
-
-    /**
-     * All application windows
-     */
-    private windows: JupyterLabWindow[];
-
-    /**
-     * The enabled shortcuts
-     */
-    private shortcuts: KeyboardShortcut[] = [
-        {accelerator: 'CmdOrCtrl+c', command: KeyboardCommands.copy},
-        {accelerator: 'CmdOrCtrl+v', command: KeyboardCommands.paste},
-        {accelerator: 'CmdOrCtrl+x', command: KeyboardCommands.cut},
-        {accelerator: 'CmdOrCtrl+=', command: KeyboardCommands.zoomIn},
-        {accelerator: 'CmdOrCtrl+-', command: KeyboardCommands.zoomOut}
-    ];
+export class KeyboardShortcutManager {
 
     /**
      * Create a new shortcut manager
      * 
-     * @param windows - The application windows
+     * @param options - The application windows
      */
-    constructor(windows: JupyterLabWindow[]){
-        this.windows = windows;
+    constructor(options: KeyboardShortcutManager.IOptions){
+        this._windows = options.jupyterApp.windows;
         app.on('browser-window-focus', (event:Event, window: Electron.BrowserWindow) => {
-            if (!this.active){
+            if (!this._active){
                 this.enableShortcuts();
-                this.active = true;
+                this._active = true;
             }
         });
         app.on('browser-window-blur', (event: Event, window: Electron.BrowserWindow) => {
             if (!this.isAppFocused()){
                 this.disableShortcuts();
-                this.active = false;
+                this._active = false;
             }
         });
         app.on('window-all-closed', () => {
@@ -68,7 +52,7 @@ export class KeyboardShortcutManager{
      * Enables all shortcuts
      */
     private enableShortcuts(){
-        this.shortcuts.forEach( ({accelerator, command}) => {
+        this._shortcuts.forEach( ({accelerator, command}) => {
             globalShortcut.register(accelerator, command);
         });
     }
@@ -88,8 +72,8 @@ export class KeyboardShortcutManager{
     private isAppFocused(): boolean{
         let visible = false;
         let focus = false;
-        for (let i = 0; i < this.windows.length; i ++){
-            let window = this.windows[i].browserWindow;
+        for (let i = 0; i < this._windows.length; i ++){
+            let window = this._windows[i].browserWindow;
             if (window.isVisible()){
                 visible = true;
             }
@@ -99,8 +83,37 @@ export class KeyboardShortcutManager{
         }
         return visible && focus;
     }
+    
+    /**
+     * Whether or not an application window exists and is in focus
+     */
+    private _active: boolean;
+
+    /**
+     * All application windows
+     */
+    private _windows: JupyterLabWindow[];
+
+    /**
+     * The enabled shortcuts
+     */
+    private _shortcuts: KeyboardShortcut[] = [
+        {accelerator: 'CmdOrCtrl+c', command: KeyboardCommands.copy},
+        {accelerator: 'CmdOrCtrl+v', command: KeyboardCommands.paste},
+        {accelerator: 'CmdOrCtrl+x', command: KeyboardCommands.cut},
+        {accelerator: 'CmdOrCtrl+=', command: KeyboardCommands.zoomIn},
+        {accelerator: 'CmdOrCtrl+-', command: KeyboardCommands.zoomOut}
+    ];
+
 }
 
+export
+namespace KeyboardShortcutManager {
+    export
+    interface IOptions {
+        jupyterApp: JupyterApplication;
+    }
+}
 
 /**
  * Basic keyboard commands
