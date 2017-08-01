@@ -23,7 +23,7 @@
     "release": "electron-builder --publish onTagOrDraft"
   },
   "build": {
-    "productName": "JupyterLab App",
+    "productName": "JupyterLab Native",
     "directories": {
       "buildResources": "dist-resources"
     },
