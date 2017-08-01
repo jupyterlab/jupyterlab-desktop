@@ -31,13 +31,18 @@ class JupyterLabWindow {
             this._windowState.platform = process.platform;
 
         if (!this._windowState.uiState) {
-            if (this._windowState.platform == 'darwin')
+            if (this._windowState.platform == 'darwin') {
                 this._windowState.uiState = 'mac';
-            else if (this._windowState.platform == 'linux')
+            } else if (this._windowState.platform == 'linux') {
                 this._windowState.uiState = 'linux';
-            else
+            } else {
                 this._windowState.uiState = 'windows';
-
+            }
+        }
+        
+        let showFrame = false;
+        if (this._windowState.uiState == 'linux') {
+            showFrame = true;
         }
 
         this._window = new BrowserWindow({
@@ -47,9 +52,10 @@ class JupyterLabWindow {
             y: options.y,
             minWidth: 400,
             minHeight: 300,
-            frame: false,
+            frame: showFrame,
             show: false,
-            title: 'JupyterLab'
+            title: 'JupyterLab',
+            titleBarStyle: 'hidden'
         });
 
         ipcMain.on(WindowIPC.REQUEST_STATE_UPDATE, (evt: any, arg: any) => {

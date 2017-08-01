@@ -4,7 +4,7 @@
 |----------------------------------------------------------------------------*/
 
 :root {
-    --jpe-TitleBar-height-linux: 15px;
+    --jpe-TitleBar-height-linux: 0;
     --jpe-TitleBar-height-mac: 15px;
     --jpe-TitleBar-height-windows: var(--jp-private-menubar-height);
 }
@@ -46,6 +46,10 @@
     align-items: center;
     float: left;
     padding: 0 3px 0 3px;
+}
+
+.jpe-TitleBar-button-container.jpe-mod-linux {
+    display: none;
 }
 
 .jpe-TitleBar-button-container.jpe-mod-windows {
