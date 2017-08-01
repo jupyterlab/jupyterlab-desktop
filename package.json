@@ -55,7 +55,9 @@
     "nsis": {
       "oneClick": "false",
       "deleteAppDataOnUninstall": true,
-      "license": "LICENSE"
+      "license": "LICENSE",
+      "language": "1033",
+      "installerSidebar": "dist-resources/installerSidebar"
     }
   },
   "author": {
