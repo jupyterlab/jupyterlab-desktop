@@ -138,7 +138,7 @@ class KeyboardCommands{
 
     static zoomIn = function() {
         let contents = webContents.getFocusedWebContents();
-        contents.getZoomLevel( (zoom) => {
+        contents.getZoomLevel( (zoom: number) => {
             if (zoom >= 3) return;
             contents.setZoomLevel(zoom + 1);
             contents.send(AppIPC.POST_ZOOM_EVENT);
@@ -147,7 +147,7 @@ class KeyboardCommands{
 
     static zoomOut = function() {
         let contents = webContents.getFocusedWebContents();
-        contents.getZoomLevel( (zoom) => {
+        contents.getZoomLevel( (zoom: number) => {
             if (zoom <= -7) return;
             contents.setZoomLevel(zoom - 1);
             contents.send(AppIPC.POST_ZOOM_EVENT);
