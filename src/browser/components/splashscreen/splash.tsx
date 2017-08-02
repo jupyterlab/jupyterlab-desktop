@@ -1,12 +1,21 @@
 // Copyright (c) Jupyter Development Team.
 // Distributed under the terms of the Modified BSD License.
 
+import {
+    TitleBar
+} from 'jupyterlab_app/src/browser/components';
+
+import {
+    JupyterLabWindow
+} from 'jupyterlab_app/src/main/window';
+
 import * as React from 'react';
 
 export namespace SplashScreen {
     export
     interface Props {
         finished: () => void;
+        uiState: JupyterLabWindow.UIState;
     }
 
     export
@@ -44,6 +53,7 @@ class SplashScreen extends React.Component<SplashScreen.Props, SplashScreen.Stat
 
         return (
             <div className="jpe-SplashScreen-body" style={style} onAnimationEnd={fadeAnim}>
+                <TitleBar uiState={this.props.uiState} />
                 <div className="jpe-SplashScreen-content">
                     <div className="jpe-SplashScreen-main-logo"></div>
                     <Moon name={'moon1'} orbitComplete={orbitComplete}/>

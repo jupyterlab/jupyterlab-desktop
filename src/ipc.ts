@@ -13,7 +13,11 @@ import {
 
 import {
     MenuItemConstructorOptions
-} from './main/menu';
+} from 'jupyterlab_app/src/main/menu';
+
+import {
+    JupyterLabWindow
+} from 'jupyterlab_app/src/main/window';
 
 export
 namespace JupyterApplicationIPC {
@@ -32,12 +36,21 @@ namespace JupyterApplicationIPC {
     /**
      * Request launching a new window connected to a server.
      * 
-     * @param JupyterServerIPC.ServerDesc Ther server to connect to.
+     * @param JupyterApplicationIPC.IOpenConnection Ther server to connect to.
      * 
      * RESPONSE: NONE
      */
     export
     const REQUEST_OPEN_CONNECTION = 'new-connection';
+
+    export
+    const POST_ZOOM_EVENT = 'zoom-event';
+
+    export
+    interface IOpenConnection {
+        type: 'local' | 'remote';
+        remoteServerId?: number;
+    }
 }
 
 export
@@ -49,7 +62,7 @@ namespace JupyterWindowIPC {
      * this is how the render process notifies the main process of a server
      * change/selection.
      * 
-     * @param JupyterWindowIPC.WindowOptions The updated window options.
+     * @param JupyterWindowIPC.IWindowState The updated window options.
      * 
      * RESPONSE: NONE
      */
@@ -57,14 +70,11 @@ namespace JupyterWindowIPC {
     const REQUEST_STATE_UPDATE = 'window-state-update';
 
     export
-    interface WindowOptions extends JSONObject{
-        state: 'new' | 'local' | 'remote';
-        platform?: string;
-        x?: number;
-        y?: number;
-        width?: number;
-        height?: number;
-        serverId?: number;
+    interface IWindowState extends JSONObject {
+        serverState: JupyterLabWindow.ServerState;
+        remoteServerId?: number; 
+        uiState: JupyterLabWindow.UIState;
+        platform: NodeJS.Platform;
     }
 }
 
@@ -93,6 +103,9 @@ namespace JupyterServerIPC {
      */
     export
     const RESPOND_SERVER_STARTED = 'server-started';
+
+    export
+    const RESPOND_SERVER_AUTHENTICATED = 'remote-server-authenitcated';
     
     /**
      * Request that a server spwaned by the main process
@@ -106,43 +119,16 @@ namespace JupyterServerIPC {
     export
     const REQUEST_SERVER_STOP = 'request-server-stop';
 
-    /**
-     * Server connection descriptor.
-     */
     export
-    interface ServerDesc extends JSONObject {
-        /**
-         * Server ID. Should be unique to each server.
-         */
-        id: number;
-
-        /**
-         * The tyoe of server
-         */
-        type: 'remote' | 'local';
-
-        /**
-         * Name that appears in the html
-         */
-        name: string;
-
-        /**
-         * Server url
-         */
-        url?: string;
-
-        token?: string;
-    }
-
-    export
-    interface ServerStarted {
+    interface IServerStarted {
         factoryId: number;
-        server: ServerDesc;
+        url: string;
+        token: string;
         err?: any;
     }
 
     export
-    interface RequestServerStop {
+    interface IRequestServerStop {
         factoryId: number;
     }
 }

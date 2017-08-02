@@ -5,6 +5,9 @@
   "main": "build/main.bundle.js",
   "scripts": {
     "start": "electron .",
+    "start:windows": "electron . --windows-ui",
+    "start:linux": "electron . --linux-ui",
+    "start:mac": "electron . --mac-ui",
     "test": "echo \"Error: no test specified\" && exit 1",
     "clean": "rm -fr build dist",
     "watch:browser": "webpack --progress --colors --watch --config webpack.browser.js",
@@ -136,7 +139,7 @@
     "@jupyterlab/tooltip": "^0.8.1",
     "@jupyterlab/tooltip-extension": "^0.8.1",
     "@jupyterlab/vega2-extension": "^0.8.1",
-    "@types/react": "^15.0.38",
+    "@types/react": "^16.0.0",
     "@types/react-dom": "^15.5.1",
     "electron-debug": "^1.2.0",
     "es6-promise": "^4.1.0",

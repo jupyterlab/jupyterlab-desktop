@@ -10,6 +10,18 @@ import {
 } from '@jupyterlab/apputils';
 
 import {
+  JupyterApplicationIPC as AppIPC
+} from 'jupyterlab_app/src/ipc';
+
+import {
+  ipcRenderer, Browser
+} from 'jupyterlab_app/src/browser/utils';
+
+import {
+  JupyterLabWindow
+} from 'jupyterlab_app/src/main/window';
+
+import {
   each
 } from '@phosphor/algorithm';
 
@@ -17,29 +29,7 @@ import {
   Widget
 } from '@phosphor/widgets';
 
-
 import plugins from '@jupyterlab/application-extension';
-
-/**
- * JupyterLab is the main application class. It is instantiated once and shared.
- */
-export
-class ElectronJupyterLab extends JupyterLab {
-  /**
-   * Construct a new JupyterLab object.
-   */
-  constructor(options: JupyterLab.IOptions = {}) {
-    super();
-
-    /* Remove uneeded panels */
-    each(this.shell.layout.iter(), (widget: Widget) => {
-        if (widget.id == 'jp-top-panel') {
-            widget.parent = null;
-            return false;
-        }
-    });
-  }
-}
 
 /**
  * The command IDs used by the application plugin.
@@ -60,6 +50,69 @@ namespace CommandIDs {
   export
   const toggleMode: string = 'main-jupyterlab:toggle-mode';
 };
+
+
+
+export
+class ElectronJupyterLab extends JupyterLab {
+
+  constructor(options: ElectronJupyterLab.IOptions) {
+    super(options);
+    
+    this._electronInfo = {
+      name: options.name || 'JupyterLab',
+      namespace: options.namespace || 'jupyterlab',
+      version:  options.version || 'unknown',
+      devMode: options.devMode || false,
+      settingsDir: options.settingsDir || '',
+      assetsDir: options.assetsDir || '',
+      platform: options.platform,
+      uiState: options.uiState || 'windows'
+    };
+
+    // Get the top panel widget
+    let topPanel: Widget;
+    each(this.shell.layout.iter(), (widget: Widget) => {
+      if (widget.id == 'jp-top-panel') {
+        topPanel = widget;
+        return false;
+      }
+    });
+    topPanel.addClass('jpe-mod-' + options.uiState);
+    
+    if (options.uiState == 'mac') {
+      // Resize the top panel based on zoom factor
+      topPanel.node.style.minHeight = topPanel.node.style.height = String(Browser.getTopPanelSize()) + 'px';
+      // Resize the top panel on zoom events
+      ipcRenderer.on(AppIPC.POST_ZOOM_EVENT, () => {
+        topPanel.node.style.minHeight = topPanel.node.style.height = String(Browser.getTopPanelSize()) + 'px';
+        this.shell.fit();
+      });
+    }
+  }
+
+  get info(): ElectronJupyterLab.IInfo {
+    return this._electronInfo;
+  }
+
+  private _electronInfo: ElectronJupyterLab.IInfo;
+}
+
+export
+namespace ElectronJupyterLab {
+
+  export
+  interface IOptions extends JupyterLab.IOptions {
+    uiState?: JupyterLabWindow.UIState;
+    platform: NodeJS.Platform;
+  }
+
+  export
+  interface IInfo extends JupyterLab.IInfo {
+    uiState: JupyterLabWindow.UIState;
+    platform: NodeJS.Platform;
+  }
+}
 
 /**
  * The main extension.
@@ -129,7 +182,11 @@ function addCommands(app: JupyterLab, palette: ICommandPalette): void {
 
 
 /**
- * Export the plugins as default.
+ * Override default jupyterlab plugins
  */
-plugins[0] = mainPlugin;
-export default plugins;
+let nPlugins = plugins.map((p: JupyterLabPlugin<any>) => {
+    if (p.id == 'jupyter.extensions.main')
+        return mainPlugin;
+    return p;
+});
+export default nPlugins;

@@ -21,14 +21,11 @@ import {
     IMainMenu
 } from '@jupyterlab/apputils';
 
-type JupyterMenuItemOptions = MenuIPC.JupyterMenuItemOptions;
+import {
+    ipcRenderer as ipc
+} from 'jupyterlab_app/src/browser/utils';
 
-/**
- * Require electron from window object. This prevents webpack from trying
- * to resolve the window object. window.require is defined in the electron
- * environment.
- */
-let ipc = (window as any).require('electron').ipcRenderer;
+type JupyterMenuItemOptions = MenuIPC.JupyterMenuItemOptions;
 
 /**
  * The main menu class. Interacts with the electron main process
@@ -46,9 +43,9 @@ class NativeMenu extends MenuBar implements IMainMenu {
      * Register listeners for menu events
      */
     private registerListeners(): void {
-        /* Register listener on menu bar clicks */
+        // Register listener on menu bar clicks
         ipc.on(MenuIPC.POST_CLICK_EVENT, (event: any, opts: JupyterMenuItemOptions) => {
-            /* Execute the command associated with the click event */
+            // Execute the command associated with the click event
             this.app.commands.execute(opts.command, opts.args);
         });
     }

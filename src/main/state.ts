@@ -43,120 +43,13 @@ class ElectronStateDB implements IStateDB {
     readonly maxLength: number;
 
     /**
-     * The full path to the state data file.
-     */
-    private dataFile: string;
-
-    private cache: JSONObject = null;
-
-    /**
-     * Promise fulfilled when a write finishes. Used with
-     * the writeInProgress boolean to prevent reading/writing
-     * race conditions.
-     */
-    private written: Promise<void>;
-
-    /**
-     * Boolean storing write status of stateDB. Used
-     * to prevent writing/reading race conditions.
-     */
-    private writeInProgress: boolean = false;
-
-    /**
      * Create a new state database.
      * 
      * @param options - The istantiation options for the database
      */
     constructor(options: ElectronStateDB.IOptions) {
         this.namespace = options.namespace;
-        this.dataFile = this.path + '/' + this.namespace;
-    }
-
-    /**
-     * Check if there is a write currently in progress. If there is,
-     * wait until the write promise is fulfilled.
-     * 
-     * @param cb - callback called when writing completes.
-     */
-    private checkWriteInProgress(cb: () => void): void {
-        if (this.writeInProgress) {
-            this.written.then((v) => {
-                /* Check write state again to ensure another waiting function
-                 * didn't start another write.
-                 */
-                this.checkWriteInProgress(() => {
-                    cb();
-                });
-            })
-            return;
-        }
-        cb();
-    }
-    
-    /**
-     * Internal save function. Does not check the
-     * current write state. That should be implemented by
-     * the calling function.
-     * 
-     * @return A promise that is fulfilled when data is written.
-     */
-    private _save(): Promise<void> {
-        /* Signal write in progress */
-        this.writeInProgress = true;
-        this.written = new Promise<void>((res, rej) => {
-            fs.writeFile(this.dataFile, JSON.stringify(this.cache), (err) => {
-                this.writeInProgress = false;
-                if (err)
-                    rej(err);
-                else
-                    res();
-            });
-        });
-        return this.written;
-    }
-
-    /**
-     * Update the internal copy of the database. Waits
-     * for any writes to complete before updating the cache.
-     * The database file is only read if the cache is null since
-     * the cache will always be up-to-date otherwise. This is
-     * because all calls to 'write' and 'remove' update the
-     * internal cache.
-     * 
-     * @return A promise fulfilled when the cache is updated.
-     */
-    private updateCache(): Promise<void> {
-        return new Promise<void>((res, rej) => {
-            this.checkWriteInProgress(() => {
-                if (this.cache)
-                    res();
-
-                this.cache = {};
-                fs.readFile(this.dataFile, (err, data) => {
-                    if (err) {
-                        if (err.code === 'ENOENT') {
-                            /* The file doesn't exist, don't update state */
-                            res(null);
-                            return;
-                        }
-                        rej(err);
-                        return;
-                    }
-
-                    let pData: JSONObject;
-                    try {
-                        pData = JSON.parse(data.toString());
-                    } catch(err) {
-                        rej(err);
-                        return;
-                    }
-                
-                    this.cache = pData;
-                    res();
-                });
-        
-            });
-        });
+        this._dataFile = this.path + '/' + this.namespace;
     }
 
     /**
@@ -177,9 +70,9 @@ class ElectronStateDB implements IStateDB {
      */
     save(id: string, value: JSONObject): Promise<void> {
         return new Promise<void>((res, rej) => {
-            this.updateCache()
+            this._updateCache()
                 .then(() => {
-                    this.cache[id] = value;
+                    this._cache[id] = value;
                     res(this._save());
                 })
                 .catch(() => {
@@ -208,12 +101,12 @@ class ElectronStateDB implements IStateDB {
      */
     fetch(id: string): Promise<JSONObject | null> {
         return new Promise<JSONObject | null>((res, rej) => {
-            this.updateCache()
+            this._updateCache()
                 .then(() => {
-                    if (this.cache[id] === undefined)
+                    if (this._cache[id] === undefined)
                         res(null);
                     else
-                        res(this.cache[id] as JSONObject);
+                        res(this._cache[id] as JSONObject);
                     return;
                 })
                 .catch(() => {
@@ -245,9 +138,9 @@ class ElectronStateDB implements IStateDB {
             const regex = new RegExp(`^${this.namespace}\:`);
             let items: IStateItem[] = [];
 
-            this.updateCache()
+            this._updateCache()
                 .then(() => {
-                    for (let key in this.cache) {
+                    for (let key in this._cache) {
                         if (key.indexOf(prefix) === 0) {
                             try {
                                 items.push({
@@ -277,12 +170,12 @@ class ElectronStateDB implements IStateDB {
      */
     remove(id: string): Promise<void> {
         return new Promise<void>((res, rej) => {
-            this.updateCache()
+            this._updateCache()
                 .then(() => {
-                    if (this.cache[id] === undefined) {
+                    if (this._cache[id] === undefined) {
                         res(null);
                     } else {
-                        delete this.cache[id];
+                        delete this._cache[id];
                         res(this._save());
                     }
                     return;
@@ -293,6 +186,114 @@ class ElectronStateDB implements IStateDB {
             
         });
     }
+    
+    /**
+     * Check if there is a write currently in progress. If there is,
+     * wait until the write promise is fulfilled.
+     * 
+     * @param cb - callback called when writing completes.
+     */
+    private _checkWriteInProgress(cb: () => void): void {
+        if (this._writeInProgress) {
+            this._written.then((v) => {
+                /* Check write state again to ensure another waiting function
+                 * didn't start another write.
+                 */
+                this._checkWriteInProgress(() => {
+                    cb();
+                });
+            })
+            return;
+        }
+        cb();
+    }
+    
+    /**
+     * Internal save function. Does not check the
+     * current write state. That should be implemented by
+     * the calling function.
+     * 
+     * @return A promise that is fulfilled when data is written.
+     */
+    private _save(): Promise<void> {
+        /* Signal write in progress */
+        this._writeInProgress = true;
+        this._written = new Promise<void>((res, rej) => {
+            fs.writeFile(this._dataFile, JSON.stringify(this._cache), (err) => {
+                this._writeInProgress = false;
+                if (err)
+                    rej(err);
+                else
+                    res();
+            });
+        });
+        return this._written;
+    }
+
+    /**
+     * Update the internal copy of the database. Waits
+     * for any writes to complete before updating the cache.
+     * The database file is only read if the cache is null since
+     * the cache will always be up-to-date otherwise. This is
+     * because all calls to 'write' and 'remove' update the
+     * internal cache.
+     * 
+     * @return A promise fulfilled when the cache is updated.
+     */
+    private _updateCache(): Promise<void> {
+        return new Promise<void>((res, rej) => {
+            this._checkWriteInProgress(() => {
+                if (this._cache)
+                    res();
+
+                this._cache = {};
+                fs.readFile(this._dataFile, (err, data) => {
+                    if (err) {
+                        if (err.code === 'ENOENT') {
+                            /* The file doesn't exist, don't update state */
+                            res(null);
+                            return;
+                        }
+                        rej(err);
+                        return;
+                    }
+
+                    let pData: JSONObject;
+                    try {
+                        pData = JSON.parse(data.toString());
+                    } catch(err) {
+                        rej(err);
+                        return;
+                    }
+                
+                    this._cache = pData;
+                    res();
+                });
+        
+            });
+        });
+    }
+    
+    /**
+     * The full path to the state data file.
+     */
+    private _dataFile: string;
+
+    private _cache: JSONObject = null;
+
+    /**
+     * Promise fulfilled when a write finishes. Used with
+     * the writeInProgress boolean to prevent reading/writing
+     * race conditions.
+     */
+    private _written: Promise<void>;
+
+    /**
+     * Boolean storing write status of stateDB. Used
+     * to prevent writing/reading race conditions.
+     */
+    private _writeInProgress: boolean = false;
+
 }
 
 export

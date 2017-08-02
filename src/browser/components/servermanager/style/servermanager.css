@@ -182,7 +182,7 @@
 
 .jpe-ServerManager-Add-card {
     background-color: var(--jp-layout-color0);
-    height: 236px;
+    height: 255px;
     width: 400px;
     padding: 36px;
     margin: 36px 0px;
@@ -220,5 +220,5 @@
 
 
 .jpe-ServerManager-Add-footer {
-    margin-top: 48px;
+    margin-top: 28px;
 }

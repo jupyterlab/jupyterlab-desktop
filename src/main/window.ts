@@ -6,7 +6,11 @@ import {
 } from 'electron';
 
 import {
-    JupyterWindowIPC as WindowIPC
+    JSONObject
+} from '@phosphor/coreutils';
+
+import {
+    JupyterWindowIPC as WindowIPC,
 } from 'jupyterlab_app/src/ipc';
 
 import * as path from 'path';
@@ -17,18 +21,33 @@ import 'jupyterlab_app/src/browser/index.html';
 export
 class JupyterLabWindow {
 
-    private _windowState: WindowIPC.WindowOptions = null;
+    constructor(options: JupyterLabWindow.IOptions) {
+        this._info = {
+            state: options.state,
+            platform: options.platform || process.platform,
+            uiState: options.uiState,
+            x: options.x,
+            y: options.y,
+            width: options.width,
+            height: options.width,
+            remoteServerId: options.remoteServerId
+        }
 
-    /**
-     * Electron window
-     */
-    private _window: Electron.BrowserWindow = null;
+        if (!this._info.uiState) {
+            if (this._info.platform == 'darwin') {
+                this._info.uiState = 'mac';
+            } else if (this._info.platform == 'linux') {
+                this._info.uiState = 'linux';
+            } else {
+                this._info.uiState = 'windows';
+            }
+        }
+        
+        let showFrame = false;
+        if (this._info.uiState == 'linux') {
+            showFrame = true;
+        }
 
-    constructor(options: WindowIPC.WindowOptions) {
-        this._windowState = options;
-
-        if (!this._windowState.platform)
-            this._windowState.platform = process.platform;
 
         this._window = new BrowserWindow({
             width: options.width || 800,
@@ -37,13 +56,16 @@ class JupyterLabWindow {
             y: options.y,
             minWidth: 400,
             minHeight: 300,
-            show: false
+            frame: showFrame,
+            show: false,
+            title: 'JupyterLab',
+            titleBarStyle: 'hidden'
         });
-        
+
         ipcMain.on(WindowIPC.REQUEST_STATE_UPDATE, (evt: any, arg: any) => {
             for (let key in arg) {
-                if ((this._windowState as any)[key])
-                    (this._windowState as any)[key] = (arg as any)[key];
+                if ((this._info as any)[key])
+                    (this._info as any)[key] = (arg as any)[key];
             }
         })
         
@@ -51,29 +73,94 @@ class JupyterLabWindow {
             this._window.show();
         });
         
+        // Create window state object to pass to the render process
+        let windowState: WindowIPC.IWindowState = {
+            serverState: this._info.state,
+            remoteServerId: this._info.remoteServerId,
+            uiState: this._info.uiState,
+            platform: this._info.platform
+        }
+
         this._window.loadURL(url.format({
             pathname: path.resolve(__dirname, "index.html"),
             protocol: 'file:',
             slashes: true,
-            search: encodeURIComponent(JSON.stringify(options))
+            search: encodeURIComponent(JSON.stringify(windowState))
         }));
     }
     
-
-    get isWindowVisible(): boolean {
-        return this._window !== null;
-    }
-
-    get windowState(): WindowIPC.WindowOptions {
+    get info(): JupyterLabWindow.IInfo {
         let winBounds = this._window.getBounds();
-        this._windowState.x = winBounds.x;
-        this._windowState.y = winBounds.y;
-        this._windowState.width = winBounds.width;
-        this._windowState.height = winBounds.height;
-        return this._windowState;
+        this._info.x = winBounds.x;
+        this._info.y = winBounds.y;
+        this._info.width = winBounds.width;
+        this._info.height = winBounds.height;
+        return this._info;
     }
-
+    
     get browserWindow(): Electron.BrowserWindow {
         return this._window;
+    }
+
+    state(): JupyterLabWindow.IState {
+        let info = this.info;
+
+        return {
+            x: info.x,
+            y: info.y,
+            width: info.width,
+            height: info.height,
+            state: info.state,
+            remoteServerId: info.remoteServerId
+        }
+    }
+
+    private _info: JupyterLabWindow.IInfo = null;
+
+    private _window: Electron.BrowserWindow = null;
+
+}
+
+export
+namespace JupyterLabWindow {
+
+    export
+    type UIState = 'linux' | 'mac' | 'windows';
+
+    export
+    type ServerState = 'new' | 'local' | 'remote';
+
+    export
+    interface IOptions {
+        state: ServerState;
+        platform?: NodeJS.Platform;
+        uiState?: UIState;
+        x?: number;
+        y?: number;
+        width?: number;
+        height?: number;
+        remoteServerId?: number;
+    }
+
+    export
+    interface IInfo {
+        state: ServerState;
+        platform: NodeJS.Platform;
+        uiState: UIState;
+        x: number;
+        y: number;
+        width: number;
+        height: number;
+        remoteServerId?: number;
+    }
+
+    export
+    interface IState extends JSONObject {
+        state: ServerState;
+        x: number;
+        y: number;
+        width: number;
+        height: number;
+        remoteServerId?: number;
     }
 }
