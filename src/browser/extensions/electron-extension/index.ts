@@ -10,6 +10,14 @@ import {
 } from '@jupyterlab/apputils';
 
 import {
+  JupyterApplicationIPC as AppIPC
+} from 'jupyterlab_app/src/ipc';
+
+import {
+  ipcRenderer, Browser
+} from 'jupyterlab_app/src/browser/utils';
+
+import {
   JupyterLabWindow
 } from 'jupyterlab_app/src/main/window';
 
@@ -50,13 +58,7 @@ class ElectronJupyterLab extends JupyterLab {
 
   constructor(options: ElectronJupyterLab.IOptions) {
     super(options);
-
-    // Make top panel modifiable based on the platform
-    each(this.shell.layout.iter(), (widget: Widget) => {
-      if (widget.id == 'jp-top-panel')
-        widget.addClass('jpe-mod-' + options.uiState);
-    });
-
+    
     this._electronInfo = {
       name: options.name || 'JupyterLab',
       namespace: options.namespace || 'jupyterlab',
@@ -67,6 +69,26 @@ class ElectronJupyterLab extends JupyterLab {
       platform: options.platform,
       uiState: options.uiState || 'windows'
     };
+
+    // Get the top panel widget
+    let topPanel: Widget;
+    each(this.shell.layout.iter(), (widget: Widget) => {
+      if (widget.id == 'jp-top-panel') {
+        topPanel = widget;
+        return false;
+      }
+    });
+    topPanel.addClass('jpe-mod-' + options.uiState);
+    
+    if (options.uiState == 'mac') {
+      // Resize the top panel based on zoom factor
+      topPanel.node.style.minHeight = topPanel.node.style.height = String(Browser.getTopPanelSize()) + 'px';
+      // Resize the top panel on zoom events
+      ipcRenderer.on(AppIPC.POST_ZOOM_EVENT, () => {
+        topPanel.node.style.minHeight = topPanel.node.style.height = String(Browser.getTopPanelSize()) + 'px';
+        this.shell.fit();
+      });
+    }
   }
 
   get info(): ElectronJupyterLab.IInfo {

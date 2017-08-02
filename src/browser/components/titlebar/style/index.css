@@ -15,11 +15,6 @@
     height: var(--jpe-TitleBar-height-linux);
 }
 
-.jpe-TitleBar-body.jpe-mod-mac, #jp-top-panel.jpe-mod-mac {
-    min-height: var(--jpe-TitleBar-height-mac);
-    height: var(--jpe-TitleBar-height-mac);
-}
-
 .jpe-TitleBar-body.jpe-mod-windows, #jp-top-panel.jpe-mod-windows {
     min-height: var(--jpe-TitleBar-height-windows);
     height: var(--jpe-TitleBar-height-windows);
@@ -28,6 +23,7 @@
 
 #jpe-TitleBar-widget {
     flex-grow: 1;
+    height: 100%;
 }
 
 .jpe-TitleBar-body {

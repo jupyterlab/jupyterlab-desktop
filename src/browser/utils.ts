@@ -5,6 +5,16 @@ import {
     JSONObject
 } from '@phosphor/coreutils';
 
+/**
+ * webpack will resolve electron dependencies we don't want to
+ * resolve. This code prevents webpack from doing that.
+ */
+export
+let ipcRenderer = (window as any).require('electron').ipcRenderer;
+export
+let remote: Electron.Remote = (window as any).require('electron').remote;
+export
+let webFrame: Electron.WebFrame = (window as any).require('electron').webFrame;
 
 export
 namespace JupyterServer {
@@ -23,10 +33,12 @@ namespace JupyterServer {
     }
 }
 
-/**
- * Require electron from window object. This prevents webpack from trying
- * to resolve the window object. window.require is defined in the electron
- * environment.
- */
+
 export
-let ipcRenderer = (window as any).require('electron').ipcRenderer;
+namespace Browser {
+
+    export
+    function getTopPanelSize(): number {
+        return 23 / webFrame.getZoomFactor();
+    }
+}

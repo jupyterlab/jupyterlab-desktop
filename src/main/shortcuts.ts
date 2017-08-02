@@ -6,6 +6,10 @@ import {
 } from 'electron';
 
 import {
+    JupyterApplicationIPC as AppIPC
+} from 'jupyterlab_app/src/ipc';
+
+import {
     JupyterLabWindow
 } from './window';
 
@@ -136,6 +140,7 @@ class KeyboardCommands{
         let contents = webContents.getFocusedWebContents();
         contents.getZoomLevel( (zoom) => {
             contents.setZoomLevel(zoom + 1);
+            contents.send(AppIPC.POST_ZOOM_EVENT);
         });
     };
 
@@ -143,6 +148,7 @@ class KeyboardCommands{
         let contents = webContents.getFocusedWebContents();
         contents.getZoomLevel( (zoom) => {
             contents.setZoomLevel(zoom - 1);
+            contents.send(AppIPC.POST_ZOOM_EVENT);
         });
     };
 }

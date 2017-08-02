@@ -44,6 +44,9 @@ namespace JupyterApplicationIPC {
     const REQUEST_OPEN_CONNECTION = 'new-connection';
 
     export
+    const POST_ZOOM_EVENT = 'zoom-event';
+
+    export
     interface IOpenConnection {
         type: 'local' | 'remote';
         remoteServerId?: number;
