@@ -158,14 +158,6 @@ class Application extends React.Component<Application.Props, Application.State> 
                 console.error(e);
             }
             
-            // Ignore Plugins
-            this._ignorePlugins = [];
-            try {
-                let option = PageConfig.getOption('ignorePlugins');
-                this._ignorePlugins = JSON.parse(option);
-            } catch (e) {
-                // No-op
-            }
             res();
         });
     }
@@ -221,7 +213,7 @@ class Application extends React.Component<Application.Props, Application.State> 
 
     private _lab: ElectronJupyterLab;
 
-    private _ignorePlugins: string[];
+    private _ignorePlugins: string[] = ['jupyter.extensions.server-manager'];
 
     private _server: JupyterServer.IServer = null;
 
