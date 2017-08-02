@@ -94,6 +94,8 @@ class JupyterApplication {
             
             // If this is the last open window, save the state so we can reopen it
             if (this._windows.length == 1) {
+                if (!this._appState) 
+                    this._appState = {windows: null};
                 this._appState.windows = this._windows.map((w: JupyterLabWindow) => {
                     return w.state();
                 });
