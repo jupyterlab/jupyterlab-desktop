@@ -105,6 +105,7 @@ class JupyterApplication {
         window.browserWindow.on('closed', (event: Event) => {
             ArrayExt.removeFirstOf(this._windows, window);
             window = null;
+            this._shortcutManager.notifyWindowClosed();
         });
         
         this._windows.push(window);
