@@ -26,7 +26,7 @@
     "release": "electron-builder --publish onTagOrDraft"
   },
   "build": {
-    "productName": "JupyterLab App",
+    "productName": "JupyterLab Native",
     "directories": {
       "buildResources": "dist-resources"
     },
@@ -58,7 +58,9 @@
     "nsis": {
       "oneClick": "false",
       "deleteAppDataOnUninstall": true,
-      "license": "LICENSE"
+      "license": "LICENSE",
+      "language": "1033",
+      "installerSidebar": "installerSidebar.bmp"
     }
   },
   "author": {
