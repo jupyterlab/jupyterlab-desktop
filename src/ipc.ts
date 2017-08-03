@@ -70,6 +70,18 @@ namespace JupyterWindowIPC {
     const REQUEST_STATE_UPDATE = 'window-state-update';
 
     export
+    const POST_MAXIMIZE_EVENT = 'window-maximize';
+    
+    export
+    const POST_MINIMIZE_EVENT = 'window-minimize';
+    
+    export
+    const POST_UNMAXIMIZE_EVENT = 'window-unmaximize';
+    
+    export
+    const POST_RESTORE_EVENT = 'window-restore';
+
+    export
     interface IWindowState extends JSONObject {
         serverState: JupyterLabWindow.ServerState;
         remoteServerId?: number; 

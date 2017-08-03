@@ -65,7 +65,6 @@
 }
 
 .jpe-TitleBar-close.jpe-mod-windows {
-    background-color: var(--jp-layout-color0);
     background-image: url('../img/close.svg');
 }
 
@@ -75,7 +74,6 @@
 }
 
 .jpe-TitleBar-min.jpe-mod-windows {
-    background-color: var(--jp-layout-color0);
     background-image: url('../img/minimize.svg');
 }
 
@@ -84,10 +82,17 @@
 }
 
 .jpe-TitleBar-max.jpe-mod-windows {
-    background-color: var(--jp-layout-color0);
     background-image: url('../img/expand.svg');
 }
 
 .jpe-TitleBar-max.jpe-mod-windows:hover {
     background-image: url('../img/expand-hover.svg');
+}
+
+.jpe-TitleBar-restore.jpe-mod-windows {
+    background-image: url('../img/restore-icon.svg');
+}
+
+.jpe-TitleBar-restore.jpe-mod-windows:hover {
+    background-image: url('../img/restore-hover.svg');
 }

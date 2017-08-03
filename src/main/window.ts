@@ -52,7 +52,6 @@ class JupyterLabWindow {
             showFrame = true;
         }
 
-
         this._window = new BrowserWindow({
             width: options.width || 800,
             height: options.height || 600,
@@ -66,13 +65,8 @@ class JupyterLabWindow {
             titleBarStyle: titleBarStyle
         });
 
-        ipcMain.on(WindowIPC.REQUEST_STATE_UPDATE, (evt: any, arg: any) => {
-            for (let key in arg) {
-                if ((this._info as any)[key])
-                    (this._info as any)[key] = (arg as any)[key];
-            }
-        })
-        
+        this._addRenderAPI();
+
         this._window.webContents.on('did-finish-load', () =>{
             this._window.show();
         });
@@ -117,6 +111,32 @@ class JupyterLabWindow {
             state: info.state,
             remoteServerId: info.remoteServerId
         }
+    }
+
+    private _addRenderAPI(): void {
+        ipcMain.on(WindowIPC.REQUEST_STATE_UPDATE, (evt: any, arg: any) => {
+            for (let key in arg) {
+                if ((this._info as any)[key])
+                    (this._info as any)[key] = (arg as any)[key];
+            }
+        });
+
+        this._window.on('maximize', () => {
+            this._window.webContents.send(WindowIPC.POST_MAXIMIZE_EVENT);
+        });
+        
+        this._window.on('minimize', () => {
+            this._window.webContents.send(WindowIPC.POST_MINIMIZE_EVENT);
+        });
+        
+        this._window.on('unmaximize', () => {
+            this._window.webContents.send(WindowIPC.POST_UNMAXIMIZE_EVENT);
+        });
+        
+        this._window.on('restore', () => {
+            this._window.webContents.send(WindowIPC.POST_RESTORE_EVENT);
+        });
+
     }
 
     private _info: JupyterLabWindow.IInfo = null;
