@@ -38,13 +38,11 @@ export class KeyboardShortcutManager {
         app.on('browser-window-focus', (event:Event, window: Electron.BrowserWindow) => {
             if (!this._active){
                 this.enableShortcuts();
-                this._active = true;
             }
         });
         app.on('browser-window-blur', (event: Event, window: Electron.BrowserWindow) => {
             if (!this.isAppFocused()){
                 this.disableShortcuts();
-                this._active = false;
             }
         });
         app.on('window-all-closed', () => {
@@ -56,6 +54,7 @@ export class KeyboardShortcutManager {
      * Enables all shortcuts
      */
     private enableShortcuts(){
+        this._active = true;
         this._shortcuts.forEach( ({accelerator, command}) => {
             globalShortcut.register(accelerator, command);
         });
@@ -65,8 +64,10 @@ export class KeyboardShortcutManager {
      * Disables all shortcuts
      */
     private disableShortcuts(){
+        this._active = false;
         globalShortcut.unregisterAll();
     }
+    
 
     /**
      * Checks whether or not an application window is in focus
@@ -86,6 +87,15 @@ export class KeyboardShortcutManager {
             }
         }
         return visible && focus;
+    }
+
+    /**
+     * Checks for application focus. Called when a browser window is closed.
+     */
+    public notifyWindowClosed(){
+        if (!this.isAppFocused()){
+            this.disableShortcuts();
+        }
     }
     
     /**
