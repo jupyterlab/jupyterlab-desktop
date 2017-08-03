@@ -126,7 +126,7 @@ class JupyterLabWindow {
         });
         
         this._window.on('minimize', () => {
-            this._window.webContents.send(WindowIPC.POST_MAXIMIZE_EVENT);
+            this._window.webContents.send(WindowIPC.POST_MINIMIZE_EVENT);
         });
         
         this._window.on('unmaximize', () => {
