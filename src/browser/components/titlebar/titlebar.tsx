@@ -64,8 +64,8 @@ class TitleBar extends React.Component<TitleBar.Props, TitleBar.State> {
             content = (
                 <div className={'jpe-TitleBar-button-container ' + modClass}>
                     <div className={'jpe-TitleBar-button jpe-TitleBar-close ' + modClass} onClick={() => {clicked('close')}} />
-                    <div className={'jpe-TitleBar-button jpe-TitleBar-max ' + modClass} onClick={() => {clicked('minimize')}} />
-                    <div className={'jpe-TitleBar-button jpe-TitleBar-min ' + modClass} onClick={() => {clicked('maximize')}} />
+                    <div className={'jpe-TitleBar-button jpe-TitleBar-max ' + modClass} onClick={() => {clicked('maximize')}} />
+                    <div className={'jpe-TitleBar-button jpe-TitleBar-min ' + modClass} onClick={() => {clicked('minimize')}} />
                 </div>
             );
         }
