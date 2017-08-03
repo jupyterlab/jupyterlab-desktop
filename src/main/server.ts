@@ -41,12 +41,12 @@ class JupyterServer {
             let home = app.getPath("home");
 
             // Windows will return win32 (even for 64-bit)
-            if (process.platform === "win32"){
+            if (process.platform === "win32") {
                 // Dont spawns shell for Windows
                 this._nbServer = spawn('jupyter', ['notebook', '--no-browser'], {cwd: home});
             }
             else{
-                this._nbServer = spawn('/bin/bash', ['-i'], {cwd: home});
+                this._nbServer = spawn('/bin/bash', ['-i', '-l'], {cwd: home});
             }
 
             this._nbServer.on('error', (err: Error) => {
