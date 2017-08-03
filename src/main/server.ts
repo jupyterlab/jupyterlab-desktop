@@ -51,14 +51,14 @@ class JupyterServer {
             }
 
             this._nbServer.on('error', (err: Error) => {
-                this._nbServer.stderr.removeAllListeners();
+                this._cleanupListeners();
                 reject(err);
             });
 
             this._nbServer.stderr.on('data', (serverBuff: string) => {
                 let errorMatch = serverBuff.toString().match(errorRegExp);
                 if (errorMatch) {
-                    this._nbServer.stderr.removeAllListeners();
+                    this._cleanupListeners();
                     reject(new Error('Jupyter not insatlled'));
                     return;
                 }
@@ -72,9 +72,8 @@ class JupyterServer {
                     token: (url.match(tokenRegExp))[0].replace("token=", ""),
                     url: (url.match(baseRegExp))[0]
                 }
-                this._nbServer.removeAllListeners();
-                this._nbServer.stderr.removeAllListeners();
 
+                this._cleanupListeners();
                 resolve(this._info);
             });
 
@@ -114,6 +113,11 @@ class JupyterServer {
             }
         });
         return this._stopServer;
+    }
+
+    private _cleanupListeners() {
+        this._nbServer.removeAllListeners();
+        this._nbServer.stderr.removeAllListeners();
     }
     
     /**
