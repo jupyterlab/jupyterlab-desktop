@@ -91,3 +91,12 @@
 .jpe-TitleBar-max.jpe-mod-windows:hover {
     background-image: url('../img/expand-hover.svg');
 }
+
+.jpe-TitleBar-restore.jpe-mod-windows {
+    background-color: black;
+    background-image: url('../img/expand.svg');
+}
+
+.jpe-TitleBar-restore.jpe-mod-windows:hover {
+    background-image: url('../img/expand-hover.svg');
+}
