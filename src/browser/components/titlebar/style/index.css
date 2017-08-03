@@ -40,8 +40,7 @@
     height: 100%;
     display: flex;
     align-items: center;
-    float: left;
-    padding: 0 3px 0 3px;
+    flex-direction: row-reverse;
 }
 
 .jpe-TitleBar-button-container.jpe-mod-linux {
@@ -52,29 +51,43 @@
     float: right;
 }
 
-.jpe-TitleBar-button {
-    border-radius: 50%;
-    height: 7px;
-    width: 7px;
-    margin: 0 3px 0 3px;
+.jpe-TitleBar-button.jpe-mod-windows {
+    height: 100%;
+    width: 44px;
     -webkit-app-region: no-drag;
+    background-size: 14px;
+    background-position: center;
+    background-repeat: no-repeat;
 }
 
-.jpe-TitleBar-button:hover {
-    box-shadow: 1px 1px 1px #555555;
+.jpe-TitleBar-button.jpe-mod-windows:hover {
+    background-color: #E0E0E0;
 }
 
-.jpe-TitleBar-close {
-    background-color: red;
-    border: 1px solid #882222
+.jpe-TitleBar-close.jpe-mod-windows {
+    background-color: var(--jp-layout-color0);
+    background-image: url('../img/close.svg');
 }
 
-.jpe-TitleBar-min {
-    background-color: yellow;
-    border: 1px solid #c49412;
+.jpe-TitleBar-close.jpe-mod-windows:hover {
+    background-color: #EF5350;
+    background-image: url('../img/close-hover.svg');
 }
 
-.jpe-TitleBar-max {
-    background-color: green;
-    border: 1px solid #115511;
+.jpe-TitleBar-min.jpe-mod-windows {
+    background-color: var(--jp-layout-color0);
+    background-image: url('../img/minimize.svg');
+}
+
+.jpe-TitleBar-min.jpe-mod-windows:hover {
+    background-image: url('../img/minimize-hover.svg');
+}
+
+.jpe-TitleBar-max.jpe-mod-windows {
+    background-color: var(--jp-layout-color0);
+    background-image: url('../img/expand.svg');
+}
+
+.jpe-TitleBar-max.jpe-mod-windows:hover {
+    background-image: url('../img/expand-hover.svg');
 }

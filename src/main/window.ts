@@ -43,6 +43,10 @@ class JupyterLabWindow {
             }
         }
         
+        let titleBarStyle: 'default' | 'hidden' = 'default';
+        if (this._info.uiState == 'mac') {
+            titleBarStyle = 'hidden';
+        }
         let showFrame = false;
         if (this._info.uiState == 'linux') {
             showFrame = true;
@@ -59,7 +63,7 @@ class JupyterLabWindow {
             frame: showFrame,
             show: false,
             title: 'JupyterLab',
-            titleBarStyle: 'hidden'
+            titleBarStyle: titleBarStyle
         });
 
         ipcMain.on(WindowIPC.REQUEST_STATE_UPDATE, (evt: any, arg: any) => {
