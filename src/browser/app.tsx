@@ -18,7 +18,7 @@ import {
 } from 'jupyterlab_app/src/ipc';
 
 import {
-    SplashScreen, ServerManager, TitleBar
+    SplashScreen, ServerManager, TitleBar, ServerError
 } from 'jupyterlab_app/src/browser/components';
 
 import {
@@ -45,13 +45,15 @@ class Application extends React.Component<Application.Props, Application.State> 
         this._renderServerManager = this._renderServerManager.bind(this);
         this._renderSplash = this._renderSplash.bind(this);
         this._renderLab = this._renderLab.bind(this);
+        this._renderErrorScreen = this._renderErrorScreen.bind(this);
         this._connectionAdded = this._connectionAdded.bind(this);
 
         this._labReady = this._setupLab();
         
         ipcRenderer.on(ServerIPC.RESPOND_SERVER_STARTED, (event: any, data: ServerIPC.IServerStarted) => {
             if (data.err) {
-                console.log('Error starting local server, show error screen');
+                console.error(data.err);
+                this.setState({renderState: this._renderErrorScreen});
                 return;
             }
             
@@ -186,7 +188,7 @@ class Application extends React.Component<Application.Props, Application.State> 
         });
     }
 
-    private _renderServerManager(): any {
+    private _renderServerManager(): JSX.Element {
         return (
             <div className='jpe-content'>
                 <TitleBar uiState={this.props.options.uiState} />
@@ -195,7 +197,7 @@ class Application extends React.Component<Application.Props, Application.State> 
         );
     }
 
-    private _renderSplash() {
+    private _renderSplash(): JSX.Element {
         return (
             <div className='jpe-content'>
                 <SplashScreen  ref='splash' uiState={this.props.options.uiState} finished={() => {
@@ -205,10 +207,19 @@ class Application extends React.Component<Application.Props, Application.State> 
         );
     }
 
-    private _renderLab(): any {
+    private _renderLab(): JSX.Element {
         this._saveState();
 
         return null;
+    }
+
+    private _renderErrorScreen(): JSX.Element {
+        return (
+            <div className='jpe-content'>
+                <TitleBar uiState={this.props.options.uiState} />
+                <ServerError />
+            </div>
+        )
     }
 
     private _lab: ElectronJupyterLab;

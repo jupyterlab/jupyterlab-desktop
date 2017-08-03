@@ -38,6 +38,7 @@ class JupyterServer {
             let urlRegExp = /http:\/\/localhost:\d+\/\?token=\w+/g;
             let tokenRegExp = /token=\w+/g;
             let baseRegExp = /http:\/\/localhost:\d+\//g;
+            let errorRegExp = /not found/g;
             let home = app.getPath("home");
 
             // Windows will return win32 (even for 64-bit)
@@ -50,11 +51,18 @@ class JupyterServer {
             }
 
             this._nbServer.on('error', (err: Error) => {
-                this._nbServer.stderr.removeAllListeners();
+                this._cleanupListeners();
                 reject(err);
             });
 
             this._nbServer.stderr.on('data', (serverBuff: string) => {
+                let errorMatch = serverBuff.toString().match(errorRegExp);
+                if (errorMatch) {
+                    this._cleanupListeners();
+                    reject(new Error('Jupyter not insatlled'));
+                    return;
+                }
+
                 let urlMatch = serverBuff.toString().match(urlRegExp);
                 if (!urlMatch)
                     return; 
@@ -64,9 +72,8 @@ class JupyterServer {
                     token: (url.match(tokenRegExp))[0].replace("token=", ""),
                     url: (url.match(baseRegExp))[0]
                 }
-                this._nbServer.removeAllListeners();
-                this._nbServer.stderr.removeAllListeners();
 
+                this._cleanupListeners();
                 resolve(this._info);
             });
 
@@ -106,6 +113,11 @@ class JupyterServer {
             }
         });
         return this._stopServer;
+    }
+
+    private _cleanupListeners() {
+        this._nbServer.removeAllListeners();
+        this._nbServer.stderr.removeAllListeners();
     }
     
     /**
