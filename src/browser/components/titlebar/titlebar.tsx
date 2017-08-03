@@ -52,7 +52,11 @@ class TitleBar extends React.Component<TitleBar.Props, TitleBar.State> {
             } else if (type == 'minimize') {
                 remote.getCurrentWindow().minimize();
             } else {
-                remote.getCurrentWindow().maximize();
+                let window = remote.getCurrentWindow();
+                if (window.isMaximized())
+                    window.restore();
+                else
+                    window.maximize();
             }
         }
         
