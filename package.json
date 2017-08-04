@@ -58,6 +58,7 @@
     },
     "nsis": {
       "oneClick": "false",
+      "artifactName": "${productName}-Setup.${ext}",
       "deleteAppDataOnUninstall": true,
       "license": "LICENSE",
       "language": "1033",
@@ -66,6 +67,8 @@
     "dmg": {
       "icon": "dist-resources/icon.icns",
       "background": "dist-resources/background.png",
+      "title": "${productName}-Setup",
+      "artifactName": "${productName}.${ext}",
       "window": {
         "height": 380,
         "width": 540
