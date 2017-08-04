@@ -142,6 +142,13 @@ function buildPhosphorMenu(app: ElectronJupyterLab): IMainMenu {
     titleBar.id = 'jpe-TitleBar-widget';
 
     titleBar.addClass('jpe-mod-' + app.info.uiState);
+    
+    let logo = new Widget();
+    logo.addClass('jp-MainAreaPortraitIcon');
+    logo.addClass('jpe-JupyterIcon');
+    logo.id = 'jp-MainLogo';
+
+    app.shell.addToTopArea(logo);
 
     app.shell.addToTopArea(menu);
     app.shell.addToTopArea(titleBar);
