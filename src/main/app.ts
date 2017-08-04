@@ -55,6 +55,10 @@ class JupyterApplication {
                 this._appState = state;
                 this._start(state);
             })
+            .catch( (e) => {
+                console.error(e);
+                this._start(null);
+            });
     }
 
     get windows(): JupyterLabWindow[] {

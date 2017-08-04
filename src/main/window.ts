@@ -28,8 +28,8 @@ class JupyterLabWindow {
             uiState: options.uiState,
             x: options.x,
             y: options.y,
-            width: options.width,
-            height: options.width,
+            width: options.width || 800,
+            height: options.height || 600,
             remoteServerId: options.remoteServerId
         }
 
@@ -53,10 +53,10 @@ class JupyterLabWindow {
         }
 
         this._window = new BrowserWindow({
-            width: options.width || 800,
-            height: options.height || 600,
-            x: options.x,
-            y: options.y,
+            width: this._info.width,
+            height: this._info.height,
+            x: this._info.x,
+            y: this._info.y,
             minWidth: 400,
             minHeight: 300,
             frame: showFrame,
@@ -64,6 +64,13 @@ class JupyterLabWindow {
             title: 'JupyterLab',
             titleBarStyle: titleBarStyle
         });
+
+        if (this._info.x && this._info.y) {
+            this._window.setBounds({x: this._info.x, y: this._info.y, height: this._info.height, width: this._info.width });
+        }
+        else {
+            this._window.center();
+        }
 
         this._addRenderAPI();
 
