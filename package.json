@@ -26,7 +26,8 @@
     "release": "electron-builder --publish onTagOrDraft"
   },
   "build": {
-    "productName": "JupyterLab Native",
+    "productName": "JupyterLab",
+    "artifactName": "${productName}.${ext}",
     "directories": {
       "buildResources": "dist-resources"
     },
@@ -61,6 +62,14 @@
       "license": "LICENSE",
       "language": "1033",
       "installerSidebar": "installerSidebar.bmp"
+    },
+    "dmg": {
+      "icon": "dist-resources/icon.icns",
+      "background": "dist-resources/background.png",
+      "window": {
+        "height": 380,
+        "width": 540
+      }
     }
   },
   "author": {
