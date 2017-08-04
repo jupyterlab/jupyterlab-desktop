@@ -116,7 +116,8 @@ export class KeyboardShortcutManager {
         {accelerator: 'CmdOrCtrl+v', command: KeyboardCommands.paste},
         {accelerator: 'CmdOrCtrl+x', command: KeyboardCommands.cut},
         {accelerator: 'CmdOrCtrl+=', command: KeyboardCommands.zoomIn},
-        {accelerator: 'CmdOrCtrl+-', command: KeyboardCommands.zoomOut}
+        {accelerator: 'CmdOrCtrl+-', command: KeyboardCommands.zoomOut},
+        {accelerator: process.platform === 'darwin'? 'Cmd+q' : (process.platform === 'win32' ? 'Alt+F4' : 'Ctrl+Shift+q'), command: KeyboardCommands.quit}
     ];
 
 }
@@ -163,4 +164,8 @@ class KeyboardCommands{
             contents.send(AppIPC.POST_ZOOM_EVENT);
         });
     };
+
+    static quit = function () {
+        app.quit();
+    }
 }
