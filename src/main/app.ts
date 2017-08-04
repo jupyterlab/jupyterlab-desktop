@@ -132,7 +132,12 @@ class JupyterApplication {
         // Need to double check this code to ensure it has expected behaviour
         app.on('activate', () => {
             if (this._windows.length === 0) {
-                this._createWindow({state: 'local'});
+                if (this._appState.windows.length > 0) {
+                    this._createWindow(this._appState.windows[0]);
+                }
+                else {
+                    this._createWindow({state: 'local'});
+                }
             }
             else if (BrowserWindow.getFocusedWindow() === null){
                 this._windows[0].browserWindow.focus();
