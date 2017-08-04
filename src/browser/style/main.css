@@ -1,8 +1,12 @@
 /* Resetting CSS styles */
 :root {
-    --jp-content-font-family: 'Cousine';
-    --jp-ui-font-family: 'Roboto';
-    --jp-cell-prompt-font-family: 'Roboto';
+    --jp-code-font-family: 'SourceCodePro' !important;
+    --jp-ui-font-family: 'Roboto' !important;
+    --jp-cell-prompt-font-family: 'Roboto' !important;
+}
+
+.CodeMirror, .jp-OutputArea-output pre {
+    font-family: var(--jp-code-font-family) !important;
 }
 
 html, body, div, span, applet, object, iframe, h1, h2, h3, h4, h5, h6, p, blockquote, pre, a, abbr, acronym, address, big, cite, code, del, dfn, em, img, ins, kbd, q, s, samp, small, strike, strong, sub, sup, tt, var, b, u, i, center, dl, dt, dd, ol, ul, li, fieldset, form, label, legend, table, caption, tbody, tfoot, thead, tr, th, td, article, aside, canvas, details, embed, figure, figcaption, footer, header, hgroup, menu, nav, output, ruby, section, summary, time, mark, audio, video {
@@ -12,7 +16,7 @@ html, body, div, span, applet, object, iframe, h1, h2, h3, h4, h5, h6, p, blockq
   margin: 0;
   padding: 0;
 }
- 
+
 article, aside, details, figcaption, figure, footer, header, hgroup, menu, nav, section {
   display: block;
 }
@@ -60,29 +64,29 @@ table { border-collapse: collapse; border-spacing: 0; }
 }
 
 @font-face {
-    font-family: 'Cousine';
-    src: url('./fonts/Cousine/Cousine-Regular.ttf') format('truetype');
+    font-family: 'SourceCodePro';
+    src: url('./fonts/SourceCodePro/SourceCodePro-Regular.ttf') format('truetype');
     font-weight: normal;
     font-style: normal;
 }
 
 @font-face {
-    font-family: 'Cousine';
-    src: url('./fonts/Cousine/Cousine-Italic.ttf') format('truetype');
+    font-family: 'SourceCodePro';
+    src: url('./fonts/SourceCodePro/SourceCodePro-It.ttf') format('truetype');
     font-weight: normal;
     font-style: italic;
 }
 
 @font-face {
-    font-family: 'Cousine';
-    src: url('./fonts/Cousine/Cousine-Bold.ttf') format('truetype');
+    font-family: 'SourceCodePro';
+    src: url('./fonts/SourceCodePro/SourceCodePro-Bold.ttf') format('truetype');
     font-weight: bold;
     font-style: normal;
 }
 
 @font-face {
-    font-family: 'Cousine';
-    src: url('./fonts/Cousine/Cousine-BoldItalic.ttf') format('truetype');
+    font-family: 'SourceCodePro';
+    src: url('./fonts/SourceCodePro/SourceCodePro-BoldIt.ttf') format('truetype');
     font-weight: bold;
     font-style: italic;
 }
