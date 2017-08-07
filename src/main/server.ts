@@ -38,7 +38,6 @@ class JupyterServer {
             let urlRegExp = /http:\/\/localhost:\d+\/\?token=\w+/g;
             let tokenRegExp = /token=\w+/g;
             let baseRegExp = /http:\/\/localhost:\d+\//g;
-            let errorRegExp = /not found/g;
             let home = app.getPath("home");
 
             // Windows will return win32 (even for 64-bit)
@@ -55,14 +54,12 @@ class JupyterServer {
                 reject(err);
             });
 
-            this._nbServer.stderr.on('data', (serverBuff: string) => {
-                let errorMatch = serverBuff.toString().match(errorRegExp);
-                if (errorMatch) {
-                    this._cleanupListeners();
-                    reject(new Error('Jupyter not insatlled'));
-                    return;
-                }
+            this._nbServer.on('exit', () => {
+                this._cleanupListeners();
+                reject(new Error('Jupyter not installed'));
+            });
 
+            this._nbServer.stderr.on('data', (serverBuff: string) => {
                 let urlMatch = serverBuff.toString().match(urlRegExp);
                 if (!urlMatch)
                     return; 
@@ -79,7 +76,7 @@ class JupyterServer {
 
   
             if (process.platform !== "win32"){
-                this._nbServer.stdin.write('exec jupyter notebook --no-browser\n');
+                this._nbServer.stdin.write('exec jupyter notebook --no-browser || exit\n');
             }
         });
 
