@@ -79,7 +79,9 @@ class Application extends React.Component<Application.Props, Application.State> 
                 } catch(e) {
                     console.log(e);
                 }
-                (this.refs.splash as SplashScreen).fadeSplashScreen();
+                this._lab.restored.then( () => {
+                    (this.refs.splash as SplashScreen).fadeSplashScreen();
+                });
             });
         });
 
@@ -163,7 +165,6 @@ class Application extends React.Component<Application.Props, Application.State> 
                 platform: this.props.options.platform,
                 uiState: this.props.options.uiState
             });
-
 
             try {
                 this._lab.registerPluginModules(extensions.jupyterlab);

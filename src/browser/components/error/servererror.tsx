@@ -25,7 +25,7 @@ function ServerError(props: ServerError.Props) {
                     <button className='jpe-ServerError-btn' onClick={props.launchFromPath}>CHOOSE PATH</button>
                     <button className='jpe-ServerError-btn' onClick={() => {
                         shell.openExternal('https://www.jupyter.org/install.html');
-                        }}>INSTALL JUPYTER</button>
+                    }}>INSTALL JUPYTER</button>
                 </div>
             </div>
         </div>

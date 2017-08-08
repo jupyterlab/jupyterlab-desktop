@@ -42,7 +42,7 @@ class JupyterServer {
         }
 
         this._startServer = new Promise<JupyterServer.IInfo>((resolve, reject) => {
-            let urlRegExp = /http:\/\/localhost:\d+\/\?token=\w+/g;
+            let urlRegExp = /http:\/\/localhost:\d+\/\S*/g;
             let tokenRegExp = /token=\w+/g;
             let baseRegExp = /http:\/\/localhost:\d+\//g;
             let home = app.getPath("home");
@@ -71,10 +71,18 @@ class JupyterServer {
             this._nbServer.stderr.on('data', (serverBuff: string) => {
                 let urlMatch = serverBuff.toString().match(urlRegExp);
                 if (!urlMatch)
-                    return; 
+                    return;
 
                 let url = urlMatch[0].toString();
-                this._info.token = (url.match(tokenRegExp))[0].replace("token=", "");
+                let token = (url.match(tokenRegExp));
+                
+                if (!token) {
+                    this._cleanupListeners();
+                    reject(new Error("Update Jupyter version"));
+                    return;
+                }
+                
+                this._info.token = token[0].replace("token=", "");
                 this._info.url = (url.match(baseRegExp))[0];
 
                 this._cleanupListeners();
