@@ -20,7 +20,7 @@ function ServerError(props: ServerError.Props) {
             <div className='jpe-ServerError-content'>
                 <div className='jpe-ServerError-icon'></div>
                 <h1 className='jpe-ServerError-header'>Jupyter Server Not Found</h1>
-                <p className='jpe-ServerError-subhead'>We were unable to launch a Jupyter server, which is a prerequisite for JupyterLab Native. If you already have a Jupyter server installed, specify the path location below. Otherwise, try installing or updating Jupyter.</p>
+                <p className='jpe-ServerError-subhead'>We were unable to launch a Jupyter server, which is a prerequisite for JupyterLab Native. If Jupyter v4.3.0 or greater is already installed, but it is not in your PATH, specify its location below. Otherwise, try installing or updating Jupyter.</p>
                 <div className='jpe-ServerError-btn-container'>
                     <button className='jpe-ServerError-btn' onClick={props.launchFromPath}>CHOOSE PATH</button>
                     <button className='jpe-ServerError-btn' onClick={() => {
