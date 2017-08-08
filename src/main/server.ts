@@ -65,7 +65,7 @@ class JupyterServer {
                     return;
 
                 let url = null;
-                if (urlMatch.length > 1){
+                if (urlMatch.length > 0){
                     url = urlMatch[0].toString();
                 }
                 else {
