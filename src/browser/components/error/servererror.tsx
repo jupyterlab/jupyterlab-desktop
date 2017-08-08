@@ -9,7 +9,7 @@ function ServerError() {
         <div className='jpe-ServerError-body'>
             <div className='jpe-ServerError-content' >
                 <h1>Something Went Wrong!</h1>
-                <p>Looks like the Jupyter Server isn't installed. Take a look at jupyter.org for help with installation.</p>
+                <p>Looks like the Jupyter Server isn't installed, isn't in your path, or is outdated. Take a look at jupyter.org for help with installation.</p>
             </div>
         </div>
     );
