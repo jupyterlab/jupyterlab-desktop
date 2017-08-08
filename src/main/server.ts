@@ -51,21 +51,21 @@ class JupyterServer {
                this._nbServer = execFile(join(this._info.path, 'jupyter'), ['notebook', '--no-browser']);
             } else if (process.platform === "win32") {
                 // Windows will return win32 (even for 64-bit)
-                // Dont spawns shell for Windows
+                // Dont spawn shell for Windows
                 this._nbServer = spawn('jupyter', ['notebook', '--no-browser'], {cwd: home});
-            } else{
+            } else {
                 this._nbServer = spawn('/bin/bash', ['-i', '-l'], {cwd: home});
-                this._nbServer.stdin.write('exec jupyter notebook --no-browser\n');
+                this._nbServer.stdin.write('exec jupyter notebook --no-browser || exit\n');
             }
+            
+            this._nbServer.on('exit', () => {
+                this._serverStartFailed();
+                reject(new Error('Jupyter not installed'));
+            });
 
             this._nbServer.on('error', (err: Error) => {
                 this._serverStartFailed();
                 reject(err);
-            });
-
-            this._nbServer.on('exit', () => {
-                this._cleanupListeners();
-                reject(new Error('Jupyter not installed'));
             });
 
             this._nbServer.stderr.on('data', (serverBuff: string) => {
