@@ -64,16 +64,10 @@ class JupyterServer {
                 if (!urlMatch)
                     return;
 
-                let url = null;
-                if (urlMatch.length > 0){
-                    url = urlMatch[0].toString();
-                }
-                else {
-                    url = urlMatch.toString();
-                }
-
-                let token = (url.match(tokenRegExp))
-                if (token === null) {
+                let url = urlMatch[0].toString();
+                let token = (url.match(tokenRegExp));
+                
+                if (!token) {
                     this._cleanupListeners();
                     reject(new Error("Update Jupyter version"));
                     return;
