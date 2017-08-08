@@ -21,3 +21,59 @@
     flex-direction: column;
     justify-content: center;
 }
+
+.jpe-ServerError-icon {
+    height: 40px;
+    width: 40px;
+    background-image: url('../img/server-off.svg');
+    background-size: 40px;
+    background-repeat: no-repeat;
+    background-position: center;
+    margin: 0 auto;
+    margin-bottom: 16px;
+}
+
+.jpe-ServerError-header {
+    font-size: 20px;
+    font-weight: 500;
+    margin-bottom: 12px;
+    cursor: default;
+}
+
+.jpe-ServerError-subhead {
+    margin-bottom: 16px;
+    line-height: 1.36;
+    cursor: default;
+}
+
+.jpe-ServerError-btn-container {
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+    align-items: center;
+
+}
+
+.jpe-ServerError-btn {
+    display: inline-block;
+    color: #F37726;
+    background-color: transparent;
+    border: none;
+    font-size: 14px;
+    font-weight: 600;
+    padding: 8px 16px;
+    transition: .2s background-color;
+    max-width: 160px;
+    cursor: pointer;
+    border-radius: 2px;
+    margin: 0px 4px;
+}
+
+.jpe-ServerError-btn:hover {
+    background-color: #F5F5F5;
+}
+
+.jpe-ServerError-btn:focus {
+    outline: none;
+    background-color: #E0E0E0;
+}
