@@ -103,6 +103,12 @@ namespace JupyterServerIPC {
     export
     const REQUEST_SERVER_START = 'request-server-start';
     
+    export
+    const REQUEST_SERVER_START_PATH = 'request-server-start-path';
+
+    export
+    const POST_PATH_SELECTED = 'poast-path-selected';
+    
     /**
      * Response to REQUEST_SERVER_START. Sent when the 
      * server is spawned and is running.

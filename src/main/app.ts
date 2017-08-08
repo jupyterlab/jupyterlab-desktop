@@ -180,7 +180,7 @@ class JupyterApplication {
         if (!state || !state.windows || state.windows.length == 0) {
             // Start JupyterLab with local sever by sending local server id
             // Prelaunch local server to improve performance
-            this._serverFactory.startFreeServer();
+            this._serverFactory.startFreeServer({});
             this._createWindow({state: 'local'});
             return;
         }
