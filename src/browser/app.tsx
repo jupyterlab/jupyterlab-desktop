@@ -54,7 +54,8 @@ class Application extends React.Component<Application.Props, Application.State> 
         ipcRenderer.on(ServerIPC.RESPOND_SERVER_STARTED, (event: any, data: ServerIPC.IServerStarted) => {
             if (data.err) {
                 console.error(data.err);
-                this.setState({renderState: this._renderErrorScreen});
+                this.setState({renderSplash: this._renderSplash, renderState: this._renderErrorScreen});
+                (this.refs.splash as SplashScreen).fadeSplashScreen();
                 return;
             }
             
@@ -86,10 +87,11 @@ class Application extends React.Component<Application.Props, Application.State> 
         });
 
         if (this.props.options.serverState == 'local') {
-            this.state = {renderState: this._renderSplash, remotes: []};
+            this.state = {renderSplash: this._renderSplash, renderState: this._renderEmpty, remotes: []};
             ipcRenderer.send(ServerIPC.REQUEST_SERVER_START);
         } else {
-            this.state = {renderState: this._renderServerManager, remotes: []};
+            this.state = {renderSplash: this._renderSplash, renderState: this._renderServerManager, remotes: []};
+            (this.refs.splash as SplashScreen).fadeSplashScreen();
         }
         
         this._serverState = new StateDB({namespace: Application.STATE_NAMESPACE});
@@ -115,10 +117,12 @@ class Application extends React.Component<Application.Props, Application.State> 
     }
     
     render() {
+        let splash = this.state.renderSplash();
         let content = this.state.renderState();
 
         return (
             <div className='jpe-body'>
+                {splash}
                 {content}
             </div>
         );
@@ -213,7 +217,7 @@ class Application extends React.Component<Application.Props, Application.State> 
         return (
             <div className='jpe-content'>
                 <SplashScreen  ref='splash' uiState={this.props.options.uiState} finished={() => {
-                    this.setState({renderState: this._renderLab});}
+                    this.setState({renderSplash: this._renderEmpty});}
                 } />
             </div>
         );
@@ -221,7 +225,6 @@ class Application extends React.Component<Application.Props, Application.State> 
 
     private _renderLab(): JSX.Element {
         this._saveState();
-
         return null;
     }
 
@@ -232,6 +235,10 @@ class Application extends React.Component<Application.Props, Application.State> 
                 <ServerError launchFromPath={this._launchFromPath}/>
             </div>
         )
+    }
+
+    private _renderEmpty(): JSX.Element {
+        return null;
     }
 
     private _lab: ElectronJupyterLab;
@@ -270,6 +277,7 @@ namespace Application {
     export
     interface State {
         renderState: () => any;
+        renderSplash: () => any;
         remotes: IRemoteServer[];
     }
 

@@ -169,10 +169,10 @@ class JupyterServerFactory {
         ipcMain.on(ServerIPC.REQUEST_SERVER_START, (event: any) => {
             this.requestServerStart({})
                 .then((data: JupyterServerFactory.IFactoryItem) => {
-                    event.sender.send(ServerIPC.RESPOND_SERVER_STARTED, this._factoryToIPC(data))
+                    event.sender.send(ServerIPC.RESPOND_SERVER_STARTED, this._factoryToIPC(data));
                })
                 .catch((e: any) => {
-                    event.sender.send(ServerIPC.RESPOND_SERVER_STARTED, this._errorToIPC(e))
+                    event.sender.send(ServerIPC.RESPOND_SERVER_STARTED, this._errorToIPC(e));
                 });
         });
         
@@ -182,14 +182,16 @@ class JupyterServerFactory {
                     event.sender.send(ServerIPC.POST_PATH_SELECTED);
                     this.requestServerStart({path})
                         .then((data: JupyterServerFactory.IFactoryItem) => {
-                            event.sender.send(ServerIPC.RESPOND_SERVER_STARTED, this._factoryToIPC(data))
+                            event.sender.send(ServerIPC.RESPOND_SERVER_STARTED, this._factoryToIPC(data));
                         })
                         .catch((e) => {
-                            event.sender.send(ServerIPC.RESPOND_SERVER_STARTED, this._errorToIPC(e))
+                            event.sender.send(ServerIPC.RESPOND_SERVER_STARTED, this._errorToIPC(e));
                         });
                })
                 .catch((e: any) => {
-                    event.sender.send(ServerIPC.RESPOND_SERVER_STARTED, this._errorToIPC(e))
+                    if (e.message !== 'cancel'){
+                        event.sender.send(ServerIPC.RESPOND_SERVER_STARTED, this._errorToIPC(e));
+                    }
                 });
         });
         
@@ -289,7 +291,7 @@ class JupyterServerFactory {
                 buttonLabel: 'Use Path'
             }, (filePaths: string[]) => {
                 if (!filePaths) {
-                    rej(new Error('No path selected'));
+                    rej(new Error('cancel'));
                     return;
                 } else {
                     res(filePaths[0]);
