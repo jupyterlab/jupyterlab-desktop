@@ -47,6 +47,7 @@ class Application extends React.Component<Application.Props, Application.State> 
         this._renderLab = this._renderLab.bind(this);
         this._renderErrorScreen = this._renderErrorScreen.bind(this);
         this._connectionAdded = this._connectionAdded.bind(this);
+        this._launchFromPath = this._launchFromPath.bind(this);
 
         this._labReady = this._setupLab();
         
@@ -123,6 +124,16 @@ class Application extends React.Component<Application.Props, Application.State> 
         );
     }
     
+    private _launchFromPath() {
+        ipcRenderer.send(ServerIPC.REQUEST_SERVER_START_PATH);
+
+        let pathSelected = () => {
+            this.setState({renderState: this._renderSplash});
+            ipcRenderer.removeListener(ServerIPC.POST_PATH_SELECTED, pathSelected);
+        }
+        ipcRenderer.on(ServerIPC.POST_PATH_SELECTED, pathSelected);
+    }
+
     private _saveState() {
         this._serverState.save(Application.SERVER_STATE_ID, {remotes: this.state.remotes});
     }
@@ -218,7 +229,7 @@ class Application extends React.Component<Application.Props, Application.State> 
         return (
             <div className='jpe-content'>
                 <TitleBar uiState={this.props.options.uiState} />
-                <ServerError />
+                <ServerError launchFromPath={this._launchFromPath}/>
             </div>
         )
     }

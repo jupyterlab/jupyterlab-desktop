@@ -3,7 +3,11 @@ import {
 } from 'child_process';
 
 import {
-    app, ipcMain
+    join
+} from 'path';
+
+import {
+    app, ipcMain, dialog
 } from 'electron';
 
 import {
@@ -17,7 +21,10 @@ import {
 export
 class JupyterServer {
 
-    constructor(options: JupyterServer.IOptions) {}
+    constructor(options: JupyterServer.IOptions) {
+        if (options.path)
+            this._info.path = options.path;
+    }
 
     get info(): JupyterServer.IInfo {
         return this._info;
@@ -40,23 +47,25 @@ class JupyterServer {
             let baseRegExp = /http:\/\/localhost:\d+\//g;
             let home = app.getPath("home");
 
-            // Windows will return win32 (even for 64-bit)
-            if (process.platform === "win32") {
-                // Dont spawns shell for Windows
+            if (this._info.path) {
+               this._nbServer = execFile(join(this._info.path, 'jupyter'), ['notebook', '--no-browser']);
+            } else if (process.platform === "win32") {
+                // Windows will return win32 (even for 64-bit)
+                // Dont spawn shell for Windows
                 this._nbServer = spawn('jupyter', ['notebook', '--no-browser'], {cwd: home});
-            }
-            else{
+            } else {
                 this._nbServer = spawn('/bin/bash', ['-i', '-l'], {cwd: home});
+                this._nbServer.stdin.write('exec jupyter notebook --no-browser || exit\n');
             }
-
-            this._nbServer.on('error', (err: Error) => {
-                this._cleanupListeners();
-                reject(err);
+            
+            this._nbServer.on('exit', () => {
+                this._serverStartFailed();
+                reject(new Error('Jupyter not installed'));
             });
 
-            this._nbServer.on('exit', () => {
-                this._cleanupListeners();
-                reject(new Error('Jupyter not installed'));
+            this._nbServer.on('error', (err: Error) => {
+                this._serverStartFailed();
+                reject(err);
             });
 
             this._nbServer.stderr.on('data', (serverBuff: string) => {
@@ -73,19 +82,12 @@ class JupyterServer {
                     return;
                 }
                 
-                this._info = {
-                    token: token[0].replace("token=", ""),
-                    url: (url.match(baseRegExp))[0]
-                }
+                this._info.token = token[0].replace("token=", "");
+                this._info.url = (url.match(baseRegExp))[0];
 
                 this._cleanupListeners();
                 resolve(this._info);
             });
-
-  
-            if (process.platform !== "win32"){
-                this._nbServer.stdin.write('exec jupyter notebook --no-browser || exit\n');
-            }
         });
 
         return this._startServer;
@@ -120,7 +122,13 @@ class JupyterServer {
         return this._stopServer;
     }
 
-    private _cleanupListeners() {
+    private _serverStartFailed(): void {
+        this._cleanupListeners();
+        // Server didn't start, resolve stop promise
+        this._stopServer = Promise.resolve();
+    }
+
+    private _cleanupListeners(): void {
         this._nbServer.removeAllListeners();
         this._nbServer.stderr.removeAllListeners();
     }
@@ -134,7 +142,7 @@ class JupyterServer {
 
     private _startServer: Promise<JupyterServer.IInfo> = null;
 
-    private _info: JupyterServer.IInfo = {url: null, token: null};
+    private _info: JupyterServer.IInfo = {url: null, token: null, path: null};
 }
 
 export
@@ -142,12 +150,14 @@ namespace JupyterServer {
 
     export
     interface IOptions {
+        path?: string;
     }
 
     export
     interface IInfo {
         url: string;
         token: string;
+        path: string;
     }
 }
 
@@ -157,22 +167,29 @@ class JupyterServerFactory {
     constructor(options: JupyterServerFactory.IOptions) {
         // Register electron IPC listensers
         ipcMain.on(ServerIPC.REQUEST_SERVER_START, (event: any) => {
-            this.requestServerStart()
+            this.requestServerStart({})
                 .then((data: JupyterServerFactory.IFactoryItem) => {
-                    let info = data.server.info;
-                    event.sender.send(ServerIPC.RESPOND_SERVER_STARTED, {
-                        factoryId: data.factoryId,
-                        url: info.url,
-                        token: info.token
-                    } as ServerIPC.IServerStarted);
-                })
+                    event.sender.send(ServerIPC.RESPOND_SERVER_STARTED, this._factoryToIPC(data))
+               })
                 .catch((e: any) => {
-                    event.sender.send(ServerIPC.RESPOND_SERVER_STARTED,{
-                        factoryId: -1,
-                        url: null,
-                        token: null,
-                        err: e || new Error('Server creation error')
-                    } as ServerIPC.IServerStarted);
+                    event.sender.send(ServerIPC.RESPOND_SERVER_STARTED, this._errorToIPC(e))
+                });
+        });
+        
+        ipcMain.on(ServerIPC.REQUEST_SERVER_START_PATH, (event: any) => {
+            this.getUserJupyterPath()
+                .then((path: string) => {
+                    event.sender.send(ServerIPC.POST_PATH_SELECTED);
+                    this.requestServerStart({path})
+                        .then((data: JupyterServerFactory.IFactoryItem) => {
+                            event.sender.send(ServerIPC.RESPOND_SERVER_STARTED, this._factoryToIPC(data))
+                        })
+                        .catch((e) => {
+                            event.sender.send(ServerIPC.RESPOND_SERVER_STARTED, this._errorToIPC(e))
+                        });
+               })
+                .catch((e: any) => {
+                    event.sender.send(ServerIPC.RESPOND_SERVER_STARTED, this._errorToIPC(e))
                 });
         });
         
@@ -186,8 +203,8 @@ class JupyterServerFactory {
         });
     }
 
-    startFreeServer(): JupyterServerFactory.IFactoryItem {
-        let server = new JupyterServer({})
+    startFreeServer(opts: JupyterServer.IOptions): JupyterServerFactory.IFactoryItem {
+        let server = new JupyterServer(opts)
         let item: JupyterServerFactory.IFactoryItem = {
             factoryId: this._nextId++,
             server: server,
@@ -198,9 +215,9 @@ class JupyterServerFactory {
         return item;
     }
 
-    getFreeServer(): JupyterServerFactory.IFactoryItem | null {
+    getFreeServer(opts: JupyterServer.IOptions): JupyterServerFactory.IFactoryItem | null {
         let idx = ArrayExt.findFirstIndex(this._servers, (server: JupyterServerFactory.IFactoryItem, idx: number) => {
-            if (server.status == 'free')
+            if (server.status == 'free' && opts.path == server.server.info.path)
                 return true;
             return false;
         });
@@ -212,8 +229,8 @@ class JupyterServerFactory {
         return this._servers[idx];
     }
 
-    requestServerStart(): Promise<JupyterServerFactory.IFactoryItem> {
-        let server = this.getFreeServer() || this.startFreeServer();
+    requestServerStart(opts: JupyterServer.IOptions): Promise<JupyterServerFactory.IFactoryItem> {
+        let server = this.getFreeServer(opts)|| this.startFreeServer(opts);
         server.status = 'used';
 
         return new Promise<JupyterServerFactory.IFactoryItem>((res, rej) => {
@@ -223,6 +240,8 @@ class JupyterServerFactory {
                 })
                 .catch((e) => {
                     rej(e);
+                    // Remove server from servers array
+                    this.requestServerStop(server.factoryId);
                 });
         })
 
@@ -237,16 +256,17 @@ class JupyterServerFactory {
 
         if (idx < 0)
             return Promise.reject(new Error('Invalid server id: ' + factoryId));
-
+        
+        let server = this._servers[idx];
         return new Promise<void>((res, rej) => {
-            this._servers[idx].server.stop()
+            server.server.stop()
                 .then(() => {
                     ArrayExt.removeAt(this._servers, idx);
                     res();
                 })
                 .catch((e) => {
-                    console.error(e);
                     ArrayExt.removeAt(this._servers, idx);
+                    console.error(e);
                     rej();
                 });
         })
@@ -260,6 +280,41 @@ class JupyterServerFactory {
         });
 
         return Promise.all(stopPromises)
+    }
+
+    getUserJupyterPath(): Promise<string> {
+        return new Promise<string>((res, rej) => {
+            dialog.showOpenDialog({
+                properties: ['openDirectory', 'showHiddenFiles'],
+                buttonLabel: 'Use Path'
+            }, (filePaths: string[]) => {
+                if (!filePaths) {
+                    rej(new Error('No path selected'));
+                    return;
+                } else {
+                    res(filePaths[0]);
+                }
+            });
+
+        })
+    }
+
+    private _factoryToIPC(data: JupyterServerFactory.IFactoryItem): ServerIPC.IServerStarted {
+        let info = data.server.info;
+        return {
+            factoryId: data.factoryId,
+            url: info.url,
+            token: info.token
+        };
+    }
+    
+    private _errorToIPC(e: Error): ServerIPC.IServerStarted {
+        return {
+            factoryId: -1,
+            url: null,
+            token: null,
+            err: e || new Error('Server creation error')
+        };
     }
     
     private _servers: JupyterServerFactory.IFactoryItem[] = [];
