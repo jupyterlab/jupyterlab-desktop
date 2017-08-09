@@ -10,8 +10,8 @@ import {
 } from 'jupyterlab_app/src/ipc';
 
 import {
-    JupyterLabWindow
-} from './window';
+    JupyterLabSession
+} from './sessions';
 
 import {
     JupyterApplication
@@ -34,7 +34,7 @@ export class KeyboardShortcutManager {
      * @param options - The application windows
      */
     constructor(options: KeyboardShortcutManager.IOptions){
-        this._windows = options.jupyterApp.windows;
+        this._windows = null;//options.jupyterApp.windows;
         app.on('browser-window-focus', (event:Event, window: Electron.BrowserWindow) => {
             if (!this._active){
                 this.enableShortcuts();
@@ -106,7 +106,7 @@ export class KeyboardShortcutManager {
     /**
      * All application windows
      */
-    private _windows: JupyterLabWindow[];
+    private _windows: JupyterLabSession[];
 
     /**
      * The enabled shortcuts

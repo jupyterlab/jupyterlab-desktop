@@ -16,8 +16,8 @@ import {
 } from 'jupyterlab_app/src/main/menu';
 
 import {
-    JupyterLabWindow
-} from 'jupyterlab_app/src/main/window';
+    JupyterLabSession
+} from 'jupyterlab_app/src/main/sessions';
 
 export
 namespace JupyterApplicationIPC {
@@ -83,9 +83,9 @@ namespace JupyterWindowIPC {
 
     export
     interface IWindowState extends JSONObject {
-        serverState: JupyterLabWindow.ServerState;
+        serverState: JupyterLabSession.ServerState;
         remoteServerId?: number; 
-        uiState: JupyterLabWindow.UIState;
+        uiState: JupyterLabSession.UIState;
         platform: NodeJS.Platform;
     }
 }

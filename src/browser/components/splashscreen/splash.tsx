@@ -6,8 +6,8 @@ import {
 } from 'jupyterlab_app/src/browser/components';
 
 import {
-    JupyterLabWindow
-} from 'jupyterlab_app/src/main/window';
+    JupyterLabSession
+} from 'jupyterlab_app/src/main/sessions';
 
 import * as React from 'react';
 
@@ -15,7 +15,7 @@ export namespace SplashScreen {
     export
     interface Props {
         finished: () => void;
-        uiState: JupyterLabWindow.UIState;
+        uiState: JupyterLabSession.UIState;
     }
 
     export

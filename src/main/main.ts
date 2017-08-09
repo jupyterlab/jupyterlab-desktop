@@ -1,5 +1,6 @@
 import {app} from 'electron'
-import {JupyterApplication} from 'jupyterlab_app/src/main/app';
+
+import * as Bottle from 'bottlejs';
 
 /**
  * Require debugging tools. Only
@@ -7,9 +8,34 @@ import {JupyterApplication} from 'jupyterlab_app/src/main/app';
  */
 require('electron-debug')({showDevTools: false});
 
-let jupyterApp;
+let services: IService[] = [
+    require('./app').default,
+    require('./sessions').default
+];
+
+export
+interface IService {
+    requirements: String[];
+    provides: string,
+    activate: (...any: any[]) => any,
+    autostart?: boolean
+}
+
+function main(): void {
+    let serviceManager = new Bottle();
+    services.forEach((s: IService) => {
+        serviceManager.factory(s.provides, (container: any) => {
+            let args = s.requirements.map((r: string) => {
+                return container[r]
+            });
+            return s.activate(...args);
+        });
+        if (s.autostart)
+            serviceManager.digest([s.provides]);
+    });
+}
 
 app.on('ready', () => {
-  jupyterApp = new JupyterApplication();
+    main();
 });
 

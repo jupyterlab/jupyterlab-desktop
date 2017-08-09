@@ -20,7 +20,7 @@ import {
 } from './app';
 
 import {
-    JupyterLabWindow
+    //JupyterLabWindow
 } from './window';
 
 type JupyterMenuItemOptions = MenuIPC.JupyterMenuItemOptions;
@@ -107,27 +107,27 @@ class JupyterMainMenu {
      * Click event handler. Passes the event on the render process 
      */
     private handleClick(menu: Electron.MenuItem, window: Electron.BrowserWindow): void {
-        let windows: JupyterLabWindow[] = null;
-        // Application window is in focus
-        if (window){
+        // let windows: JupyterLabWindow[] = null;
+        // // Application window is in focus
+        // if (window){
              window.webContents.send(MenuIPC.POST_CLICK_EVENT, menu as JupyterMenuItemOptions);
-        }
-        // No focused window
-        else if ((windows = this._jupyterApp.windows).length > 0){
-            if (menu.label === 'Add Server' || menu.label === 'Local'){
-                windows[0].browserWindow.webContents.send(MenuIPC.POST_CLICK_EVENT, menu as JupyterMenuItemOptions);
-            }
-        }
-        // No application windows available
-        else {
-            if (menu.label === 'Add Server'){
-                this._jupyterApp.addServer();
-            }
-            else if (menu.label === 'Local'){
-                this._jupyterApp.newLocalServer();
-            }
+        // }
+        // // No focused window
+        // else if ((windows = this._jupyterApp.windows).length > 0){
+        //     if (menu.label === 'Add Server' || menu.label === 'Local'){
+        //         windows[0].browserWindow.webContents.send(MenuIPC.POST_CLICK_EVENT, menu as JupyterMenuItemOptions);
+        //     }
+        // }
+        // // No application windows available
+        // else {
+        //     if (menu.label === 'Add Server'){
+        //         this._jupyterApp.addServer();
+        //     }
+        //     else if (menu.label === 'Local'){
+        //         this._jupyterApp.newLocalServer();
+        //     }
 
-        }
+        // }
     }
 
     /**

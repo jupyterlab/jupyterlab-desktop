@@ -18,8 +18,8 @@ import {
 } from 'jupyterlab_app/src/browser/utils';
 
 import {
-  JupyterLabWindow
-} from 'jupyterlab_app/src/main/window';
+  JupyterLabSession
+} from 'jupyterlab_app/src/main/sessions';
 
 import {
   each
@@ -103,13 +103,13 @@ namespace ElectronJupyterLab {
 
   export
   interface IOptions extends JupyterLab.IOptions {
-    uiState?: JupyterLabWindow.UIState;
+    uiState?: JupyterLabSession.UIState;
     platform: NodeJS.Platform;
   }
 
   export
   interface IInfo extends JupyterLab.IInfo {
-    uiState: JupyterLabWindow.UIState;
+    uiState: JupyterLabSession.UIState;
     platform: NodeJS.Platform;
   }
 }

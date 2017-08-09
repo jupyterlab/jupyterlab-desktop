@@ -30,8 +30,8 @@ import {
 } from 'jupyterlab_app/src/browser/utils';
 
 import {
-    JupyterLabWindow
-} from 'jupyterlab_app/src/main/window';
+    JupyterLabSession
+} from 'jupyterlab_app/src/main/sessions';
 
 import * as React from 'react';
 import extensions from 'jupyterlab_app/src/browser/extensions';
@@ -277,8 +277,8 @@ namespace Application {
 
     export
     interface IOptions extends JSONObject {
-        uiState: JupyterLabWindow.UIState;
-        serverState: JupyterLabWindow.ServerState;
+        uiState: JupyterLabSession.UIState;
+        serverState: JupyterLabSession.ServerState;
         remoteServerId: number;
         platform: NodeJS.Platform;
     }
