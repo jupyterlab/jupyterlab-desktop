@@ -60,7 +60,7 @@ class JupyterServer {
             
             this._nbServer.on('exit', () => {
                 this._serverStartFailed();
-                reject(new Error('Jupyter not installed'));
+                reject(new Error('Could not find Jupyter in PATH'));
             });
 
             this._nbServer.on('error', (err: Error) => {
@@ -78,7 +78,7 @@ class JupyterServer {
                 
                 if (!token) {
                     this._cleanupListeners();
-                    reject(new Error("Update Jupyter version"));
+                    reject(new Error("Update Jupyter notebook to version 4.3.0 or greater"));
                     return;
                 }
                 
@@ -171,7 +171,7 @@ class JupyterServerFactory {
                 .then((data: JupyterServerFactory.IFactoryItem) => {
                     event.sender.send(ServerIPC.RESPOND_SERVER_STARTED, this._factoryToIPC(data));
                })
-                .catch((e: any) => {
+                .catch((e: Error) => {
                     event.sender.send(ServerIPC.RESPOND_SERVER_STARTED, this._errorToIPC(e));
                 });
         });
@@ -188,9 +188,10 @@ class JupyterServerFactory {
                             event.sender.send(ServerIPC.RESPOND_SERVER_STARTED, this._errorToIPC(e));
                         });
                })
-                .catch((e: any) => {
+                .catch((e: Error) => {
                     if (e.message !== 'cancel'){
                         event.sender.send(ServerIPC.RESPOND_SERVER_STARTED, this._errorToIPC(e));
+
                     }
                 });
         });
@@ -315,7 +316,7 @@ class JupyterServerFactory {
             factoryId: -1,
             url: null,
             token: null,
-            err: e || new Error('Server creation error')
+            err: e.message || 'Server creation error'
         };
     }
     

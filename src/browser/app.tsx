@@ -44,7 +44,7 @@ class Application extends React.Component<Application.Props, Application.State> 
         super(props);
         this._renderServerManager = this._renderServerManager.bind(this);
         this._renderSplash = this._renderSplash.bind(this);
-        this._renderLab = this._renderLab.bind(this);
+        this._renderEmpty = this._renderEmpty.bind(this);
         this._renderErrorScreen = this._renderErrorScreen.bind(this);
         this._connectionAdded = this._connectionAdded.bind(this);
         this._launchFromPath = this._launchFromPath.bind(this);
@@ -90,8 +90,7 @@ class Application extends React.Component<Application.Props, Application.State> 
             this.state = {renderSplash: this._renderSplash, renderState: this._renderEmpty, remotes: []};
             ipcRenderer.send(ServerIPC.REQUEST_SERVER_START);
         } else {
-            this.state = {renderSplash: this._renderSplash, renderState: this._renderServerManager, remotes: []};
-            (this.refs.splash as SplashScreen).fadeSplashScreen();
+            this.state = {renderSplash: this._renderEmpty, renderState: this._renderServerManager, remotes: []};
         }
         
         this._serverState = new StateDB({namespace: Application.STATE_NAMESPACE});
@@ -197,8 +196,9 @@ class Application extends React.Component<Application.Props, Application.State> 
         this.setState((prev: ServerManager.State) => {
             server.id = this._nextRemoteId++;
             let conns = this.state.remotes.concat(rServer);
+            this._saveState();
             return({
-                renderState: this._renderLab,
+                renderState: this._renderEmpty,
                 conns: {servers: conns}
             });
         });
@@ -221,11 +221,6 @@ class Application extends React.Component<Application.Props, Application.State> 
                 } />
             </div>
         );
-    }
-
-    private _renderLab(): JSX.Element {
-        this._saveState();
-        return null;
     }
 
     private _renderErrorScreen(): JSX.Element {
