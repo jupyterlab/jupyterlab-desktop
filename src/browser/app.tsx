@@ -54,7 +54,7 @@ class Application extends React.Component<Application.Props, Application.State> 
         ipcRenderer.on(ServerIPC.RESPOND_SERVER_STARTED, (event: any, data: ServerIPC.IServerStarted) => {
             if (data.err) {
                 console.error(data.err);
-                this.setState({renderSplash: this._renderSplash, renderState: this._renderErrorScreen});
+                this.setState({renderState: this._renderErrorScreen});
                 (this.refs.splash as SplashScreen).fadeSplashScreen();
                 return;
             }
@@ -131,8 +131,8 @@ class Application extends React.Component<Application.Props, Application.State> 
         ipcRenderer.send(ServerIPC.REQUEST_SERVER_START_PATH);
 
         let pathSelected = () => {
-            this.setState({renderState: this._renderSplash});
             ipcRenderer.removeListener(ServerIPC.POST_PATH_SELECTED, pathSelected);
+            this.setState({renderSplash: this._renderSplash, renderState: this._renderEmpty});
         }
         ipcRenderer.on(ServerIPC.POST_PATH_SELECTED, pathSelected);
     }
@@ -192,7 +192,6 @@ class Application extends React.Component<Application.Props, Application.State> 
         });
 
         let rServer: Application.IRemoteServer = {...server, id: this._nextRemoteId++};
-
         this.setState((prev: ServerManager.State) => {
             server.id = this._nextRemoteId++;
             let conns = this.state.remotes.concat(rServer);
