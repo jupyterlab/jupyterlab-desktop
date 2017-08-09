@@ -48,7 +48,7 @@ class JupyterServer {
             let home = app.getPath("home");
 
             if (this._info.path) {
-               this._nbServer = execFile(join(this._info.path, 'jupyter'), ['notebook', '--no-browser']);
+               this._nbServer = execFile(join(this._info.path, 'jupyter'), ['notebook', '--no-browser'], {cwd: home});
             } else if (process.platform === "win32") {
                 // Windows will return win32 (even for 64-bit)
                 // Dont spawn shell for Windows
