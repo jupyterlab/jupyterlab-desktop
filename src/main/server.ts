@@ -65,7 +65,7 @@ class JupyterServer {
 
             this._nbServer.on('error', (err: Error) => {
                 this._serverStartFailed();
-                reject(err);
+                reject(new Error('Could not find Jupyter in PATH'));
             });
 
             this._nbServer.stderr.on('data', (serverBuff: string) => {
