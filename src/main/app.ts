@@ -29,18 +29,47 @@ import {
 export
 interface IApplication {
 
+    /**
+     * Register as service with persistent state.
+     * 
+     * @return promise fulfileld with the service's previous state.
+     */
     registerStatefulService: (service: IStatefulService) => Promise<JSONValue>;
 
+    /**
+     * Force the application service to write data to the disk.
+     */
     saveState: (service: IStatefulService, data: JSONValue) => Promise<void>;
 }
 
+/**
+ * A service that has data that needs to persist.
+ */
 export
 interface IStatefulService {
 
+    /**
+     * The human-readable id for the service state. Must be unique
+     * to each service.
+     */
     id: string;
 
+    /**
+     * Called before the application quits. Qutting will
+     * be suspended until the returned promise is resolved with
+     * the service's state.
+     * 
+     * @return promise that is fulfilled with the service's state.
+     */
     getStateBeforeQuit(): Promise<JSONValue>;
     
+    /**
+     * Called before state is passed to the service. Implementing
+     * services should scan the state for issues in this function.
+     * If the data is invalid, the function should return false.
+     * 
+     * @return true if the data is valid, false otherwise.
+     */
     verifyState: (state: JSONValue) => boolean;
 }
 
