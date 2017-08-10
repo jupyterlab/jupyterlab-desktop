@@ -167,8 +167,38 @@ namespace JupyterServer {
 
 export
 interface IServerFactory {
-    startFreeServer: (opts: JupyterServer.IOptions) => JupyterServerFactory.IFactoryItem;
-    requestServerStart: (opts: JupyterServer.IOptions) => Promise<JupyterServerFactory.IFactoryItem>;
+    
+    /**
+     * Create and start a 'free' server. The server created will be returned
+     * in the next call to 'createServer'.
+     * 
+     * This method is a way to pre-launch Jupyter servers to improve load
+     * times.
+     * 
+     * @param opts the Jupyter server options.
+     * 
+     * @return the factory item.
+     */
+    createFreeServer: (opts: JupyterServer.IOptions) => JupyterServerFactory.IFactoryItem;
+
+    /**
+     * Create a Jupyter server.
+     * 
+     * If a free server is available, it is preferred over
+     * server creation.
+     * 
+     * @param opts the Jupyter server options.
+     * @param forceNewServer force the creation of a new server over a free server.
+     * 
+     * @return the factory item.
+     */
+    createServer: (opts: JupyterServer.IOptions) => Promise<JupyterServerFactory.IFactoryItem>;
+    
+    /**
+     * Kill all currently running servers.
+     * 
+     * @return a promise that is fulfilled when all servers are killed.
+     */
     killAllServers: () => Promise<void[]>;
 }
 
@@ -178,7 +208,7 @@ class JupyterServerFactory implements IServerFactory {
     constructor() {
         // Register electron IPC listensers
         ipcMain.on(ServerIPC.REQUEST_SERVER_START, (event: any) => {
-            this.requestServerStart({})
+            this.createServer({})
                 .then((data: JupyterServerFactory.IFactoryItem) => {
                     event.sender.send(ServerIPC.RESPOND_SERVER_STARTED, this._factoryToIPC(data));
                })
@@ -191,7 +221,7 @@ class JupyterServerFactory implements IServerFactory {
             this.getUserJupyterPath()
                 .then((path: string) => {
                     event.sender.send(ServerIPC.POST_PATH_SELECTED);
-                    this.requestServerStart({path})
+                    this.createServer({path})
                         .then((data: JupyterServerFactory.IFactoryItem) => {
                             event.sender.send(ServerIPC.RESPOND_SERVER_STARTED, this._factoryToIPC(data));
                         })
@@ -209,7 +239,7 @@ class JupyterServerFactory implements IServerFactory {
         
         ipcMain.on(ServerIPC.REQUEST_SERVER_STOP,
                     (event: any, arg: ServerIPC.IRequestServerStop) => {
-            this.requestServerStop(arg.factoryId)
+            this.stopServer(arg.factoryId)
                 .then(() => {})
                 .catch((e) => {
                     console.error(e);
@@ -217,35 +247,46 @@ class JupyterServerFactory implements IServerFactory {
         });
     }
 
-    startFreeServer(opts: JupyterServer.IOptions): JupyterServerFactory.IFactoryItem {
-        let server = new JupyterServer(opts)
-        let item: JupyterServerFactory.IFactoryItem = {
-            factoryId: this._nextId++,
-            server: server,
-            status: 'free'
-        };
-        server.start();
-        this._servers.push(item);
+    /**
+     * Create and start a 'free' server. The server created will be returned
+     * in the next call to 'createServer'.
+     * 
+     * This method is a way to pre-launch Jupyter servers to improve load
+     * times.
+     * 
+     * @param opts the Jupyter server options.
+     * 
+     * @return the factory item.
+     */
+    createFreeServer(opts: JupyterServer.IOptions): JupyterServerFactory.IFactoryItem {
+        let item = this._createServer(opts);
+
+        item.server.start()
+            .catch((e: Error) => {
+                // The server failed to start, remove it from the factory.
+                console.warn(e);
+            });
         return item;
     }
 
-    getFreeServer(opts: JupyterServer.IOptions): JupyterServerFactory.IFactoryItem | null {
-        let idx = ArrayExt.findFirstIndex(this._servers, (server: JupyterServerFactory.IFactoryItem, idx: number) => {
-            if (server.status == 'free' && opts.path == server.server.info.path)
-                return true;
-            return false;
-        });
 
-        if (idx < 0)
-            return null;
-
-        this._servers[idx].status = 'used';
-        return this._servers[idx];
-    }
-
-    requestServerStart(opts: JupyterServer.IOptions): Promise<JupyterServerFactory.IFactoryItem> {
-        let server = this.getFreeServer(opts)|| this.startFreeServer(opts);
-        server.status = 'used';
+    /**
+     * Create a Jupyter server.
+     * 
+     * If a free server is available, it is preferred over
+     * server creation.
+     * 
+     * @param opts the Jupyter server options.
+     * @param forceNewServer force the creation of a new server over a free server.
+     */
+    createServer(opts: JupyterServer.IOptions, forceNewServer?: boolean): Promise<JupyterServerFactory.IFactoryItem> {
+        let server: JupyterServerFactory.IFactoryItem;
+        if (forceNewServer) {
+            server = this._createServer(opts);
+        } else {
+            server = this._findUnusedServer(opts) || this._createServer(opts);
+        }
+        server.used = true;
 
         return new Promise<JupyterServerFactory.IFactoryItem>((res, rej) => {
             server.server.start()
@@ -254,48 +295,58 @@ class JupyterServerFactory implements IServerFactory {
                 })
                 .catch((e) => {
                     rej(e);
-                    // Remove server from servers array
-                    this.requestServerStop(server.factoryId);
+                    this._removeFailedServer(server.factoryId);
                 });
         })
 
     }
 
-    requestServerStop(factoryId: number): Promise<void> {
-        let idx = ArrayExt.findFirstIndex(this._servers, (s: JupyterServerFactory.IFactoryItem, idx: number) => {
-            if (s.factoryId === factoryId)
-                return true;
-            return false;
-        });
-
+    /**
+     * Stop a Jupyter server.
+     * 
+     * @param factoryId the factory item id.
+     */
+    stopServer(factoryId: number): Promise<void> {
+        let idx = this._getServerIdx(factoryId);
         if (idx < 0)
             return Promise.reject(new Error('Invalid server id: ' + factoryId));
-        
-        let server = this._servers[idx];
+
+        let server = ArrayExt.removeAt(this._servers, idx);
         return new Promise<void>((res, rej) => {
             server.server.stop()
                 .then(() => {
-                    ArrayExt.removeAt(this._servers, idx);
                     res();
                 })
                 .catch((e) => {
-                    ArrayExt.removeAt(this._servers, idx);
                     console.error(e);
                     rej();
                 });
-        })
-
+        });
     }
 
+    /**
+     * Kill all currently running servers.
+     * 
+     * @return a promise that is fulfilled when all servers are killed.
+     */
     killAllServers(): Promise<void[]> {
         // Get stop promises from all servers
         let stopPromises = this._servers.map((val) => {
             return val.server.stop();
         });
 
+        // Empty the server array.
+        this._servers = [];
+
         return Promise.all(stopPromises)
     }
 
+    /**
+     * Open a file selection dialog so users
+     * can enter the local path to the Jupyter server.
+     * 
+     * @return a promise that is fulfilled with the user path.
+     */
     getUserJupyterPath(): Promise<string> {
         return new Promise<string>((res, rej) => {
             dialog.showOpenDialog({
@@ -311,6 +362,45 @@ class JupyterServerFactory implements IServerFactory {
             });
 
         })
+    }
+
+    private _createServer(opts: JupyterServer.IOptions): JupyterServerFactory.IFactoryItem {
+        let item = {
+            factoryId: this._nextId++,
+            server: new JupyterServer(opts),
+            used: false
+        };
+
+        this._servers.push(item);
+        return item;
+    }
+
+    private _findUnusedServer(opts: JupyterServer.IOptions): JupyterServerFactory.IFactoryItem | null {
+        let idx = ArrayExt.findFirstIndex(this._servers, (server: JupyterServerFactory.IFactoryItem, idx: number) => {
+            if (!server.used && opts.path == server.server.info.path)
+                return true;
+            return false;
+        });
+
+        if (idx < 0)
+            return null;
+
+        return this._servers[idx];
+    }
+
+    private _removeFailedServer(factoryId: number): void {
+        let idx = this._getServerIdx(factoryId);
+        if (idx < 0)
+            return;
+        ArrayExt.removeAt(this._servers, idx);
+    }
+
+    private _getServerIdx(factoryId: number): number {
+        return ArrayExt.findFirstIndex(this._servers, (s: JupyterServerFactory.IFactoryItem, idx: number) => {
+            if (s.factoryId === factoryId)
+                return true;
+            return false;
+        });
     }
 
     private _factoryToIPC(data: JupyterServerFactory.IFactoryItem): ServerIPC.IServerStarted {
@@ -340,10 +430,25 @@ class JupyterServerFactory implements IServerFactory {
 export
 namespace JupyterServerFactory {
 
+    /**
+     * The object created by the JupyterServerFactory. 
+     */
     export
     interface IFactoryItem {
-        factoryId: number;
-        status: 'used' | 'free';
+
+        /**
+         * The factory ID. Used to keep track of the server.
+         */
+        readonly factoryId: number;
+
+        /**
+         * Whether the server is currently used.
+         */
+        used: boolean;
+
+        /**
+         * The actual Jupyter server object.
+         */
         server: JupyterServer;
     }
 }

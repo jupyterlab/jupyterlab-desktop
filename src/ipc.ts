@@ -139,7 +139,7 @@ namespace JupyterServerIPC {
 
     export
     interface IServerStarted {
-        factoryId: number;
+        readonly factoryId: number;
         url: string;
         token: string;
         err?: any;
