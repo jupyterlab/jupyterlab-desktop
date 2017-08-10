@@ -48,7 +48,7 @@ class JupyterServer {
             let home = app.getPath("home");
 
             if (this._info.path) {
-               this._nbServer = execFile(join(this._info.path, 'jupyter'), ['notebook', '--no-browser']);
+               this._nbServer = execFile(join(this._info.path, 'jupyter'), ['notebook', '--no-browser'], {cwd: home});
             } else if (process.platform === "win32") {
                 // Windows will return win32 (even for 64-bit)
                 // Dont spawn shell for Windows
@@ -60,12 +60,12 @@ class JupyterServer {
             
             this._nbServer.on('exit', () => {
                 this._serverStartFailed();
-                reject(new Error('Jupyter not installed'));
+                reject(new Error('Could not find Jupyter in PATH'));
             });
 
             this._nbServer.on('error', (err: Error) => {
                 this._serverStartFailed();
-                reject(err);
+                reject(new Error('Could not find Jupyter in PATH'));
             });
 
             this._nbServer.stderr.on('data', (serverBuff: string) => {
@@ -78,7 +78,7 @@ class JupyterServer {
                 
                 if (!token) {
                     this._cleanupListeners();
-                    reject(new Error("Update Jupyter version"));
+                    reject(new Error("Update Jupyter notebook to version 4.3.0 or greater"));
                     return;
                 }
                 
@@ -169,10 +169,10 @@ class JupyterServerFactory {
         ipcMain.on(ServerIPC.REQUEST_SERVER_START, (event: any) => {
             this.requestServerStart({})
                 .then((data: JupyterServerFactory.IFactoryItem) => {
-                    event.sender.send(ServerIPC.RESPOND_SERVER_STARTED, this._factoryToIPC(data))
+                    event.sender.send(ServerIPC.RESPOND_SERVER_STARTED, this._factoryToIPC(data));
                })
-                .catch((e: any) => {
-                    event.sender.send(ServerIPC.RESPOND_SERVER_STARTED, this._errorToIPC(e))
+                .catch((e: Error) => {
+                    event.sender.send(ServerIPC.RESPOND_SERVER_STARTED, this._errorToIPC(e));
                 });
         });
         
@@ -182,14 +182,17 @@ class JupyterServerFactory {
                     event.sender.send(ServerIPC.POST_PATH_SELECTED);
                     this.requestServerStart({path})
                         .then((data: JupyterServerFactory.IFactoryItem) => {
-                            event.sender.send(ServerIPC.RESPOND_SERVER_STARTED, this._factoryToIPC(data))
+                            event.sender.send(ServerIPC.RESPOND_SERVER_STARTED, this._factoryToIPC(data));
                         })
                         .catch((e) => {
-                            event.sender.send(ServerIPC.RESPOND_SERVER_STARTED, this._errorToIPC(e))
+                            event.sender.send(ServerIPC.RESPOND_SERVER_STARTED, this._errorToIPC(e));
                         });
                })
-                .catch((e: any) => {
-                    event.sender.send(ServerIPC.RESPOND_SERVER_STARTED, this._errorToIPC(e))
+                .catch((e: Error) => {
+                    if (e.message !== 'cancel'){
+                        event.sender.send(ServerIPC.RESPOND_SERVER_STARTED, this._errorToIPC(e));
+
+                    }
                 });
         });
         
@@ -289,7 +292,7 @@ class JupyterServerFactory {
                 buttonLabel: 'Use Path'
             }, (filePaths: string[]) => {
                 if (!filePaths) {
-                    rej(new Error('No path selected'));
+                    rej(new Error('cancel'));
                     return;
                 } else {
                     res(filePaths[0]);
@@ -313,7 +316,7 @@ class JupyterServerFactory {
             factoryId: -1,
             url: null,
             token: null,
-            err: e || new Error('Server creation error')
+            err: e.message || 'Server creation error'
         };
     }
     

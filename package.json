@@ -1,6 +1,6 @@
 {
   "name": "jupyterlab_app",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "A native app for JupyterLab, based on electron.",
   "main": "build/main.bundle.js",
   "scripts": {

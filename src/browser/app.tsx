@@ -44,7 +44,7 @@ class Application extends React.Component<Application.Props, Application.State> 
         super(props);
         this._renderServerManager = this._renderServerManager.bind(this);
         this._renderSplash = this._renderSplash.bind(this);
-        this._renderLab = this._renderLab.bind(this);
+        this._renderEmpty = this._renderEmpty.bind(this);
         this._renderErrorScreen = this._renderErrorScreen.bind(this);
         this._connectionAdded = this._connectionAdded.bind(this);
         this._launchFromPath = this._launchFromPath.bind(this);
@@ -55,6 +55,7 @@ class Application extends React.Component<Application.Props, Application.State> 
             if (data.err) {
                 console.error(data.err);
                 this.setState({renderState: this._renderErrorScreen});
+                (this.refs.splash as SplashScreen).fadeSplashScreen();
                 return;
             }
             
@@ -86,10 +87,10 @@ class Application extends React.Component<Application.Props, Application.State> 
         });
 
         if (this.props.options.serverState == 'local') {
-            this.state = {renderState: this._renderSplash, remotes: []};
+            this.state = {renderSplash: this._renderSplash, renderState: this._renderEmpty, remotes: []};
             ipcRenderer.send(ServerIPC.REQUEST_SERVER_START);
         } else {
-            this.state = {renderState: this._renderServerManager, remotes: []};
+            this.state = {renderSplash: this._renderEmpty, renderState: this._renderServerManager, remotes: []};
         }
         
         this._serverState = new StateDB({namespace: Application.STATE_NAMESPACE});
@@ -115,10 +116,12 @@ class Application extends React.Component<Application.Props, Application.State> 
     }
     
     render() {
+        let splash = this.state.renderSplash();
         let content = this.state.renderState();
 
         return (
             <div className='jpe-body'>
+                {splash}
                 {content}
             </div>
         );
@@ -128,8 +131,8 @@ class Application extends React.Component<Application.Props, Application.State> 
         ipcRenderer.send(ServerIPC.REQUEST_SERVER_START_PATH);
 
         let pathSelected = () => {
-            this.setState({renderState: this._renderSplash});
             ipcRenderer.removeListener(ServerIPC.POST_PATH_SELECTED, pathSelected);
+            this.setState({renderSplash: this._renderSplash, renderState: this._renderEmpty});
         }
         ipcRenderer.on(ServerIPC.POST_PATH_SELECTED, pathSelected);
     }
@@ -189,12 +192,12 @@ class Application extends React.Component<Application.Props, Application.State> 
         });
 
         let rServer: Application.IRemoteServer = {...server, id: this._nextRemoteId++};
-
         this.setState((prev: ServerManager.State) => {
             server.id = this._nextRemoteId++;
             let conns = this.state.remotes.concat(rServer);
+            this._saveState();
             return({
-                renderState: this._renderLab,
+                renderState: this._renderEmpty,
                 conns: {servers: conns}
             });
         });
@@ -213,16 +216,10 @@ class Application extends React.Component<Application.Props, Application.State> 
         return (
             <div className='jpe-content'>
                 <SplashScreen  ref='splash' uiState={this.props.options.uiState} finished={() => {
-                    this.setState({renderState: this._renderLab});}
+                    this.setState({renderSplash: this._renderEmpty});}
                 } />
             </div>
         );
-    }
-
-    private _renderLab(): JSX.Element {
-        this._saveState();
-
-        return null;
     }
 
     private _renderErrorScreen(): JSX.Element {
@@ -232,6 +229,10 @@ class Application extends React.Component<Application.Props, Application.State> 
                 <ServerError launchFromPath={this._launchFromPath}/>
             </div>
         )
+    }
+
+    private _renderEmpty(): JSX.Element {
+        return null;
     }
 
     private _lab: ElectronJupyterLab;
@@ -270,6 +271,7 @@ namespace Application {
     export
     interface State {
         renderState: () => any;
+        renderSplash: () => any;
         remotes: IRemoteServer[];
     }
 
