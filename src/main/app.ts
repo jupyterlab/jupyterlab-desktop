@@ -10,19 +10,11 @@ import {
 } from './main';
 
 import {
-    JupyterMainMenu
-} from 'jupyterlab_app/src/main/menu';
-
-import {
-    JupyterServerFactory
-} from 'jupyterlab_app/src/main/server';
-
-import {
     ElectronStateDB
 } from 'jupyterlab_app/src/main/state';
 
 import {
-    JSONObject
+    JSONObject, JSONValue
 } from '@phosphor/coreutils';
 
 import {
@@ -37,9 +29,9 @@ import {
 export
 interface IApplication {
 
-    registerStatefulService: (service: IStatefulService) => Promise<JSONObject>;
+    registerStatefulService: (service: IStatefulService) => Promise<JSONValue>;
 
-    saveState: (service: IStatefulService) => Promise<void>;
+    saveState: (service: IStatefulService, data: JSONValue) => Promise<void>;
 }
 
 export
@@ -47,7 +39,9 @@ interface IStatefulService {
 
     id: string;
 
-    getState(): JSONObject;
+    getStateBeforeQuit(): Promise<JSONValue>;
+    
+    verifyState: (state: JSONValue) => boolean;
 }
 
 export
@@ -58,28 +52,86 @@ class JupyterApplication implements IApplication {
      */
     constructor() {
         this._registerListeners();
-        //this._shortcutManager = new KeyboardShortcutManager({jupyterApp: this});
-        this._menu = new JupyterMainMenu({jupyterApp: this});
-        this._serverFactory = new JupyterServerFactory({});
         
-        this._appStateDB.fetch(JupyterApplication.APP_STATE_NAMESPACE)
-            .then((state: JupyterApplication.IState) => {
-                this._appState = state;
-            })
-            .catch( (e) => {
-                console.error(e);
-            });
+        // Get application state from state db file.
+        this._appState = new Promise<JSONObject>((res, rej) => {
+            this._appStateDB.fetch(JupyterApplication.APP_STATE_NAMESPACE)
+                .then((state: JSONObject) => {
+                    res(state);
+                })
+                .catch( (e) => {
+                    console.error(e);
+                    res({});
+                });
+        });
     }
 
 
-    registerStatefulService(service: IStatefulService): Promise<JSONObject> {
-        return null;
+    registerStatefulService(service: IStatefulService): Promise<JSONValue> {
+        this._services.push(service);
+
+        return new Promise<JSONValue>((res, rej) => {
+            this._appState
+                .then((state: JSONObject) => {
+                    if (state[service.id] && service.verifyState(state[service.id])) {
+                        res(state[service.id]);
+                    }
+                    res(null);
+                })
+                .catch(() => {res(null)});
+        });
     }
     
-    saveState(service: IStatefulService): Promise<void> {
-        return null;
+    saveState(service: IStatefulService, data: JSONValue): Promise<void> {
+        this._updateState(service.id, data);
+        return this._saveState();
     }
     
+    private _updateState(id: string, data: JSONValue): void {
+        let prevState = this._appState;
+
+        this._appState = new Promise<JSONObject>((res, rej) => {
+            prevState
+                .then((state: JSONObject) => {
+                    state[id] = data;
+                    res(state);
+                })
+                .catch((state: JSONObject) => res(state));
+        });
+    }
+    
+    private _rewriteState(ids: string[], data: JSONValue[]): void {
+        let prevState = this._appState;
+
+        this._appState = new Promise<JSONObject>((res, rej) => {
+            prevState
+                .then(() => {
+                    let state: JSONObject = {}
+                    ids.forEach((id: string, idx: number) => {
+                        state[id] = data[idx];
+                    })
+                    res(state);
+                })
+                .catch((state: JSONObject) => res(state));
+        });
+    }
+
+
+    private _saveState(): Promise<void> {
+        return new Promise<void>((res, rej) => {
+            this._appState
+                .then((state: JSONObject) => {
+                    return this._appStateDB.save(JupyterApplication.APP_STATE_NAMESPACE, state);
+                })
+                .then(() => {
+                    res();
+                })
+                .catch((e) => {
+                    rej(e);
+                })
+        });
+    }
+
     /**
      * Register all application event listeners
      */
@@ -94,34 +146,35 @@ class JupyterApplication implements IApplication {
 
         app.on('will-quit', (event) => {
             event.preventDefault();
-            this._appStateDB.save(JupyterApplication.APP_STATE_NAMESPACE, this._appState)
+            
+            // Collect data from services
+            let state: Promise<JSONValue>[] = this._services.map((s: IStatefulService) => {
+                return s.getStateBeforeQuit();
+            });
+            let ids: string[] = this._services.map((s: IStatefulService) => {
+                return s.id;
+            })
+
+            // Wait for all services to return state
+            Promise.all(state)
+                .then((data: JSONValue[]) => {
+                    this._rewriteState(ids, data);
+                    return this._saveState()
+                })
                 .then(() => {
-                    this._serverFactory.killAllServers()
-                        .then(() => process.exit())
-                        .catch((e) => {
-                            console.error(e);
-                            process.exit();
-                        });
-                }).catch(() => {
-                    this._serverFactory.killAllServers()
-                        .then(() => process.exit())
-                        .catch((e) => {
-                            console.error(e);
-                            process.exit();
-                        });
+                    process.exit();
+                })
+                .catch(() => {
+                    process.exit();
                 });
         });
     }
 
-    private _menu: JupyterMainMenu;
-
-    private _serverFactory: JupyterServerFactory;
-
     private _appStateDB = new ElectronStateDB({namespace: 'jupyterlab-application-data'});
 
-    private _appState: JupyterApplication.IState;
+    private _appState: Promise<JSONObject>;
 
-    //private _shortcutManager: KeyboardShortcutManager;
+    private _services: IStatefulService[] = [];
 
 }
 

@@ -8,21 +8,56 @@ import * as Bottle from 'bottlejs';
  */
 require('electron-debug')({showDevTools: false});
 
-let services: IService[] = [
-    require('./app').default,
-    require('./sessions').default
-];
-
+/**
+ * A user-defined service.
+ * 
+ * Services make up the core functionality of the
+ * application. Each service is istatntiated 
+ * once and then becomes available to every other serivce. 
+ */
 export
 interface IService {
+
+    /**
+     * The required services.
+     */
     requirements: String[];
+
+    /**
+     * The service name that is required by other services.
+     */
     provides: string,
+
+    /**
+     * A function to create the service object.
+     */
     activate: (...any: any[]) => any,
+
+    /**
+     * Whether the service should be instantiated immediatelty,
+     * or lazy loaded.
+     */
     autostart?: boolean
 }
 
-function main(): void {
+/**
+ * Servies required by this application.
+ */
+let services: IService[] = [
+    require('./app').default,
+    require('./sessions').default,
+    require('./server').default,
+    require('./menu').default,
+    require('./shortcuts').default
+];
+
+/**
+ * Load all services when the electron app is
+ * ready.
+ */
+app.on('ready', () => {
     let serviceManager = new Bottle();
+    let autostarts: string[] = [];
     services.forEach((s: IService) => {
         serviceManager.factory(s.provides, (container: any) => {
             let args = s.requirements.map((r: string) => {
@@ -31,11 +66,8 @@ function main(): void {
             return s.activate(...args);
         });
         if (s.autostart)
-            serviceManager.digest([s.provides]);
+            autostarts.push(s.provides);
     });
-}
-
-app.on('ready', () => {
-    main();
+    serviceManager.digest(autostarts);
 });
 

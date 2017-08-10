@@ -19,7 +19,7 @@ import {
 } from './app';
 
 import {
-    JupyterServerFactory
+    IServerFactory
 } from './server';
 
 import { 
@@ -30,68 +30,118 @@ import {
     IService
 } from './main';
 
+import {
+    EventEmitter
+} from 'events';
+
 import * as path from 'path';
 import * as url from 'url';
 import 'jupyterlab_app/src/browser/index.html';
 
 
 export
-interface ISessions {
+interface ISessions extends EventEmitter {
     createSession: (opts?: JupyterLabSession.IOptions) => void;
 
-    numSessions: number;
+    isAppFocused: () => boolean;
+
+    length: number;
 }
 
 export
-class JupyterLabSessions implements ISessions, IStatefulService {
+class JupyterLabSessions extends EventEmitter implements ISessions, IStatefulService {
 
     readonly id = 'JupyterLabSessions';
     
-    constructor(app: IApplication, state: JSONObject) {
-        let sessions: JupyterLabSession.IState[] = null;
-        if (state && state.sessions) {
-            sessions = state.sessions as JupyterLabSession.IState[];
+    constructor(app: IApplication, serverFactory: IServerFactory) {
+        super();
+
+        this._serverFactory = serverFactory;
+        
+        // check if UI state was set by user
+        for (let arg of process.argv) {
+            if (arg == '--windows-ui') {
+                this._uiState = 'windows';
+            } else if (arg == '--mac-ui') {
+                this._uiState = 'mac';
+            } else if (arg == '--linux-ui') {
+                this._uiState = 'linux';
+            }
         }
 
         this._registerListeners();
 
-        if (!sessions) {
-            // Start JupyterLab with local sever by sending local server id
-            // Prelaunch local server to improve performance
-            this._serverFactory.startFreeServer();
-            this._createWindow({state: 'local'});
-            return;
-        }
-        
-        for (let s of sessions) {
-            this._createWindow(s);
-        }
+        // Get last session state
+        app.registerStatefulService(this)
+            .then((state: JupyterLabSession.IState) => {
+                this._lastWindowState = state;
+                this.createSession();
+            })
+            .catch(() => {
+                this.createSession();
+            });
     }
 
-    get numSessions(): number {
+    get length(): number {
         return this._sessions.length;
     }
     
-    getState(): JSONObject {
-        return null;
-    }
-
-    private _createWindow(state: JupyterLabSession.IOptions) {
-        let uiState: JupyterLabSession.UIState;
-        for (let arg of process.argv) {
-            if (arg == '--windows-ui') {
-                uiState = 'windows';
-            } else if (arg == '--mac-ui') {
-                uiState = 'mac';
-            } else if (arg == '--linux-ui') {
-                uiState = 'linux';
+    /**
+     * Checks whether or not an application window is in focus
+     * Note: There exists an "isFocused" method on BrowserWindow
+     * objects, but it isn't a reliable indiciator of focus. 
+     */
+    isAppFocused(): boolean{
+        let visible = false;
+        let focus = false;
+        for (let i = 0; i < this._sessions.length; i++) {
+            let window = this._sessions[i].browserWindow;
+            if (window.isVisible()){
+                visible = true;
+            }
+            if (window.isFocused()){
+                focus = true;
             }
         }
-        state.uiState = uiState;
+        return visible && focus;
+    }
+    
+    createSession(opts?: JupyterLabSession.IOptions): void {
+        if (opts) {
+            this._createSession(opts);
+        } else if (this._lastWindowState) {
+            this._createSession(this._lastWindowState)
+        } else {
+            this._createSession({state: 'local'});
+        }
+    }
+    
+    getStateBeforeQuit(): Promise<JupyterLabSession.IState> {
+        return Promise.resolve(this._lastWindowState);
+    }
 
-        let window = new JupyterLabSession(state);
+    verifyState(state: JupyterLabSession.IState): boolean {
+        if (!state.state || typeof state.state !== 'string')
+            return false;
+        if (!state.x || typeof state.x !== 'number')
+            return false;
+        if (!state.y || typeof state.y !== 'number')
+            return false;
+        if (!state.width || typeof state.width !== 'number')
+            return false;
+        if (!state.height || typeof state.height !== 'number')
+            return false;
+        if (state.state == 'remote' && (!state.remoteServerId || typeof state.remoteServerId !== 'number'))
+            return false;
+        return true;
+    }
+
+    private _createSession(opts: JupyterLabSession.IOptions) {
+        opts.uiState = opts.uiState || this._uiState;
+
+        let session = new JupyterLabSession(opts);
         // Register dialog on window close
-        window.browserWindow.on('close', (event: Event) => {
+        session.browserWindow.on('close', (event: Event) => {
             let buttonClicked = dialog.showMessageBox({
                 type: 'warning',
                 message: 'Do you want to leave?',
@@ -107,19 +157,17 @@ class JupyterLabSessions implements ISessions, IStatefulService {
                 return;
             }
             
-            // If this is the last open window, save the state so we can reopen it
-            if (this._sessions.length == 1) {
-                // Save application state
-            }
+            // Save session state
+            this._lastWindowState = session.state();
         });
         
-        window.browserWindow.on('closed', (event: Event) => {
-            ArrayExt.removeFirstOf(this._sessions, window);
-            window = null;
-            //this._shortcutManager.notifyWindowClosed();
+        session.browserWindow.on('closed', (event: Event) => {
+            ArrayExt.removeFirstOf(this._sessions, session);
+            session = null;
+            this.emit('session-ended');
         });
         
-        this._sessions.push(window);
+        this._sessions.push(session);
     }
     
     private _registerListeners(): void {
@@ -127,61 +175,35 @@ class JupyterLabSessions implements ISessions, IStatefulService {
         // windows open.
         // Need to double check this code to ensure it has expected behaviour
         app.on('activate', () => {
+            if (this._sessions.length > 0) {
+                if (BrowserWindow.getFocusedWindow() === null) {
+                    this._sessions[0].browserWindow.focus();
+                }
+                return;
+            }
             this.createSession()
         });
 
 
         ipcMain.on(AppIPC.REQUEST_ADD_SERVER, (event: any, arg: any) => {
-            this._createWindow({state: 'new'});
+            this._createSession({state: 'new'});
         });
         
         ipcMain.on(AppIPC.REQUEST_OPEN_CONNECTION, (event: any, arg: AppIPC.IOpenConnection) => {
             if (arg.type == 'remote')
-                this._createWindow({state: 'remote', remoteServerId: arg.remoteServerId});
+                this._createSession({state: 'remote', remoteServerId: arg.remoteServerId});
             else
-                this._createWindow({state: 'local'});
+                this._createSession({state: 'local'});
         })
     }
-    
-    createSession(opts?: JupyterLabSession.IOptions): void {
-        console.log('Create Session!');
-        if (opts) {
-            this._createWindow(opts);
-            return;
-        }
 
-        if (this._sessions.length === 0) {
-            //if (this._appState.windows.length > 0) {
-            //    this._createWindow(this._appState.windows[0]);
-            //}
-            //else {
-                this._createWindow({state: 'local'});
-            //}
-        }
-        else if (BrowserWindow.getFocusedWindow() === null){
-            this._sessions[0].browserWindow.focus();
-        }
-    }
+    private _sessions: JupyterLabSession[] = [];
 
-    /**
-    * Create a new window running on a new local server 
-    */
-    public newLocalServer(){
-        this._createWindow({state: 'local'});
-    }
+    private _lastWindowState: JupyterLabSession.IState;
 
-    /**
-    * Create a new window prompting user for server information
-    * Does not start a new local server (unless prompted by user)
-    */
-    public addServer(){
-        this._createWindow({state: 'new'});
-    }
-    
+    private _serverFactory: IServerFactory;
 
-    private _sessions: JupyterLabSession[];
-
-    private _serverFactory: JupyterServerFactory;
+    private _uiState: JupyterLabSession.UIState;
 }
 
 export
@@ -226,7 +248,7 @@ class JupyterLabSession {
             minWidth: 400,
             minHeight: 300,
             frame: showFrame,
-            show: false,
+            show: true,
             title: 'JupyterLab',
             titleBarStyle: titleBarStyle
         });
@@ -363,10 +385,10 @@ namespace JupyterLabSession {
 }
 
 let service: IService = {
-    requirements: ['IApplication'],
+    requirements: ['IApplication', 'IServerFactory'],
     provides: 'ISessions',
-    activate: (app: IApplication): ISessions => {
-        return new JupyterLabSessions(app, null);
+    activate: (app: IApplication, serverFactory: IServerFactory): ISessions => {
+        return new JupyterLabSessions(app, serverFactory);
     },
     autostart: true
 }

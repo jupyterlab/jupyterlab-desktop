@@ -7,6 +7,10 @@ import {
 } from 'path';
 
 import {
+    IService
+} from './main';
+
+import {
     app, ipcMain, dialog
 } from 'electron';
 
@@ -162,9 +166,16 @@ namespace JupyterServer {
 }
 
 export
-class JupyterServerFactory {
+interface IServerFactory {
+    startFreeServer: (opts: JupyterServer.IOptions) => JupyterServerFactory.IFactoryItem;
+    requestServerStart: (opts: JupyterServer.IOptions) => Promise<JupyterServerFactory.IFactoryItem>;
+    killAllServers: () => Promise<void[]>;
+}
+
+export
+class JupyterServerFactory implements IServerFactory {
     
-    constructor(options: JupyterServerFactory.IOptions) {
+    constructor() {
         // Register electron IPC listensers
         ipcMain.on(ServerIPC.REQUEST_SERVER_START, (event: any) => {
             this.requestServerStart({})
@@ -330,14 +341,19 @@ export
 namespace JupyterServerFactory {
 
     export
-    interface IOptions {
-
-    }
-
-    export
     interface IFactoryItem {
         factoryId: number;
         status: 'used' | 'free';
         server: JupyterServer;
     }
 }
+
+let service: IService = {
+    requirements: [],
+    provides: 'IServerFactory',
+    activate: (): IServerFactory => {
+        return new JupyterServerFactory();
+    },
+    autostart: true
+}
+export default service;
