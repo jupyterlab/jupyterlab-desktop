@@ -34,9 +34,9 @@ export
 class Registry implements IRegistry {
 
     constructor() {
-        // Build the registry asynchronously.
-        // Start by checking for conda in the user's PATH
-        this._registryBuilt = this._findConda()
+
+        // Check for conda in the user's PATH
+        let condaEnvs = this._findConda()
             .then(() => {
                 // If conda wasn't found, we look in some common locations
                 if (this._envs.length == 0) {
@@ -44,17 +44,19 @@ class Registry implements IRegistry {
                 }
                 return Promise.resolve();
             })
-            .then(() => {
-                // Check if there are any jupyter installations in the user's PATH
-                return this._findJupyter();  
-            })
+        
+        // Check for standard python in user's PATH
+        let genericEnvs = this._findJupyter();
+        
+        // Build the registry asynchronously.
+        this._registryBuilt = Promise.all([condaEnvs, genericEnvs])
             .then(() => {
                 this._cleanEnvs();
                 this._setDefault();
-                console.log(this._envs);
                 return Promise.resolve();
             }).catch((e) => {
                 console.error(e);
+                this._envs = [];
                 return Promise.resolve();
             });
     }
