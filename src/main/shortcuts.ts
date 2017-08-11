@@ -10,12 +10,15 @@ import {
 } from 'jupyterlab_app/src/ipc';
 
 import {
-    JupyterLabWindow
-} from './window';
+    ISessions
+} from './sessions';
 
 import {
-    JupyterApplication
-} from './app';
+    IService
+} from './main';
+
+export
+interface IShortcutManager {}
 
 /**
  * Interface for keyboard shortcuts recognized by the shortcut manager
@@ -26,25 +29,34 @@ interface KeyboardShortcut {
     command: () => void
 }
 
-export class KeyboardShortcutManager {
+export class KeyboardShortcutManager implements IShortcutManager {
 
     /**
      * Create a new shortcut manager
      * 
      * @param options - The application windows
      */
-    constructor(options: KeyboardShortcutManager.IOptions){
-        this._windows = options.jupyterApp.windows;
+    constructor(sessions: ISessions){
+        this._sessions = sessions;
+        
+        this._sessions.on('session-ended', () => {
+            if (!this._sessions.isAppFocused()){
+                this.disableShortcuts();
+            }
+        });
+
         app.on('browser-window-focus', (event:Event, window: Electron.BrowserWindow) => {
             if (!this._active){
                 this.enableShortcuts();
             }
         });
+
         app.on('browser-window-blur', (event: Event, window: Electron.BrowserWindow) => {
-            if (!this.isAppFocused()){
+            if (!this._sessions.isAppFocused()){
                 this.disableShortcuts();
             }
         });
+
         app.on('window-all-closed', () => {
             this.disableShortcuts();
         });
@@ -68,36 +80,6 @@ export class KeyboardShortcutManager {
         globalShortcut.unregisterAll();
     }
     
-
-    /**
-     * Checks whether or not an application window is in focus
-     * Note: There exists an "isFocused" method on BrowserWindow
-     * objects, but it isn't a reliable indiciator of focus. 
-     */
-    private isAppFocused(): boolean{
-        let visible = false;
-        let focus = false;
-        for (let i = 0; i < this._windows.length; i ++){
-            let window = this._windows[i].browserWindow;
-            if (window.isVisible()){
-                visible = true;
-            }
-            if (window.isFocused()){
-                focus = true;
-            }
-        }
-        return visible && focus;
-    }
-
-    /**
-     * Checks for application focus. Called when a browser window is closed.
-     */
-    public notifyWindowClosed(){
-        if (!this.isAppFocused()){
-            this.disableShortcuts();
-        }
-    }
-    
     /**
      * Whether or not an application window exists and is in focus
      */
@@ -106,7 +88,7 @@ export class KeyboardShortcutManager {
     /**
      * All application windows
      */
-    private _windows: JupyterLabWindow[];
+    private _sessions: ISessions;
 
     /**
      * The enabled shortcuts
@@ -120,14 +102,6 @@ export class KeyboardShortcutManager {
         {accelerator: process.platform === 'darwin'? 'Cmd+q' : (process.platform === 'win32' ? 'Alt+F4' : 'Ctrl+Shift+q'), command: KeyboardCommands.quit}
     ];
 
-}
-
-export
-namespace KeyboardShortcutManager {
-    export
-    interface IOptions {
-        jupyterApp: JupyterApplication;
-    }
 }
 
 /**
@@ -169,3 +143,13 @@ class KeyboardCommands{
         app.quit();
     }
 }
+
+let service: IService = {
+    requirements: ['ISessions'],
+    provides: 'IKeyboardManager',
+    activate: (sessions: ISessions): IShortcutManager => {
+        return new KeyboardShortcutManager(sessions);
+    },
+    autostart: true
+}
+export default service;

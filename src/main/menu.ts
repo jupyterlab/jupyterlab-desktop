@@ -16,27 +16,35 @@ import {
 } from 'jupyterlab_app/src/ipc';
 
 import {
-    JupyterApplication
+    IApplication
 } from './app';
 
 import {
-    JupyterLabWindow
-} from './window';
+    IService
+} from './main'
+
+import {
+    ISessions
+} from './sessions';
 
 type JupyterMenuItemOptions = MenuIPC.JupyterMenuItemOptions;
 
 export
 type MenuItemConstructorOptions = Electron.MenuItemConstructorOptions;
 
+export
+interface IMainMenu {}
+
 /**
  * Native main menu bar class
  */
 export
-class JupyterMainMenu {
+class JupyterMainMenu implements IMainMenu {
 
-    constructor(options: JupyterMainMenu.IOptions) {
+    constructor(app: IApplication, sessions: ISessions) {
+        this._jupyterApp = app;
+        this._sessions = sessions;
         this._menu = new Menu();
-        this._jupyterApp = options.jupyterApp;
         
         /* Register MENU_ADD event */
         ipcMain.on(MenuIPC.REQUEST_MENU_ADD, (event: any, menu: JupyterMenuItemOptions) => {
@@ -107,24 +115,17 @@ class JupyterMainMenu {
      * Click event handler. Passes the event on the render process 
      */
     private handleClick(menu: Electron.MenuItem, window: Electron.BrowserWindow): void {
-        let windows: JupyterLabWindow[] = null;
         // Application window is in focus
         if (window){
              window.webContents.send(MenuIPC.POST_CLICK_EVENT, menu as JupyterMenuItemOptions);
         }
-        // No focused window
-        else if ((windows = this._jupyterApp.windows).length > 0){
-            if (menu.label === 'Add Server' || menu.label === 'Local'){
-                windows[0].browserWindow.webContents.send(MenuIPC.POST_CLICK_EVENT, menu as JupyterMenuItemOptions);
-            }
-        }
         // No application windows available
         else {
             if (menu.label === 'Add Server'){
-                this._jupyterApp.addServer();
+                this._sessions.createSession({state: 'remote'});
             }
             else if (menu.label === 'Local'){
-                this._jupyterApp.newLocalServer();
+                this._sessions.createSession({state: 'local'});
             }
 
         }
@@ -135,13 +136,17 @@ class JupyterMainMenu {
      */
     private _menu: Electron.Menu;
 
-    private _jupyterApp: JupyterApplication;
+    private _jupyterApp: IApplication;
+
+    private _sessions: ISessions;
 }
 
-export
-namespace JupyterMainMenu {
-    export
-    interface IOptions {
-        jupyterApp: JupyterApplication;
-    }
+let service: IService = {
+    requirements: ['IApplication', 'ISessions'],
+    provides: 'IMainMenu',
+    activate: (app: IApplication, sessions: ISessions): IMainMenu => {
+        return new JupyterMainMenu(app, sessions);
+    },
+    autostart: true
 }
+export default service;

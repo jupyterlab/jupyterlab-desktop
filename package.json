@@ -155,6 +155,7 @@
     "@jupyterlab/vega2-extension": "^0.8.1",
     "@types/react": "^16.0.0",
     "@types/react-dom": "^15.5.1",
+    "bottlejs": "^1.6.1",
     "electron-debug": "^1.2.0",
     "es6-promise": "^4.1.0",
     "font-awesome": "^4.6.3",

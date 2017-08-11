@@ -2,8 +2,8 @@
 // Distributed under the terms of the Modified BSD License.
 
 import {
-    JupyterLabWindow
-} from 'jupyterlab_app/src/main/window';
+    JupyterLabSession
+} from 'jupyterlab_app/src/main/sessions';
 
 import {
     remote, Browser, ipcRenderer
@@ -19,7 +19,7 @@ import * as React from 'react';
 export namespace TitleBar {
     export
     interface Props {
-        uiState: JupyterLabWindow.UIState;
+        uiState: JupyterLabSession.UIState;
     }
     
     export
