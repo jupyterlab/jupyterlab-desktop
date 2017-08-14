@@ -271,6 +271,8 @@ class Application extends React.Component<Application.Props, Application.State> 
     private _openFile(path: string){
         if (this._labDir){
             let relPath = path.replace(this._labDir, '');
+            let winConvert = relPath.split('\\');
+            relPath = winConvert.join('/');
             this._lab.commands.execute('docmanager:open', {path: relPath});
         }
     }
