@@ -188,7 +188,6 @@ class JupyterLabSessions extends EventEmitter implements ISessions, IStatefulSer
             this.createSession()
         });
 
-
         ipcMain.on(AppIPC.REQUEST_ADD_SERVER, (event: any, arg: any) => {
             this._createSession({state: 'new'});
         });
@@ -198,7 +197,13 @@ class JupyterLabSessions extends EventEmitter implements ISessions, IStatefulSer
                 this._createSession({state: 'remote', remoteServerId: arg.remoteServerId});
             else
                 this._createSession({state: 'local'});
-        })
+        });
+
+        // The path sent should correspond to the directory the app is started in
+        // (the directory passed into the "cwd" flag on server startup)
+        ipcMain.on(AppIPC.REQUEST_LAB_HOME_DIR, (event: any) => {
+            event.sender.send(AppIPC.LAB_HOME_DIR, app.getPath("home"));
+        });
     }
 
     private _sessions: JupyterLabSession[] = [];

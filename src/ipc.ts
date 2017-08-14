@@ -47,6 +47,12 @@ namespace JupyterApplicationIPC {
     const POST_ZOOM_EVENT = 'zoom-event';
 
     export
+    const REQUEST_LAB_HOME_DIR = 'get-lab-dir';
+
+    export
+    const LAB_HOME_DIR = 'lab-dir';
+
+    export
     interface IOpenConnection {
         type: 'local' | 'remote';
         remoteServerId?: number;
