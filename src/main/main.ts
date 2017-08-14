@@ -1,4 +1,10 @@
-import {app} from 'electron'
+import {
+    app, ipcMain
+} from 'electron'
+
+import {
+    JupyterApplicationIPC as AppIPC
+} from 'jupyterlab_app/src/ipc';
 
 import * as Bottle from 'bottlejs';
 
@@ -50,6 +56,18 @@ let services: IService[] = [
     require('./menu').default,
     require('./shortcuts').default
 ];
+
+/**
+ * "open-file" listener should be registered before
+ * app ready for "double click" files to open in application
+ */
+app.once('will-finish-launching', (e: Electron.Event) => {
+    app.once('open-file', (event: Electron.Event, path: string) => {
+      ipcMain.once(AppIPC.LAB_READY, (event: Electron.Event) => {
+        event.sender.send(AppIPC.OPEN_FILES, path);
+      });
+    });
+  });
 
 /**
  * Load all services when the electron app is

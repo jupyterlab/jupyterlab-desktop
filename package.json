@@ -28,6 +28,11 @@
   "build": {
     "productName": "JupyterLab",
     "artifactName": "${productName}.${ext}",
+    "fileAssociations": {
+      "ext": [
+        "ipynb"
+      ]
+    },
     "directories": {
       "buildResources": "dist-resources"
     },

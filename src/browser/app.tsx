@@ -51,7 +51,6 @@ class Application extends React.Component<Application.Props, Application.State> 
         this._renderErrorScreen = this._renderErrorScreen.bind(this);
         this._connectionAdded = this._connectionAdded.bind(this);
         this._launchFromPath = this._launchFromPath.bind(this);
-
         this._labReady = this._setupLab();
         
         ipcRenderer.on(ServerIPC.RESPOND_SERVER_STARTED, (event: any, data: ServerIPC.IServerStarted) => {
@@ -84,6 +83,7 @@ class Application extends React.Component<Application.Props, Application.State> 
                     console.log(e);
                 }
                 this._lab.restored.then( () => {
+                    ipcRenderer.send(AppIPC.LAB_READY);
                     (this.refs.splash as SplashScreen).fadeSplashScreen();
                 });
             });
@@ -262,6 +262,10 @@ class Application extends React.Component<Application.Props, Application.State> 
                 this._openFile(files[i].path);
             }
         };
+
+        ipcRenderer.on(AppIPC.OPEN_FILES, (event: any, path: string) => {
+            this._openFile(path);
+        });
     }
 
     private _openFile(path: string){

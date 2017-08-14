@@ -188,6 +188,25 @@ class JupyterLabSessions extends EventEmitter implements ISessions, IStatefulSer
             this.createSession()
         });
 
+        app.on('open-file', (e: any, path: string) => {
+            let session = this._getFocusedSession();
+            if (session === null || session.state().state !== 'local' ){
+                let state: JupyterLabSession.IOptions = null;
+                if (this._lastWindowState){
+                    state = this._lastWindowState;
+                }
+                state.state = 'local';
+                this._createSession(state);
+                ipcMain.once(AppIPC.LAB_READY, (event: Electron.Event) => {
+                    event.sender.send(AppIPC.OPEN_FILES, path);
+                });
+            }
+            else {
+                session.browserWindow.webContents.send(AppIPC.OPEN_FILES, path);
+            }
+        });
+
+
         ipcMain.on(AppIPC.REQUEST_ADD_SERVER, (event: any, arg: any) => {
             this._createSession({state: 'new'});
         });
@@ -204,6 +223,17 @@ class JupyterLabSessions extends EventEmitter implements ISessions, IStatefulSer
         ipcMain.on(AppIPC.REQUEST_LAB_HOME_DIR, (event: any) => {
             event.sender.send(AppIPC.LAB_HOME_DIR, app.getPath("home"));
         });
+    }
+
+    private _getFocusedSession(): JupyterLabSession{
+        let sessions = this._sessions;
+        for (let i = 0; i < sessions.length; i ++){
+            if (sessions[i].browserWindow.isFocused())
+                return sessions[i];
+        }
+        if (sessions.length > 0)
+            return sessions[0];
+        return null;
     }
 
     private _sessions: JupyterLabSession[] = [];

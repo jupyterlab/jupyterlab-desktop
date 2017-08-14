@@ -47,6 +47,12 @@ namespace JupyterApplicationIPC {
     const POST_ZOOM_EVENT = 'zoom-event';
 
     export
+    const LAB_READY = 'lab-ready';
+
+    export 
+    const OPEN_FILES = 'open-files';
+    
+    export
     const REQUEST_LAB_HOME_DIR = 'get-lab-dir';
 
     export
