@@ -188,22 +188,11 @@ class JupyterLabSessions extends EventEmitter implements ISessions, IStatefulSer
             this.createSession()
         });
 
-        app.on('open-file', (e: any, path: string) => {
-            let session = this._getFocusedSession();
-            if (session === null || session.state().state !== 'local' ){
-                let state: JupyterLabSession.IOptions = null;
-                if (this._lastWindowState){
-                    state = this._lastWindowState;
-                }
-                state.state = 'local';
-                this._createSession(state);
-                ipcMain.once(AppIPC.LAB_READY, (event: Electron.Event) => {
-                    event.sender.send(AppIPC.OPEN_FILES, path);
-                });
-            }
-            else {
-                session.browserWindow.webContents.send(AppIPC.OPEN_FILES, path);
-            }
+        ipcMain.once(AppIPC.LAB_READY, () => {
+            app.removeAllListeners('open-file');
+            app.on('open-file', (e: Electron.Event, path: string) => {
+                this._openFile(path);
+            });
         });
 
 
@@ -234,6 +223,24 @@ class JupyterLabSessions extends EventEmitter implements ISessions, IStatefulSer
         if (sessions.length > 0)
             return sessions[0];
         return null;
+    }
+
+    private _openFile(path: string): void {
+        let session = this._getFocusedSession();
+        if (session === null || session.state().state !== 'local' ){
+            let state: JupyterLabSession.IOptions = null;
+            if (this._lastWindowState){
+                state = this._lastWindowState;
+            }
+            state.state = 'local';
+            this._createSession(state);
+            ipcMain.once(AppIPC.LAB_READY, (event: Electron.Event) => {
+                event.sender.send(AppIPC.OPEN_FILES, path);
+            });
+        }
+        else {
+            session.browserWindow.webContents.send(AppIPC.OPEN_FILES, path);
+        }
     }
 
     private _sessions: JupyterLabSession[] = [];

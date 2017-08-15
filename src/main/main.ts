@@ -12,7 +12,7 @@ import * as Bottle from 'bottlejs';
  * Require debugging tools. Only
  * runs when in development.
  */
-require('electron-debug')({showDevTools: false});
+require('electron-debug')({showDevTools: true});
 
 /**
  * A user-defined service.
@@ -62,12 +62,12 @@ let services: IService[] = [
  * app ready for "double click" files to open in application
  */
 app.once('will-finish-launching', (e: Electron.Event) => {
-    app.once('open-file', (event: Electron.Event, path: string) => {
-      ipcMain.once(AppIPC.LAB_READY, (event: Electron.Event) => {
-        event.sender.send(AppIPC.OPEN_FILES, path);
-      });
+    app.on('open-file', (event: Electron.Event, path: string) => {
+        ipcMain.once(AppIPC.LAB_READY, (event: Electron.Event) => {
+            event.sender.send(AppIPC.OPEN_FILES, path);
+        });
     });
-  });
+});
 
 /**
  * Load all services when the electron app is
