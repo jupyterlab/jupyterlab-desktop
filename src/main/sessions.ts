@@ -138,7 +138,6 @@ class JupyterLabSessions extends EventEmitter implements ISessions, IStatefulSer
 
     private _createSession(opts: JupyterLabSession.IOptions) {
         opts.uiState = opts.uiState || this._uiState;
-        
         // pre launch a local server to improve load time
         if (opts.state == 'local')
             this._serverFactory.createFreeServer({})
@@ -172,6 +171,7 @@ class JupyterLabSessions extends EventEmitter implements ISessions, IStatefulSer
         });
         
         this._sessions.push(session);
+        session.browserWindow.focus();
     }
     
     private _registerListeners(): void {
@@ -179,13 +179,12 @@ class JupyterLabSessions extends EventEmitter implements ISessions, IStatefulSer
         // windows open.
         // Need to double check this code to ensure it has expected behaviour
         app.on('activate', () => {
-            if (this._sessions.length > 0) {
-                if (BrowserWindow.getFocusedWindow() === null) {
-                    this._sessions[0].browserWindow.focus();
-                }
+            let session: JupyterLabSession = this._getFocusedSession();
+            if (session === null) {
+                this.createSession();
                 return;
             }
-            this.createSession()
+            session.browserWindow.focus();
         });
 
         ipcMain.once(AppIPC.LAB_READY, () => {
@@ -214,7 +213,7 @@ class JupyterLabSessions extends EventEmitter implements ISessions, IStatefulSer
         });
     }
 
-    private _getFocusedSession(): JupyterLabSession{
+    private _getFocusedSession(): JupyterLabSession {
         let sessions = this._sessions;
         for (let i = 0; i < sessions.length; i ++){
             if (sessions[i].browserWindow.isFocused())
