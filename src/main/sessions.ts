@@ -235,6 +235,7 @@ class JupyterLabSessions extends EventEmitter implements ISessions, IStatefulSer
             let session = this._getFocusedSession();
             if (session && session.state().state === 'local' ){
                 session.browserWindow.webContents.send(AppIPC.OPEN_FILES, path);
+                session.browserWindow.restore();
             }
             else {
                 let state: JupyterLabSession.IOptions = {state: null};
