@@ -36,6 +36,7 @@ import {
 
 import * as path from 'path';
 import * as url from 'url';
+import * as fs from 'fs';
 import 'jupyterlab_app/src/browser/index.html';
 
 
@@ -188,6 +189,10 @@ class JupyterLabSessions extends EventEmitter implements ISessions, IStatefulSer
         });
 
         ipcMain.once(AppIPC.LAB_READY, () => {
+            // Skip JupyterLab executable
+            for (let i = 1; i < process.argv.length; i ++){
+                this._openFile(process.argv[i]);
+            }
             app.removeAllListeners('open-file');
             app.on('open-file', (e: Electron.Event, path: string) => {
                 this._openFile(path);
@@ -225,21 +230,37 @@ class JupyterLabSessions extends EventEmitter implements ISessions, IStatefulSer
     }
 
     private _openFile(path: string): void {
-        let session = this._getFocusedSession();
-        if (session === null || session.state().state !== 'local' ){
-            let state: JupyterLabSession.IOptions = null;
-            if (this._lastWindowState){
-                state = this._lastWindowState;
+        this._isFile(path)
+        .then( () => {
+            let session = this._getFocusedSession();
+            if (session && session.state().state === 'local' ){
+                session.browserWindow.webContents.send(AppIPC.OPEN_FILES, path);
             }
-            state.state = 'local';
-            this._createSession(state);
-            ipcMain.once(AppIPC.LAB_READY, (event: Electron.Event) => {
-                event.sender.send(AppIPC.OPEN_FILES, path);
-            });
-        }
-        else {
-            session.browserWindow.webContents.send(AppIPC.OPEN_FILES, path);
-        }
+            else {
+                let state: JupyterLabSession.IOptions = {state: null};
+                if (this._lastWindowState){
+                    state = this._lastWindowState;
+                }
+                state.state = 'local';
+                this._createSession(state);
+                ipcMain.once(AppIPC.LAB_READY, (event: Electron.Event) => {
+                    event.sender.send(AppIPC.OPEN_FILES, path);
+                });
+            }
+        })
+        .catch( (error: any) => {
+            return;
+        });
+    }
+
+    private _isFile(path: string): Promise<{}> {
+        return new Promise( (resolve, reject) => {
+            fs.lstat(path, (err: any, stats: fs.Stats) => {
+                if (stats.isFile())
+                    resolve();
+                reject();
+            }); 
+        });
     }
 
     private _sessions: JupyterLabSession[] = [];

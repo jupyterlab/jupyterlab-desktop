@@ -12,7 +12,7 @@ import * as Bottle from 'bottlejs';
  * Require debugging tools. Only
  * runs when in development.
  */
-require('electron-debug')({showDevTools: true});
+require('electron-debug')({showDevTools: false});
 
 /**
  * A user-defined service.
@@ -74,23 +74,7 @@ app.once('will-finish-launching', (e: Electron.Event) => {
  * ready.
  */
 app.on('ready', () => {
-    /**
-     * Only allow single instance of app to run. Files that are opened with the application
-     * on Linux and Windows will by default instantiate a new instance of the app with the 
-     * file name as the args. This instead opens the files in the first instance of the 
-     * application.
-     */
-    let isSecond = app.makeSingleInstance((argv: string[], workingDirectory: string) => {
-        // The first argument is the JupyterLab executable
-        for (let i = 1; i < argv.length; i ++){
-            app.emit('open-file', null, argv[i]);
-        }
-    });
-
-    if (isSecond){
-        app.quit();
-    }
-
+    handOverArguments();
     let serviceManager = new Bottle();
     let autostarts: string[] = [];
     services.forEach((s: IService) => {
@@ -105,3 +89,24 @@ app.on('ready', () => {
     });
     serviceManager.digest(autostarts);
 });
+
+
+/**
+ * When a second instance of the application is executed, this passes the arguments
+ * to first instance. Files that are opened with the application on Linux and Windows 
+ * will by default instantiate a new instance of the app with the file name as the args. 
+ * This instead opens the files in the first instance of the 
+ * application.
+ */
+function handOverArguments(): void {
+    let isSecond = app.makeSingleInstance((argv: string[], workingDirectory: string) => {
+        // Skip JupyterLab Executable
+        for (let i = 1; i < argv.length; i ++){
+            app.emit('open-file', null, argv[i]);
+        }
+    });
+
+    if (isSecond){
+        app.quit();
+    }
+}
