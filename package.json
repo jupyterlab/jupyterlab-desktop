@@ -28,13 +28,13 @@
   "build": {
     "productName": "JupyterLab",
     "artifactName": "${productName}.${ext}",
+    "directories": {
+      "buildResources": "dist-resources"
+    },
     "fileAssociations": {
       "ext": [
         "ipynb"
       ]
-    },
-    "directories": {
-      "buildResources": "dist-resources"
     },
     "files": [
       "!**/*.d.ts"
