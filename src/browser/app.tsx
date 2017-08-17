@@ -256,7 +256,6 @@ class Application extends React.Component<Application.Props, Application.State> 
     private _registerFileHandler(): void {
         document.ondrop = (event: DragEvent) => {
             event.preventDefault();
-            document.getElementById("main").focus();
             let files = event.dataTransfer.files;
             for (let i = 0; i < files.length; i ++){
                 this._openFile(files[i].path);
