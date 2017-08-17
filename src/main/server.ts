@@ -342,16 +342,18 @@ class JupyterServerFactory implements IServerFactory, IClosingService {
      */
     killAllServers(): Promise<void[]> {
         // Get stop promises from all servers
-        let stopPromises = this._servers.map((val) => {
-            return val.server.stop();
+        let stopPromises = this._servers.map((server) => {
+            return server.server.stop();
         });
-
         // Empty the server array.
         this._servers = [];
-
         return Promise.all(stopPromises)
     }
 
+    /**
+     * Closes all servers and cleans up any remaining listeners
+     * @return promise that is fulfilled when the server factory is ready to quit
+     */
     finished(): Promise<void> {
         let promise = new Promise<void>( (resolve, reject) => {
             this.killAllServers()
@@ -468,7 +470,7 @@ namespace JupyterServerFactory {
         used: boolean;
 
         /**
-         * A promise that is declared when the server is closing
+         * A promise that is created when the server is closing
          * and resolved on close.
          */
         closing: Promise<void>;

@@ -75,8 +75,17 @@ interface IStatefulService {
     verifyState: (state: JSONValue) => boolean;
 }
 
+/**
+ * A service that has to complete some task on application exit
+ */
 export
 interface IClosingService{
+    /**
+     * Called before the application exits and after the states are saved. 
+     * Service resolves the promise upon a successful cleanup. 
+     * 
+     * @return promise that is fulfilled when the service is ready to quit
+     */
     finished(): Promise<void>;
 }
 
