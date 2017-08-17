@@ -91,7 +91,6 @@ app.on('ready', () => {
         serviceManager.digest(autostarts);
     })
     .catch( () => {
-        console.error(new Error("An instance of JupyterLab is already running."));
         app.quit();
     });
 });
@@ -108,6 +107,7 @@ function handOverArguments(): Promise<void> {
     let promise = new Promise<void>( (resolve, reject) => {
         let second = app.makeSingleInstance((argv: string[], workingDirectory: string) => {
             // Skip JupyterLab Executable
+            app.emit('activate');
             for (let i = 1; i < argv.length; i ++){
                 app.emit('open-file', null, argv[i]);
             }

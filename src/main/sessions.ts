@@ -188,12 +188,19 @@ class JupyterLabSessions extends EventEmitter implements ISessions, IStatefulSer
         // Need to double check this code to ensure it has expected behaviour
         app.on('activate', () => {
             let session = this._lastFocusedSession;
-            if (session === null) {
-                this.createSession();
+            if (session === null){
                 return;
             }
+            session.browserWindow.restore();
             session.browserWindow.focus();
         });
+
+        app.on('window-all-closed', () => {
+            app.once('activate', () => {
+                this.createSession();
+                    return;
+            });
+        })
 
         ipcMain.once(AppIPC.LAB_READY, () => {
             // Skip JupyterLab executable
