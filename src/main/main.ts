@@ -55,7 +55,8 @@ let services: IService[] = [
     require('./server').default,
     require('./menu').default,
     require('./shortcuts').default,
-    require('./utils').default
+    require('./utils').default,
+    require('./connect').default
 ];
 
 /**

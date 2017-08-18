@@ -47,6 +47,14 @@ import {
     ipcRenderer
 } from '../../utils';
 
+import {
+    renderConnect
+} from 'jupyterlab_app/src/ipc2/render';
+
+import {
+    fetch, save
+} from 'jupyterlab_app/src/connections/utils';
+
 import * as React from 'react';
 import * as ReactDOM from 'react-dom';
 import plugins from '@jupyterlab/apputils-extension';
@@ -195,22 +203,7 @@ function newConnector(): IDataConnector<ISettingRegistry.IPlugin, JSONObject> {
      * Retrieve a saved bundle from the data connector.
      */
     fetch(id: string): Promise<ISettingRegistry.IPlugin> {
-        return new Promise<ISettingRegistry.IPlugin>((res, rej) => {
-            ipcRenderer.on(SettingsIPC.RESPOND_FETCH_SETTING, function handler(evt: Electron.Event, setting: SettingsIPC.ISetting) {
-                // Ignore the message if it isn't the correct id
-                if (setting.setting.id != id)
-                    return;
-
-                ipcRenderer.removeListener(SettingsIPC.RESPOND_FETCH_SETTING, handler);
-                if (setting.err) {
-                    rej(setting.err);
-                    return;
-                }
-                res(setting.setting);
-            });
-
-            ipcRenderer.send(SettingsIPC.REQUEST_FETCH_SETTING, {id});
-        });
+        return renderConnect.run(fetch, id);
     },
 
     /**
@@ -226,18 +219,7 @@ function newConnector(): IDataConnector<ISettingRegistry.IPlugin, JSONObject> {
      * Save the user setting data in the data connector.
      */
     save(id: string, user: JSONObject): Promise<void> {
-        return new Promise<void>((res, rej) => {
-            ipcRenderer.on(SettingsIPC.RESPOND_SAVE_SETTING, function handler(evt: Electron.Event, arg: any) {
-                ipcRenderer.removeListener(SettingsIPC.RESPOND_FETCH_SETTING, handler);
-                if (arg.err) {
-                    rej(arg.err);
-                    return;
-                }
-                res();
-            });
-            
-            ipcRenderer.send(SettingsIPC.REQUEST_SAVE_SETTING, {id, user});
-        });
+        return renderConnect.run(save, {id, user});
     }
   };
 }

@@ -2,10 +2,6 @@
 // Distributed under the terms of the Modified BSD License.
 
 import {
-    ipcMain
-} from 'electron';
-
-import {
     JSONValue, JSONObject
 } from '@phosphor/coreutils';
 
@@ -14,16 +10,20 @@ import {
 } from './app';
 
 import {
+    IExposedMethodPrivate, IMainConnect
+} from 'jupyterlab_app/src/ipc2/main';
+
+import {
+    fetch, save, ISaveOptions
+} from 'jupyterlab_app/src/connections/utils';
+
+import {
     IDataConnector, ISettingRegistry
 } from '@jupyterlab/coreutils';
 
 import {
     IService
 } from './main';
-
-import {
-    JupyterSettingsIPC as SettingsIPC
-} from 'jupyterlab_app/src/ipc';
 
 import * as path from 'path';
 import * as fs from 'fs';
@@ -43,7 +43,7 @@ implements IStatefulService, IDataConnector<ISettingRegistry.IPlugin, JSONObject
 
     id: string = 'JupyterLabSettings';
 
-    constructor(app: IApplication) {
+    constructor(app: IApplication, remote: IMainConnect) {
         this._settings = app.registerStatefulService(this)
             .then((settings: Private.IPluginData) => {
                 if(!settings) {
@@ -55,7 +55,11 @@ implements IStatefulService, IDataConnector<ISettingRegistry.IPlugin, JSONObject
                 return this._getDefaultSettings();
             });
         
-        this._createRenderAPI();
+        // Create 'fetch' exposed method
+        remote.registerExposedMethod(this._exposedFetch);
+        
+        // Create 'save' exposed method
+        remote.registerExposedMethod(this._exposedSave);
     }
 
     /**
@@ -170,30 +174,16 @@ implements IStatefulService, IDataConnector<ISettingRegistry.IPlugin, JSONObject
         })
     }
 
-    /**
-     * Add ipc listeners to give the render process access
-     * to the service.
-     */
-    private _createRenderAPI(): void {
-        // Setup fetch listener
-        ipcMain.on(SettingsIPC.REQUEST_FETCH_SETTING, (evt: Electron.Event, data: SettingsIPC.IFetchSetting) => {
-            this.fetch(data.id)
-                .then((setting: ISettingRegistry.IPlugin) => {
-                    evt.sender.send(SettingsIPC.RESPOND_FETCH_SETTING, {setting} as SettingsIPC.ISetting);
-                }).catch((e) => {
-                    evt.sender.send(SettingsIPC.RESPOND_FETCH_SETTING, {err: e, setting: null});
-                });
-        });
-        
-        // Setup save listener
-        ipcMain.on(SettingsIPC.REQUEST_SAVE_SETTING, (evt: Electron.Event, data: SettingsIPC.ISaveSetting) => {
-            this.save(data.id, data.user)
-                .then(() => {
-                    evt.sender.send(SettingsIPC.RESPOND_SAVE_SETTING);
-                }).catch((e) => {
-                    evt.sender.send(SettingsIPC.RESPOND_SAVE_SETTING, {err: e});
-                });
-        });
+    private _exposedFetch: IExposedMethodPrivate<string, ISettingRegistry.IPlugin> = {
+        ...fetch,
+        execute: this.fetch.bind(this)
+    }
+    
+    private _exposedSave: IExposedMethodPrivate<ISaveOptions, void> = {
+        ...save,
+        execute: (opts: ISaveOptions) => {
+            return this.save(opts.id, opts.user);
+        },
     }
 
     private _settings: Promise<Private.IPluginData>;
@@ -208,10 +198,10 @@ namespace Private {
 }
 
 let service: IService = {
-    requirements: ['IApplication'],
+    requirements: ['IApplication', 'IMainConnect'],
     provides: 'IDataConnectory',
-    activate: (app: IApplication): IDataConnector<ISettingRegistry.IPlugin, JSONObject> => {
-        return new JupyterLabDataConnector(app);
+    activate: (app: IApplication, remote: IMainConnect): IDataConnector<ISettingRegistry.IPlugin, JSONObject> => {
+        return new JupyterLabDataConnector(app, remote);
     },
     autostart: true
 }

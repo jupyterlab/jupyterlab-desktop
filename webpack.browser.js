@@ -20,8 +20,12 @@ module.exports = {
   entry:  './build/out/browser/index.js',
   output: {
     path: path.resolve(buildDir),
-    filename: 'browser.bundle.js'
+    filename: 'browser.bundle.js',
+    libraryTarget: 'commonjs'
   },
+  externals: [
+    'electron'
+  ],
   resolve: {
     extensions: ['.ts', '.tsx', '.js', '.jsx'],
     alias: {
