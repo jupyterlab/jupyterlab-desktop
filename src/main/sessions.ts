@@ -42,7 +42,7 @@ import 'jupyterlab_app/src/browser/index.html';
 
 export
 interface ISessions extends EventEmitter {
-    createSession: (opts?: JupyterLabSession.IOptions) => void;
+    createSession: (opts?: JupyterLabSession.IOptions) => Promise<void>;
 
     isAppFocused: () => boolean;
 
@@ -76,10 +76,12 @@ class JupyterLabSessions extends EventEmitter implements ISessions, IStatefulSer
         app.registerStatefulService(this)
             .then((state: JupyterLabSession.IState) => {
                 this._lastWindowState = state;
-                this.createSession();
+                this.createSession()
+                .then( () => {this._startingSession = null;});
             })
             .catch(() => {
-                this.createSession();
+                this.createSession()
+                .then( () => {this._startingSession = null;});
             });
     }
 
@@ -107,13 +109,13 @@ class JupyterLabSessions extends EventEmitter implements ISessions, IStatefulSer
         return visible && focus;
     }
     
-    createSession(opts?: JupyterLabSession.IOptions): void {
+    createSession(opts?: JupyterLabSession.IOptions): Promise<void> {
         if (opts) {
-            this._createSession(opts);
+            return this._createSession(opts);
         } else if (this._lastWindowState) {
-            this._createSession(this._lastWindowState)
+            return this._createSession(this._lastWindowState)
         } else {
-            this._createSession({state: 'local'});
+            return this._createSession({state: 'local'});
         }
     }
     
@@ -141,45 +143,52 @@ class JupyterLabSessions extends EventEmitter implements ISessions, IStatefulSer
         return true;
     }
 
-    private _createSession(opts: JupyterLabSession.IOptions) {
-        opts.uiState = opts.uiState || this._uiState;
-        // pre launch a local server to improve load time
-        if (opts.state == 'local')
-            this._serverFactory.createFreeServer({})
+    private _createSession(opts: JupyterLabSession.IOptions): Promise<void>{
+        this._startingSession =  new Promise<void>( (resolve) => { 
+            opts.uiState = opts.uiState || this._uiState;
+            // pre launch a local server to improve load time
+            if (opts.state == 'local')
+                this._serverFactory.createFreeServer({})
 
-        let session = new JupyterLabSession(this, opts);
-        // Register dialog on window close
-        session.browserWindow.on('close', (event: Event) => {
-            let buttonClicked = dialog.showMessageBox({
-                type: 'warning',
-                message: 'Do you want to leave?',
-                detail: 'Changes you made may not be saved.',
-                buttons: ['Leave', 'Stay'],
-                defaultId: 0,
-                cancelId: 1
+            let session = new JupyterLabSession(this, opts);
+            // Register dialog on window close
+            session.browserWindow.on('close', (event: Event) => {
+                let buttonClicked = dialog.showMessageBox({
+                    type: 'warning',
+                    message: 'Do you want to leave?',
+                    detail: 'Changes you made may not be saved.',
+                    buttons: ['Leave', 'Stay'],
+                    defaultId: 0,
+                    cancelId: 1
+                });
+                
+                if (buttonClicked === 1) {
+                    // Stop the window from closing
+                    event.preventDefault();
+                    return;
+                }
+                
+                // Save session state
+                this._lastWindowState = session.state();
             });
             
-            if (buttonClicked === 1) {
-                // Stop the window from closing
-                event.preventDefault();
-                return;
-            }
+            session.browserWindow.on('closed', (event: Event) => {
+                if (this._lastFocusedSession === session){
+                    this._lastFocusedSession = null;
+                }
+                ArrayExt.removeFirstOf(this._sessions, session);
+                session = null;
+                this.emit('session-ended');
+            });
             
-            // Save session state
-            this._lastWindowState = session.state();
+            this._sessions.push(session);
+            this._lastFocusedSession = session;
+            session.browserWindow.on('focus', () => {
+                resolve();
+            });
+            
         });
-        
-        session.browserWindow.on('closed', (event: Event) => {
-            if (this._lastFocusedSession === session){
-                this._lastFocusedSession = null;
-            }
-            ArrayExt.removeFirstOf(this._sessions, session);
-            session = null;
-            this.emit('session-ended');
-        });
-        
-        this._sessions.push(session);
-        session.browserWindow.focus();
+        return this._startingSession;
     }
     
     private _registerListeners(): void {
@@ -187,42 +196,57 @@ class JupyterLabSessions extends EventEmitter implements ISessions, IStatefulSer
         // windows open.
         // Need to double check this code to ensure it has expected behaviour
         app.on('activate', () => {
-            let session = this._lastFocusedSession;
-            if (session === null){
+            if (this._startingSession){
                 return;
             }
-            session.browserWindow.restore();
-            session.browserWindow.focus();
+            if (this._sessions.length === 0){
+                this.createSession()
+                .then(() => {this._startingSession = null});
+                return;
+            }
+            if (this._lastFocusedSession){
+                this._lastFocusedSession.browserWindow.restore();
+                this._lastFocusedSession.browserWindow.focus();
+                return;
+            }
+            this._sessions[0].browserWindow.restore();
+            this._sessions[0].browserWindow.focus();
+            
         });
-
-        app.on('window-all-closed', () => {
-            app.once('activate', () => {
-                this.createSession();
-                    return;
-            });
-        })
 
         ipcMain.once(AppIPC.LAB_READY, () => {
             // Skip JupyterLab executable
             for (let i = 1; i < process.argv.length; i ++){
-                this._openFile(process.argv[i]);
+                this._activateLocalSession()
+                .then( () => {
+                    this._openFile(process.argv[i]);
+                    this._startingSession = null;
+                });
             }
             app.removeAllListeners('open-file');
             app.on('open-file', (e: Electron.Event, path: string) => {
-                this._openFile(path);
+                this._activateLocalSession()
+                .then( () => {
+                    this._openFile(path);
+                    this._startingSession = null;
+                });
             });
         });
 
 
         ipcMain.on(AppIPC.REQUEST_ADD_SERVER, (event: any, arg: any) => {
-            this._createSession({state: 'new'});
+            this._createSession({state: 'new'})
+            .then( () => {this._startingSession = null});
         });
         
         ipcMain.on(AppIPC.REQUEST_OPEN_CONNECTION, (event: any, arg: AppIPC.IOpenConnection) => {
-            if (arg.type == 'remote')
-                this._createSession({state: 'remote', remoteServerId: arg.remoteServerId});
-            else
-                this._createSession({state: 'local'});
+            if (arg.type == 'remote'){
+                this._createSession({state: 'remote', remoteServerId: arg.remoteServerId})
+                .then( () => {this._startingSession = null});
+            } else {
+                this._createSession({state: 'local'})
+                .then( () => {this._startingSession = null});
+            }
         });
 
         // The path sent should correspond to the directory the app is started in
@@ -232,13 +256,20 @@ class JupyterLabSessions extends EventEmitter implements ISessions, IStatefulSer
         });
     }
 
-    private _openFile(path: string): void {
-        this._isFile(path)
-        .then( () => {
+    /**
+     * Returns a promise that is resolved when a local session is created and ready
+     * @param options server options
+     */
+    private _activateLocalSession(): Promise<void> {
+        if (this._startingSession){
+            return this._startingSession;
+        }
+        this._startingSession = new Promise<void>( (resolve) => {
             let session = this._lastFocusedSession;
-            if (session && session.state().state === 'local' ){
-                session.browserWindow.webContents.send(AppIPC.OPEN_FILES, path);
+            if (session && session.state().state === 'local') {
+                session.browserWindow.focus();
                 session.browserWindow.restore();
+                resolve();
             }
             else {
                 let state: JupyterLabSession.IOptions = {state: null};
@@ -246,17 +277,41 @@ class JupyterLabSessions extends EventEmitter implements ISessions, IStatefulSer
                     state = this._lastWindowState;
                 }
                 state.state = 'local';
-                this._createSession(state);
-                ipcMain.once(AppIPC.LAB_READY, (event: Electron.Event) => {
-                    event.sender.send(AppIPC.OPEN_FILES, path);
+                this.createSession(state)
+                .then( () => { 
+                    ipcMain.once(AppIPC.LAB_READY, () => {
+                        resolve();
+                    });
                 });
             }
+        });
+        return this._startingSession;
+    }
+
+
+    /**
+     * Sends the file path to the renderer process to be opened in the application.
+     * @param path the absolute path to the file
+     */
+    private _openFile(path: string): void {
+        this._isFile(path)
+        .then( () => {
+            let session = this._lastFocusedSession;
+            session.browserWindow.restore();
+            session.browserWindow.focus();
+            session.browserWindow.webContents.send(AppIPC.OPEN_FILES, path);
         })
         .catch( (error: any) => {
             return;
         });
     }
 
+
+    /**
+     * Returns a promise that is resolved if the path is a file
+     * and rejects if it is not.
+     * @param path the absolute path to the file
+     */
     private _isFile(path: string): Promise<{}> {
         return new Promise( (resolve, reject) => {
             fs.lstat(path, (err: any, stats: fs.Stats) => {
@@ -273,6 +328,8 @@ class JupyterLabSessions extends EventEmitter implements ISessions, IStatefulSer
             }); 
         });
     }
+
+    private _startingSession: Promise<void> = null;
 
     private _lastFocusedSession: JupyterLabSession = null;
 
