@@ -18,6 +18,10 @@ import {
     JupyterServerIPC as ServerIPC
 } from 'jupyterlab_app/src/ipc';
 
+import{
+    IApplication, IClosingService
+} from './app';
+
 import {
     ArrayExt
 } from '@phosphor/algorithm';
@@ -203,9 +207,10 @@ interface IServerFactory {
 }
 
 export
-class JupyterServerFactory implements IServerFactory {
+class JupyterServerFactory implements IServerFactory, IClosingService {
     
-    constructor() {
+    constructor(app: IApplication) {
+        app.registerClosingService(this);
         // Register electron IPC listensers
         ipcMain.on(ServerIPC.REQUEST_SERVER_START, (event: any) => {
             this.createServer({})
@@ -297,8 +302,7 @@ class JupyterServerFactory implements IServerFactory {
                     rej(e);
                     this._removeFailedServer(server.factoryId);
                 });
-        })
-
+        });
     }
 
     /**
@@ -311,17 +315,24 @@ class JupyterServerFactory implements IServerFactory {
         if (idx < 0)
             return Promise.reject(new Error('Invalid server id: ' + factoryId));
 
-        let server = ArrayExt.removeAt(this._servers, idx);
-        return new Promise<void>((res, rej) => {
+        let server = this._servers[idx];
+        if (server.closing){
+            return server.closing;
+        }
+        let promise = new Promise<void>((res, rej) => {
             server.server.stop()
                 .then(() => {
+                    ArrayExt.removeAt(this._servers, idx);
                     res();
                 })
                 .catch((e) => {
                     console.error(e);
+                    ArrayExt.removeAt(this._servers, idx);
                     rej();
-                });
+                })
         });
+        server.closing = promise;
+        return promise;
     }
 
     /**
@@ -331,14 +342,25 @@ class JupyterServerFactory implements IServerFactory {
      */
     killAllServers(): Promise<void[]> {
         // Get stop promises from all servers
-        let stopPromises = this._servers.map((val) => {
-            return val.server.stop();
+        let stopPromises = this._servers.map((server) => {
+            return server.server.stop();
         });
-
         // Empty the server array.
         this._servers = [];
-
         return Promise.all(stopPromises)
+    }
+
+    /**
+     * Closes all servers and cleans up any remaining listeners
+     * @return promise that is fulfilled when the server factory is ready to quit
+     */
+    finished(): Promise<void> {
+        let promise = new Promise<void>( (resolve, reject) => {
+            this.killAllServers()
+            .then( () => {resolve()})
+            .catch( () => {reject()});
+        });
+        return promise;
     }
 
     /**
@@ -365,9 +387,10 @@ class JupyterServerFactory implements IServerFactory {
     }
 
     private _createServer(opts: JupyterServer.IOptions): JupyterServerFactory.IFactoryItem {
-        let item = {
+        let item: JupyterServerFactory.IFactoryItem = {
             factoryId: this._nextId++,
             server: new JupyterServer(opts),
+            closing: null,
             used: false
         };
 
@@ -447,6 +470,12 @@ namespace JupyterServerFactory {
         used: boolean;
 
         /**
+         * A promise that is created when the server is closing
+         * and resolved on close.
+         */
+        closing: Promise<void>;
+
+        /**
          * The actual Jupyter server object.
          */
         server: JupyterServer;
@@ -454,10 +483,10 @@ namespace JupyterServerFactory {
 }
 
 let service: IService = {
-    requirements: [],
+    requirements: ['IApplication'],
     provides: 'IServerFactory',
-    activate: (): IServerFactory => {
-        return new JupyterServerFactory();
+    activate: (app: IApplication): IServerFactory => {
+        return new JupyterServerFactory(app);
     },
     autostart: true
 }

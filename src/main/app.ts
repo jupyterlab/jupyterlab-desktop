@@ -11,7 +11,7 @@ import {
 
 import {
     ElectronStateDB
-} from 'jupyterlab_app/src/main/state';
+} from './state';
 
 import {
     JSONObject, JSONValue
@@ -19,7 +19,7 @@ import {
 
 import {
     //KeyboardShortcutManager
-} from 'jupyterlab_app/src/main/shortcuts'
+} from './shortcuts'
 
 import {
     JupyterLabSession
@@ -35,6 +35,8 @@ interface IApplication {
      * @return promise fulfileld with the service's previous state.
      */
     registerStatefulService: (service: IStatefulService) => Promise<JSONValue>;
+
+    registerClosingService: (service: IClosingService) => void;
 
     /**
      * Force the application service to write data to the disk.
@@ -73,6 +75,20 @@ interface IStatefulService {
     verifyState: (state: JSONValue) => boolean;
 }
 
+/**
+ * A service that has to complete some task on application exit
+ */
+export
+interface IClosingService{
+    /**
+     * Called before the application exits and after the states are saved. 
+     * Service resolves the promise upon a successful cleanup. 
+     * 
+     * @return promise that is fulfilled when the service is ready to quit
+     */
+    finished(): Promise<void>;
+}
+
 export
 class JupyterApplication implements IApplication {
 
@@ -109,6 +125,10 @@ class JupyterApplication implements IApplication {
                 })
                 .catch(() => {res(null)});
         });
+    }
+
+    registerClosingService(service: IClosingService): void {
+        this._closing.push(service);
     }
     
     saveState(service: IStatefulService, data: JSONValue): Promise<void> {
@@ -182,7 +202,7 @@ class JupyterApplication implements IApplication {
             });
             let ids: string[] = this._services.map((s: IStatefulService) => {
                 return s.id;
-            })
+            });
 
             // Wait for all services to return state
             Promise.all(state)
@@ -191,11 +211,25 @@ class JupyterApplication implements IApplication {
                     return this._saveState()
                 })
                 .then(() => {
-                    process.exit();
+                    this._quit();     
                 })
                 .catch(() => {
-                    process.exit();
+                    console.error(new Error("JupyterLab did not save state successfully"));
+                    this._quit();
                 });
+        });
+    }
+
+    private _quit(): void {
+        let closing: Promise<void>[] = this._closing.map((s: IClosingService) => {
+            return s.finished();
+        });
+
+        Promise.all(closing)
+        .then( () => {process.exit()})
+        .catch( (err) => {
+            console.error(new Error("JupyterLab could not close successfully"));
+            process.exit();
         });
     }
 
@@ -204,6 +238,8 @@ class JupyterApplication implements IApplication {
     private _appState: Promise<JSONObject>;
 
     private _services: IStatefulService[] = [];
+
+    private _closing: IClosingService[] = [];
 
 }
 

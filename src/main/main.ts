@@ -1,4 +1,10 @@
-import {app} from 'electron'
+import {
+    app, ipcMain
+} from 'electron'
+
+import {
+    JupyterApplicationIPC as AppIPC
+} from 'jupyterlab_app/src/ipc';
 
 import * as Bottle from 'bottlejs';
 
@@ -52,22 +58,63 @@ let services: IService[] = [
 ];
 
 /**
+ * The "open-file" listener should be registered before
+ * app ready for "double click" files to open in application
+ */
+app.once('will-finish-launching', (e: Electron.Event) => {
+    app.on('open-file', (event: Electron.Event, path: string) => {
+        ipcMain.once(AppIPC.LAB_READY, (event: Electron.Event) => {
+            event.sender.send(AppIPC.OPEN_FILES, path);
+        });
+    });
+});
+
+/**
  * Load all services when the electron app is
  * ready.
  */
 app.on('ready', () => {
-    let serviceManager = new Bottle();
-    let autostarts: string[] = [];
-    services.forEach((s: IService) => {
-        serviceManager.factory(s.provides, (container: any) => {
-            let args = s.requirements.map((r: string) => {
-                return container[r]
+    handOverArguments()
+    .then( () => {
+        let serviceManager = new Bottle();
+        let autostarts: string[] = [];
+        services.forEach((s: IService) => {
+            serviceManager.factory(s.provides, (container: any) => {
+                let args = s.requirements.map((r: string) => {
+                    return container[r]
+                });
+                return s.activate(...args);
             });
-            return s.activate(...args);
+            if (s.autostart)
+                autostarts.push(s.provides);
         });
-        if (s.autostart)
-            autostarts.push(s.provides);
+        serviceManager.digest(autostarts);
+    })
+    .catch( () => {
+        app.quit();
     });
-    serviceManager.digest(autostarts);
 });
 
+
+/**
+ * When a second instance of the application is executed, this passes the arguments
+ * to first instance. Files that are opened with the application on Linux and Windows 
+ * will by default instantiate a new instance of the app with the file name as the args. 
+ * This instead opens the files in the first instance of the 
+ * application.
+ */
+function handOverArguments(): Promise<void> {
+    let promise = new Promise<void>( (resolve, reject) => {
+        let second = app.makeSingleInstance((argv: string[], workingDirectory: string) => {
+            // Skip JupyterLab Executable
+            for (let i = 1; i < argv.length; i ++){
+                app.emit('open-file', null, argv[i]);
+            }
+        });
+        if (second){
+            reject();
+        }
+        resolve();
+    });
+    return promise;
+}
