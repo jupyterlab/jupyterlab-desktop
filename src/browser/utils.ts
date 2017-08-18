@@ -10,7 +10,7 @@ import {
  * resolve. This code prevents webpack from doing that.
  */
 export
-let ipcRenderer = (window as any).require('electron').ipcRenderer;
+let ipcRenderer: Electron.IpcRenderer = (window as any).require('electron').ipcRenderer;
 export
 let remote: Electron.Remote = (window as any).require('electron').remote;
 export

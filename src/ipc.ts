@@ -19,6 +19,10 @@ import {
     JupyterLabSession
 } from './main/sessions';
 
+import {
+    ISettingRegistry
+} from '@jupyterlab/coreutils';
+
 export
 namespace JupyterApplicationIPC {
 
@@ -210,5 +214,38 @@ namespace JupyterMenuIPC {
          * Optional arguments to the command
          */
         args?: any;
+    }
+}
+
+export
+namespace JupyterSettingsIPC {
+
+    export
+    const REQUEST_FETCH_SETTING = 'request-fetch-setting';
+
+    export
+    const RESPOND_FETCH_SETTING = 'respond-fetch-setting';
+
+    export
+    const REQUEST_SAVE_SETTING = 'request-save-setting';
+
+    export
+    const RESPOND_SAVE_SETTING = 'respond-save-setting';
+
+    export
+    interface IFetchSetting {
+        id: string;
+    }
+
+    export
+    interface ISetting {
+        err?: any;
+        setting: ISettingRegistry.IPlugin;
+    }
+
+    export
+    interface ISaveSetting {
+        id: string;
+        user: JSONObject;
     }
 }

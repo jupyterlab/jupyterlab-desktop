@@ -20,7 +20,7 @@ import {
 } from '../../app';
 
 import {
-    StateDB
+    StateDB, ISettingRegistry, SettingRegistry, IDataConnector
 } from '@jupyterlab/coreutils';
 
 import {
@@ -187,11 +187,81 @@ const nativeMainMenuPlugin: JupyterLabPlugin<IMainMenu> = {
 };
 
 /**
+ * Create a data connector to access plugin settings.
+ */
+function newConnector(): IDataConnector<ISettingRegistry.IPlugin, JSONObject> {
+  return {
+    /**
+     * Retrieve a saved bundle from the data connector.
+     */
+    fetch(id: string): Promise<ISettingRegistry.IPlugin> {
+        return new Promise<ISettingRegistry.IPlugin>((res, rej) => {
+            ipcRenderer.on(SettingsIPC.RESPOND_FETCH_SETTING, function handler(evt: Electron.Event, setting: SettingsIPC.ISetting) {
+                // Ignore the message if it isn't the correct id
+                if (setting.setting.id != id)
+                    return;
+
+                ipcRenderer.removeListener(SettingsIPC.RESPOND_FETCH_SETTING, handler);
+                if (setting.err) {
+                    rej(setting.err);
+                    return;
+                }
+                res(setting.setting);
+            });
+
+            ipcRenderer.send(SettingsIPC.REQUEST_FETCH_SETTING, {id});
+        });
+    },
+
+    /**
+     * Remove a value from the data connector.
+     */
+    remove(): Promise<void> {
+      const message = 'Removing setting resources is not supported.';
+
+      return Promise.reject(new Error(message));
+    },
+
+    /**
+     * Save the user setting data in the data connector.
+     */
+    save(id: string, user: JSONObject): Promise<void> {
+        return new Promise<void>((res, rej) => {
+            ipcRenderer.on(SettingsIPC.RESPOND_SAVE_SETTING, function handler(evt: Electron.Event, arg: any) {
+                ipcRenderer.removeListener(SettingsIPC.RESPOND_FETCH_SETTING, handler);
+                if (arg.err) {
+                    rej(arg.err);
+                    return;
+                }
+                res();
+            });
+            
+            ipcRenderer.send(SettingsIPC.REQUEST_SAVE_SETTING, {id, user});
+        });
+    }
+  };
+}
+
+/**
+ * The default setting registry provider.
+ */
+const settingPlugin: JupyterLabPlugin<ISettingRegistry> = {
+  id: 'jupyter.services.setting-registry',
+  activate: (): ISettingRegistry => {
+    return new SettingRegistry({ connector: newConnector() });
+  },
+  autoStart: true,
+  provides: ISettingRegistry
+};
+
+/**
  * Override Main Menu plugin from apputils-extension
  */
 let nPlugins = plugins.map((p: JupyterLabPlugin<any>) => {
     if (p.id == 'jupyter.services.main-menu')
         return nativeMainMenuPlugin;
+    else if (p.id == 'jupyter.services.setting-registry')
+        return settingPlugin;
     return p;
 });
 nPlugins.push(serverManagerPlugin);
