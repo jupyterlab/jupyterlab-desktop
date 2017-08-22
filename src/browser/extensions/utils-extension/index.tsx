@@ -53,7 +53,7 @@ import {
 
 import {
     fetch, save
-} from 'jupyterlab_app/src/connections/utils';
+} from 'jupyterlab_app/src/main/utils';
 
 import * as React from 'react';
 import * as ReactDOM from 'react-dom';

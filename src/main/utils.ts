@@ -10,12 +10,8 @@ import {
 } from './app';
 
 import {
-    IExposedMethodPrivate, IMainConnect
+    IExposedMethod, IExposedMethodPrivate, IMainConnect
 } from 'jupyterlab_app/src/ipc2/main';
-
-import {
-    fetch, save, ISaveOptions
-} from 'jupyterlab_app/src/connections/utils';
 
 import {
     IDataConnector, ISettingRegistry
@@ -27,6 +23,22 @@ import {
 
 import * as path from 'path';
 import * as fs from 'fs';
+
+export
+let fetch: IExposedMethod<string, ISettingRegistry.IPlugin> = {
+    id: 'JupyterLabDataConnector-fetch'
+}
+
+export
+let save: IExposedMethod<ISaveOptions, void> = {
+    id: 'JupyterLabDataConnector-save'
+}
+
+export
+interface ISaveOptions {
+    id: string;
+    user: JSONObject;
+}
 
 /**
  * Create a data connector to be used by the render
