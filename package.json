@@ -15,13 +15,9 @@
     "watch:assets": "node ./scripts/copyassets.js watch",
     "watch": "concurrently \"npm run watch:tsc\" \"npm run watch:assets\" \"npm run watch:pack\" ",
     "build:browser": "webpack --config webpack.browser.js",
-<<<<<<< 6d67cd254b00ab564d58007ad0b53f08e07bafa5
     "build": "tsc && node ./scripts/copyassets.js && npm run build:browser",
-=======
-    "build": "npm run build:main && npm run build:browser && npm run extract",
->>>>>>> Update jupyterlab. Support native settings
     "build:all": "npm run build && npm start",
-    "extract": "node extract.js",
+    "extract": "node scripts/extract.js",
     "pack": "npm run build && electron-builder --dir",
     "dist": "npm run build && electron-builder",
     "dist:linux": "npm run build && electron-builder --linux",
@@ -97,7 +93,6 @@
   },
   "homepage": "https://github.com/jupyterlab/jupyterlab_app#readme",
   "devDependencies": {
-    "awesome-typescript-loader": "^3.2.1",
     "concurrently": "^3.5.0",
     "css-loader": "^0.27.3",
     "devtron": "^1.4.0",

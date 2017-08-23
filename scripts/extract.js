@@ -1,5 +1,5 @@
 var rpt = require('read-package-tree');
-var data = require('./package.json');
+var data = require('../package.json');
 var path = require('path');
 var fs = require('fs-extra');
 

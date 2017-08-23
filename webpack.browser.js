@@ -6,15 +6,11 @@ var package_data = require('./package.json');
 const ExtractTextPlugin = require("extract-text-webpack-plugin");
 var buildDir = './build';
 
-// Ensure a clear build directory.
-fs.ensureDirSync(buildDir);
-
 // Create the hash
 var hash = crypto.createHash('md5');
 hash.update(fs.readFileSync('./package.json'));
 var digest = hash.digest('hex');
 fs.writeFileSync(path.resolve(buildDir, 'hash.md5'), digest);
-
 
 module.exports = {
   entry:  './build/out/browser/index.js',
@@ -23,15 +19,25 @@ module.exports = {
     filename: 'browser.bundle.js',
     libraryTarget: 'commonjs'
   },
-  externals: [
-    'electron'
-  ],
   resolve: {
     extensions: ['.ts', '.tsx', '.js', '.jsx'],
     alias: {
-      jupyterlab_app: path.resolve(__dirname)
+      'jupyterlab_app/src': path.join(path.resolve(__dirname), 'build', 'out')
     }
   },
+  externals: [
+    function(context, request, callback) {
+      if (/^@jupyterlab/g.test(request)){
+        return callback();
+      } else if (/^\.\/build\/out\/browser/g.test(request)){
+        return callback();
+      } else if (/^\jupyterlab_app\/src\/browser/g.test(request)){
+        return callback();
+      }
+
+      callback(null, 'commonjs ' + request);
+    }
+  ],
   module: {
     rules: [
       { test: /\.css$/, 
