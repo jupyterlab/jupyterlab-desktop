@@ -3,7 +3,7 @@
 
 import {
     IService
-} from './main'
+} from 'jupyterlab_app/src/main/main';
 
 import {
     mainConnect, IMainConnect

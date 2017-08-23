@@ -7,7 +7,7 @@ import {
 
 import {
     IApplication, IStatefulService
-} from './app';
+} from 'jupyterlab_app/src/main/app';
 
 import {
     IExposedMethod, IExposedMethodPrivate, IMainConnect
@@ -19,7 +19,7 @@ import {
 
 import {
     IService
-} from './main';
+} from 'jupyterlab_app/src/main/main';
 
 import * as path from 'path';
 import * as fs from 'fs';

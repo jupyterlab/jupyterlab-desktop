@@ -17,15 +17,15 @@ import {
 
 import {
     IApplication
-} from './app';
+} from 'jupyterlab_app/src/main/app';
 
 import {
     IService
-} from './main'
+} from 'jupyterlab_app/src/main/main'
 
 import {
     ISessions
-} from './sessions';
+} from 'jupyterlab_app/src/main/sessions';
 
 type JupyterMenuItemOptions = MenuIPC.JupyterMenuItemOptions;
 

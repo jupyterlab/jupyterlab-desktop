@@ -5,7 +5,7 @@ let ipcRenderer: Electron.IpcRenderer = require('electron').ipcRenderer;
 
 import {
     IExposedMethod, Utils
-} from '../ipc';
+} from 'jupyterlab_app/src/ipc2/ipc';
 
 export
 interface IRenderConnect {
