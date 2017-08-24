@@ -50,13 +50,13 @@ interface IService {
  * Servies required by this application.
  */
 let services: IService[] = [
-    require('./app').default,
-    require('./sessions').default,
-    require('./server').default,
-    require('./menu').default,
-    require('./shortcuts').default,
-    require('./utils').default,
-    require('./connect').default
+    require('jupyterlab_app/src/main/app').default,
+    require('jupyterlab_app/src/main/sessions').default,
+    require('jupyterlab_app/src/main/server').default,
+    require('jupyterlab_app/src/main/menu').default,
+    require('jupyterlab_app/src/main/shortcuts').default,
+    require('jupyterlab_app/src/main/utils').default,
+    require('jupyterlab_app/src/main/connect').default
 ];
 
 /**

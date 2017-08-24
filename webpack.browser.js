@@ -13,23 +13,22 @@ var digest = hash.digest('hex');
 fs.writeFileSync(path.resolve(buildDir, 'hash.md5'), digest);
 
 module.exports = {
-  entry:  './build/out/browser/index.js',
+  entry:  './jupyterlab_app/src/browser/index.js',
   output: {
-    path: path.resolve(buildDir),
+    path: buildDir,
     filename: 'browser.bundle.js',
-    libraryTarget: 'commonjs'
   },
   resolve: {
     extensions: ['.ts', '.tsx', '.js', '.jsx'],
     alias: {
-      'jupyterlab_app/src': path.join(path.resolve(__dirname), 'build', 'out')
+      jupyterlab_app: path.resolve(__dirname, 'jupyterlab_app')
     }
   },
   externals: [
     function(context, request, callback) {
       if (/^@jupyterlab/g.test(request)){
         return callback();
-      } else if (/^\.\/build\/out\/browser/g.test(request)){
+      } else if (/^\.\/jupyterlab_app\/src\/browser/g.test(request)){
         return callback();
       } else if (/^\jupyterlab_app\/src\/browser/g.test(request)){
         return callback();

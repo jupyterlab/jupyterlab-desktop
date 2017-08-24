@@ -202,8 +202,8 @@ function newConnector(): IDataConnector<ISettingRegistry.IPlugin, JSONObject> {
     /**
      * Retrieve a saved bundle from the data connector.
      */
-    fetch(id: string): Promise<ISettingRegistry.IPlugin> {
-        return renderConnect.run(fetch, id);
+    fetch(settingsId: string): Promise<ISettingRegistry.IPlugin> {
+        return renderConnect.run(fetch, settingsId);
     },
 
     /**
