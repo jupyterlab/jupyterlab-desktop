@@ -12,7 +12,7 @@ import {
 import {
     JupyterWindowIPC as WindowIPC,
     JupyterApplicationIPC as AppIPC
-} from 'jupyterlab_app/src/ipc';
+} from '../ipc';
 
 import {
     IApplication, IStatefulService
@@ -34,10 +34,9 @@ import {
     EventEmitter
 } from 'events';
 
-import * as path from 'path';
 import * as url from 'url';
 import * as fs from 'fs';
-import 'jupyterlab_app/src/browser/index.html';
+import * as path from 'path';
 
 
 export
@@ -411,9 +410,9 @@ class JupyterLabSession {
             uiState: this._info.uiState,
             platform: this._info.platform
         }
-
+        
         this._window.loadURL(url.format({
-            pathname: path.resolve(__dirname, "index.html"),
+            pathname: path.join(__dirname, '../browser/index.html'),
             protocol: 'file:',
             slashes: true,
             search: encodeURIComponent(JSON.stringify(windowState))

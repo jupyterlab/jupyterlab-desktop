@@ -18,10 +18,6 @@ import {
 } from '@phosphor/coreutils';
 
 import {
-    //KeyboardShortcutManager
-} from './shortcuts'
-
-import {
     JupyterLabSession
 } from './sessions';
 

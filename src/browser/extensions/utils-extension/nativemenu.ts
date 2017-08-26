@@ -15,7 +15,7 @@ import {
 
 import {
     JupyterMenuIPC as MenuIPC
-} from 'jupyterlab_app/src/ipc';
+} from '../../../ipc';
 
 import {
     IMainMenu
@@ -23,7 +23,7 @@ import {
 
 import {
     ipcRenderer as ipc
-} from 'jupyterlab_app/src/browser/utils';
+} from '../../utils';
 
 type JupyterMenuItemOptions = MenuIPC.JupyterMenuItemOptions;
 

@@ -1,18 +1,21 @@
+// Copyright (c) Jupyter Development Team.
+// Distributed under the terms of the Modified BSD License.
 
+import './require';
 import 'font-awesome/css/font-awesome.min.css';
 import '@jupyterlab/theming/style/index.css';
-import 'jupyterlab_app/src/browser/style/main.css';
+import './style/main.css';
 
 import {
     Application
-} from 'jupyterlab_app/src/browser/app';
+} from './app';
 
 import * as React from 'react';
 import * as ReactDOM from 'react-dom';
 
 import {
     JupyterWindowIPC as WindowIPC
-} from 'jupyterlab_app/src/ipc';
+} from '../ipc';
 
 function main() : void {
     let optionsStr = decodeURIComponent((global as any).location.search);

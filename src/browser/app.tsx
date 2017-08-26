@@ -16,26 +16,26 @@ import {
 import {
     JupyterServerIPC as ServerIPC,
     JupyterApplicationIPC as AppIPC
-} from 'jupyterlab_app/src/ipc';
+} from '../ipc';
 
 import {
     SplashScreen, ServerManager, TitleBar, ServerError
-} from 'jupyterlab_app/src/browser/components';
+} from './components';
 
 import {
     ElectronJupyterLab
-} from 'jupyterlab_app/src/browser/extensions/electron-extension';
+} from './extensions/electron-extension';
 
 import {
     JupyterServer, ipcRenderer
-} from 'jupyterlab_app/src/browser/utils';
+} from './utils';
 
 import {
     JupyterLabSession
-} from 'jupyterlab_app/src/main/sessions';
+} from '../main/sessions';
 
 import * as React from 'react';
-import extensions from 'jupyterlab_app/src/browser/extensions';
+import extensions from './extensions';
 
 
 export

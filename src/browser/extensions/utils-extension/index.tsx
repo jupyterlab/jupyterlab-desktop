@@ -9,7 +9,7 @@ import {
 
 import {
     JupyterApplicationIPC as AppIPC,
-} from 'jupyterlab_app/src/ipc';
+} from '../../../ipc';
 
 import {
     JSONObject
@@ -17,7 +17,7 @@ import {
 
 import {
     Application
-} from 'jupyterlab_app/src/browser/app';
+} from '../../app';
 
 import {
     StateDB
@@ -33,7 +33,7 @@ import {
 
 import {
     ElectronJupyterLab
-} from 'jupyterlab_app/src/browser/extensions/electron-extension';
+} from '../electron-extension';
 
 import {
     NativeMenu
@@ -41,11 +41,11 @@ import {
 
 import {
     TitleBar
-} from 'jupyterlab_app/src/browser/components';
+} from '../../components';
 
 import {
     ipcRenderer
-} from 'jupyterlab_app/src/browser/utils';
+} from '../../utils';
 
 import * as React from 'react';
 import * as ReactDOM from 'react-dom';

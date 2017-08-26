@@ -3,7 +3,7 @@
 
 import {
     JupyterServer
-} from 'jupyterlab_app/src/browser/utils';
+} from '../../utils';
 
 import * as React from 'react';
 

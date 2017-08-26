@@ -3,16 +3,16 @@
 
 import {
     JupyterLabSession
-} from 'jupyterlab_app/src/main/sessions';
+} from '../../../main/sessions';
 
 import {
     remote, Browser, ipcRenderer
-} from 'jupyterlab_app/src/browser/utils';
+} from '../../utils';
 
 import {
     JupyterApplicationIPC as AppIPC,
     JupyterWindowIPC as WindowIPC
-} from 'jupyterlab_app/src/ipc';
+} from '../../../ipc';
 
 import * as React from 'react';
 

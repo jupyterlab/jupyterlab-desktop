@@ -13,7 +13,7 @@ import {
 
 import {
     JupyterMenuIPC as MenuIPC
-} from 'jupyterlab_app/src/ipc';
+} from '../ipc';
 
 import {
     IApplication

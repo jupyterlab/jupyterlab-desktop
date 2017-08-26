@@ -11,15 +11,15 @@ import {
 
 import {
   JupyterApplicationIPC as AppIPC
-} from 'jupyterlab_app/src/ipc';
+} from '../../../ipc';
 
 import {
   ipcRenderer, Browser
-} from 'jupyterlab_app/src/browser/utils';
+} from '../../utils';
 
 import {
   JupyterLabSession
-} from 'jupyterlab_app/src/main/sessions';
+} from '../../../main/sessions';
 
 import {
   each
