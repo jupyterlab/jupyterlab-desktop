@@ -7,7 +7,7 @@ import {
 
 import {
     JupyterApplicationIPC as AppIPC
-} from 'jupyterlab_app/src/ipc';
+} from '../ipc';
 
 import {
     ISessions

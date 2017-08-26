@@ -3,11 +3,11 @@
 
 import {
     TitleBar
-} from 'jupyterlab_app/src/browser/components';
+} from '../titlebar';
 
 import {
     JupyterLabSession
-} from 'jupyterlab_app/src/main/sessions';
+} from '../../../main/sessions';
 
 import * as React from 'react';
 

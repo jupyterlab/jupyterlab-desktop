@@ -2,7 +2,7 @@
   "name": "jupyterlab_app",
   "version": "0.1.1",
   "description": "A native app for JupyterLab, based on electron.",
-  "main": "build/main.bundle.js",
+  "main": "./build/out/main/main.js",
   "scripts": {
     "start": "electron .",
     "start:windows": "electron . --windows-ui",
@@ -10,11 +10,12 @@
     "start:mac": "electron . --mac-ui",
     "test": "echo \"Error: no test specified\" && exit 1",
     "clean": "rm -fr build dist",
-    "watch:browser": "webpack --progress --colors --watch --config webpack.browser.js",
-    "watch:main": "webpack --progress --colors --watch --config webpack.main.js",
-    "build:main": "webpack --config webpack.main.js",
+    "watch:pack": "webpack --progress --colors --watch --config webpack.browser.js",
+    "watch:tsc": "tsc -w",
+    "watch:assets": "node ./scripts/copyassets.js watch",
+    "watch": "concurrently \"npm run watch:tsc\" \"npm run watch:assets\" \"npm run watch:pack\" ",
     "build:browser": "webpack --config webpack.browser.js",
-    "build": "npm run build:main && npm run build:browser",
+    "build": "tsc && node ./scripts/copyassets.js && npm run build:browser",
     "build:all": "npm run build && npm start",
     "pack": "npm run build && electron-builder --dir",
     "dist": "npm run build && electron-builder",
@@ -41,10 +42,7 @@
     ],
     "linux": {
       "target": [
-        "deb",
-        "rpm",
-        "tar.gz",
-        "AppImage"
+        "deb"
       ],
       "desktop": {
         "Category": "Science;Development;"
@@ -92,13 +90,17 @@
   "homepage": "https://github.com/jupyterlab/jupyterlab_app#readme",
   "devDependencies": {
     "awesome-typescript-loader": "^3.2.1",
+    "concurrently": "^3.5.0",
     "css-loader": "^0.27.3",
     "devtron": "^1.4.0",
     "electron": "^1.6.11",
     "electron-builder": "^19.13.0",
+    "extract-text-webpack-plugin": "^2.1.2",
+    "file": "^0.2.2",
     "file-loader": "^0.10.1",
     "fs-extra": "^2.1.2",
     "json-loader": "^0.5.4",
+    "node-watch": "^0.5.5",
     "style-loader": "^0.13.1",
     "typescript": "~2.3.1",
     "url-loader": "^0.5.7",

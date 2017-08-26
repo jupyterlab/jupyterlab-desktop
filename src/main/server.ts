@@ -16,7 +16,7 @@ import {
 
 import {
     JupyterServerIPC as ServerIPC
-} from 'jupyterlab_app/src/ipc';
+} from '../ipc';
 
 import{
     IApplication, IClosingService

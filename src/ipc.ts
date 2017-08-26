@@ -13,11 +13,11 @@ import {
 
 import {
     MenuItemConstructorOptions
-} from 'jupyterlab_app/src/main/menu';
+} from './main/menu';
 
 import {
     JupyterLabSession
-} from 'jupyterlab_app/src/main/sessions';
+} from './main/sessions';
 
 export
 namespace JupyterApplicationIPC {
