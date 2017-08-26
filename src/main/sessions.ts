@@ -34,9 +34,9 @@ import {
     EventEmitter
 } from 'events';
 
-import * as path from 'path';
 import * as url from 'url';
 import * as fs from 'fs';
+import * as path from 'path';
 
 
 export
@@ -410,9 +410,9 @@ class JupyterLabSession {
             uiState: this._info.uiState,
             platform: this._info.platform
         }
-
+        
         this._window.loadURL(url.format({
-            pathname: path.resolve("./build/out/browser/index.html"),
+            pathname: path.join(__dirname, '../browser/index.html'),
             protocol: 'file:',
             slashes: true,
             search: encodeURIComponent(JSON.stringify(windowState))
