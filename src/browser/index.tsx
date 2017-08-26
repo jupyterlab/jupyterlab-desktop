@@ -17,6 +17,21 @@ import {
     JupyterWindowIPC as WindowIPC
 } from '../ipc';
 
+
+/**
+ * HACK
+ * 
+ * The JupyterLab coreutils package uses the process.cwd
+ * function with the expectation that it returns a '/', which
+ * is the case when the code is bundled by webpack. Since this code
+ * is not bundled, and electron gives the render process access node's
+ * `process` variable, prcess.cwd actually evaluates to the current
+ * working directory of the nodeapplication. Here we are overrding it
+ * to maintain the bahavior JupyterLab expects.
+ */
+process.cwd = () => {return '/'}
+
+
 function main() : void {
     let optionsStr = decodeURIComponent((global as any).location.search);
     let options: WindowIPC.IWindowState = JSON.parse(optionsStr.slice(1));
