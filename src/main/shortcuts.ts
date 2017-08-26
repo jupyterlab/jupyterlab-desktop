@@ -11,11 +11,11 @@ import {
 
 import {
     ISessions
-} from 'jupyterlab_app/src/main/sessions';
+} from './sessions';
 
 import {
     IService
-} from 'jupyterlab_app/src/main/main';
+} from './main';
 
 export
 interface IShortcutManager {}

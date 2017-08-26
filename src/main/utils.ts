@@ -7,11 +7,11 @@ import {
 
 import {
     IApplication, IStatefulService
-} from 'jupyterlab_app/src/main/app';
+} from './app';
 
 import {
     IExposedMethod, IExposedMethodPrivate, IMainConnect
-} from 'jupyterlab_app/src/ipc2/main';
+} from '../ipc2/main';
 
 import {
     IDataConnector, ISettingRegistry
@@ -19,7 +19,7 @@ import {
 
 import {
     IService
-} from 'jupyterlab_app/src/main/main';
+} from './main';
 
 import * as path from 'path';
 import * as fs from 'fs';
@@ -141,7 +141,7 @@ implements IStatefulService, IDataConnector<ISettingRegistry.IPlugin, JSONObject
      * bundle.
      */
     private _getDefaultSettings(): Promise<Private.IPluginData> {
-        let schemasPath = path.join(__dirname, 'schemas');
+        let schemasPath = path.join(__dirname, '../../schemas');
 
         return new Promise<string[]>((res, rej) => {
             // Get files in schema directory

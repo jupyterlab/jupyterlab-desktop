@@ -7,7 +7,7 @@ import {
 
 import {
     IExposedMethodPrivate, Utils
-} from 'jupyterlab_app/src/ipc2/ipc';
+} from '../ipc';
 
 export
 interface IMainConnect {

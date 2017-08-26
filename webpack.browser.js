@@ -4,7 +4,7 @@ var fs = require('fs-extra');
 var crypto = require('crypto');
 var package_data = require('./package.json');
 const ExtractTextPlugin = require("extract-text-webpack-plugin");
-var buildDir = './build';
+var buildDir = path.resolve('./build');
 
 // Create the hash
 var hash = crypto.createHash('md5');
@@ -13,7 +13,7 @@ var digest = hash.digest('hex');
 fs.writeFileSync(path.resolve(buildDir, 'hash.md5'), digest);
 
 module.exports = {
-  entry:  './jupyterlab_app/src/browser/index.js',
+  entry:  './build/out/browser/index.js',
   output: {
     path: buildDir,
     filename: 'browser.bundle.js',

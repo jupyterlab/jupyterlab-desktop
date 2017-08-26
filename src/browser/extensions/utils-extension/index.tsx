@@ -49,11 +49,11 @@ import {
 
 import {
     renderConnect
-} from 'jupyterlab_app/src/ipc2/render';
+} from '../../../ipc2/render';
 
 import {
     fetch, save
-} from 'jupyterlab_app/src/main/utils';
+} from '../../../main/utils';
 
 import * as React from 'react';
 import * as ReactDOM from 'react-dom';

@@ -3,11 +3,11 @@
 
 import {
     IService
-} from 'jupyterlab_app/src/main/main';
+} from './main';
 
 import {
     mainConnect, IMainConnect
-} from 'jupyterlab_app/src/ipc2/main';
+} from '../ipc2/main';
 
 let service: IService = {
     requirements: [],

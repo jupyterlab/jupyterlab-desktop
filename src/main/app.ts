@@ -7,7 +7,7 @@ import {
 
 import {
     IService
-} from 'jupyterlab_app/src/main/main';
+} from './main';
 
 import {
     ElectronStateDB
