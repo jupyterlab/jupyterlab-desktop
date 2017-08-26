@@ -42,7 +42,10 @@
     ],
     "linux": {
       "target": [
-        "deb"
+        "deb",
+        "rpm",
+        "tar.gz",
+        "AppImage"
       ],
       "desktop": {
         "Category": "Science;Development;"
