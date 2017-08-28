@@ -4,28 +4,28 @@
 let ipcRenderer: Electron.IpcRenderer = require('electron').ipcRenderer;
 
 import {
-    IExposedMethod, Utils
-} from '../ipc';
+    AsyncRemote, Utils
+} from './ipc';
 
 export
-interface IRenderConnect {
+interface IAsyncRemoteRender {
 
-    createRemoteMethod: <T, U>(method: IExposedMethod<T, U>) => (arg: T) => Promise<U>;
+    createRemoteMethod: <T, U>(method: AsyncRemote.IMethod<T, U>) => (arg: T) => Promise<U>;
 
-    run<T, U>(method: IExposedMethod<T, U>, arg: T): Promise<U>;
+    runRemoteMethod<T, U>(method: AsyncRemote.IMethod<T, U>, arg: T): Promise<U>;
 }
 
-class RenderConnect implements IRenderConnect {
+class RenderRemote implements IAsyncRemoteRender {
 
-    createRemoteMethod<T, U>(method: IExposedMethod<T, U>): (arg: T) => Promise<U> {
+    createRemoteMethod<T, U>(method: AsyncRemote.IMethod<T, U>): (arg: T) => Promise<U> {
         let func = (arg: T) => {
-            this.run(method, arg);
+            this.runRemoteMethod(method, arg);
         };
 
         return func.bind(this);
     }
 
-    run<T, U>(method: IExposedMethod<T, U>, arg: T): Promise<U> {
+    runRemoteMethod<T, U>(method: AsyncRemote.IMethod<T, U>, arg: T): Promise<U> {
         let messageId = this._messageCounter++;
         let responseChannel = Utils.makeResponseChannel(method.id, messageId);
 
@@ -56,5 +56,4 @@ class RenderConnect implements IRenderConnect {
 }
 
 export
-let renderConnect = new RenderConnect() as IRenderConnect;
-
+let asyncRemoteRender = new RenderRemote() as IAsyncRemoteRender;

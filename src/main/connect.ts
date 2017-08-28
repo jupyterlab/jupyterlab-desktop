@@ -6,14 +6,14 @@ import {
 } from './main';
 
 import {
-    mainConnect, IMainConnect
-} from '../ipc2/main';
+    asyncRemoteMain, IAsyncRemoteMain
+} from '../asyncremote';
 
 let service: IService = {
     requirements: [],
     provides: 'IMainConnect',
-    activate: (): IMainConnect => {
-        return mainConnect;
+    activate: (): IAsyncRemoteMain => {
+        return asyncRemoteMain;
     },
     autostart: true
 }

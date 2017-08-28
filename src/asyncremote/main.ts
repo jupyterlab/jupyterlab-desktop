@@ -6,22 +6,22 @@ import {
 } from 'electron';
 
 import {
-    IExposedMethodPrivate, Utils
-} from '../ipc';
+    AsyncRemote, Utils
+} from './ipc';
 
 export
-interface IMainConnect {
+interface IAsyncRemoteMain {
 
-    registerExposedMethod: <T, U>(method: IExposedMethodPrivate<T, U>) => void;
+    registerRemoteMethod: <T, U>(method: AsyncRemote.IMethodExec<T, U>) => void;
 }
 
-class MainConnect implements IMainConnect {
+class MainRemote implements IAsyncRemoteMain {
 
     constructor() {
         ipcMain.on(Utils.IPC_REQUEST_EXECUTE, this._executeMethod.bind(this));
     }
     
-    registerExposedMethod<T, U>(method: IExposedMethodPrivate<T, U>): void {
+    registerRemoteMethod<T, U>(method: AsyncRemote.IMethodExec<T, U>): void {
         this._methods[method.id] = method;
     }
 
@@ -54,8 +54,8 @@ class MainConnect implements IMainConnect {
             });
     }
 
-    private _methods: {[key: string]: IExposedMethodPrivate<any, any>} = {};
+    private _methods: {[key: string]: AsyncRemote.IMethodExec<any, any>} = {};
 }
 
 export
-let mainConnect = new MainConnect() as IMainConnect;
+let asyncRemoteMain = new MainRemote() as IAsyncRemoteMain;

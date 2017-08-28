@@ -10,8 +10,8 @@ import {
 } from './app';
 
 import {
-    IExposedMethod, IExposedMethodPrivate, IMainConnect
-} from '../ipc2/main';
+    AsyncRemote, IAsyncRemoteMain
+} from '../asyncremote';
 
 import {
     IDataConnector, ISettingRegistry
@@ -25,12 +25,12 @@ import * as path from 'path';
 import * as fs from 'fs';
 
 export
-let fetch: IExposedMethod<string, ISettingRegistry.IPlugin> = {
+let fetch: AsyncRemote.IMethod<string, ISettingRegistry.IPlugin> = {
     id: 'JupyterLabDataConnector-fetch'
 }
 
 export
-let save: IExposedMethod<ISaveOptions, void> = {
+let save: AsyncRemote.IMethod<ISaveOptions, void> = {
     id: 'JupyterLabDataConnector-save'
 }
 
@@ -55,7 +55,7 @@ implements IStatefulService, IDataConnector<ISettingRegistry.IPlugin, JSONObject
 
     id: string = 'JupyterLabSettings';
 
-    constructor(app: IApplication, remote: IMainConnect) {
+    constructor(app: IApplication, asyncRemote: IAsyncRemoteMain) {
         this._settings = app.registerStatefulService(this)
             .then((settings: Private.IPluginData) => {
                 if(!settings) {
@@ -67,11 +67,11 @@ implements IStatefulService, IDataConnector<ISettingRegistry.IPlugin, JSONObject
                 return this._getDefaultSettings();
             });
         
-        // Create 'fetch' exposed method
-        remote.registerExposedMethod(this._exposedFetch);
+        // Create 'fetch' remote method
+        asyncRemote.registerRemoteMethod(this._exposedFetch);
         
-        // Create 'save' exposed method
-        remote.registerExposedMethod(this._exposedSave);
+        // Create 'save' remote method
+        asyncRemote.registerRemoteMethod(this._exposedSave);
     }
 
     /**
@@ -186,12 +186,12 @@ implements IStatefulService, IDataConnector<ISettingRegistry.IPlugin, JSONObject
         })
     }
 
-    private _exposedFetch: IExposedMethodPrivate<string, ISettingRegistry.IPlugin> = {
+    private _exposedFetch: AsyncRemote.IMethodExec<string, ISettingRegistry.IPlugin> = {
         ...fetch,
         execute: this.fetch.bind(this)
     }
     
-    private _exposedSave: IExposedMethodPrivate<ISaveOptions, void> = {
+    private _exposedSave: AsyncRemote.IMethodExec<ISaveOptions, void> = {
         ...save,
         execute: (opts: ISaveOptions) => {
             return this.save(opts.id, opts.user);
@@ -212,8 +212,8 @@ namespace Private {
 let service: IService = {
     requirements: ['IApplication', 'IMainConnect'],
     provides: 'IDataConnectory',
-    activate: (app: IApplication, remote: IMainConnect): IDataConnector<ISettingRegistry.IPlugin, JSONObject> => {
-        return new JupyterLabDataConnector(app, remote);
+    activate: (app: IApplication, asyncRemote: IAsyncRemoteMain): IDataConnector<ISettingRegistry.IPlugin, JSONObject> => {
+        return new JupyterLabDataConnector(app, asyncRemote);
     },
     autostart: true
 }

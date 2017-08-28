@@ -2,17 +2,22 @@
 // Distributed under the terms of the Modified BSD License.
 
 export
-interface IExposedMethodPrivate<T, U> extends IExposedMethod<T, U> {
+namespace AsyncRemote {
+    export
+    interface IMethodExec<T, U> extends IMethod<T, U> {
 
-    execute(arg: T): Promise<U>;
-}
+        execute(arg: T): Promise<U>;
+    }
 
-export
-interface IExposedMethod<T, U> {
-    
-    id: string;
+    export
+    interface IMethod<T, U> {
+        
+        id: string;
 
-    check?: (arg: T) => U;
+        _argType?: T;
+
+        _retType?: U;
+    }
 }
 
 export
