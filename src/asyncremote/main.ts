@@ -13,25 +13,31 @@ export
 interface IAsyncRemoteMain {
 
     registerRemoteMethod: <T, U>(method: AsyncRemote.IMethodExec<T, U>) => void;
+
+    emitRemoteEvent: <U>(event: AsyncRemote.IEventEmit<U>, contents: Electron.WebContents) => void
 }
 
 class MainRemote implements IAsyncRemoteMain {
 
     constructor() {
-        ipcMain.on(Utils.IPC_REQUEST_EXECUTE, this._executeMethod.bind(this));
+        ipcMain.on(Utils.REQUEST_METHOD_EXECUTE, this._executeMethod.bind(this));
     }
     
     registerRemoteMethod<T, U>(method: AsyncRemote.IMethodExec<T, U>): void {
         this._methods[method.id] = method;
     }
 
-    private _executeMethod(evt: Electron.Event, data: Utils.IExecuteRequest<any>): void {
+    emitRemoteEvent<U>(event: AsyncRemote.IEventEmit<U>, contents: Electron.WebContents): void {
+        contents.send(Utils.EMIT_EVENT, event);
+    }
+
+    private _executeMethod(evt: Electron.Event, data: Utils.IMethodExecuteRequest<any>): void {
         let responseChannel = Utils.makeResponseChannel(data.methodId, data.messageId);
 
         // Check that the method exists
         let method = this._methods[data.methodId];
         if (!method) {
-            let payload: Utils.IExecuteResponse<any> = {
+            let payload: Utils.IMethodExecuteResponse<any> = {
                 resp: null,
                 err: new Error('Method ' + data.methodId + 'does not exist.')
             }
@@ -41,12 +47,12 @@ class MainRemote implements IAsyncRemoteMain {
 
         method.execute(data.arg)
             .then((resp: any) => {
-                let payload: Utils.IExecuteResponse<any> = {
+                let payload: Utils.IMethodExecuteResponse<any> = {
                     resp: resp,
                 }
                 evt.sender.send(responseChannel, payload);
             }).catch(e => {
-                let payload: Utils.IExecuteResponse<any> = {
+                let payload: Utils.IMethodExecuteResponse<any> = {
                     resp: null,
                     err: e
                 }
@@ -57,5 +63,12 @@ class MainRemote implements IAsyncRemoteMain {
     private _methods: {[key: string]: AsyncRemote.IMethodExec<any, any>} = {};
 }
 
+let isRenderer = (process && process.type === 'renderer');
+let asyncRemote: IAsyncRemoteMain;
+if (!isRenderer) {
+    asyncRemote = new MainRemote() as IAsyncRemoteMain;
+} else {
+    asyncRemote = null;
+}
 export
-let asyncRemoteMain = new MainRemote() as IAsyncRemoteMain;
+let asyncRemoteMain = asyncRemote;

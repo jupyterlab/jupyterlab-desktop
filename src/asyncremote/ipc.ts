@@ -18,25 +18,44 @@ namespace AsyncRemote {
 
         _retType?: U;
     }
+    
+    export
+    interface IEventEmit<U> {
+        
+        id: string;
+
+        data: U;
+    }
+
+    export
+    interface IEvent<U> {
+        
+        id: string;
+
+        _dataType?: U;
+    }
 }
 
 export
 namespace Utils {
     export
-    const IPC_REQUEST_EXECUTE = 'ipc-request-execute';
+    const REQUEST_METHOD_EXECUTE = 'async-remote:request-method-execute';
     
     export
-    const IPC_RESPOND_EXECUTE = 'ipc-respond-execute';
+    const RESPOND_METHOD_EXECUTE = 'async-remote:respond-method-execute';
 
     export
-    interface IExecuteRequest<T> {
+    const EMIT_EVENT = 'async-remote:emit-event';
+
+    export
+    interface IMethodExecuteRequest<T> {
         messageId: number;
         methodId: string;
         arg: T;
     }
 
     export
-    interface IExecuteResponse<U> {
+    interface IMethodExecuteResponse<U> {
         resp: U;
         err?: any;
     }

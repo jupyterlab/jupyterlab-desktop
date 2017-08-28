@@ -68,10 +68,10 @@ implements IStatefulService, IDataConnector<ISettingRegistry.IPlugin, JSONObject
             });
         
         // Create 'fetch' remote method
-        asyncRemote.registerRemoteMethod(this._exposedFetch);
+        asyncRemote.registerRemoteMethod(this._remoteFetch);
         
         // Create 'save' remote method
-        asyncRemote.registerRemoteMethod(this._exposedSave);
+        asyncRemote.registerRemoteMethod(this._remoteSave);
     }
 
     /**
@@ -186,12 +186,12 @@ implements IStatefulService, IDataConnector<ISettingRegistry.IPlugin, JSONObject
         })
     }
 
-    private _exposedFetch: AsyncRemote.IMethodExec<string, ISettingRegistry.IPlugin> = {
+    private _remoteFetch: AsyncRemote.IMethodExec<string, ISettingRegistry.IPlugin> = {
         ...fetch,
         execute: this.fetch.bind(this)
     }
     
-    private _exposedSave: AsyncRemote.IMethodExec<ISaveOptions, void> = {
+    private _remoteSave: AsyncRemote.IMethodExec<ISaveOptions, void> = {
         ...save,
         execute: (opts: ISaveOptions) => {
             return this.save(opts.id, opts.user);

@@ -56,7 +56,7 @@ let services: IService[] = [
     require('./menu').default,
     require('./shortcuts').default,
     require('./utils').default,
-    require('./connect').default
+    require('./asyncremote').default
 ];
 
 /**

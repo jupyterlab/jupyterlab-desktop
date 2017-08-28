@@ -48,8 +48,8 @@ import {
 } from '../../utils';
 
 import {
-    renderConnect
-} from '../../../ipc2/render';
+    asyncRemoteRenderer
+} from '../../../asyncremote';
 
 import {
     fetch, save
@@ -203,7 +203,7 @@ function newConnector(): IDataConnector<ISettingRegistry.IPlugin, JSONObject> {
      * Retrieve a saved bundle from the data connector.
      */
     fetch(settingsId: string): Promise<ISettingRegistry.IPlugin> {
-        return renderConnect.run(fetch, settingsId);
+        return asyncRemoteRenderer.runRemoteMethod(fetch, settingsId);
     },
 
     /**
@@ -219,7 +219,7 @@ function newConnector(): IDataConnector<ISettingRegistry.IPlugin, JSONObject> {
      * Save the user setting data in the data connector.
      */
     save(id: string, user: JSONObject): Promise<void> {
-        return renderConnect.run(save, {id, user});
+        return asyncRemoteRenderer.runRemoteMethod(save, {id, user});
     }
   };
 }
