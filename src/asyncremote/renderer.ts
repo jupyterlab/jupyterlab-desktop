@@ -27,7 +27,7 @@ class RenderRemote implements IAsyncRemoteRender {
 
     constructor() {
         // Add listener for events
-        ipcRenderer.on(Utils.EMIT_EVENT, (data: AsyncRemote.IEventEmit<any>) => {
+        ipcRenderer.on(Utils.EMIT_EVENT, (event: Electron.Event, data: Utils.IEventEmit<any>) => {
             this._eventEmitter.emit(data.id, data.data);
         });
     }

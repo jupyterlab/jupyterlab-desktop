@@ -57,7 +57,8 @@ module.exports = {
     ],
   },
   externals: {
-    module: 'commonjs module'
+    module: 'commonjs module',
+    child_process: 'commonjs child_process'
   },
   node: {
     fs: 'empty',

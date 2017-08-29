@@ -14,9 +14,16 @@ import {
 } from '@jupyterlab/coreutils';
 
 import {
-    JupyterServerIPC as ServerIPC,
     JupyterApplicationIPC as AppIPC
 } from '../ipc';
+
+import {
+    asyncRemoteRenderer
+} from '../asyncremote';
+
+import {
+    IServerFactory
+} from '../main/server';
 
 import {
     SplashScreen, ServerManager, TitleBar, ServerError
@@ -53,45 +60,12 @@ class Application extends React.Component<Application.Props, Application.State> 
         this._launchFromPath = this._launchFromPath.bind(this);
         this._labReady = this._setupLab();
         
-        ipcRenderer.on(ServerIPC.RESPOND_SERVER_STARTED, (event: any, data: ServerIPC.IServerStarted) => {
-            if (data.err) {
-                console.error(data.err);
-                this.setState({renderState: this._renderErrorScreen});
-                (this.refs.splash as SplashScreen).fadeSplashScreen();
-                return;
-            }
-            this._registerFileHandler();
-            window.addEventListener('beforeunload', () => {
-                let stopMessage: ServerIPC.IRequestServerStop = {factoryId: data.factoryId}; 
-                ipcRenderer.send(ServerIPC.REQUEST_SERVER_STOP, stopMessage);
-            });
-            
-            this._server = {
-                token: data.token,
-                url: data.url,
-                name: 'Local',
-                type: 'local',
-            };
-
-            PageConfig.setOption("token", this._server.token);
-            PageConfig.setOption("baseUrl", this._server.url);
-            
-            this._labReady.then(() => {
-                try {
-                    this._lab.start({"ignorePlugins": this._ignorePlugins});
-                } catch(e) {
-                    console.log(e);
-                }
-                this._lab.restored.then( () => {
-                    ipcRenderer.send(AppIPC.LAB_READY);
-                    (this.refs.splash as SplashScreen).fadeSplashScreen();
-                });
-            });
-        });
-
         if (this.props.options.serverState == 'local') {
             this.state = {renderSplash: this._renderSplash, renderState: this._renderEmpty, remotes: []};
-            ipcRenderer.send(ServerIPC.REQUEST_SERVER_START);
+            asyncRemoteRenderer.runRemoteMethod(IServerFactory.requestServerStart, undefined)
+                .then((data) => {
+                    this._serverReady(data);
+                })
         } else {
             this.state = {renderSplash: this._renderEmpty, renderState: this._renderServerManager, remotes: []};
         }
@@ -129,15 +103,55 @@ class Application extends React.Component<Application.Props, Application.State> 
             </div>
         );
     }
+
+    private _serverReady(data: IServerFactory.IServerStarted): void {
+        if (data.err) {
+            console.error(data.err);
+            this.setState({renderState: this._renderErrorScreen});
+            (this.refs.splash as SplashScreen).fadeSplashScreen();
+            return;
+        }
+        this._registerFileHandler();
+        window.addEventListener('beforeunload', () => {
+            asyncRemoteRenderer.runRemoteMethod(IServerFactory.requestServerStop, {
+                factoryId: data.factoryId
+            });
+        });
+        
+        this._server = {
+            token: data.token,
+            url: data.url,
+            name: 'Local',
+            type: 'local',
+        };
+
+        PageConfig.setOption("token", this._server.token);
+        PageConfig.setOption("baseUrl", this._server.url);
+        
+        this._labReady.then(() => {
+            try {
+                this._lab.start({"ignorePlugins": this._ignorePlugins});
+            } catch(e) {
+                console.log(e);
+            }
+            this._lab.restored.then( () => {
+                ipcRenderer.send(AppIPC.LAB_READY);
+                (this.refs.splash as SplashScreen).fadeSplashScreen();
+            });
+        });
+    }
     
     private _launchFromPath() {
-        ipcRenderer.send(ServerIPC.REQUEST_SERVER_START_PATH);
+        asyncRemoteRenderer.runRemoteMethod(IServerFactory.requestServerStartPath, undefined)
+            .then((data: IServerFactory.IServerStarted) => {
+                this._serverReady(data);
+            });
 
         let pathSelected = () => {
-            ipcRenderer.removeListener(ServerIPC.POST_PATH_SELECTED, pathSelected);
+            asyncRemoteRenderer.removeRemoteListener(IServerFactory.pathSelectedEvent, pathSelected);
             this.setState({renderSplash: this._renderSplash, renderState: this._renderEmpty});
         }
-        ipcRenderer.on(ServerIPC.POST_PATH_SELECTED, pathSelected);
+        asyncRemoteRenderer.onRemoteEvent(IServerFactory.pathSelectedEvent, pathSelected);
     }
 
     private _saveState() {

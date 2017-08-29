@@ -10,9 +10,16 @@ import {
 } from '../../utils';
 
 import {
-    JupyterApplicationIPC as AppIPC,
     JupyterWindowIPC as WindowIPC
 } from '../../../ipc';
+
+import {
+    asyncRemoteRenderer
+} from '../../../asyncremote';
+
+import {
+    IShortcutManager
+} from '../../../main/shortcuts';
 
 import * as React from 'react';
 
@@ -52,13 +59,13 @@ class TitleBar extends React.Component<TitleBar.Props, TitleBar.State> {
         this._handleMaximize = this._handleMaximize.bind(this);
         this._handleUnmaximize = this._handleUnmaximize.bind(this);
 
-        ipcRenderer.on(AppIPC.POST_ZOOM_EVENT, this._handleZoom);
+        asyncRemoteRenderer.onRemoteEvent(IShortcutManager.zoomEvent, this._handleZoom);
         ipcRenderer.on(WindowIPC.POST_MAXIMIZE_EVENT, this._handleMaximize);
         ipcRenderer.on(WindowIPC.POST_UNMAXIMIZE_EVENT, this._handleUnmaximize);
     }
 
     componentWillUnmount() {
-        ipcRenderer.removeListener(AppIPC.POST_ZOOM_EVENT, this._handleZoom);
+        asyncRemoteRenderer.removeRemoteListener(IShortcutManager.zoomEvent, this._handleZoom);
         ipcRenderer.removeListener(WindowIPC.POST_MAXIMIZE_EVENT, this._handleMaximize);
         ipcRenderer.removeListener(WindowIPC.POST_UNMAXIMIZE_EVENT, this._handleUnmaximize);
     }

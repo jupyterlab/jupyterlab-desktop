@@ -11,7 +11,7 @@ import {
 
 let service: IService = {
     requirements: [],
-    provides: 'IMainConnect',
+    provides: 'IAsyncRemoteMain',
     activate: (): IAsyncRemoteMain => {
         return asyncRemoteMain;
     },

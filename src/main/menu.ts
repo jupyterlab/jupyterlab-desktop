@@ -4,16 +4,12 @@
 |----------------------------------------------------------------------------*/
 
 import {
-    Menu, MenuItem, ipcMain
+    Menu, MenuItem
 } from 'electron';
 
 import {
     ArrayExt
 } from '@phosphor/algorithm';
-
-import {
-    JupyterMenuIPC as MenuIPC
-} from '../ipc';
 
 import {
     IApplication
@@ -27,30 +23,66 @@ import {
     ISessions
 } from './sessions';
 
-type JupyterMenuItemOptions = MenuIPC.JupyterMenuItemOptions;
+import {
+    AsyncRemote, IAsyncRemoteMain
+} from '../asyncremote';
 
 export
-type MenuItemConstructorOptions = Electron.MenuItemConstructorOptions;
+interface INativeMenu {
+
+    addMenu: (menu: INativeMenu.IMenuItemOptions) => Promise<void>;
+}
 
 export
-interface IMainMenu {}
+namespace INativeMenu {
+
+    export
+    let addMenu: AsyncRemote.IMethod<IMenuItemOptions, void> = {
+        id: 'JupyterMainMenu-addmenu'
+    }
+
+    export
+    let clickEvent: AsyncRemote.IEvent<IMenuItemOptions> = {
+        id: 'JupyterMainMenu-click'
+    }
+
+    /**
+     * Jupyter main menu item description. Conforms to the menu description
+     * required by electron.
+     */
+    export
+    interface IMenuItemOptions extends Electron.MenuItemConstructorOptions {
+
+        /**
+         * Rank of the menu item. Lower ranks float to the front of the menu.
+         * Default value is 100.
+         */
+        rank?: number;
+
+        /**
+         * The command to run when the item is clicked. Sent to the
+         * render process via IPC.
+         */
+        command?: string;
+
+        /**
+         * Optional arguments to the command
+         */
+        args?: any;
+    }
+}
 
 /**
  * Native main menu bar class
  */
-export
-class JupyterMainMenu implements IMainMenu {
+class JupyterMainMenu implements INativeMenu {
 
-    constructor(app: IApplication, sessions: ISessions) {
+    constructor(app: IApplication, sessions: ISessions, asyncRemote: IAsyncRemoteMain) {
         this._jupyterApp = app;
         this._sessions = sessions;
+        this._asyncRemote = asyncRemote;
         this._menu = new Menu();
         
-        /* Register MENU_ADD event */
-        ipcMain.on(MenuIPC.REQUEST_MENU_ADD, (event: any, menu: JupyterMenuItemOptions) => {
-            this._addMenu(event, menu);
-        });
-
         if (process.platform === 'darwin') {
             this._menu.append(new MenuItem({
                 id: '-1',
@@ -59,6 +91,9 @@ class JupyterMainMenu implements IMainMenu {
             }));
         }
         Menu.setApplicationMenu(this._menu);
+        
+        // Register 'menuAdd' remote method
+        this._asyncRemote.registerRemoteMethod(INativeMenu.addMenu, this.addMenu.bind(this));
     }
 
     /**
@@ -66,14 +101,14 @@ class JupyterMainMenu implements IMainMenu {
      * 
      * @param menu A menu being added to the menu bar. 
      */
-    private _setClickEvents(menu: JupyterMenuItemOptions): void {
+    private _setClickEvents(menu: INativeMenu.IMenuItemOptions): void {
         let boundClick = this.handleClick.bind(this);
         if (menu.submenu === null || menu.submenu === undefined) {
             menu.click = boundClick;
             return;
         }
 
-        let items = <JupyterMenuItemOptions[]>menu.submenu;
+        let items = <INativeMenu.IMenuItemOptions[]>menu.submenu;
         for (let i = 0, n = items.length; i < n; i++) {
             this._setClickEvents(items[i]);
         }
@@ -85,15 +120,14 @@ class JupyterMainMenu implements IMainMenu {
      * Chooses menubar position of menu based on the 'id' field string.
      * Lower numbers in the 'id' field float up in the menubar
      * 
-     * @param event The ipc event object 
      * @param menu The menu item configuration
      */
-    private _addMenu(event: any, menu: JupyterMenuItemOptions) {
+    addMenu(menu: INativeMenu.IMenuItemOptions): Promise<void> {
         let items = this._menu.items;
         /* Check if item has already been inserted */
         for (let i = 0, n = items.length; i < n; i++) {
             if (items[i].label == menu.label)
-                return;
+                return Promise.resolve();
         }
 
         this._setClickEvents(menu);
@@ -102,13 +136,14 @@ class JupyterMainMenu implements IMainMenu {
             menu.rank = 100;
 
         /* Set position in the native menu bar */
-        let index = ArrayExt.upperBound(<JupyterMenuItemOptions[]>items, menu, 
-                    (f: JupyterMenuItemOptions, s: JupyterMenuItemOptions) => {
+        let index = ArrayExt.upperBound(<INativeMenu.IMenuItemOptions[]>items, menu, 
+                    (f: INativeMenu.IMenuItemOptions, s: INativeMenu.IMenuItemOptions) => {
                         return f.rank - s.rank;
                     });
         
         this._menu.insert(index, new MenuItem(menu));
         Menu.setApplicationMenu(this._menu);
+        return Promise.resolve();
     }
 
     /**
@@ -116,8 +151,9 @@ class JupyterMainMenu implements IMainMenu {
      */
     private handleClick(menu: Electron.MenuItem, window: Electron.BrowserWindow): void {
         // Application window is in focus
-        if (window){
-             window.webContents.send(MenuIPC.POST_CLICK_EVENT, menu as JupyterMenuItemOptions);
+        if (window) {
+            this._asyncRemote.emitRemoteEvent(INativeMenu.clickEvent, 
+                window.webContents, menu as INativeMenu.IMenuItemOptions);
         }
         // No application windows available
         else {
@@ -139,13 +175,15 @@ class JupyterMainMenu implements IMainMenu {
     private _jupyterApp: IApplication;
 
     private _sessions: ISessions;
+
+    private _asyncRemote: IAsyncRemoteMain;
 }
 
 let service: IService = {
-    requirements: ['IApplication', 'ISessions'],
-    provides: 'IMainMenu',
-    activate: (app: IApplication, sessions: ISessions): IMainMenu => {
-        return new JupyterMainMenu(app, sessions);
+    requirements: ['IApplication', 'ISessions', 'IAsyncRemoteMain'],
+    provides: 'INativeMenu',
+    activate: (app: IApplication, sessions: ISessions, asyncRemote: IAsyncRemoteMain): INativeMenu => {
+        return new JupyterMainMenu(app, sessions, asyncRemote);
     },
     autostart: true
 }

@@ -12,9 +12,9 @@ import {
 export
 interface IAsyncRemoteMain {
 
-    registerRemoteMethod: <T, U>(method: AsyncRemote.IMethodExec<T, U>) => void;
+    registerRemoteMethod: <T, U>(method: AsyncRemote.IMethod<T, U>, execute: (arg: T, caller: Electron.WebContents) => Promise<U>) => void;
 
-    emitRemoteEvent: <U>(event: AsyncRemote.IEventEmit<U>, contents: Electron.WebContents) => void
+    emitRemoteEvent: <U>(event: AsyncRemote.IEvent<U>, contents: Electron.WebContents, data: U) => void
 }
 
 class MainRemote implements IAsyncRemoteMain {
@@ -23,12 +23,20 @@ class MainRemote implements IAsyncRemoteMain {
         ipcMain.on(Utils.REQUEST_METHOD_EXECUTE, this._executeMethod.bind(this));
     }
     
-    registerRemoteMethod<T, U>(method: AsyncRemote.IMethodExec<T, U>): void {
-        this._methods[method.id] = method;
+    registerRemoteMethod<T, U>(method: AsyncRemote.IMethod<T, U>, execute: (arg: T, caller: Electron.WebContents) => Promise<U>): void {
+        this._methods[method.id] = {
+            ...method,
+            execute
+        }
     }
 
-    emitRemoteEvent<U>(event: AsyncRemote.IEventEmit<U>, contents: Electron.WebContents): void {
-        contents.send(Utils.EMIT_EVENT, event);
+    emitRemoteEvent<U>(event: AsyncRemote.IEvent<U>, contents: Electron.WebContents, data: U): void {
+        let payload: Utils.IEventEmit<U> =  {
+            ...event,
+            data
+        };
+        
+        contents.send(Utils.EMIT_EVENT, payload);
     }
 
     private _executeMethod(evt: Electron.Event, data: Utils.IMethodExecuteRequest<any>): void {
@@ -45,7 +53,7 @@ class MainRemote implements IAsyncRemoteMain {
             return;
         }
 
-        method.execute(data.arg)
+        method.execute(data.arg, evt.sender)
             .then((resp: any) => {
                 let payload: Utils.IMethodExecuteResponse<any> = {
                     resp: resp,
@@ -60,7 +68,7 @@ class MainRemote implements IAsyncRemoteMain {
             });
     }
 
-    private _methods: {[key: string]: AsyncRemote.IMethodExec<any, any>} = {};
+    private _methods: {[key: string]: Utils.IMethodExec<any, any>} = {};
 }
 
 let isRenderer = (process && process.type === 'renderer');

@@ -3,11 +3,6 @@
 
 export
 namespace AsyncRemote {
-    export
-    interface IMethodExec<T, U> extends IMethod<T, U> {
-
-        execute(arg: T): Promise<U>;
-    }
 
     export
     interface IMethod<T, U> {
@@ -20,20 +15,13 @@ namespace AsyncRemote {
     }
     
     export
-    interface IEventEmit<U> {
-        
-        id: string;
-
-        data: U;
-    }
-
-    export
     interface IEvent<U> {
         
         id: string;
 
         _dataType?: U;
     }
+    
 }
 
 export
@@ -46,6 +34,17 @@ namespace Utils {
 
     export
     const EMIT_EVENT = 'async-remote:emit-event';
+    
+    export
+    interface IMethodExec<T, U> extends AsyncRemote.IMethod<T, U> {
+
+        execute(arg: T, caller: Electron.WebContents): Promise<U>;
+    }
+
+    export
+    interface IEventEmit<U> extends AsyncRemote.IEvent<U> {
+        data: U
+    }
 
     export
     interface IMethodExecuteRequest<T> {

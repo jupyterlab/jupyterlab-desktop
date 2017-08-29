@@ -10,11 +10,7 @@ import {
 } from '@jupyterlab/apputils';
 
 import {
-  JupyterApplicationIPC as AppIPC
-} from '../../../ipc';
-
-import {
-  ipcRenderer, Browser
+  Browser
 } from '../../utils';
 
 import {
@@ -28,6 +24,14 @@ import {
 import {
   Widget
 } from '@phosphor/widgets';
+
+import {
+    asyncRemoteRenderer
+} from '../../../asyncremote';
+
+import {
+    IShortcutManager
+} from '../../../main/shortcuts';
 
 import plugins from '@jupyterlab/application-extension';
 
@@ -84,7 +88,7 @@ class ElectronJupyterLab extends JupyterLab {
       // Resize the top panel based on zoom factor
       topPanel.node.style.minHeight = topPanel.node.style.height = String(Browser.getTopPanelSize()) + 'px';
       // Resize the top panel on zoom events
-      ipcRenderer.on(AppIPC.POST_ZOOM_EVENT, () => {
+      asyncRemoteRenderer.onRemoteEvent(IShortcutManager.zoomEvent, () => {
         topPanel.node.style.minHeight = topPanel.node.style.height = String(Browser.getTopPanelSize()) + 'px';
         this.shell.fit();
       });

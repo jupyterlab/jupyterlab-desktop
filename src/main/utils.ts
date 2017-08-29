@@ -25,19 +25,25 @@ import * as path from 'path';
 import * as fs from 'fs';
 
 export
-let fetch: AsyncRemote.IMethod<string, ISettingRegistry.IPlugin> = {
-    id: 'JupyterLabDataConnector-fetch'
-}
-
-export
-let save: AsyncRemote.IMethod<ISaveOptions, void> = {
-    id: 'JupyterLabDataConnector-save'
-}
-
-export
 interface ISaveOptions {
     id: string;
     user: JSONObject;
+}
+
+export
+interface IElectronDataConnector extends IDataConnector<ISettingRegistry.IPlugin, JSONObject> {};
+
+export
+namespace IElectronDataConnector {
+    export
+    let fetch: AsyncRemote.IMethod<string, ISettingRegistry.IPlugin> = {
+        id: 'JupyterLabDataConnector-fetch'
+    }
+
+    export
+    let save: AsyncRemote.IMethod<ISaveOptions, void> = {
+        id: 'JupyterLabDataConnector-save'
+    }
 }
 
 /**
@@ -51,7 +57,7 @@ interface ISaveOptions {
  */
 export
 class JupyterLabDataConnector
-implements IStatefulService, IDataConnector<ISettingRegistry.IPlugin, JSONObject> {
+implements IStatefulService, IElectronDataConnector {
 
     id: string = 'JupyterLabSettings';
 
@@ -68,10 +74,13 @@ implements IStatefulService, IDataConnector<ISettingRegistry.IPlugin, JSONObject
             });
         
         // Create 'fetch' remote method
-        asyncRemote.registerRemoteMethod(this._remoteFetch);
+        asyncRemote.registerRemoteMethod(IElectronDataConnector.fetch, this.fetch.bind(this));
         
         // Create 'save' remote method
-        asyncRemote.registerRemoteMethod(this._remoteSave);
+        asyncRemote.registerRemoteMethod(IElectronDataConnector.save,
+            (opts: ISaveOptions) => {
+                return this.save(opts.id, opts.user);
+            });
     }
 
     /**
@@ -186,18 +195,6 @@ implements IStatefulService, IDataConnector<ISettingRegistry.IPlugin, JSONObject
         })
     }
 
-    private _remoteFetch: AsyncRemote.IMethodExec<string, ISettingRegistry.IPlugin> = {
-        ...fetch,
-        execute: this.fetch.bind(this)
-    }
-    
-    private _remoteSave: AsyncRemote.IMethodExec<ISaveOptions, void> = {
-        ...save,
-        execute: (opts: ISaveOptions) => {
-            return this.save(opts.id, opts.user);
-        },
-    }
-
     private _settings: Promise<Private.IPluginData>;
 }
 
@@ -210,8 +207,8 @@ namespace Private {
 }
 
 let service: IService = {
-    requirements: ['IApplication', 'IMainConnect'],
-    provides: 'IDataConnectory',
+    requirements: ['IApplication', 'IAsyncRemoteMain'],
+    provides: 'IElectronDataConnector',
     activate: (app: IApplication, asyncRemote: IAsyncRemoteMain): IDataConnector<ISettingRegistry.IPlugin, JSONObject> => {
         return new JupyterLabDataConnector(app, asyncRemote);
     },

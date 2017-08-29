@@ -52,7 +52,7 @@ import {
 } from '../../../asyncremote';
 
 import {
-    fetch, save
+    IElectronDataConnector
 } from '../../../main/utils';
 
 import * as React from 'react';
@@ -203,7 +203,7 @@ function newConnector(): IDataConnector<ISettingRegistry.IPlugin, JSONObject> {
      * Retrieve a saved bundle from the data connector.
      */
     fetch(settingsId: string): Promise<ISettingRegistry.IPlugin> {
-        return asyncRemoteRenderer.runRemoteMethod(fetch, settingsId);
+        return asyncRemoteRenderer.runRemoteMethod(IElectronDataConnector.fetch, settingsId);
     },
 
     /**
@@ -219,7 +219,7 @@ function newConnector(): IDataConnector<ISettingRegistry.IPlugin, JSONObject> {
      * Save the user setting data in the data connector.
      */
     save(id: string, user: JSONObject): Promise<void> {
-        return asyncRemoteRenderer.runRemoteMethod(save, {id, user});
+        return asyncRemoteRenderer.runRemoteMethod(IElectronDataConnector.save, {id, user});
     }
   };
 }

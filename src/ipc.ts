@@ -12,10 +12,6 @@ import {
 } from '@phosphor/coreutils';
 
 import {
-    MenuItemConstructorOptions
-} from './main/menu';
-
-import {
     JupyterLabSession
 } from './main/sessions';
 
@@ -42,9 +38,6 @@ namespace JupyterApplicationIPC {
      */
     export
     const REQUEST_OPEN_CONNECTION = 'new-connection';
-
-    export
-    const POST_ZOOM_EVENT = 'zoom-event';
 
     export
     const LAB_READY = 'lab-ready';
@@ -99,116 +92,5 @@ namespace JupyterWindowIPC {
         remoteServerId?: number; 
         uiState: JupyterLabSession.UIState;
         platform: NodeJS.Platform;
-    }
-}
-
-export
-namespace JupyterServerIPC {
-    
-    /**
-     * Request a that a local server is started.
-     * 
-     * @param none
-     * 
-     * RESPONSE: RESPOND_SERVER_STARTED 
-     */
-    export
-    const REQUEST_SERVER_START = 'request-server-start';
-    
-    export
-    const REQUEST_SERVER_START_PATH = 'request-server-start-path';
-
-    export
-    const POST_PATH_SELECTED = 'poast-path-selected';
-    
-    /**
-     * Response to REQUEST_SERVER_START. Sent when the 
-     * server is spawned and is running.
-     * 
-     * @return JupyterServerIPC.ServerStarted which contains
-     *         the description of the statrted server and the Id
-     *         required to kill the server.
-     * 
-     * REQUEST: REQUEST_SERVER_START
-     */
-    export
-    const RESPOND_SERVER_STARTED = 'server-started';
-
-    export
-    const RESPOND_SERVER_AUTHENTICATED = 'remote-server-authenitcated';
-    
-    /**
-     * Request that a server spwaned by the main process
-     * is killed.
-     * 
-     * @param JupyterServerIPC.RequestServerStop that specifies
-     *        the factoryId of the spawned server.
-     * 
-     * RESPONSE: NONE
-     */
-    export
-    const REQUEST_SERVER_STOP = 'request-server-stop';
-
-    export
-    interface IServerStarted {
-        readonly factoryId: number;
-        url: string;
-        token: string;
-        err?: any;
-    }
-
-    export
-    interface IRequestServerStop {
-        factoryId: number;
-    }
-}
-
-
-export
-namespace JupyterMenuIPC {
-
-    /**
-     * Request that an item is added to the native menu bar.
-     * 
-     * @param JupyterMenuIPC.JupyterMenuItemOptions Describes
-     *        the menu to add to the menu bar.
-     * 
-     * RESPONSE: NONE
-     */
-    export
-    const REQUEST_MENU_ADD = 'menu-add';
-
-    /**
-     * Post a click event to a window.
-     * 
-     * @param JupyterMenuIPC.JupyterMenuItemOptions The menu item
-     *        that was clicked.
-     */
-    export
-    const POST_CLICK_EVENT = 'menu-click';
-
-    /**
-     * Jupyter main menu item description. Conforms to the menu description
-     * required by electron.
-     */
-    export
-    interface JupyterMenuItemOptions extends MenuItemConstructorOptions {
-
-        /**
-         * Rank of the menu item. Lower ranks float to the front of the menu.
-         * Default value is 100.
-         */
-        rank?: number;
-
-        /**
-         * The command to run when the item is clicked. Sent to the
-         * render process via IPC.
-         */
-        command?: string;
-
-        /**
-         * Optional arguments to the command
-         */
-        args?: any;
     }
 }
