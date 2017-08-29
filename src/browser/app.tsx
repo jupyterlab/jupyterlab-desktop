@@ -14,16 +14,16 @@ import {
 } from '@jupyterlab/coreutils';
 
 import {
-    JupyterApplicationIPC as AppIPC
-} from '../ipc';
-
-import {
     asyncRemoteRenderer
 } from '../asyncremote';
 
 import {
     IServerFactory
 } from '../main/server';
+
+import {
+    ISessions
+} from '../main/sessions';
 
 import {
     SplashScreen, ServerManager, TitleBar, ServerError
@@ -40,6 +40,10 @@ import {
 import {
     JupyterLabSession
 } from '../main/sessions';
+
+import {
+    remote
+} from 'electron';
 
 import * as React from 'react';
 import extensions from './extensions';
@@ -135,7 +139,7 @@ class Application extends React.Component<Application.Props, Application.State> 
                 console.log(e);
             }
             this._lab.restored.then( () => {
-                ipcRenderer.send(AppIPC.LAB_READY);
+                ipcRenderer.send('lab-ready');
                 (this.refs.splash as SplashScreen).fadeSplashScreen();
             });
         });
@@ -276,9 +280,7 @@ class Application extends React.Component<Application.Props, Application.State> 
             }
         };
 
-        ipcRenderer.on(AppIPC.OPEN_FILES, (event: any, path: string) => {
-            this._openFile(path);
-        });
+        asyncRemoteRenderer.onRemoteEvent(ISessions.openFileEvent, this._openFile);
     }
 
     private _openFile(path: string){
@@ -291,10 +293,7 @@ class Application extends React.Component<Application.Props, Application.State> 
     }
 
     private _setLabDir(){
-        ipcRenderer.send(AppIPC.REQUEST_LAB_HOME_DIR);
-        ipcRenderer.on(AppIPC.LAB_HOME_DIR, (event: any, path: string) => {
-            this._labDir = path;
-        });
+        this._labDir = remote.app.getPath('home');
     }
 
     private _labDir: string;

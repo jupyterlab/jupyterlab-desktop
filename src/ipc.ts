@@ -16,49 +16,6 @@ import {
 } from './main/sessions';
 
 export
-namespace JupyterApplicationIPC {
-
-    /**
-     * Request launching a new window with the 'Add Server'
-     * form.
-     * 
-     * @param none
-     * 
-     * RESPONSE: NONE
-     */
-    export
-    const REQUEST_ADD_SERVER = 'add-server';
-
-    /**
-     * Request launching a new window connected to a server.
-     * 
-     * @param JupyterApplicationIPC.IOpenConnection Ther server to connect to.
-     * 
-     * RESPONSE: NONE
-     */
-    export
-    const REQUEST_OPEN_CONNECTION = 'new-connection';
-
-    export
-    const LAB_READY = 'lab-ready';
-
-    export 
-    const OPEN_FILES = 'open-files';
-    
-    export
-    const REQUEST_LAB_HOME_DIR = 'get-lab-dir';
-
-    export
-    const LAB_HOME_DIR = 'lab-dir';
-
-    export
-    interface IOpenConnection {
-        type: 'local' | 'remote';
-        remoteServerId?: number;
-    }
-}
-
-export
 namespace JupyterWindowIPC {
 
     /**

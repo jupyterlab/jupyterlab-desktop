@@ -11,8 +11,11 @@ import {
 
 import {
     JupyterWindowIPC as WindowIPC,
-    JupyterApplicationIPC as AppIPC
 } from '../ipc';
+
+import {
+    AsyncRemote, asyncRemoteMain
+} from '../asyncremote';
 
 import {
     IApplication, IStatefulService
@@ -49,13 +52,26 @@ interface ISessions extends EventEmitter {
 }
 
 export
+namespace ISessions {
+
+    export
+    let createSession: AsyncRemote.IMethod<JupyterLabSession.IOptions, void> = {
+        id: 'JupyterLabSessions-createsession'
+    }
+
+    export
+    let openFileEvent: AsyncRemote.IEvent<string> = {
+        id: 'JupyterLabSessions-openfile'
+    }
+}
+
+export
 class JupyterLabSessions extends EventEmitter implements ISessions, IStatefulService {
 
     readonly id = 'JupyterLabSessions';
     
     constructor(app: IApplication, serverFactory: IServerFactory) {
         super();
-
         this._serverFactory = serverFactory;
         
         // check if UI state was set by user
@@ -70,6 +86,8 @@ class JupyterLabSessions extends EventEmitter implements ISessions, IStatefulSer
         }
 
         this._registerListeners();
+
+        asyncRemoteMain.registerRemoteMethod(ISessions.createSession, this.createSession.bind(this));
 
         // Get last session state
         app.registerStatefulService(this)
@@ -213,7 +231,7 @@ class JupyterLabSessions extends EventEmitter implements ISessions, IStatefulSer
             
         });
 
-        ipcMain.once(AppIPC.LAB_READY, () => {
+        ipcMain.once('lab-ready', () => {
             // Skip JupyterLab executable
             for (let i = 1; i < process.argv.length; i ++){
                 this._activateLocalSession()
@@ -230,28 +248,6 @@ class JupyterLabSessions extends EventEmitter implements ISessions, IStatefulSer
                     this._startingSession = null;
                 });
             });
-        });
-
-
-        ipcMain.on(AppIPC.REQUEST_ADD_SERVER, (event: any, arg: any) => {
-            this._createSession({state: 'new'})
-            .then( () => {this._startingSession = null});
-        });
-        
-        ipcMain.on(AppIPC.REQUEST_OPEN_CONNECTION, (event: any, arg: AppIPC.IOpenConnection) => {
-            if (arg.type == 'remote'){
-                this._createSession({state: 'remote', remoteServerId: arg.remoteServerId})
-                .then( () => {this._startingSession = null});
-            } else {
-                this._createSession({state: 'local'})
-                .then( () => {this._startingSession = null});
-            }
-        });
-
-        // The path sent should correspond to the directory the app is started in
-        // (the directory passed into the "cwd" flag on server startup)
-        ipcMain.on(AppIPC.REQUEST_LAB_HOME_DIR, (event: any) => {
-            event.sender.send(AppIPC.LAB_HOME_DIR, app.getPath("home"));
         });
     }
 
@@ -278,7 +274,7 @@ class JupyterLabSessions extends EventEmitter implements ISessions, IStatefulSer
                 state.state = 'local';
                 this.createSession(state)
                 .then( () => { 
-                    ipcMain.once(AppIPC.LAB_READY, () => {
+                    ipcMain.once('lab-ready', () => {
                         resolve();
                     });
                 });
@@ -298,7 +294,7 @@ class JupyterLabSessions extends EventEmitter implements ISessions, IStatefulSer
             let session = this._lastFocusedSession;
             session.browserWindow.restore();
             session.browserWindow.focus();
-            session.browserWindow.webContents.send(AppIPC.OPEN_FILES, path);
+            asyncRemoteMain.emitRemoteEvent(ISessions.openFileEvent, session.browserWindow.webContents, path);
         })
         .catch( (error: any) => {
             return;
@@ -527,8 +523,22 @@ namespace JupyterLabSession {
     }
 }
 
+/**
+ * The "open-file" listener should be registered before
+ * app ready for "double click" files to open in application
+ */
+if (process && process.type !== 'renderer') {
+    app.once('will-finish-launching', (e: Electron.Event) => {
+        app.on('open-file', (event: Electron.Event, path: string) => {
+            ipcMain.once('lab-ready', (event: Electron.Event) => {
+                asyncRemoteMain.emitRemoteEvent(ISessions.openFileEvent, event.sender, path);
+            });
+        });
+    });
+}
+
 let service: IService = {
-    requirements: ['IApplication', 'IServerFactory'],
+    requirements: ['IApplication', 'IServerFactory', 'IAsyncRemoteMain'],
     provides: 'ISessions',
     activate: (app: IApplication, serverFactory: IServerFactory): ISessions => {
         return new JupyterLabSessions(app, serverFactory);

@@ -8,8 +8,8 @@ import {
 } from '@jupyterlab/apputils';
 
 import {
-    JupyterApplicationIPC as AppIPC,
-} from '../../../ipc';
+    ISessions
+} from '../../../main/sessions';
 
 import {
     JSONObject
@@ -44,10 +44,6 @@ import {
 } from '../../components';
 
 import {
-    ipcRenderer
-} from '../../utils';
-
-import {
     asyncRemoteRenderer
 } from '../../../asyncremote';
 
@@ -68,8 +64,10 @@ namespace CommandIDs {
     const connectToServer = 'electron-jupyterlab:connect-to-server';
 }
 
-interface ServerManagerMenuArgs extends JSONObject, AppIPC.IOpenConnection {
+interface ServerManagerMenuArgs extends JSONObject {
     name: string;
+    type: 'local' | 'remote';
+    remoteServerId?: number;
 }
 
 const serverManagerPlugin: JupyterLabPlugin<void> = {
@@ -110,11 +108,20 @@ function createServerManager(app: ElectronJupyterLab, palette: ICommandPalette,
                             menu: IMainMenu, servers: ServerManagerMenuArgs[]) {
     app.commands.addCommand(CommandIDs.activateServerManager, {
         label: 'Add Server',
-        execute: () => {ipcRenderer.send(AppIPC.REQUEST_ADD_SERVER)}
+        execute: () => {
+            asyncRemoteRenderer.runRemoteMethod(ISessions.createSession, {
+                state: 'new'
+            });
+        }
     });
     app.commands.addCommand(CommandIDs.connectToServer, {
         label: (args) => args.name as string,
-        execute: (args) => {ipcRenderer.send(AppIPC.REQUEST_OPEN_CONNECTION, args)}
+        execute: (args: ServerManagerMenuArgs) => {
+            asyncRemoteRenderer.runRemoteMethod(ISessions.createSession, {
+                state: args.type,
+                remoteServerId: args.remoteServerId
+            })
+        }
     });
 
     const { commands } = app;

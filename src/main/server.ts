@@ -15,7 +15,7 @@ import {
 } from 'electron';
 
 import {
-    AsyncRemote, IAsyncRemoteMain
+    AsyncRemote, asyncRemoteMain
 } from '../asyncremote';
 
 import{
@@ -246,10 +246,10 @@ namespace IServerFactory {
 export
 class JupyterServerFactory implements IServerFactory, IClosingService {
     
-    constructor(app: IApplication, asyncRemote: IAsyncRemoteMain) {
+    constructor(app: IApplication) {
         app.registerClosingService(this);
         
-        asyncRemote.registerRemoteMethod(IServerFactory.requestServerStart, () => {
+        asyncRemoteMain.registerRemoteMethod(IServerFactory.requestServerStart, () => {
             return this.createServer({})
                 .then((data: JupyterServerFactory.IFactoryItem) => {
                     return this._factoryToIPC(data);
@@ -259,10 +259,10 @@ class JupyterServerFactory implements IServerFactory, IClosingService {
                 });
         });
         
-        asyncRemote.registerRemoteMethod(IServerFactory.requestServerStartPath, (data: any, caller) => {
+        asyncRemoteMain.registerRemoteMethod(IServerFactory.requestServerStartPath, (data: any, caller) => {
             return this.getUserJupyterPath()
                 .then((path: string) => {
-                    asyncRemote.emitRemoteEvent(IServerFactory.pathSelectedEvent, caller, undefined)
+                    asyncRemoteMain.emitRemoteEvent(IServerFactory.pathSelectedEvent, caller, undefined)
                     return this.createServer({path})
                 })
                 .then((data: JupyterServerFactory.IFactoryItem) => {
@@ -275,7 +275,7 @@ class JupyterServerFactory implements IServerFactory, IClosingService {
                 });
         });
         
-        asyncRemote.registerRemoteMethod(IServerFactory.requestServerStop, (arg: IServerFactory.IServerStop) => {
+        asyncRemoteMain.registerRemoteMethod(IServerFactory.requestServerStop, (arg: IServerFactory.IServerStop) => {
             return this.stopServer(arg.factoryId)
         });
     }
@@ -511,10 +511,10 @@ namespace JupyterServerFactory {
 }
 
 let service: IService = {
-    requirements: ['IApplication', 'IAsyncRemoteMain'],
+    requirements: ['IApplication'],
     provides: 'IServerFactory',
-    activate: (app: IApplication, asyncRemote: IAsyncRemoteMain): IServerFactory => {
-        return new JupyterServerFactory(app, asyncRemote);
+    activate: (app: IApplication): IServerFactory => {
+        return new JupyterServerFactory(app);
     },
     autostart: true
 }

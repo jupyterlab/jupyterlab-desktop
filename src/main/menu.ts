@@ -24,7 +24,7 @@ import {
 } from './sessions';
 
 import {
-    AsyncRemote, IAsyncRemoteMain
+    AsyncRemote, asyncRemoteMain
 } from '../asyncremote';
 
 export
@@ -77,10 +77,9 @@ namespace INativeMenu {
  */
 class JupyterMainMenu implements INativeMenu {
 
-    constructor(app: IApplication, sessions: ISessions, asyncRemote: IAsyncRemoteMain) {
+    constructor(app: IApplication, sessions: ISessions) {
         this._jupyterApp = app;
         this._sessions = sessions;
-        this._asyncRemote = asyncRemote;
         this._menu = new Menu();
         
         if (process.platform === 'darwin') {
@@ -93,7 +92,7 @@ class JupyterMainMenu implements INativeMenu {
         Menu.setApplicationMenu(this._menu);
         
         // Register 'menuAdd' remote method
-        this._asyncRemote.registerRemoteMethod(INativeMenu.addMenu, this.addMenu.bind(this));
+        asyncRemoteMain.registerRemoteMethod(INativeMenu.addMenu, this.addMenu.bind(this));
     }
 
     /**
@@ -152,7 +151,7 @@ class JupyterMainMenu implements INativeMenu {
     private handleClick(menu: Electron.MenuItem, window: Electron.BrowserWindow): void {
         // Application window is in focus
         if (window) {
-            this._asyncRemote.emitRemoteEvent(INativeMenu.clickEvent, 
+            asyncRemoteMain.emitRemoteEvent(INativeMenu.clickEvent, 
                 window.webContents, menu as INativeMenu.IMenuItemOptions);
         }
         // No application windows available
@@ -175,15 +174,13 @@ class JupyterMainMenu implements INativeMenu {
     private _jupyterApp: IApplication;
 
     private _sessions: ISessions;
-
-    private _asyncRemote: IAsyncRemoteMain;
 }
 
 let service: IService = {
-    requirements: ['IApplication', 'ISessions', 'IAsyncRemoteMain'],
+    requirements: ['IApplication', 'ISessions'],
     provides: 'INativeMenu',
-    activate: (app: IApplication, sessions: ISessions, asyncRemote: IAsyncRemoteMain): INativeMenu => {
-        return new JupyterMainMenu(app, sessions, asyncRemote);
+    activate: (app: IApplication, sessions: ISessions): INativeMenu => {
+        return new JupyterMainMenu(app, sessions);
     },
     autostart: true
 }

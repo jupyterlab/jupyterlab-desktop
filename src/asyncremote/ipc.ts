@@ -21,7 +21,6 @@ namespace AsyncRemote {
 
         _dataType?: U;
     }
-    
 }
 
 export

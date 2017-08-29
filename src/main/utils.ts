@@ -10,7 +10,7 @@ import {
 } from './app';
 
 import {
-    AsyncRemote, IAsyncRemoteMain
+    AsyncRemote, asyncRemoteMain
 } from '../asyncremote';
 
 import {
@@ -56,12 +56,11 @@ namespace IElectronDataConnector {
  * application bundle.
  */
 export
-class JupyterLabDataConnector
-implements IStatefulService, IElectronDataConnector {
+class JupyterLabDataConnector implements IStatefulService, IElectronDataConnector {
 
     id: string = 'JupyterLabSettings';
 
-    constructor(app: IApplication, asyncRemote: IAsyncRemoteMain) {
+    constructor(app: IApplication) {
         this._settings = app.registerStatefulService(this)
             .then((settings: Private.IPluginData) => {
                 if(!settings) {
@@ -74,10 +73,10 @@ implements IStatefulService, IElectronDataConnector {
             });
         
         // Create 'fetch' remote method
-        asyncRemote.registerRemoteMethod(IElectronDataConnector.fetch, this.fetch.bind(this));
+        asyncRemoteMain.registerRemoteMethod(IElectronDataConnector.fetch, this.fetch.bind(this));
         
         // Create 'save' remote method
-        asyncRemote.registerRemoteMethod(IElectronDataConnector.save,
+        asyncRemoteMain.registerRemoteMethod(IElectronDataConnector.save,
             (opts: ISaveOptions) => {
                 return this.save(opts.id, opts.user);
             });
@@ -207,10 +206,10 @@ namespace Private {
 }
 
 let service: IService = {
-    requirements: ['IApplication', 'IAsyncRemoteMain'],
+    requirements: ['IApplication'],
     provides: 'IElectronDataConnector',
-    activate: (app: IApplication, asyncRemote: IAsyncRemoteMain): IDataConnector<ISettingRegistry.IPlugin, JSONObject> => {
-        return new JupyterLabDataConnector(app, asyncRemote);
+    activate: (app: IApplication): IDataConnector<ISettingRegistry.IPlugin, JSONObject> => {
+        return new JupyterLabDataConnector(app);
     },
     autostart: true
 }

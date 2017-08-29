@@ -93,7 +93,7 @@ class JupyterApplication implements IApplication {
      */
     constructor() {
         this._registerListeners();
-        
+
         // Get application state from state db file.
         this._appState = new Promise<JSONObject>((res, rej) => {
             this._appStateDB.fetch(JupyterApplication.APP_STATE_NAMESPACE)

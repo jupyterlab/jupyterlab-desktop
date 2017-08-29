@@ -14,7 +14,7 @@ import {
 } from './main';
 
 import {
-    AsyncRemote, IAsyncRemoteMain
+    AsyncRemote, asyncRemoteMain
 } from '../asyncremote';
 
 export
@@ -44,9 +44,8 @@ class KeyboardShortcutManager implements IShortcutManager {
      * 
      * @param options - The application windows
      */
-    constructor(sessions: ISessions, asyncRemote: IAsyncRemoteMain){
+    constructor(sessions: ISessions){
         this._sessions = sessions;
-        this._asyncRemote = asyncRemote;
         
         this._sessions.on('session-ended', () => {
             if (!this._sessions.isAppFocused()){
@@ -90,7 +89,7 @@ class KeyboardShortcutManager implements IShortcutManager {
             contents.setZoomLevel(zoom + 1);
             
             // Emit zoom event
-            this._asyncRemote.emitRemoteEvent(IShortcutManager.zoomEvent, contents, undefined);
+            asyncRemoteMain.emitRemoteEvent(IShortcutManager.zoomEvent, contents, undefined);
         });
     };
 
@@ -101,7 +100,7 @@ class KeyboardShortcutManager implements IShortcutManager {
             contents.setZoomLevel(zoom - 1);
             
             // Emit zoom event
-            this._asyncRemote.emitRemoteEvent(IShortcutManager.zoomEvent, contents, undefined);
+            asyncRemoteMain.emitRemoteEvent(IShortcutManager.zoomEvent, contents, undefined);
         });
     };
 
@@ -137,8 +136,6 @@ class KeyboardShortcutManager implements IShortcutManager {
      */
     private _sessions: ISessions;
 
-    private _asyncRemote: IAsyncRemoteMain;
-
     /**
      * The enabled shortcuts
      */
@@ -153,10 +150,10 @@ class KeyboardShortcutManager implements IShortcutManager {
 }
 
 let service: IService = {
-    requirements: ['ISessions', 'IAsyncRemoteMain'],
+    requirements: ['ISessions'],
     provides: 'IKeyboardManager',
-    activate: (sessions: ISessions, asyncRemote: IAsyncRemoteMain): IShortcutManager => {
-        return new KeyboardShortcutManager(sessions, asyncRemote);
+    activate: (sessions: ISessions): IShortcutManager => {
+        return new KeyboardShortcutManager(sessions);
     },
     autostart: true
 }
