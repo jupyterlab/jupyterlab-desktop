@@ -52,11 +52,34 @@ class JupyterMainMenu implements IMainMenu {
         });
 
         if (process.platform === 'darwin') {
-            this._menu.append(new MenuItem({
+            /* Add macOS 'JupyterLab' app menu with standard menu items */
+            let appMenu = {
                 id: '-1',
                 label: 'JupyterLab',
-                submenu: null
-            }));
+                submenu: [
+                    {
+                        label: 'About JupyterLab',
+                        command: 'help:about',
+                    },
+                    {type: 'separator'},
+                    {
+                        label: 'Preferences...',
+                        role: 'preferences',
+                        command: 'settingeditor:open',
+                        accelerator: 'CmdOrCtrl+,',
+                    },
+                    {type: 'separator'},
+                    {role: 'services', submenu: []},
+                    {type: 'separator'},
+                    {role: 'hide'},
+                    {role: 'hideothers'},
+                    {role: 'unhide'},
+                    {type: 'separator'},
+                    {role: 'quit'},
+                ]
+            } as JupyterMenuItemOptions;
+            this._setClickEvents(appMenu);
+            this._menu.append(new MenuItem(appMenu));
         }
         Menu.setApplicationMenu(this._menu);
     }
@@ -100,6 +123,25 @@ class JupyterMainMenu implements IMainMenu {
 
         if (!menu.rank)
             menu.rank = 100;
+
+        if (process.platform === 'darwin') {
+            if (menu.label === 'Help') {
+                /* Tag the Help menu so that macOS adds the standard search box */
+                menu.role = 'help';
+                /* Remove the Help > About menu item, which belongs in the JupyterLab menu on macOS */
+                let submenu = (<JupyterMenuItemOptions[]>menu.submenu);
+                menu.submenu = submenu.filter(item => item.command !== 'help:about');
+            }
+            if (menu.label === 'File') {
+                /* Remove the File > Settings menu item, which belongs in the JupyterLab menu on macOS */
+                let submenu = (<JupyterMenuItemOptions[]>menu.submenu);
+                submenu = submenu.filter(item => item.command !== 'settingeditor:open');
+                /* If the last thing in the menu is now a separator, remove it */
+                if ('type' in submenu[submenu.length-1] && submenu[submenu.length-1].type === 'separator')
+                    submenu.pop();
+                menu.submenu = submenu;
+            }
+        }
 
         /* Set position in the native menu bar */
         let index = ArrayExt.upperBound(<JupyterMenuItemOptions[]>items, menu, 
