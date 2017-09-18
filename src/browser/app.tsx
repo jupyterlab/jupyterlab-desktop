@@ -34,7 +34,7 @@ import {
 } from './extensions/electron-extension';
 
 import {
-    JupyterServer, ipcRenderer
+    JupyterServer
 } from './utils';
 
 import {
@@ -42,7 +42,7 @@ import {
 } from '../main/sessions';
 
 import {
-    remote
+    remote, ipcRenderer
 } from 'electron';
 
 import * as React from 'react';
@@ -328,7 +328,7 @@ namespace Application {
 
     export
     interface Props {
-        options: IOptions;
+        options: JupyterLabSession.IInfo;
     }
 
     export
@@ -336,14 +336,6 @@ namespace Application {
         renderState: () => any;
         renderSplash: () => any;
         remotes: IRemoteServer[];
-    }
-
-    export
-    interface IOptions extends JSONObject {
-        uiState: JupyterLabSession.UIState;
-        serverState: JupyterLabSession.ServerState;
-        remoteServerId: number;
-        platform: NodeJS.Platform;
     }
 
     export

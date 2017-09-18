@@ -14,8 +14,8 @@ import * as React from 'react';
 import * as ReactDOM from 'react-dom';
 
 import {
-    JupyterWindowIPC as WindowIPC
-} from '../ipc';
+    JupyterLabSession
+} from '../main/sessions';
 
 
 /**
@@ -34,9 +34,9 @@ process.cwd = () => {return '/'}
 
 function main() : void {
     let optionsStr = decodeURIComponent((global as any).location.search);
-    let options: WindowIPC.IWindowState = JSON.parse(optionsStr.slice(1));
+    let options: JupyterLabSession.IInfo = JSON.parse(optionsStr.slice(1));
     ReactDOM.render(
-        <Application options={options as Application.IOptions} />,
+        <Application options={options} />,
         document.getElementById('root')
     );
 }

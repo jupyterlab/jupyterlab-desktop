@@ -10,10 +10,6 @@ import {
 } from '@phosphor/coreutils';
 
 import {
-    JupyterWindowIPC as WindowIPC,
-} from '../ipc';
-
-import {
     AsyncRemote, asyncRemoteMain
 } from '../asyncremote';
 
@@ -62,6 +58,26 @@ namespace ISessions {
     export
     let openFileEvent: AsyncRemote.IEvent<string> = {
         id: 'JupyterLabSessions-openfile'
+    }
+    
+    export
+    let minimizeEvent: AsyncRemote.IEvent<void> = {
+        id: 'JupyterLabSessions-minimize'
+    }
+    
+    export
+    let maximizeEvent: AsyncRemote.IEvent<void> = {
+        id: 'JupyterLabSessions-maximize'
+    }
+    
+    export
+    let unmaximizeEvent: AsyncRemote.IEvent<void> = {
+        id: 'JupyterLabSessions-unmaximize'
+    }
+    
+    export
+    let restoreEvent: AsyncRemote.IEvent<void> = {
+        id: 'JupyterLabSessions-restore'
     }
 }
 
@@ -294,7 +310,7 @@ class JupyterLabSessions extends EventEmitter implements ISessions, IStatefulSer
             let session = this._lastFocusedSession;
             session.browserWindow.restore();
             session.browserWindow.focus();
-            asyncRemoteMain.emitRemoteEvent(ISessions.openFileEvent, session.browserWindow.webContents, path);
+            asyncRemoteMain.emitRemoteEvent(ISessions.openFileEvent, path, session.browserWindow.webContents);
         })
         .catch( (error: any) => {
             return;
@@ -344,7 +360,7 @@ class JupyterLabSession {
         this._sessionManager = sessionManager;
 
         this._info = {
-            state: options.state,
+            serverState: options.state,
             platform: options.platform || process.platform,
             uiState: options.uiState,
             x: options.x,
@@ -399,19 +415,11 @@ class JupyterLabSession {
             this._window.show();
         });
         
-        // Create window state object to pass to the render process
-        let windowState: WindowIPC.IWindowState = {
-            serverState: this._info.state,
-            remoteServerId: this._info.remoteServerId,
-            uiState: this._info.uiState,
-            platform: this._info.platform
-        }
-        
         this._window.loadURL(url.format({
             pathname: path.join(__dirname, '../browser/index.html'),
             protocol: 'file:',
             slashes: true,
-            search: encodeURIComponent(JSON.stringify(windowState))
+            search: encodeURIComponent(JSON.stringify(this.info))
         }));
 
         this._window.on('focus', () => {
@@ -440,13 +448,13 @@ class JupyterLabSession {
             y: info.y,
             width: info.width,
             height: info.height,
-            state: info.state,
+            state: info.serverState,
             remoteServerId: info.remoteServerId
         }
     }
 
     private _addRenderAPI(): void {
-        ipcMain.on(WindowIPC.REQUEST_STATE_UPDATE, (evt: any, arg: any) => {
+        ipcMain.on('state-update', (evt: any, arg: any) => {
             for (let key in arg) {
                 if ((this._info as any)[key])
                     (this._info as any)[key] = (arg as any)[key];
@@ -454,19 +462,19 @@ class JupyterLabSession {
         });
 
         this._window.on('maximize', () => {
-            this._window.webContents.send(WindowIPC.POST_MAXIMIZE_EVENT);
+            asyncRemoteMain.emitRemoteEvent(ISessions.maximizeEvent, undefined, this._window.webContents);
         });
         
         this._window.on('minimize', () => {
-            this._window.webContents.send(WindowIPC.POST_MINIMIZE_EVENT);
+            asyncRemoteMain.emitRemoteEvent(ISessions.minimizeEvent, undefined, this._window.webContents);
         });
         
         this._window.on('unmaximize', () => {
-            this._window.webContents.send(WindowIPC.POST_UNMAXIMIZE_EVENT);
+            asyncRemoteMain.emitRemoteEvent(ISessions.unmaximizeEvent, undefined, this._window.webContents);
         });
         
         this._window.on('restore', () => {
-            this._window.webContents.send(WindowIPC.POST_RESTORE_EVENT);
+            asyncRemoteMain.emitRemoteEvent(ISessions.restoreEvent, undefined, this._window.webContents);
         });
 
     }
@@ -502,7 +510,7 @@ namespace JupyterLabSession {
 
     export
     interface IInfo {
-        state: ServerState;
+        serverState: ServerState;
         platform: NodeJS.Platform;
         uiState: UIState;
         x: number;
@@ -531,7 +539,7 @@ if (process && process.type !== 'renderer') {
     app.once('will-finish-launching', (e: Electron.Event) => {
         app.on('open-file', (event: Electron.Event, path: string) => {
             ipcMain.once('lab-ready', (event: Electron.Event) => {
-                asyncRemoteMain.emitRemoteEvent(ISessions.openFileEvent, event.sender, path);
+                asyncRemoteMain.emitRemoteEvent(ISessions.openFileEvent, path, event.sender);
             });
         });
     });

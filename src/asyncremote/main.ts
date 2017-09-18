@@ -9,12 +9,16 @@ import {
     AsyncRemote, Utils
 } from './ipc';
 
+import {
+    webContents
+} from 'electron';
+
 export
 interface IAsyncRemoteMain {
 
     registerRemoteMethod: <T, U>(method: AsyncRemote.IMethod<T, U>, execute: (arg: T, caller: Electron.WebContents) => Promise<U>) => void;
 
-    emitRemoteEvent: <U>(event: AsyncRemote.IEvent<U>, contents: Electron.WebContents, data: U) => void
+    emitRemoteEvent: <U>(event: AsyncRemote.IEvent<U>, data: U, ...contents: Electron.WebContents[]) => void;
 }
 
 class MainRemote implements IAsyncRemoteMain {
@@ -30,13 +34,17 @@ class MainRemote implements IAsyncRemoteMain {
         }
     }
 
-    emitRemoteEvent<U>(event: AsyncRemote.IEvent<U>, contents: Electron.WebContents, data: U): void {
+    emitRemoteEvent<U>(event: AsyncRemote.IEvent<U>, data: U, ...contents: Electron.WebContents[]): void {
         let payload: Utils.IEventEmit<U> =  {
             ...event,
             data
         };
         
-        contents.send(Utils.EMIT_EVENT, payload);
+        contents = contents ? contents : webContents.getAllWebContents();
+
+        contents.forEach((content: Electron.WebContents) => {
+            content.send(Utils.EMIT_EVENT, payload);
+        });
     }
 
     private _executeMethod(evt: Electron.Event, data: Utils.IMethodExecuteRequest<any>): void {

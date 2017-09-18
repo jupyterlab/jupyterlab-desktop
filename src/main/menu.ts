@@ -152,7 +152,7 @@ class JupyterMainMenu implements INativeMenu {
         // Application window is in focus
         if (window) {
             asyncRemoteMain.emitRemoteEvent(INativeMenu.clickEvent, 
-                window.webContents, menu as INativeMenu.IMenuItemOptions);
+                menu as INativeMenu.IMenuItemOptions, window.webContents);
         }
         // No application windows available
         else {

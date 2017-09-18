@@ -6,12 +6,12 @@ import {
 } from '../../../main/sessions';
 
 import {
-    remote, Browser, ipcRenderer
+    Browser
 } from '../../utils';
 
 import {
-    JupyterWindowIPC as WindowIPC
-} from '../../../ipc';
+    remote
+} from 'electron';
 
 import {
     asyncRemoteRenderer
@@ -20,6 +20,10 @@ import {
 import {
     IShortcutManager
 } from '../../../main/shortcuts';
+
+import {
+    ISessions
+} from '../../../main/sessions';
 
 import * as React from 'react';
 
@@ -60,14 +64,14 @@ class TitleBar extends React.Component<TitleBar.Props, TitleBar.State> {
         this._handleUnmaximize = this._handleUnmaximize.bind(this);
 
         asyncRemoteRenderer.onRemoteEvent(IShortcutManager.zoomEvent, this._handleZoom);
-        ipcRenderer.on(WindowIPC.POST_MAXIMIZE_EVENT, this._handleMaximize);
-        ipcRenderer.on(WindowIPC.POST_UNMAXIMIZE_EVENT, this._handleUnmaximize);
+        asyncRemoteRenderer.onRemoteEvent(ISessions.maximizeEvent, this._handleMaximize);
+        asyncRemoteRenderer.onRemoteEvent(ISessions.unmaximizeEvent, this._handleUnmaximize);
     }
 
     componentWillUnmount() {
         asyncRemoteRenderer.removeRemoteListener(IShortcutManager.zoomEvent, this._handleZoom);
-        ipcRenderer.removeListener(WindowIPC.POST_MAXIMIZE_EVENT, this._handleMaximize);
-        ipcRenderer.removeListener(WindowIPC.POST_UNMAXIMIZE_EVENT, this._handleUnmaximize);
+        asyncRemoteRenderer.removeRemoteListener(ISessions.maximizeEvent, this._handleMaximize);
+        asyncRemoteRenderer.removeRemoteListener(ISessions.unmaximizeEvent, this._handleUnmaximize);
     }
 
     render () {

@@ -262,7 +262,7 @@ class JupyterServerFactory implements IServerFactory, IClosingService {
         asyncRemoteMain.registerRemoteMethod(IServerFactory.requestServerStartPath, (data: any, caller) => {
             return this.getUserJupyterPath()
                 .then((path: string) => {
-                    asyncRemoteMain.emitRemoteEvent(IServerFactory.pathSelectedEvent, caller, undefined)
+                    asyncRemoteMain.emitRemoteEvent(IServerFactory.pathSelectedEvent, undefined, caller)
                     return this.createServer({path})
                 })
                 .then((data: JupyterServerFactory.IFactoryItem) => {
