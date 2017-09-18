@@ -1,11 +1,17 @@
 // Copyright (c) Jupyter Development Team.
 // Distributed under the terms of the Modified BSD License.
 
-let ipcRenderer: Electron.IpcRenderer = require('electron').ipcRenderer;
+import {
+    ipcRenderer
+} from 'electron';
 
 import {
-    AsyncRemote, Utils
-} from './ipc';
+    Utils
+} from './utils';
+
+import {
+    AsyncRemote
+} from './types';
 
 import {
     EventEmitter

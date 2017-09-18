@@ -2,16 +2,16 @@
 // Distributed under the terms of the Modified BSD License.
 
 import {
-    ipcMain
+    ipcMain, webContents
 } from 'electron';
 
 import {
-    AsyncRemote, Utils
-} from './ipc';
+    Utils
+} from './utils';
 
 import {
-    webContents
-} from 'electron';
+    AsyncRemote
+} from './types';
 
 export
 interface IAsyncRemoteMain {
