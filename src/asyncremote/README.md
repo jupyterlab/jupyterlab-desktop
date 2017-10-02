@@ -79,8 +79,8 @@ The `asyncRemoteMain` module is used by the main process to expose methods and e
 It has the following methods:
 
 ### registerRemoteMethod
-``` typescript
-asyncRemoteMain.registerRemoteMethod<T, U>(method: AsyncRemote.IMethod<T, U>, evecute: (T) => U)
+```typescript
+asyncRemoteMain.registerRemoteMethod<T, U>(method: AsyncRemote.IMethod<T, U>, execute: (arg: T,caller: Electron.WebContents) => Promise<U>)
 ```
 Exposes a method to the render process.
 - `method: AsyncRemote.IMethod` The method descriptor.

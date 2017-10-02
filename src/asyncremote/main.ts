@@ -13,11 +13,29 @@ import {
     AsyncRemote
 } from './types';
 
+/**
+ * The asyncRemoteMain interface.
+ */
 export
 interface IAsyncRemoteMain {
 
+    /**
+     * Register a method with the API to expose it to the
+     * renderer process.
+     * 
+     * @param method The method descriptor.
+     * @param execute The function to be executed when the method is called.
+     */
     registerRemoteMethod: <T, U>(method: AsyncRemote.IMethod<T, U>, execute: (arg: T, caller: Electron.WebContents) => Promise<U>) => void;
 
+    /**
+     * Emit an event to the renderer process.
+     * 
+     * @param event The event descriptor.
+     * @param data The event data.
+     * @param contents The WebContents to send the event to. If no argument
+     *                  is given, the event is sent to all WebContents
+     */
     emitRemoteEvent: <U>(event: AsyncRemote.IEvent<U>, data: U, ...contents: Electron.WebContents[]) => void;
 }
 
@@ -27,6 +45,13 @@ class MainRemote implements IAsyncRemoteMain {
         ipcMain.on(Utils.REQUEST_METHOD_EXECUTE, this._executeMethod.bind(this));
     }
     
+    /**
+     * Register a method with the API to expose it to the
+     * renderer process.
+     * 
+     * @param method The method descriptor.
+     * @param execute The function to be executed when the method is called.
+     */
     registerRemoteMethod<T, U>(method: AsyncRemote.IMethod<T, U>, execute: (arg: T, caller: Electron.WebContents) => Promise<U>): void {
         this._methods[method.id] = {
             ...method,
@@ -34,6 +59,14 @@ class MainRemote implements IAsyncRemoteMain {
         }
     }
 
+    /**
+     * Emit an event to the renderer process.
+     * 
+     * @param event The event descriptor.
+     * @param data The event data.
+     * @param contents The WebContents to send the event to. If no argument
+     *                  is given, the event is sent to all WebContents
+     */
     emitRemoteEvent<U>(event: AsyncRemote.IEvent<U>, data: U, ...contents: Electron.WebContents[]): void {
         let payload: Utils.IEventEmit<U> =  {
             ...event,
