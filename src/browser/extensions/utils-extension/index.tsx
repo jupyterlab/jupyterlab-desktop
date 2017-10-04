@@ -8,8 +8,8 @@ import {
 } from '@jupyterlab/apputils';
 
 import {
-    JupyterApplicationIPC as AppIPC,
-} from '../../../ipc';
+    ISessions
+} from '../../../main/sessions';
 
 import {
     JSONObject
@@ -20,7 +20,7 @@ import {
 } from '../../app';
 
 import {
-    StateDB
+    StateDB, ISettingRegistry, SettingRegistry, IDataConnector
 } from '@jupyterlab/coreutils';
 
 import {
@@ -44,8 +44,12 @@ import {
 } from '../../components';
 
 import {
-    ipcRenderer
-} from '../../utils';
+    asyncRemoteRenderer
+} from '../../../asyncremote';
+
+import {
+    IElectronDataConnector
+} from '../../../main/utils';
 
 import * as React from 'react';
 import * as ReactDOM from 'react-dom';
@@ -60,8 +64,10 @@ namespace CommandIDs {
     const connectToServer = 'electron-jupyterlab:connect-to-server';
 }
 
-interface ServerManagerMenuArgs extends JSONObject, AppIPC.IOpenConnection {
+interface ServerManagerMenuArgs extends JSONObject {
     name: string;
+    type: 'local' | 'remote';
+    remoteServerId?: number;
 }
 
 const serverManagerPlugin: JupyterLabPlugin<void> = {
@@ -102,11 +108,20 @@ function createServerManager(app: ElectronJupyterLab, palette: ICommandPalette,
                             menu: IMainMenu, servers: ServerManagerMenuArgs[]) {
     app.commands.addCommand(CommandIDs.activateServerManager, {
         label: 'Add Server',
-        execute: () => {ipcRenderer.send(AppIPC.REQUEST_ADD_SERVER)}
+        execute: () => {
+            asyncRemoteRenderer.runRemoteMethod(ISessions.createSession, {
+                state: 'new'
+            });
+        }
     });
     app.commands.addCommand(CommandIDs.connectToServer, {
         label: (args) => args.name as string,
-        execute: (args) => {ipcRenderer.send(AppIPC.REQUEST_OPEN_CONNECTION, args)}
+        execute: (args: ServerManagerMenuArgs) => {
+            asyncRemoteRenderer.runRemoteMethod(ISessions.createSession, {
+                state: args.type,
+                remoteServerId: args.remoteServerId
+            })
+        }
     });
 
     const { commands } = app;
@@ -187,11 +202,55 @@ const nativeMainMenuPlugin: JupyterLabPlugin<IMainMenu> = {
 };
 
 /**
+ * Create a data connector to access plugin settings.
+ */
+function newConnector(): IDataConnector<ISettingRegistry.IPlugin, JSONObject> {
+  return {
+    /**
+     * Retrieve a saved bundle from the data connector.
+     */
+    fetch(settingsId: string): Promise<ISettingRegistry.IPlugin> {
+        return asyncRemoteRenderer.runRemoteMethod(IElectronDataConnector.fetch, settingsId);
+    },
+
+    /**
+     * Remove a value from the data connector.
+     */
+    remove(): Promise<void> {
+      const message = 'Removing setting resources is not supported.';
+
+      return Promise.reject(new Error(message));
+    },
+
+    /**
+     * Save the user setting data in the data connector.
+     */
+    save(id: string, user: JSONObject): Promise<void> {
+        return asyncRemoteRenderer.runRemoteMethod(IElectronDataConnector.save, {id, user});
+    }
+  };
+}
+
+/**
+ * The default setting registry provider.
+ */
+const settingPlugin: JupyterLabPlugin<ISettingRegistry> = {
+  id: 'jupyter.services.setting-registry',
+  activate: (): ISettingRegistry => {
+    return new SettingRegistry({ connector: newConnector() });
+  },
+  autoStart: true,
+  provides: ISettingRegistry
+};
+
+/**
  * Override Main Menu plugin from apputils-extension
  */
 let nPlugins = plugins.map((p: JupyterLabPlugin<any>) => {
     if (p.id == 'jupyter.services.main-menu')
         return nativeMainMenuPlugin;
+    else if (p.id == 'jupyter.services.setting-registry')
+        return settingPlugin;
     return p;
 });
 nPlugins.push(serverManagerPlugin);

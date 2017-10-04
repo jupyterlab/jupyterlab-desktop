@@ -14,18 +14,17 @@ import {
 } from '@jupyterlab/application';
 
 import {
-    JupyterMenuIPC as MenuIPC
-} from '../../../ipc';
+    INativeMenu
+} from '../../../main/menu';
+
+import {
+    asyncRemoteRenderer
+} from '../../../asyncremote';
 
 import {
     IMainMenu
 } from '@jupyterlab/apputils';
 
-import {
-    ipcRenderer as ipc
-} from '../../utils';
-
-type JupyterMenuItemOptions = MenuIPC.JupyterMenuItemOptions;
 
 /**
  * The main menu class. Interacts with the electron main process
@@ -36,16 +35,9 @@ class NativeMenu extends MenuBar implements IMainMenu {
 
     constructor(private app: JupyterLab) {
         super();
-        this.registerListeners();
-    }
 
-    /**
-     * Register listeners for menu events
-     */
-    private registerListeners(): void {
-        // Register listener on menu bar clicks
-        ipc.on(MenuIPC.POST_CLICK_EVENT, (event: any, opts: JupyterMenuItemOptions) => {
-            // Execute the command associated with the click event
+        // Register click event listener
+        asyncRemoteRenderer.onRemoteEvent(INativeMenu.clickEvent, (opts) => {
             this.app.commands.execute(opts.command, opts.args);
         });
     }
@@ -59,9 +51,9 @@ class NativeMenu extends MenuBar implements IMainMenu {
      * @return Array of electron menu items representing menu item
      *         drop down contents 
      */
-    private buildNativeMenu(menu: Menu): JupyterMenuItemOptions[] {
+    private buildNativeMenu(menu: Menu): INativeMenu.IMenuItemOptions[] {
         let items = menu.items;
-        let nItems = new Array<JupyterMenuItemOptions>(items.length);
+        let nItems = new Array<INativeMenu.IMenuItemOptions>(items.length);
         for (let i = 0; i < items.length; i++) {
             nItems[i] = {command: null, type: null, label: null, submenu: null, accelerator: null};
 
@@ -93,12 +85,13 @@ class NativeMenu extends MenuBar implements IMainMenu {
         }
 
         let rank = 'rank' in options ? options.rank : 100;
-        let menuItem: JupyterMenuItemOptions = {
+        let menuItem: INativeMenu.IMenuItemOptions = {
             rank: rank,
             label: menu.title.label,
             submenu: this.buildNativeMenu(menu)
         }
-        /* Append the menu to the native menu */
-        ipc.send(MenuIPC.REQUEST_MENU_ADD, menuItem);
+        
+        /* Add the menu to the native menu */
+        asyncRemoteRenderer.runRemoteMethod(INativeMenu.addMenu, menuItem);
     }
 }

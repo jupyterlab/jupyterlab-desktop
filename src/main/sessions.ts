@@ -10,9 +10,8 @@ import {
 } from '@phosphor/coreutils';
 
 import {
-    JupyterWindowIPC as WindowIPC,
-    JupyterApplicationIPC as AppIPC
-} from '../ipc';
+    AsyncRemote, asyncRemoteMain
+} from '../asyncremote';
 
 import {
     IApplication, IStatefulService
@@ -49,13 +48,46 @@ interface ISessions extends EventEmitter {
 }
 
 export
+namespace ISessions {
+
+    export
+    let createSession: AsyncRemote.IMethod<JupyterLabSession.IOptions, void> = {
+        id: 'JupyterLabSessions-createsession'
+    }
+
+    export
+    let openFileEvent: AsyncRemote.IEvent<string> = {
+        id: 'JupyterLabSessions-openfile'
+    }
+    
+    export
+    let minimizeEvent: AsyncRemote.IEvent<void> = {
+        id: 'JupyterLabSessions-minimize'
+    }
+    
+    export
+    let maximizeEvent: AsyncRemote.IEvent<void> = {
+        id: 'JupyterLabSessions-maximize'
+    }
+    
+    export
+    let unmaximizeEvent: AsyncRemote.IEvent<void> = {
+        id: 'JupyterLabSessions-unmaximize'
+    }
+    
+    export
+    let restoreEvent: AsyncRemote.IEvent<void> = {
+        id: 'JupyterLabSessions-restore'
+    }
+}
+
+export
 class JupyterLabSessions extends EventEmitter implements ISessions, IStatefulService {
 
     readonly id = 'JupyterLabSessions';
     
     constructor(app: IApplication, serverFactory: IServerFactory) {
         super();
-
         this._serverFactory = serverFactory;
         
         // check if UI state was set by user
@@ -70,6 +102,8 @@ class JupyterLabSessions extends EventEmitter implements ISessions, IStatefulSer
         }
 
         this._registerListeners();
+
+        asyncRemoteMain.registerRemoteMethod(ISessions.createSession, this.createSession.bind(this));
 
         // Get last session state
         app.registerStatefulService(this)
@@ -213,7 +247,7 @@ class JupyterLabSessions extends EventEmitter implements ISessions, IStatefulSer
             
         });
 
-        ipcMain.once(AppIPC.LAB_READY, () => {
+        ipcMain.once('lab-ready', () => {
             // Skip JupyterLab executable
             for (let i = 1; i < process.argv.length; i ++){
                 this._activateLocalSession()
@@ -230,28 +264,6 @@ class JupyterLabSessions extends EventEmitter implements ISessions, IStatefulSer
                     this._startingSession = null;
                 });
             });
-        });
-
-
-        ipcMain.on(AppIPC.REQUEST_ADD_SERVER, (event: any, arg: any) => {
-            this._createSession({state: 'new'})
-            .then( () => {this._startingSession = null});
-        });
-        
-        ipcMain.on(AppIPC.REQUEST_OPEN_CONNECTION, (event: any, arg: AppIPC.IOpenConnection) => {
-            if (arg.type == 'remote'){
-                this._createSession({state: 'remote', remoteServerId: arg.remoteServerId})
-                .then( () => {this._startingSession = null});
-            } else {
-                this._createSession({state: 'local'})
-                .then( () => {this._startingSession = null});
-            }
-        });
-
-        // The path sent should correspond to the directory the app is started in
-        // (the directory passed into the "cwd" flag on server startup)
-        ipcMain.on(AppIPC.REQUEST_LAB_HOME_DIR, (event: any) => {
-            event.sender.send(AppIPC.LAB_HOME_DIR, app.getPath("home"));
         });
     }
 
@@ -278,7 +290,7 @@ class JupyterLabSessions extends EventEmitter implements ISessions, IStatefulSer
                 state.state = 'local';
                 this.createSession(state)
                 .then( () => { 
-                    ipcMain.once(AppIPC.LAB_READY, () => {
+                    ipcMain.once('lab-ready', () => {
                         resolve();
                     });
                 });
@@ -298,7 +310,7 @@ class JupyterLabSessions extends EventEmitter implements ISessions, IStatefulSer
             let session = this._lastFocusedSession;
             session.browserWindow.restore();
             session.browserWindow.focus();
-            session.browserWindow.webContents.send(AppIPC.OPEN_FILES, path);
+            asyncRemoteMain.emitRemoteEvent(ISessions.openFileEvent, path, session.browserWindow.webContents);
         })
         .catch( (error: any) => {
             return;
@@ -348,7 +360,7 @@ class JupyterLabSession {
         this._sessionManager = sessionManager;
 
         this._info = {
-            state: options.state,
+            serverState: options.state,
             platform: options.platform || process.platform,
             uiState: options.uiState,
             x: options.x,
@@ -403,19 +415,11 @@ class JupyterLabSession {
             this._window.show();
         });
         
-        // Create window state object to pass to the render process
-        let windowState: WindowIPC.IWindowState = {
-            serverState: this._info.state,
-            remoteServerId: this._info.remoteServerId,
-            uiState: this._info.uiState,
-            platform: this._info.platform
-        }
-        
         this._window.loadURL(url.format({
             pathname: path.join(__dirname, '../browser/index.html'),
             protocol: 'file:',
             slashes: true,
-            search: encodeURIComponent(JSON.stringify(windowState))
+            search: encodeURIComponent(JSON.stringify(this.info))
         }));
 
         this._window.on('focus', () => {
@@ -444,13 +448,13 @@ class JupyterLabSession {
             y: info.y,
             width: info.width,
             height: info.height,
-            state: info.state,
+            state: info.serverState,
             remoteServerId: info.remoteServerId
         }
     }
 
     private _addRenderAPI(): void {
-        ipcMain.on(WindowIPC.REQUEST_STATE_UPDATE, (evt: any, arg: any) => {
+        ipcMain.on('state-update', (evt: any, arg: any) => {
             for (let key in arg) {
                 if ((this._info as any)[key])
                     (this._info as any)[key] = (arg as any)[key];
@@ -458,19 +462,19 @@ class JupyterLabSession {
         });
 
         this._window.on('maximize', () => {
-            this._window.webContents.send(WindowIPC.POST_MAXIMIZE_EVENT);
+            asyncRemoteMain.emitRemoteEvent(ISessions.maximizeEvent, undefined, this._window.webContents);
         });
         
         this._window.on('minimize', () => {
-            this._window.webContents.send(WindowIPC.POST_MINIMIZE_EVENT);
+            asyncRemoteMain.emitRemoteEvent(ISessions.minimizeEvent, undefined, this._window.webContents);
         });
         
         this._window.on('unmaximize', () => {
-            this._window.webContents.send(WindowIPC.POST_UNMAXIMIZE_EVENT);
+            asyncRemoteMain.emitRemoteEvent(ISessions.unmaximizeEvent, undefined, this._window.webContents);
         });
         
         this._window.on('restore', () => {
-            this._window.webContents.send(WindowIPC.POST_RESTORE_EVENT);
+            asyncRemoteMain.emitRemoteEvent(ISessions.restoreEvent, undefined, this._window.webContents);
         });
 
     }
@@ -506,7 +510,7 @@ namespace JupyterLabSession {
 
     export
     interface IInfo {
-        state: ServerState;
+        serverState: ServerState;
         platform: NodeJS.Platform;
         uiState: UIState;
         x: number;
@@ -527,8 +531,22 @@ namespace JupyterLabSession {
     }
 }
 
+/**
+ * The "open-file" listener should be registered before
+ * app ready for "double click" files to open in application
+ */
+if (process && process.type !== 'renderer') {
+    app.once('will-finish-launching', (e: Electron.Event) => {
+        app.on('open-file', (event: Electron.Event, path: string) => {
+            ipcMain.once('lab-ready', (event: Electron.Event) => {
+                asyncRemoteMain.emitRemoteEvent(ISessions.openFileEvent, path, event.sender);
+            });
+        });
+    });
+}
+
 let service: IService = {
-    requirements: ['IApplication', 'IServerFactory'],
+    requirements: ['IApplication', 'IServerFactory', 'IAsyncRemoteMain'],
     provides: 'ISessions',
     activate: (app: IApplication, serverFactory: IServerFactory): ISessions => {
         return new JupyterLabSessions(app, serverFactory);
