@@ -6,10 +6,6 @@ import {
 } from 'electron';
 
 import {
-    JupyterApplicationIPC as AppIPC
-} from 'jupyterlab_app/src/ipc';
-
-import {
     ISessions
 } from './sessions';
 
@@ -17,42 +13,54 @@ import {
     IService
 } from './main';
 
+import {
+    AsyncRemote, asyncRemoteMain
+} from '../asyncremote';
+
 export
 interface IShortcutManager {}
+
+export
+namespace IShortcutManager {
+
+    export
+    let zoomEvent: AsyncRemote.IEvent<void> = {
+        id: 'KeyboardShortcutManager-zoom'
+    };
+}
 
 /**
  * Interface for keyboard shortcuts recognized by the shortcut manager
  */
-export
-interface KeyboardShortcut {
-    accelerator: string,
-    command: () => void
+interface IKeyboardShortcut {
+    accelerator: string;
+    command: () => void;
 }
 
-export class KeyboardShortcutManager implements IShortcutManager {
+class KeyboardShortcutManager implements IShortcutManager {
 
     /**
      * Create a new shortcut manager
-     * 
+     *
      * @param options - The application windows
      */
-    constructor(sessions: ISessions){
+    constructor(sessions: ISessions) {
         this._sessions = sessions;
-        
+
         this._sessions.on('session-ended', () => {
-            if (!this._sessions.isAppFocused()){
+            if (!this._sessions.isAppFocused()) {
                 this.disableShortcuts();
             }
         });
 
-        app.on('browser-window-focus', (event:Event, window: Electron.BrowserWindow) => {
-            if (!this._active){
+        app.on('browser-window-focus', (event: Event, window: Electron.BrowserWindow) => {
+            if (!this._active) {
                 this.enableShortcuts();
             }
         });
 
         app.on('browser-window-blur', (event: Event, window: Electron.BrowserWindow) => {
-            if (!this._sessions.isAppFocused()){
+            if (!this._sessions.isAppFocused()) {
                 this.disableShortcuts();
             }
         });
@@ -62,10 +70,52 @@ export class KeyboardShortcutManager implements IShortcutManager {
         });
     }
 
+    copy() {
+        webContents.getFocusedWebContents().copy();
+    }
+
+    paste() {
+        webContents.getFocusedWebContents().paste();
+    }
+
+    cut() {
+        webContents.getFocusedWebContents().cut();
+    }
+
+    zoomIn() {
+        let contents = webContents.getFocusedWebContents();
+        contents.getZoomLevel( (zoom: number) => {
+            if (zoom >= 3) {
+                return;
+            }
+            contents.setZoomLevel(zoom + 1);
+
+            // Emit zoom event
+            asyncRemoteMain.emitRemoteEvent(IShortcutManager.zoomEvent, undefined, contents);
+        });
+    }
+
+    zoomOut() {
+        let contents = webContents.getFocusedWebContents();
+        contents.getZoomLevel( (zoom: number) => {
+            if (zoom <= -7) {
+                return;
+            }
+            contents.setZoomLevel(zoom - 1);
+
+            // Emit zoom event
+            asyncRemoteMain.emitRemoteEvent(IShortcutManager.zoomEvent, undefined, contents);
+        });
+    }
+
+    quit() {
+        app.quit();
+    }
+
     /**
      * Enables all shortcuts
      */
-    private enableShortcuts(){
+    private enableShortcuts() {
         this._active = true;
         this._shortcuts.forEach( ({accelerator, command}) => {
             globalShortcut.register(accelerator, command);
@@ -75,11 +125,11 @@ export class KeyboardShortcutManager implements IShortcutManager {
     /**
      * Disables all shortcuts
      */
-    private disableShortcuts(){
+    private disableShortcuts() {
         this._active = false;
         globalShortcut.unregisterAll();
     }
-    
+
     /**
      * Whether or not an application window exists and is in focus
      */
@@ -93,55 +143,14 @@ export class KeyboardShortcutManager implements IShortcutManager {
     /**
      * The enabled shortcuts
      */
-    private _shortcuts: KeyboardShortcut[] = [
-        {accelerator: 'CmdOrCtrl+c', command: KeyboardCommands.copy},
-        {accelerator: 'CmdOrCtrl+v', command: KeyboardCommands.paste},
-        {accelerator: 'CmdOrCtrl+x', command: KeyboardCommands.cut},
-        {accelerator: 'CmdOrCtrl+=', command: KeyboardCommands.zoomIn},
-        {accelerator: 'CmdOrCtrl+-', command: KeyboardCommands.zoomOut},
-        {accelerator: process.platform === 'darwin'? 'Cmd+q' : (process.platform === 'win32' ? 'Alt+F4' : 'Ctrl+Shift+q'), command: KeyboardCommands.quit}
+    private _shortcuts: IKeyboardShortcut[] = [
+        {accelerator: 'CmdOrCtrl+c', command: this.copy.bind(this)},
+        {accelerator: 'CmdOrCtrl+v', command: this.paste.bind(this)},
+        {accelerator: 'CmdOrCtrl+x', command: this.cut.bind(this)},
+        {accelerator: 'CmdOrCtrl+=', command: this.zoomIn.bind(this)},
+        {accelerator: 'CmdOrCtrl+-', command: this.zoomOut.bind(this)},
+        {accelerator: process.platform === 'darwin' ? 'Cmd+q' : (process.platform === 'win32' ? 'Alt+F4' : 'Ctrl+Shift+q'), command: this.quit.bind(this)}
     ];
-
-}
-
-/**
- * Basic keyboard commands
- */
-class KeyboardCommands{
-
-    static copy = function() {
-        webContents.getFocusedWebContents().copy();
-    };
-
-    static paste = function() {
-        webContents.getFocusedWebContents().paste();
-    };
-
-    static cut = function() {
-        webContents.getFocusedWebContents().cut()
-    };
-
-    static zoomIn = function() {
-        let contents = webContents.getFocusedWebContents();
-        contents.getZoomLevel( (zoom: number) => {
-            if (zoom >= 3) return;
-            contents.setZoomLevel(zoom + 1);
-            contents.send(AppIPC.POST_ZOOM_EVENT);
-        });
-    };
-
-    static zoomOut = function() {
-        let contents = webContents.getFocusedWebContents();
-        contents.getZoomLevel( (zoom: number) => {
-            if (zoom <= -7) return;
-            contents.setZoomLevel(zoom - 1);
-            contents.send(AppIPC.POST_ZOOM_EVENT);
-        });
-    };
-
-    static quit = function () {
-        app.quit();
-    }
 }
 
 let service: IService = {
@@ -151,5 +160,5 @@ let service: IService = {
         return new KeyboardShortcutManager(sessions);
     },
     autostart: true
-}
+};
 export default service;

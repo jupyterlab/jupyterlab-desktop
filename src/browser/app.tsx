@@ -14,27 +14,39 @@ import {
 } from '@jupyterlab/coreutils';
 
 import {
-    JupyterServerIPC as ServerIPC,
-} from 'jupyterlab_app/src/ipc';
+    asyncRemoteRenderer
+} from '../asyncremote';
+
+import {
+    IServerFactory
+} from '../main/server';
+
+import {
+    ISessions
+} from '../main/sessions';
 
 import {
     SplashScreen, ServerManager, TitleBar, ServerError
-} from 'jupyterlab_app/src/browser/components';
+} from './components';
 
 import {
     ElectronJupyterLab
-} from 'jupyterlab_app/src/browser/extensions/electron-extension';
+} from './extensions/electron-extension';
 
 import {
-    JupyterServer, ipcRenderer
-} from 'jupyterlab_app/src/browser/utils';
+    JupyterServer
+} from './utils';
 
 import {
     JupyterLabSession
-} from 'jupyterlab_app/src/main/sessions';
+} from '../main/sessions';
+
+import {
+    remote, ipcRenderer
+} from 'electron';
 
 import * as React from 'react';
-import extensions from 'jupyterlab_app/src/browser/extensions';
+import extensions from './extensions';
 
 
 export
@@ -42,53 +54,22 @@ class Application extends React.Component<Application.Props, Application.State> 
 
     constructor(props: Application.Props) {
         super(props);
+        this._setLabDir();
+        this._preventDefaults();
         this._renderServerManager = this._renderServerManager.bind(this);
         this._renderSplash = this._renderSplash.bind(this);
         this._renderEmpty = this._renderEmpty.bind(this);
         this._renderErrorScreen = this._renderErrorScreen.bind(this);
         this._connectionAdded = this._connectionAdded.bind(this);
         this._launchFromPath = this._launchFromPath.bind(this);
-
         this._labReady = this._setupLab();
         
-        ipcRenderer.on(ServerIPC.RESPOND_SERVER_STARTED, (event: any, data: ServerIPC.IServerStarted) => {
-            if (data.err) {
-                console.error(data.err);
-                this.setState({renderState: this._renderErrorScreen});
-                (this.refs.splash as SplashScreen).fadeSplashScreen();
-                return;
-            }
-            
-            window.addEventListener('beforeunload', () => {
-                let stopMessage: ServerIPC.IRequestServerStop = {factoryId: data.factoryId}; 
-                ipcRenderer.send(ServerIPC.REQUEST_SERVER_STOP, stopMessage);
-            });
-            
-            this._server = {
-                token: data.token,
-                url: data.url,
-                name: 'Local',
-                type: 'local',
-            };
-
-            PageConfig.setOption("token", this._server.token);
-            PageConfig.setOption("baseUrl", this._server.url);
-            
-            this._labReady.then(() => {
-                try {
-                    this._lab.start({"ignorePlugins": this._ignorePlugins});
-                } catch(e) {
-                    console.log(e);
-                }
-                this._lab.restored.then( () => {
-                    (this.refs.splash as SplashScreen).fadeSplashScreen();
-                });
-            });
-        });
-
         if (this.props.options.serverState == 'local') {
             this.state = {renderSplash: this._renderSplash, renderState: this._renderEmpty, remotes: []};
-            ipcRenderer.send(ServerIPC.REQUEST_SERVER_START);
+            asyncRemoteRenderer.runRemoteMethod(IServerFactory.requestServerStart, undefined)
+                .then((data) => {
+                    this._serverReady(data);
+                })
         } else {
             this.state = {renderSplash: this._renderEmpty, renderState: this._renderServerManager, remotes: []};
         }
@@ -126,15 +107,55 @@ class Application extends React.Component<Application.Props, Application.State> 
             </div>
         );
     }
+
+    private _serverReady(data: IServerFactory.IServerStarted): void {
+        if (data.err) {
+            console.error(data.err);
+            this.setState({renderState: this._renderErrorScreen});
+            (this.refs.splash as SplashScreen).fadeSplashScreen();
+            return;
+        }
+        this._registerFileHandler();
+        window.addEventListener('beforeunload', () => {
+            asyncRemoteRenderer.runRemoteMethod(IServerFactory.requestServerStop, {
+                factoryId: data.factoryId
+            });
+        });
+        
+        this._server = {
+            token: data.token,
+            url: data.url,
+            name: 'Local',
+            type: 'local',
+        };
+
+        PageConfig.setOption("token", this._server.token);
+        PageConfig.setOption("baseUrl", this._server.url);
+        
+        this._labReady.then(() => {
+            try {
+                this._lab.start({"ignorePlugins": this._ignorePlugins});
+            } catch(e) {
+                console.log(e);
+            }
+            this._lab.restored.then( () => {
+                ipcRenderer.send('lab-ready');
+                (this.refs.splash as SplashScreen).fadeSplashScreen();
+            });
+        });
+    }
     
     private _launchFromPath() {
-        ipcRenderer.send(ServerIPC.REQUEST_SERVER_START_PATH);
+        asyncRemoteRenderer.runRemoteMethod(IServerFactory.requestServerStartPath, undefined)
+            .then((data: IServerFactory.IServerStarted) => {
+                this._serverReady(data);
+            });
 
         let pathSelected = () => {
-            ipcRenderer.removeListener(ServerIPC.POST_PATH_SELECTED, pathSelected);
+            asyncRemoteRenderer.removeRemoteListener(IServerFactory.pathSelectedEvent, pathSelected);
             this.setState({renderSplash: this._renderSplash, renderState: this._renderEmpty});
         }
-        ipcRenderer.on(ServerIPC.POST_PATH_SELECTED, pathSelected);
+        asyncRemoteRenderer.onRemoteEvent(IServerFactory.pathSelectedEvent, pathSelected);
     }
 
     private _saveState() {
@@ -235,6 +256,48 @@ class Application extends React.Component<Application.Props, Application.State> 
         return null;
     }
 
+    private _preventDefaults(): void {
+        document.ondragover = (event: DragEvent) => {
+            event.preventDefault();
+        };
+        document.ondragleave = (event: DragEvent) => {
+            event.preventDefault();
+        };
+        document.ondragend = (event: DragEvent) => {
+            event.preventDefault();
+        };
+        document.ondrop = (event: DragEvent) => {
+            event.preventDefault();
+        };
+    }
+
+    private _registerFileHandler(): void {
+        document.ondrop = (event: DragEvent) => {
+            event.preventDefault();
+            let files = event.dataTransfer.files;
+            for (let i = 0; i < files.length; i ++){
+                this._openFile(files[i].path);
+            }
+        };
+
+        asyncRemoteRenderer.onRemoteEvent(ISessions.openFileEvent, this._openFile);
+    }
+
+    private _openFile(path: string){
+        if (this._labDir){
+            let relPath = path.replace(this._labDir, '');
+            let winConvert = relPath.split('\\').join('/');
+            relPath = winConvert.replace("/", "");
+            this._lab.commands.execute('docmanager:open', {path: relPath});
+        }
+    }
+
+    private _setLabDir(){
+        this._labDir = remote.app.getPath('home');
+    }
+
+    private _labDir: string;
+
     private _lab: ElectronJupyterLab;
 
     private _ignorePlugins: string[] = ['jupyter.extensions.server-manager'];
@@ -265,7 +328,7 @@ namespace Application {
 
     export
     interface Props {
-        options: IOptions;
+        options: JupyterLabSession.IInfo;
     }
 
     export
@@ -273,14 +336,6 @@ namespace Application {
         renderState: () => any;
         renderSplash: () => any;
         remotes: IRemoteServer[];
-    }
-
-    export
-    interface IOptions extends JSONObject {
-        uiState: JupyterLabSession.UIState;
-        serverState: JupyterLabSession.ServerState;
-        remoteServerId: number;
-        platform: NodeJS.Platform;
     }
 
     export

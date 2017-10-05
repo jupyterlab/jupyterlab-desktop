@@ -44,7 +44,7 @@ class ElectronStateDB implements IStateDB {
 
     /**
      * Create a new state database.
-     * 
+     *
      * @param options - The istantiation options for the database
      */
     constructor(options: ElectronStateDB.IOptions) {
@@ -77,7 +77,7 @@ class ElectronStateDB implements IStateDB {
                 })
                 .catch(() => {
                     rej();
-                })
+                });
         });
     }
 
@@ -103,16 +103,17 @@ class ElectronStateDB implements IStateDB {
         return new Promise<JSONObject | null>((res, rej) => {
             this._updateCache()
                 .then(() => {
-                    if (this._cache[id] === undefined)
+                    if (this._cache[id] === undefined) {
                         res(null);
-                    else
+                    } else {
                         res(this._cache[id] as JSONObject);
+                    }
                     return;
                 })
                 .catch(() => {
                     res(null);
                 });
-            
+
         });
     }
 
@@ -157,10 +158,10 @@ class ElectronStateDB implements IStateDB {
                 .catch(() => {
                     res(null);
                 });
-            
+
         });
     }
-    
+
     /**
      * Remove a value from the database.
      *
@@ -183,14 +184,14 @@ class ElectronStateDB implements IStateDB {
                 .catch(() => {
                     res(null);
                 });
-            
+
         });
     }
-    
+
     /**
      * Check if there is a write currently in progress. If there is,
      * wait until the write promise is fulfilled.
-     * 
+     *
      * @param cb - callback called when writing completes.
      */
     private _checkWriteInProgress(cb: () => void): void {
@@ -202,17 +203,17 @@ class ElectronStateDB implements IStateDB {
                 this._checkWriteInProgress(() => {
                     cb();
                 });
-            })
+            });
             return;
         }
         cb();
     }
-    
+
     /**
      * Internal save function. Does not check the
      * current write state. That should be implemented by
      * the calling function.
-     * 
+     *
      * @return A promise that is fulfilled when data is written.
      */
     private _save(): Promise<void> {
@@ -221,10 +222,11 @@ class ElectronStateDB implements IStateDB {
         this._written = new Promise<void>((res, rej) => {
             fs.writeFile(this._dataFile, JSON.stringify(this._cache), (err) => {
                 this._writeInProgress = false;
-                if (err)
+                if (err) {
                     rej(err);
-                else
+                } else {
                     res();
+                }
             });
         });
         return this._written;
@@ -237,14 +239,15 @@ class ElectronStateDB implements IStateDB {
      * the cache will always be up-to-date otherwise. This is
      * because all calls to 'write' and 'remove' update the
      * internal cache.
-     * 
+     *
      * @return A promise fulfilled when the cache is updated.
      */
     private _updateCache(): Promise<void> {
         return new Promise<void>((res, rej) => {
             this._checkWriteInProgress(() => {
-                if (this._cache)
+                if (this._cache) {
                     res();
+                }
 
                 this._cache = {};
                 fs.readFile(this._dataFile, (err, data) => {
@@ -261,19 +264,19 @@ class ElectronStateDB implements IStateDB {
                     let pData: JSONObject;
                     try {
                         pData = JSON.parse(data.toString());
-                    } catch(err) {
+                    } catch (err) {
                         rej(err);
                         return;
                     }
-                
+
                     this._cache = pData;
                     res();
                 });
-        
+
             });
         });
     }
-    
+
     /**
      * The full path to the state data file.
      */

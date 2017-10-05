@@ -3,10 +3,8 @@ var path = require('path');
 var fs = require('fs-extra');
 var crypto = require('crypto');
 var package_data = require('./package.json');
-var buildDir = './build';
-
-// Ensure a clear build directory.
-fs.ensureDirSync(buildDir);
+const ExtractTextPlugin = require("extract-text-webpack-plugin");
+var buildDir = path.resolve('./build');
 
 // Create the hash
 var hash = crypto.createHash('md5');
@@ -14,26 +12,41 @@ hash.update(fs.readFileSync('./package.json'));
 var digest = hash.digest('hex');
 fs.writeFileSync(path.resolve(buildDir, 'hash.md5'), digest);
 
-
 module.exports = {
-  entry:  './src/browser/index.tsx',
+  entry:  './build/out/browser/index.js',
   output: {
-    path: path.resolve(buildDir),
-    filename: 'browser.bundle.js'
+    path: buildDir,
+    filename: 'browser.bundle.js',
   },
   resolve: {
     extensions: ['.ts', '.tsx', '.js', '.jsx'],
     alias: {
-      jupyterlab_app: path.resolve(__dirname)
+      jupyterlab_app: path.resolve(__dirname, 'jupyterlab_app')
     }
   },
+  externals: [
+    function(context, request, callback) {
+      if (/^@jupyterlab/g.test(request)){
+        return callback();
+      } else if (/^\.\/jupyterlab_app\/src\/browser/g.test(request)){
+        return callback();
+      } else if (/^\jupyterlab_app\/src\/browser/g.test(request)){
+        return callback();
+      }
+
+      callback(null, 'commonjs ' + request);
+    }
+  ],
   module: {
     rules: [
-      { test: /\.css$/, use: ['style-loader', 'css-loader'] },
+      { test: /\.css$/, 
+        use: ExtractTextPlugin.extract({ 
+          use: 'css-loader', 
+          fallback: 'style-loader' 
+        }
+      )},
       { test: /\.json$/, use: 'json-loader' },
-      { test: /\.ts$/, use: 'awesome-typescript-loader?configFileName=./tsconfig.json' },
-      { test: /\.tsx$/, use: 'awesome-typescript-loader?configFileName=./tsconfig.json' },
-      { test: /\.html$/, use: 'file-loader' },
+      { test: /\.html$/, use: 'file-loader?name=[name].[ext]' },
       { test: /\.(jpg|png|gif)$/, use: 'file-loader' },
       { test: /\.js.map$/, use: 'file-loader' },
       { test: /\.woff2(\?v=\d+\.\d+\.\d+)?$/, use: 'url-loader?limit=10000&mimetype=application/font-woff' },
@@ -43,11 +56,18 @@ module.exports = {
       { test: /\.svg(\?v=\d+\.\d+\.\d+)?$/, use: 'url-loader?limit=10000&mimetype=image/svg+xml' }
     ],
   },
+  externals: {
+    module: 'commonjs module',
+    child_process: 'commonjs child_process'
+  },
   node: {
     fs: 'empty',
     __dirname: false,
     __filename: false
   },
+  plugins: [
+    new ExtractTextPlugin("styles.css"),
+  ],
   bail: true,
   devtool: 'cheap-source-map'
 }
