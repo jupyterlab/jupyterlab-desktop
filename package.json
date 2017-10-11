@@ -171,6 +171,7 @@
     "electron-debug": "^1.2.0",
     "es6-promise": "^4.1.0",
     "font-awesome": "^4.6.3",
+    "jshint": "^2.9.5",
     "react": "^15.6.1",
     "react-dom": "^15.6.1"
   }
