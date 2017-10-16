@@ -238,7 +238,7 @@ namespace IServerFactory {
 }
 
 export
-    class JupyterServerFactory implements IServerFactory, IClosingService {
+class JupyterServerFactory implements IServerFactory, IClosingService {
 
     constructor(app: IApplication, registry: IRegistry) {
         this._registry = registry;
@@ -291,7 +291,9 @@ export
         let env: Promise<{ path: string }>;
 
         if (!opts.path) {
-            env = this._registry.getDefaultEnvironment();
+            env = this._registry.getDefaultEnvironment().then(defaultEnv => {
+                return { path: defaultEnv.binFolder };
+            });
         } else {
             env = Promise.resolve({ path: opts.path });
         }
@@ -322,7 +324,9 @@ export
         let env: Promise<{ path: string }>;
 
         if (!opts.path) {
-            env = this._registry.getDefaultEnvironment();
+            env = this._registry.getDefaultEnvironment().then(defaultEnv => {
+                return { path: defaultEnv.binFolder };
+            });
         } else {
             env = Promise.resolve({ path: opts.path });
         }
