@@ -15,67 +15,97 @@ import {
 } from 'electron';
 
 import {
-    SemVer, Range, satisfies
+    Range, satisfies
 } from 'semver';
 
 import * as fs from 'fs';
 
+let which = require('which');
+
 export
     interface IRegistry {
 
-    getDefaultEnvironment: () => Promise<Registry.IEnvironment>;
+    getDefaultEnvironment: () => Promise<Registry.IPythonEnvironment>;
 
     setDefaultEnvironment: (path: string) => Promise<void>;
 
-    getCondaInstallations: () => Promise<Registry.ICondaInstall[]>;
+    // refreshEnvironmentList: () => Promise<void>;
 
-    addPackageRequiment: (requirement: Registry.IPackageRequirement) => Promise<void>;
-
-    removePackageRequirement: (requirement: Registry.IPackageRequirement) => Promise<void>;
-
-    getPackageRequirements: () => Promise<Registry.IPackageRequirement[]>;
-
-    refreshEnvironments: () => Promise<void>;
+    getEnvironmentList: () => Promise<Registry.IPythonEnvironment[]>;
 }
 
 export
     class Registry implements IRegistry {
 
-    constructor(requirements: Registry.IPackageRequirement[]) {
-        this._requirements = requirements;
+    /*
 
-        this._registryBuilt = this._loadCondaInstalls().then(condaInstallations => {
-            condaInstallations.forEach(condaInstall => {
-                condaInstall.envs.forEach(environment => {
-                    this._refreshEnviromentWithRequirements(environment, this._requirements);
+    if (process.platform == 'win32') {
+        var main = new WindowsRegistry({
+            hive: WindowsRegistry.HKCU,
+            key: '\\SOFTWARE\\Python\\PythonCore'
+        });
+        main.keys((err: any, items: any[]) => {
+            items.forEach((item) => {
+                var installPath = new WindowsRegistry({
+                    hive: WindowsRegistry.HKCU,
+                    key: item.key + '\\InstallPath'
                 });
-
-                this._refreshEnviromentWithRequirements(condaInstall.rootEnv, this._requirements);
+                installPath.values((err: any, vals: any[]) => {
+                    vals.forEach((v) => {
+                        if (v.name == '(Default)')
+                            console.log(v.value);
+                    });
+                });
             });
+        });
+        return;
+    }
+    */
 
-            this._condaInstallations = condaInstallations;
+    constructor() {
+        this._requirements = [
+            {
+                name: 'jupyter_core',
+                moduleName: 'jupyter',
+                commands: ['--version'],
+                versionRange: new Range('>=4.2.0')
+            },
+            {
+                name: 'notebook',
+                moduleName: 'jupyter',
+                commands: ['notebook', '--version'],
+                versionRange: new Range('>=5.0.0')
+            }
+        ];
 
-            this._sortCondaInstallsAndEnvironments(this._condaInstallations);
-            this._default = this._selectInitialDefaultEnvironment(this._condaInstallations);
+        let pathEnvironments = this._loadPATHEnvironments();
+        let condaEnvironments = this._loadCondaEnvironments();
+        let allEnvironments = [pathEnvironments, condaEnvironments];
+        if (process.platform === 'win32') {
+            let windowRegEnvironments = this._loadWindowsRegistryEnvironments();
+            allEnvironments.push(windowRegEnvironments);
+        }
+
+        this._registryBuilt = Promise.all<Registry.IPythonEnvironment[]>(allEnvironments).then(environments => {
+            let flattenedEnvs: Registry.IPythonEnvironment[] = Array.prototype.concat.apply([], environments);
+            let updatedEnvs = this._updatePythonEnvironmentsWithRequirementVersions(flattenedEnvs, this._requirements);
+
+            return updatedEnvs.then(envs => {
+                let filteredEnvs = this._filterPythonEnvironmentsByRequirements(envs, this._requirements);
+                this._sortEnvironments(filteredEnvs, this._requirements);
+
+                this._default = filteredEnvs[0];
+                this._environments = filteredEnvs;
+
+                return;
+            });
         }).catch(reason => {
             console.log(`Registry building failed! Reason: ${reason}`);
-            this._condaInstallations = undefined;
+            this._default = undefined;
         });
     }
 
-    getCondaInstallations(): Promise<Registry.ICondaInstall[]> {
-        return new Promise((resolve, reject) => {
-            this._registryBuilt.then(() => {
-                if (this._condaInstallations && this._condaInstallations.length > 0) {
-                    resolve(this._condaInstallations);
-                } else {
-                    reject(new Error(`No conda installations found!`));
-                }
-            });
-        });
-    }
-
-    getDefaultEnvironment(): Promise<Registry.IEnvironment> {
+    getDefaultEnvironment(): Promise<Registry.IPythonEnvironment> {
         return new Promise((resolve, reject) => {
             this._registryBuilt.then(() => {
                 if (this._default) {
@@ -87,228 +117,214 @@ export
         });
     }
 
-    setDefaultEnvironment: (path: string) => Promise<void>;
-
-    addPackageRequiment: (requirement: Registry.IPackageRequirement) => Promise<void>;
-
-    removePackageRequirement: (requirement: Registry.IPackageRequirement) => Promise<void>;
-
-    getPackageRequirements(): Promise<Registry.IPackageRequirement[]> {
-        return this._registryBuilt.then(() => {
-            return Promise.resolve(this._requirements);
-        });
-    }
-
-    refreshEnvironments(): Promise<void> {
-        return this._registryBuilt.then(() => {
-            this._condaInstallations.forEach(condaInstall => {
-                condaInstall.envs.forEach(environment => {
-                    this._refreshEnviromentWithRequirements(environment, this._requirements);
-                });
-
-                this._refreshEnviromentWithRequirements(condaInstall.rootEnv, this._requirements);
-            });
-        });
-    }
-
-    // Conda installations must be sorted before being passed to this function
-    private _selectInitialDefaultEnvironment(sortedCondaInstallations: Registry.ICondaInstall[]): Registry.IEnvironment {
-        if (sortedCondaInstallations.length === 0) {
-            return undefined;
-        } else {
-            for (let condaIndex = 0; condaIndex < sortedCondaInstallations.length; condaIndex++) {
-                if (sortedCondaInstallations[condaIndex].rootEnv.satisfiesRequirements) {
-                    return sortedCondaInstallations[condaIndex].rootEnv;
-                }
-                for (let envIndex = 0; envIndex < sortedCondaInstallations[condaIndex].envs.length; envIndex++) {
-                    if (sortedCondaInstallations[condaIndex].envs[envIndex].satisfiesRequirements) {
-                        return sortedCondaInstallations[condaIndex].envs[envIndex];
-                    }
-                }
-            }
-        }
-    }
-
-    private _sortCondaInstallsAndEnvironments(condaInstalls: Registry.ICondaInstall[]) {
-        condaInstalls.forEach(condaInstallation => {
-            condaInstallation.envs.sort((a, b) => {
-                if (a.satisfiesRequirements && !b.satisfiesRequirements) {
-                    return -1;
-                } else if (!a.satisfiesRequirements && b.satisfiesRequirements) {
-                    return 1;
-                } else {
-                    if (a.name < b.name) {
-                        return -1;
-                    } else if (a.name > b.name) {
-                        return 1;
+    setDefaultEnvironment(newDefaultPath: string): Promise<void> {
+        return new Promise((resolve, reject) => {
+            this._registryBuilt.then(() => {
+                if (this._default) {
+                    if (this._default.path === newDefaultPath) {
+                        resolve();
                     } else {
-                        return 1;
+                        let foundInList = this._environments.filter(env => {
+                            return env.path === newDefaultPath;
+                        })[0];
+
+                        if (foundInList) {
+                            this._default = foundInList;
+
+                            resolve();
+                        } else {
+                            this._buildEnvironmentFromPath(newDefaultPath, this._requirements).then(newEnv => {
+                                this._default = newEnv;
+                                resolve();
+                            }).catch(reject);
+                        }
                     }
+                } else {
+                    this._buildEnvironmentFromPath(newDefaultPath, this._requirements).then(newEnv => {
+                        this._default = newEnv;
+                        resolve();
+                    }).catch(reject);
                 }
             });
         });
+    }
 
-        condaInstalls.sort((a, b) => {
-            if (a.presentInPath && !b.presentInPath) {
-                return -1;
-            } else if (!a.presentInPath && b.presentInPath) {
-                return 1;
-            } else {
-                if (a.rootEnv.satisfiesRequirements && !b.rootEnv.satisfiesRequirements) {
-                    return -1;
-                } else if (!a.rootEnv.satisfiesRequirements && b.rootEnv.satisfiesRequirements) {
-                    return 1;
+    getEnvironmentList(): Promise<Registry.IPythonEnvironment[]> {
+        return new Promise((resolve, reject) => {
+            this._registryBuilt.then(() => {
+                if (this._environments) {
+                    resolve(this._environments);
                 } else {
-                    return a.name.localeCompare(b.name);
+                    reject(new Error(`No environment list found!`));
                 }
-            }
+            });
         });
     }
 
-    private _getPATHCondaInstalls(): Promise<string[]> {
-        return this._getExecutableInstancesInPATH('conda').then(condasInPath => {
+    private _buildEnvironmentFromPath(pythonPath: string, requirements: Registry.IRequirement[]): Promise<Registry.IPythonEnvironment> {
+        let possibleNewDefault: Registry.IPythonEnvironment = {
+            name: `SetDefault-${basename(pythonPath)}`,
+            path: pythonPath,
+            type: Registry.IEnvironmentType.PATH,
+            versions: {}
+        };
+
+        let updatedEnv = this._updatePythonEnvironmentsWithRequirementVersions([possibleNewDefault], requirements);
+
+        return updatedEnv.then(newEnvs => {
+            let filteredEnvs = this._filterPythonEnvironmentsByRequirements(newEnvs, requirements);
+            if (filteredEnvs.length === 0) {
+                return Promise.reject(new Error('Python path does not satisfiy requirement!'));
+            } else {
+                return Promise.resolve(filteredEnvs[0]);
+            }
+        }, err => {
+            return Promise.reject(new Error('Python check failed!'));
+        });
+    }
+
+    private _loadPATHEnvironments(): Promise<Registry.IPythonEnvironment[]> {
+        let pathPythons = this._getExecutableInstances('python', process.env.PATH);
+        let pathPython3s = this._getExecutableInstances('python3', process.env.PATH);
+
+        return Promise.all([pathPythons, pathPython3s]).then(([python2s, python3s]: [string[], string[]]) => {
+            let uniquePythons = python2s.concat(python3s).filter((value, index, self) => {
+                return self.indexOf(value) === index;
+            });
+
+            return uniquePythons.map((pythonPath, index) => {
+                let newPythonEnvironment: Registry.IPythonEnvironment = {
+                    name: `${basename(pythonPath)}-${index}`,
+                    path: pythonPath,
+                    type: Registry.IEnvironmentType.PATH,
+                    versions: {}
+                };
+
+                return newPythonEnvironment;
+            });
+        });
+    }
+
+    private _loadCondaEnvironments(): Promise<Registry.IPythonEnvironment[]> {
+        let pathCondas = this._getPATHCondas();
+        let commonCondas = this._filterNonexistantPaths(Registry.COMMON_CONDA_LOCATIONS);
+
+        let allCondas = [pathCondas, commonCondas];
+        if (process.platform === 'win32') {
+            allCondas.push(this._getWindowsRegistryCondas());
+        }
+
+        return Promise.all(allCondas).then(allCondas => {
+            let flattenedCondaRoots: string[] = Array.prototype.concat.apply([], allCondas);
+            let uniqueCondaRoots = flattenedCondaRoots.filter((value: string, index, self) => {
+                return self.indexOf(value) === index;
+            });
+
+            let rootEnvironments = uniqueCondaRoots.map(condaRootPath => {
+                let newRootEnvironment: Registry.IPythonEnvironment = {
+                    name: basename(condaRootPath),
+                    path: join(condaRootPath, 'bin', 'python'),
+                    type: Registry.IEnvironmentType.CondaRoot,
+                    versions: {}
+                };
+
+                return newRootEnvironment;
+            });
+
+            return rootEnvironments;
+        });
+    }
+
+    private _getPATHCondas(): Promise<string[]> {
+        let PATH = process.env.PATH;
+        return this._getExecutableInstances('conda', PATH).then(condasInPath => {
             return Promise.all(condasInPath.map(condaExecutablePath => {
-                return this._getJSONFromCommand(condaExecutablePath, ['info']).then(condaInfoJSON => {
+                let condaInfoOutput = this._runCommand(condaExecutablePath, ['info']);
+                return this._convertExecutableOutputFromJson(condaInfoOutput).then(condaInfoJSON => {
                     return condaInfoJSON.root_prefix as string;
                 });
             }));
         });
     }
 
-    private _loadCondaInstalls(): Promise<Registry.ICondaInstall[]> {
-        return new Promise((resolve, reject) => {
-            this._getPATHCondaInstalls().then(condas => {
-                let condasInPath = new Set(condas);
-                let uniqueCondaInstalls = condas.concat(Registry.COMMON_CONDA_LOCATIONS).filter((value, index, self) => {
-                    return self.indexOf(value) === index; // get unique conda install locations
+    private _getWindowsRegistryCondas(): Promise<string[]> {
+        return Promise.resolve([]);
+    }
+
+    private _loadWindowsRegistryEnvironments(): Promise<Registry.IPythonEnvironment[]> {
+        return Promise.resolve([]);
+    }
+
+    private _filterPythonEnvironmentsByRequirements(environments: Registry.IPythonEnvironment[], requirements: Registry.IRequirement[]): Registry.IPythonEnvironment[] {
+        return environments.filter((env, index, envSelf) => {
+            return requirements.every((req, index, reqSelf) => {
+                try {
+                    return satisfies(env.versions[req.name], req.versionRange);
+                } catch (e) {
+                    return false;
+                }
+            });
+        });
+    }
+
+    private _updatePythonEnvironmentsWithRequirementVersions(environments: Registry.IPythonEnvironment[], requirements: Registry.IRequirement[]): Promise<Registry.IPythonEnvironment[]> {
+        let updatedEnvironments = environments.map(env => {
+            let versions: Promise<[string, string]>[] = requirements.map(req => {
+                let pythonOutput = this._runPythonModuleCommand(env.path, req.moduleName, req.commands);
+                let versionFromOutput = this._extractVersionFromExecOutput(pythonOutput);
+                return versionFromOutput.then<[string, string]>(version => {
+                    return [req.name, version];
+                }).catch<[string, string]>(reason => {
+                    return [req.name, Registry.NO_MODULE_SENTINEL];
                 });
+            });
 
-                this._filterNonexistantPaths(uniqueCondaInstalls).then(existingCondaInstallPaths => { // filter out conda paths that don't exist
-                    return Promise.all(existingCondaInstallPaths.map(condaInstallPath => {
-                        return this._loadCondaFolder(condaInstallPath, condasInPath.has(condaInstallPath)); // for each existing path load the conda install
-                    }))
-                        .then(resolve)
-                        .catch(reject);
-                });
+            return Promise.all(versions).then(versions => {
+                env.versions = versions.reduce((accum: Registry.IVersionContainer, current: [string, string], index, self) => {
+                    accum[current[0]] = current[1];
+                    return accum;
+                }, {});
+
+                return env;
             });
         });
+
+        return Promise.all(updatedEnvironments);
     }
 
-    private _loadCondaFolder(condaInstallPath: string, inPATH: boolean): Promise<Registry.ICondaInstall> {
+    private _extractVersionFromExecOutput(output: Promise<string>): Promise<string> {
         return new Promise((resolve, reject) => {
-            let subfolders = [join(condaInstallPath, 'bin'), join(condaInstallPath, 'conda-meta'), join(condaInstallPath, 'envs')];
-            this._checkAllPaths(subfolders).then(subfoldersExist => {
-                if (!subfoldersExist) {
-                    reject(new Error(`Conda installation at ${condaInstallPath} does not contain necessary folders!`));
-                } else {
-                    let rootEnv = this._loadEnvironmentFolder('root', condaInstallPath);
-                    let otherEnvs = this._loadEnvironments(join(condaInstallPath, 'envs'));
-                    Promise.all([rootEnv, otherEnvs]).then(resolvedEnvironments => {
-                        let name = basename(condaInstallPath);
-                        let newCondaInstall: Registry.ICondaInstall = {
-                            path: condaInstallPath,
-                            name: name,
-                            rootEnv: resolvedEnvironments[0],
-                            envs: resolvedEnvironments[1],
-                            presentInPath: inPATH
-                        };
+            output.then(output => {
+                let matches: string[] = [];
+                let currentMatch: RegExpExecArray;
+                do {
+                    currentMatch = Registry.SEMVER_REGEX.exec(output);
+                    if (currentMatch) {
+                        matches.push(currentMatch[0]);
+                    }
+                } while (currentMatch);
 
-                        resolve(newCondaInstall);
-                    });
+                if (matches.length === 0) {
+                    reject(new Error(`Could not find SemVer match in output!`));
+                } else {
+                    resolve(matches[0]);
                 }
+            }, reason => {
+                console.log(reason);
+                reject(new Error(`Command output failed!`));
             });
         });
     }
 
-    private _loadEnvironments(condaEnvsPath: string): Promise<Registry.IEnvironment[]> {
+    private _convertExecutableOutputFromJson(output: Promise<string>): Promise<any> {
         return new Promise((resolve, reject) => {
-            fs.readdir(condaEnvsPath, (err, files) => {
-                if (err) {
-                    reject(err);
-                } else {
-                    let loadedEnvironments = Promise.all(files.map(filename => {
-                        return this._loadEnvironmentFolder(filename, join(condaEnvsPath, filename));
-                    }));
-
-                    resolve(loadedEnvironments);
+            output.then(output => {
+                try {
+                    resolve(JSON.parse(output));
+                } catch (e) {
+                    reject(e);
                 }
-            });
-        });
-    }
-
-    private _loadEnvironmentFolder(environmentName: string, environmentPath: string): Promise<Registry.IEnvironment> {
-        return new Promise((resolve, reject) => {
-            let subfolders = [join(environmentPath, 'bin'), join(environmentPath, 'conda-meta')];
-            this._checkAllPaths(subfolders).then((subfolderExist) => {
-                if (!subfolderExist) {
-                    reject(new Error(`Environment at ${environmentPath} does not contain necessary folders!`));
-                } else {
-                    this._loadPackages(join(environmentPath, 'conda-meta')).then(newPackages => {
-                        let newEnv: Registry.IEnvironment = {
-                            path: environmentPath,
-                            name: environmentName,
-                            packages: newPackages,
-                            binFolder: join(environmentPath, 'bin'),
-                            satisfiesRequirements: false
-                        };
-                        resolve(newEnv);
-                    }).catch(err => {
-                        reject(err);
-                    });
-                }
-            });
-        });
-    }
-
-    private _refreshEnviromentWithRequirements(environment: Registry.IEnvironment, requirements: Registry.IPackageRequirement[]) {
-        environment.satisfiesRequirements = requirements.every(requirement => {
-            return environment.packages.some((pack) => {
-                return satisfies(pack.version, requirement.versionRange, true);
-            });
-        });
-    }
-
-    private _loadPackages(condaMetaPath: string): Promise<Registry.IPackage[]> {
-        return new Promise((resolve, reject) => {
-            // Read conda-meta directory for a list of json files containing package specifications.
-            fs.readdir(condaMetaPath, (err, files) => {
-                if (err) {
-                    reject(err);
-                } else {
-                    // Filter out the history file from the list of files.
-                    let historyFileReg = /^history$/;
-                    let packageFiles = files.filter((filename) => {
-                        return !historyFileReg.test(filename);
-                    });
-
-                    // For each package filename read in the json file
-                    Promise.all(packageFiles.map((packageFilename) => {
-                        return this._loadPackageFromJSON(join(condaMetaPath, packageFilename));
-                    })).then((packages) => {
-                        resolve(packages);
-                    }).catch((err) => {
-                        reject(err);
-                    });
-                }
-            });
-        });
-    }
-
-    private _loadPackageFromJSON(packagePath: string): Promise<Registry.IPackage> {
-        return new Promise<Registry.IPackage>((resolve, reject) => {
-            fs.readFile(packagePath, (err, data) => {
-                if (err) {
-                    reject(err);
-                } else {
-                    // Create new IPackage from name and version field contained in package file
-                    let jsonData = JSON.parse(data.toString());
-                    let newPackage: Registry.IPackage = {
-                        name: jsonData.name,
-                        version: jsonData.version
-                    };
-                    resolve(newPackage);
-                }
-            });
+            }).catch(reject);
         });
     }
 
@@ -320,15 +336,6 @@ export
         });
     }
 
-    // Check that all paths exists
-    private _checkAllPaths(paths: string[]): Promise<boolean> {
-        return Promise.all(paths.map(path => {
-            return this._pathExists(path);
-        })).then(results => {
-            return results.every((value) => value);
-        });
-    }
-
     private _pathExists(path: string): Promise<boolean> {
         return new Promise<boolean>((res, rej) => {
             fs.access(path, fs.constants.F_OK, (e) => {
@@ -337,25 +344,43 @@ export
         });
     }
 
-    private _getExecutableInstancesInPATH(executableName: string): Promise<string[]> {
+    private _getExecutableInstances(executableName: string, path: string): Promise<string[]> {
         return new Promise<string[]>((resolve, reject) => {
-            let executableSearch = spawn('/bin/bash', ['-l']);
-            executableSearch.stdin.write(`exec which -a ${executableName} \n`);
-
-            executableSearch.on('exit', () => {
-                executableSearch.removeAllListeners();
-
-                let rawOutput = (executableSearch.stdout.read() as Buffer);
-                if (!rawOutput) {
-                    resolve([]);
+            which(executableName, { all: true, path: path }, (err: any, result: string) => {
+                if (err) {
+                    if (err.code === 'ENOENT') {
+                        resolve([]);
+                    } else {
+                        reject(err);
+                    }
                 } else {
-                    resolve(rawOutput.toString().split('\n'));
+                    if (typeof result === 'string') {
+                        resolve([result]);
+                    } else {
+                        resolve(result);
+                    }
                 }
             });
         });
     }
 
-    private _getJSONFromCommand(executablePath: string, commands: string[]): Promise<any> {
+    private _runPythonModuleCommand(pythonPath: string, moduleName: string, commands: string[]): Promise<string> {
+        let totalCommands = ['-m', moduleName].concat(commands);
+        return new Promise<string>((resolve, reject) => {
+            this._runCommand(pythonPath, totalCommands).then(output => {
+                let reg = new RegExp(Registry.NO_MODULE_REGEX_FORMAT_STRING(moduleName));
+
+                if (reg.test(output)) {
+                    reject(new Error(`Python executable could not find ${moduleName} module!`));
+                } else {
+                    resolve(output);
+                }
+
+            }).catch(reject);
+        });
+    }
+
+    private _runCommand(executablePath: string, commands: string[]): Promise<string> {
         return new Promise<any>((resolve, reject) => {
             let executableRun = spawn(executablePath, commands);
 
@@ -365,56 +390,107 @@ export
                 let rawOutput = (executableRun.stdout.read() as Buffer);
                 if (!rawOutput) {
                     let errOutput = (executableRun.stderr.read() as Buffer);
-                    reject(new Error(`Command produced no output to stdout! Stderr: ${errOutput}`));
+                    if (!errOutput) {
+                        reject(new Error(`Command produced no output to stdout or stderr!`));
+                    } else {
+                        resolve(errOutput);
+                    }
                 } else {
-                    resolve(JSON.parse(rawOutput.toString()));
+                    resolve(rawOutput.toString());
                 }
             });
         });
     }
 
-    private _condaInstallations: Registry.ICondaInstall[] = [];
+    private _sortEnvironments(environments: Registry.IPythonEnvironment[], requirements: Registry.IRequirement[]) {
+        environments.sort((a, b) => {
+            let typeCompareResult = this._compareEnvType(a.type, b.type);
+            if (typeCompareResult !== 0) {
+                return typeCompareResult;
+            } else {
+                let versionCompareResult = this._compareVersions(a.versions, b.versions, requirements);
+                if (versionCompareResult !== 0) {
+                    return versionCompareResult;
+                } else {
+                    return a.name.localeCompare(b.name);
+                }
+            }
+        });
+    }
 
-    private _requirements: Registry.IPackageRequirement[] = [];
+    private _compareVersions(a: Registry.IVersionContainer, b: Registry.IVersionContainer, requirements: Registry.IRequirement[]): number {
+        let versionPairs = requirements.map(req => {
+            return [a[req.name], b[req.name]];
+        });
 
-    private _default: Registry.IEnvironment;
+        for (let index = 0; index < requirements.length; index++) {
+            let [aVersion, bVersion] = versionPairs[index];
+            let result = aVersion.localeCompare(bVersion);
+
+            if (result !== 0) {
+                return result;
+            }
+        }
+
+        return 0;
+    }
+
+    private _compareEnvType(a: Registry.IEnvironmentType, b: Registry.IEnvironmentType): number {
+        return this._getEnvTypeValue(a) - this._getEnvTypeValue(b);
+    }
+
+    private _getEnvTypeValue(a: Registry.IEnvironmentType): number {
+        switch (a) {
+            case Registry.IEnvironmentType.PATH:
+                return 0;
+            case Registry.IEnvironmentType.CondaRoot:
+                return 1;
+            case Registry.IEnvironmentType.WindowsReg:
+                return 2;
+            case Registry.IEnvironmentType.CondaEnv:
+                return 3;
+            default:
+                return 100;
+        }
+    }
+
+    private _environments: Registry.IPythonEnvironment[];
+
+    private _default: Registry.IPythonEnvironment;
 
     private _registryBuilt: Promise<void>;
+
+    private _requirements: Registry.IRequirement[];
 }
 
 export
 namespace Registry {
 
     export
-        interface ICondaInstall {
+        interface IPythonEnvironment {
         path: string;
         name: string;
-        envs: IEnvironment[];
-        rootEnv: IEnvironment;
-        presentInPath: boolean;
+        type: IEnvironmentType;
+        versions: IVersionContainer; // First version is for jupyter, second version is for jupyter notebook
     }
 
     export
-        interface IEnvironment {
-        path: string;
+        interface IVersionContainer {
+        [name: string]: string;
+    }
+
+    export enum IEnvironmentType {
+        PATH = 'PATH',
+        CondaRoot = 'conda-root',
+        CondaEnv = 'conda-env',
+        WindowsReg = 'windows-reg',
+    }
+
+    export interface IRequirement {
         name: string;
-        packages: IPackage[];
-        binFolder: string;
-        satisfiesRequirements: boolean;
-    }
-
-    export
-        interface IPackage {
-        name: string;
-        version: SemVer;
-    }
-
-    export
-        interface IPackageRequirement {
-        packageName: string;
-        executableName?: string;
+        moduleName: string;
+        commands: string[];
         versionRange: Range;
-        versionCommand?: string[];
     }
 
     export
@@ -424,28 +500,24 @@ namespace Registry {
             join(app.getPath('home'), 'miniconda3'),
             join(app.getPath('home'), 'miniconda')
         ];
+
+    // Copied from https://raw.githubusercontent.com/sindresorhus/semver-regex/master/index.js
+    export
+        const SEMVER_REGEX = /\bv?(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)(?:-[\da-z\-]+(?:\.[\da-z\-]+)*)?(?:\+[\da-z\-]+(?:\.[\da-z\-]+)*)?\b/ig;
+
+    export
+        function NO_MODULE_REGEX_FORMAT_STRING(moduleName: string): string {
+        return `No module named ${moduleName}$`;
+    }
+
+    export const NO_MODULE_SENTINEL = 'NO MODULE OR VERSION FOUND';
 }
 
 let service: IService = {
     requirements: [],
     provides: 'IRegistry',
     activate: (): IRegistry => {
-        let requirements = [
-            {
-                packageName: 'jupyter',
-                executableName: 'jupyter',
-                versionRange: new Range('>=4.3.0'),
-                versionCommand: ['--version']
-            } as Registry.IPackageRequirement,
-            {
-                packageName: 'notebook',
-                executableName: 'jupyter',
-                versionRange: new Range('>=5.0.0'),
-                versionCommand: ['notebook', '--version']
-            }
-        ];
-
-        return new Registry(requirements);
+        return new Registry();
     },
     autostart: true
 };

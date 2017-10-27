@@ -3,10 +3,6 @@ import {
 } from 'child_process';
 
 import {
-    join
-} from 'path';
-
-import {
     IService
 } from './main';
 
@@ -58,7 +54,7 @@ class JupyterServer {
             let baseRegExp = /http:\/\/localhost:\d+\//g;
             let home = app.getPath('home');
 
-            this._nbServer = execFile(join(this._info.path, 'jupyter'), ['notebook', '--no-browser'], { cwd: home });
+            this._nbServer = execFile(this._info.path, ['-m', 'jupyter', 'notebook', '--no-browser'], { cwd: home });
 
             this._nbServer.on('exit', () => {
                 this._serverStartFailed();
@@ -292,7 +288,7 @@ class JupyterServerFactory implements IServerFactory, IClosingService {
 
         if (!opts.path) {
             env = this._registry.getDefaultEnvironment().then(defaultEnv => {
-                return { path: defaultEnv.binFolder };
+                return { path: defaultEnv.path };
             });
         } else {
             env = Promise.resolve({ path: opts.path });
@@ -325,7 +321,7 @@ class JupyterServerFactory implements IServerFactory, IClosingService {
 
         if (!opts.path) {
             env = this._registry.getDefaultEnvironment().then(defaultEnv => {
-                return { path: defaultEnv.binFolder };
+                return { path: defaultEnv.path };
             });
         } else {
             env = Promise.resolve({ path: opts.path });
