@@ -7,11 +7,11 @@ import {
 } from './main';
 
 import {
-    IRegistry
+    IRegistry, Registry
 } from './registry';
 
 import {
-    app, dialog
+    app
 } from 'electron';
 
 import {
@@ -30,7 +30,7 @@ export
 class JupyterServer {
 
     constructor(options: JupyterServer.IOptions) {
-        this._info.path = options.path;
+        this._info.environment = options.environment;
     }
 
     get info(): JupyterServer.IInfo {
@@ -54,7 +54,7 @@ class JupyterServer {
             let baseRegExp = /http:\/\/localhost:\d+\//g;
             let home = app.getPath('home');
 
-            this._nbServer = execFile(this._info.path, ['-m', 'jupyter', 'notebook', '--no-browser'], { cwd: home });
+            this._nbServer = execFile(this._info.environment.path, ['-m', 'jupyter', 'notebook', '--no-browser'], { cwd: home });
 
             this._nbServer.on('exit', () => {
                 this._serverStartFailed();
@@ -140,7 +140,7 @@ class JupyterServer {
 
     private _startServer: Promise<JupyterServer.IInfo> = null;
 
-    private _info: JupyterServer.IInfo = { url: null, token: null, path: null };
+    private _info: JupyterServer.IInfo = { url: null, token: null, environment: null };
 }
 
 export
@@ -148,14 +148,14 @@ namespace JupyterServer {
 
     export
     interface IOptions {
-        path: string;
+        environment: Registry.IPythonEnvironment;
     }
 
     export
     interface IInfo {
         url: string;
         token: string;
-        path: string;
+        environment: Registry.IPythonEnvironment;
     }
 }
 
@@ -251,10 +251,10 @@ class JupyterServerFactory implements IServerFactory, IClosingService {
         });
 
         asyncRemoteMain.registerRemoteMethod(IServerFactory.requestServerStartPath, (data: any, caller) => {
-            return this.getUserJupyterPath()
-                .then((path: string) => {
+            return this._registry.getUserJupyterPath()
+                .then((environment: Registry.IPythonEnvironment) => {
                     asyncRemoteMain.emitRemoteEvent(IServerFactory.pathSelectedEvent, undefined, caller);
-                    return this.createServer({ path });
+                    return this.createServer({ environment });
                 })
                 .then((data: JupyterServerFactory.IFactoryItem) => {
                     return this._factoryToIPC(data);
@@ -284,18 +284,16 @@ class JupyterServerFactory implements IServerFactory, IClosingService {
      */
     createFreeServer(opts: JupyterServer.IOptions): JupyterServerFactory.IFactoryItem {
         let item: JupyterServerFactory.IFactoryItem;
-        let env: Promise<{ path: string }>;
+        let env: Promise<Registry.IPythonEnvironment>;
 
-        if (!opts.path) {
-            env = this._registry.getDefaultEnvironment().then(defaultEnv => {
-                return { path: defaultEnv.path };
-            });
+        if (!opts.environment) {
+            env = this._registry.getDefaultEnvironment();
         } else {
-            env = Promise.resolve({ path: opts.path });
+            env = Promise.resolve(opts.environment);
         }
 
         env.then(env => {
-            opts.path = env.path;
+            opts.environment = env;
             item = this._createServer(opts);
 
             return item.server.start();
@@ -317,21 +315,19 @@ class JupyterServerFactory implements IServerFactory, IClosingService {
      */
     createServer(opts: JupyterServer.IOptions, forceNewServer?: boolean): Promise<JupyterServerFactory.IFactoryItem> {
         let server: JupyterServerFactory.IFactoryItem;
-        let env: Promise<{ path: string }>;
+        let env: Promise<Registry.IPythonEnvironment>;
 
-        if (!opts.path) {
-            env = this._registry.getDefaultEnvironment().then(defaultEnv => {
-                return { path: defaultEnv.path };
-            });
+        if (!opts.environment) {
+            env = this._registry.getDefaultEnvironment();
         } else {
-            env = Promise.resolve({ path: opts.path });
+            env = Promise.resolve(opts.environment);
         }
 
         return env.then(env => {
             if (forceNewServer) {
-                server = this._createServer({ path: env.path });
+                server = this._createServer({ environment: env });
             } else {
-                server = this._findUnusedServer({ path: env.path }) || this._createServer({ path: env.path });
+                server = this._findUnusedServer({ environment: env }) || this._createServer({ environment: env });
             }
             server.used = true;
 
@@ -405,28 +401,7 @@ class JupyterServerFactory implements IServerFactory, IClosingService {
         return promise;
     }
 
-    /**
-     * Open a file selection dialog so users
-     * can enter the local path to the Jupyter server.
-     *
-     * @return a promise that is fulfilled with the user path.
-     */
-    getUserJupyterPath(): Promise<string> {
-        return new Promise<string>((res, rej) => {
-            dialog.showOpenDialog({
-                properties: ['openDirectory', 'showHiddenFiles'],
-                buttonLabel: 'Use Path'
-            }, (filePaths: string[]) => {
-                if (!filePaths) {
-                    rej(new Error('cancel'));
-                    return;
-                } else {
-                    res(filePaths[0]);
-                }
-            });
 
-        });
-    }
 
     private _createServer(opts: JupyterServer.IOptions): JupyterServerFactory.IFactoryItem {
         let item: JupyterServerFactory.IFactoryItem = {
@@ -442,7 +417,7 @@ class JupyterServerFactory implements IServerFactory, IClosingService {
 
     private _findUnusedServer(opts: JupyterServer.IOptions): JupyterServerFactory.IFactoryItem | null {
         let idx = ArrayExt.findFirstIndex(this._servers, (server: JupyterServerFactory.IFactoryItem, idx: number) => {
-            if (!server.used && opts.path === server.server.info.path) {
+            if (!server.used && opts.environment.path === server.server.info.environment.path) {
                 return true;
             }
             return false;

@@ -1,5 +1,5 @@
 import {
-    spawn
+    execFile
 } from 'child_process';
 
 import {
@@ -11,7 +11,7 @@ import {
 } from 'path';
 
 import {
-    app
+    app, dialog
 } from 'electron';
 
 import {
@@ -23,8 +23,7 @@ import * as fs from 'fs';
 let which = require('which');
 let winreg = require('winreg');
 
-export
-    interface IRegistry {
+export interface IRegistry {
 
     getDefaultEnvironment: () => Promise<Registry.IPythonEnvironment>;
 
@@ -33,10 +32,13 @@ export
     // refreshEnvironmentList: () => Promise<void>;
 
     getEnvironmentList: () => Promise<Registry.IPythonEnvironment[]>;
+
+    addEnvironment: (path: string) => Promise<Registry.IPythonEnvironment>;
+
+    getUserJupyterPath: () => Promise<Registry.IPythonEnvironment>;
 }
 
-export
-    class Registry implements IRegistry {
+export class Registry implements IRegistry {
 
     constructor() {
         this._requirements = [
@@ -64,26 +66,36 @@ export
 
         this._registryBuilt = Promise.all<Registry.IPythonEnvironment[]>(allEnvironments).then(environments => {
             let flattenedEnvs: Registry.IPythonEnvironment[] = Array.prototype.concat.apply([], environments);
-            let uniquePathEnvs = this._getUniqueObjectsByKey(flattenedEnvs, env => {
+            let uniqueEnvs = this._getUniqueObjects(flattenedEnvs, env => {
                 return env.path;
             });
-            let updatedEnvs = this._updatePythonEnvironmentsWithRequirementVersions(uniquePathEnvs, this._requirements);
 
-            return updatedEnvs.then(envs => {
-                let filteredEnvs = this._filterPythonEnvironmentsByRequirements(envs, this._requirements);
-                this._sortEnvironments(filteredEnvs, this._requirements);
+            return this._filterPromises(uniqueEnvs, (value) => {
+                return this._pathExists(value.path);
+            }).then(existingEnvs => {
+                let updatedEnvs = this._updatePythonEnvironmentsWithRequirementVersions(uniqueEnvs, this._requirements);
+                return updatedEnvs.then(envs => {
+                    let filteredEnvs = this._filterPythonEnvironmentsByRequirements(envs, this._requirements);
+                    this._sortEnvironments(filteredEnvs, this._requirements);
 
-                this._default = filteredEnvs[0];
-                this._environments = filteredEnvs;
+                    this._default = filteredEnvs[0];
+                    this._environments = this._environments.concat(filteredEnvs);
 
-                return;
+                    return;
+                });
             });
+
         }).catch(reason => {
             console.log(`Registry building failed! Reason: ${reason}`);
             this._default = undefined;
         });
     }
 
+    /**
+     * Retrieve the default environment from the registry, once it has been resolved
+     *
+     * @returns a promise containin the default environment
+     */
     getDefaultEnvironment(): Promise<Registry.IPythonEnvironment> {
         return new Promise((resolve, reject) => {
             this._registryBuilt.then(() => {
@@ -98,6 +110,12 @@ export
         });
     }
 
+    /**
+     * Either find default environment by path if it exists in the list, or create a new environment that
+     * will be used as the default.
+     * @param newDefaultPath the path to the new python executable that will be used as the default
+     * @returns a void promise that will be resolved when the process is complete
+     */
     setDefaultEnvironment(newDefaultPath: string): Promise<void> {
         return new Promise((resolve, reject) => {
             this._registryBuilt.then(() => {
@@ -114,15 +132,17 @@ export
 
                             resolve();
                         } else {
-                            this._buildEnvironmentFromPath(newDefaultPath, this._requirements, Registry.IEnvironmentType.PATH).then(newEnv => {
+                            this._buildEnvironmentFromPath(newDefaultPath, this._requirements).then(newEnv => {
                                 this._default = newEnv;
+                                this._environments.unshift(newEnv);
                                 resolve();
                             }).catch(reject);
                         }
                     }
                 } else {
-                    this._buildEnvironmentFromPath(newDefaultPath, this._requirements, Registry.IEnvironmentType.PATH).then(newEnv => {
+                    this._buildEnvironmentFromPath(newDefaultPath, this._requirements).then(newEnv => {
                         this._default = newEnv;
+                        this._environments.unshift(newEnv);
                         resolve();
                     }).catch(reject);
                 }
@@ -132,6 +152,10 @@ export
         });
     }
 
+    /**
+     * Retrieve the complete list of environments, once they have been resolved
+     * @returns a promise that resolves to a complete list of environments
+     */
     getEnvironmentList(): Promise<Registry.IPythonEnvironment[]> {
         return new Promise((resolve, reject) => {
             this._registryBuilt.then(() => {
@@ -146,11 +170,47 @@ export
         });
     }
 
-    private _buildEnvironmentFromPath(pythonPath: string, requirements: Registry.IRequirement[], type: Registry.IEnvironmentType): Promise<Registry.IPythonEnvironment> {
+    /**
+     * Create a new environment from a python executable, without waiting for the
+     * entire registry to be resolved first.
+     * @param path The location of the python executable to create an environment from
+     */
+    addEnvironment(path: string): Promise<Registry.IPythonEnvironment> {
+        return new Promise((resolve, reject) => {
+            this._buildEnvironmentFromPath(path, this._requirements).then(newEnv => {
+                this._environments.push(newEnv);
+                resolve(newEnv);
+            }).catch(reject);
+        });
+    }
+
+    /**
+     * Open a file selection dialog so users
+     * can enter the local path to the Jupyter server.
+     *
+     * @return a promise that is fulfilled with the user path.
+     */
+    getUserJupyterPath(): Promise<Registry.IPythonEnvironment> {
+        return new Promise<Registry.IPythonEnvironment>((resolve, reject) => {
+            dialog.showOpenDialog({
+                properties: ['openDirectory', 'showHiddenFiles'],
+                buttonLabel: 'Use Path'
+            }, (filePaths: string[]) => {
+                if (!filePaths) {
+                    reject(new Error('cancel'));
+                } else {
+                    this.addEnvironment(filePaths[0]).then(resolve).catch(reject);
+                }
+            });
+
+        });
+    }
+
+    private _buildEnvironmentFromPath(pythonPath: string, requirements: Registry.IRequirement[]): Promise<Registry.IPythonEnvironment> {
         let newEnvironment: Registry.IPythonEnvironment = {
             name: `SetDefault-${basename(pythonPath)}`,
             path: pythonPath,
-            type: type,
+            type: Registry.IEnvironmentType.PATH,
             versions: {}
         };
 
@@ -169,14 +229,8 @@ export
     }
 
     private _loadPATHEnvironments(): Promise<Registry.IPythonEnvironment[]> {
-        let pathPythons = [this._getExecutableInstances('python', process.env.PATH), this._getExecutableInstances('python3', process.env.PATH)];
-
-        return Promise.all(pathPythons).then(([python2s, python3s]: [string[], string[]]) => {
-            let uniquePythons = python2s.concat(python3s).filter((value, index, self) => {
-                return self.indexOf(value) === index;
-            });
-
-            return uniquePythons.map((pythonPath, index) => {
+        return this._getExecutableInstances('python', process.env.PATH).then((pythons: string[]) => {
+            return pythons.map((pythonPath, index) => {
                 let newPythonEnvironment: Registry.IPythonEnvironment = {
                     name: `${basename(pythonPath)}-${index}`,
                     path: pythonPath,
@@ -248,9 +302,7 @@ export
     private _loadRootCondaEnvironments(condaRoots: Promise<string[]>[]): Promise<Registry.IPythonEnvironment[]> {
         return Promise.all(condaRoots).then(allCondas => {
             let flattenedCondaRoots: string[] = Array.prototype.concat.apply([], allCondas);
-            let uniqueCondaRoots = flattenedCondaRoots.filter((value: string, index, self) => {
-                return self.indexOf(value) === index;
-            });
+            let uniqueCondaRoots = this._getUniqueObjects(flattenedCondaRoots);
 
             return uniqueCondaRoots.map(condaRootPath => {
                 let newRootEnvironment: Registry.IPythonEnvironment = {
@@ -295,7 +347,13 @@ export
         return defaultPaths.then(installPaths => {
             return Promise.all(installPaths.map(path => {
                 let finalPath = join(path, 'python.exe');
-                return this._buildEnvironmentFromPath(finalPath, requirements, Registry.IEnvironmentType.WindowsReg);
+
+                return {
+                    name: `WinReg-${basename(normalize(join(path, '..')))}`,
+                    path: finalPath,
+                    type: Registry.IEnvironmentType.WindowsReg,
+                    versions: {}
+                } as Registry.IPythonEnvironment;
             }));
         });
     }
@@ -366,9 +424,9 @@ export
             // Get version for python executable
             let pythonVersion = this._extractVersionFromExecOutput(this._runCommand(env.path, ['--version']))
                 .then<[string, string]>(versionString => {
-                    return [basename(env.path), versionString];
+                    return ['python', versionString];
                 }).catch<[string, string]>(reason => {
-                    return [basename(env.path), Registry.NO_MODULE_SENTINEL];
+                    return ['python', Registry.NO_MODULE_SENTINEL];
                 });
             versions.push(pythonVersion);
 
@@ -422,11 +480,7 @@ export
     }
 
     private _filterNonexistantPaths(paths: string[]): Promise<string[]> {
-        return Promise.all(paths.map((path, index) => this._pathExists(path))).then(results => {
-            return paths.filter((element, index) => {
-                return results[index];
-            });
-        });
+        return this._filterPromises(paths, this._pathExists);
     }
 
     private _pathExists(path: string): Promise<boolean> {
@@ -461,7 +515,7 @@ export
         let totalCommands = ['-m', moduleName].concat(commands);
         return new Promise<string>((resolve, reject) => {
             this._runCommand(pythonPath, totalCommands).then(output => {
-                let reg = new RegExp(Registry.NO_MODULE_REGEX_FORMAT_STRING(moduleName));
+                let reg = new RegExp(`No module named ${moduleName}$`);
 
                 if (reg.test(output)) {
                     reject(new Error(`Python executable could not find ${moduleName} module!`));
@@ -475,7 +529,7 @@ export
 
     private _runCommand(executablePath: string, commands: string[]): Promise<string> {
         return new Promise((resolve, reject) => {
-            let executableRun = spawn(executablePath, commands);
+            let executableRun = execFile(executablePath, commands);
             let stdoutBufferChunks: Buffer[] = [];
             let stdoutLength = 0;
             let stderrBufferChunks: Buffer[] = [];
@@ -575,23 +629,39 @@ export
     }
 
     // Probably pretty slow, luckily won't ever be used on many values
-    private _getUniqueObjectsByKey<T, V>(arr: T[], keyFunction: (value: T) => V) {
-        let mappedIndices = arr.map(keyFunction).map((keyValue, index, self) => {
-            return self.indexOf(keyValue);
-        });
+    private _getUniqueObjects<T, V>(arr: T[], keyFunction?: (value: T) => V) {
+        if (keyFunction) {
+            let mappedIndices = arr.map(keyFunction).map((keyValue, index, self) => {
+                return self.indexOf(keyValue);
+            });
 
-        let filteredIndices = mappedIndices.filter((mappedIndex, actualIndex, self) => {
-            return mappedIndex === actualIndex;
-        });
+            let filteredIndices = mappedIndices.filter((mappedIndex, actualIndex, self) => {
+                return mappedIndex === actualIndex;
+            });
 
-        let filteredValues = filteredIndices.map(index => {
-            return arr[index];
-        });
+            let filteredValues = filteredIndices.map(index => {
+                return arr[index];
+            });
 
-        return filteredValues;
+            return filteredValues;
+        } else {
+            return arr.filter((value, index, self) => {
+                return self.indexOf(value) === index;
+            });
+        }
     }
 
-    private _environments: Registry.IPythonEnvironment[];
+    private _filterPromises<T>(arr: T[], predicate: (value: T, index: number, self: T[]) => Promise<boolean>): Promise<T[]> {
+        let predicatedValues = arr.map((value, index) => predicate(value, index, arr));
+
+        return Promise.all(predicatedValues).then(predicatedValues => {
+            return arr.filter((element, index) => {
+                return predicatedValues[index];
+            });
+        });
+    }
+
+    private _environments: Registry.IPythonEnvironment[] = [];
 
     private _default: Registry.IPythonEnvironment;
 
@@ -603,49 +673,92 @@ export
 export
 namespace Registry {
 
-    export
-        interface IPythonEnvironment {
+    /**
+     * The respresentation of the python environment
+     */
+    export interface IPythonEnvironment {
+        /**
+         * The file path of the python executable
+         */
         path: string;
+        /**
+         * Arbitrary name used for display, not garuanteed to be unique
+         */
         name: string;
+        /**
+         * The type of the environment
+         */
         type: IEnvironmentType;
-        versions: IVersionContainer; // First version is for jupyter, second version is for jupyter notebook
+        /**
+         * For each requirement specified by the registry, there will be one corresponding version
+         * There will also be a version that accompanies the python executable
+         */
+        versions: IVersionContainer;
     }
 
-    export
-        interface IVersionContainer {
+    /**
+     * Dictionary that contains all requirement names mapped to version number strings
+     */
+    export interface IVersionContainer {
         [name: string]: string;
     }
 
+    /**
+     * Different types of environments
+     */
     export enum IEnvironmentType {
+        /**
+         * This is the catch-all type value, any environments that are randomly found or
+         * entered will have this type
+         */
         PATH = 'PATH',
+        /**
+         * This environment type is reserved for the type level of conda installations
+         */
         CondaRoot = 'conda-root',
+        /**
+         * This environment type is reserved for sub environments of a conda installation
+         */
         CondaEnv = 'conda-env',
+        /**
+         * This environment type is for environments that were derived from the WindowsRegistry
+         */
         WindowsReg = 'windows-reg',
     }
 
+    /**
+     * This type represents module/executable package requirements for the python executables
+     * in the registry. Each requirement should correspond to a python module that is also
+     * executable via the '-m <module_name>' interface
+     */
     export interface IRequirement {
+        /**
+         * The display name for the requirement
+         */
         name: string;
+        /**
+         * The actual module name that will be used with the python executable
+         */
         moduleName: string;
+        /**
+         * List of extra commands that will produce a version number for checking
+         */
         commands: string[];
+        /**
+         * The Range of acceptable version produced by the previous commands field
+         */
         versionRange: Range;
     }
 
-    export
-        const COMMON_CONDA_LOCATIONS = [
-            join(app.getPath('home'), 'anaconda3'),
-            join(app.getPath('home'), 'anaconda'),
-            join(app.getPath('home'), 'miniconda3'),
-            join(app.getPath('home'), 'miniconda')
-        ];
+    export const COMMON_CONDA_LOCATIONS = [
+        join(app.getPath('home'), 'anaconda3'),
+        join(app.getPath('home'), 'anaconda'),
+        join(app.getPath('home'), 'miniconda3'),
+        join(app.getPath('home'), 'miniconda')
+    ];
 
     // Copied from https://raw.githubusercontent.com/sindresorhus/semver-regex/master/index.js
-    export
-        const SEMVER_REGEX = /\bv?(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)(?:-[\da-z\-]+(?:\.[\da-z\-]+)*)?(?:\+[\da-z\-]+(?:\.[\da-z\-]+)*)?\b/ig;
-
-    export
-        function NO_MODULE_REGEX_FORMAT_STRING(moduleName: string): string {
-        return `No module named ${moduleName}$`;
-    }
+    export const SEMVER_REGEX = /\bv?(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)(?:-[\da-z\-]+(?:\.[\da-z\-]+)*)?(?:\+[\da-z\-]+(?:\.[\da-z\-]+)*)?\b/ig;
 
     export const NO_MODULE_SENTINEL = 'NO MODULE OR VERSION FOUND';
 }
@@ -654,14 +767,7 @@ let service: IService = {
     requirements: [],
     provides: 'IRegistry',
     activate: (): IRegistry => {
-        let reg = new Registry();
-
-        // Should be taken out before WIP branch is complete
-        reg.getEnvironmentList().then(envList => {
-            console.log(JSON.stringify(envList));
-        });
-
-        return reg;
+        return new Registry();
     },
     autostart: true
 };
