@@ -21,6 +21,7 @@ import {
 import * as fs from 'fs';
 
 let which = require('which');
+let winreg = require('winreg');
 
 export
     interface IRegistry {
@@ -36,31 +37,6 @@ export
 
 export
     class Registry implements IRegistry {
-
-    /*
-
-    if (process.platform == 'win32') {
-        var main = new WindowsRegistry({
-            hive: WindowsRegistry.HKCU,
-            key: '\\SOFTWARE\\Python\\PythonCore'
-        });
-        main.keys((err: any, items: any[]) => {
-            items.forEach((item) => {
-                var installPath = new WindowsRegistry({
-                    hive: WindowsRegistry.HKCU,
-                    key: item.key + '\\InstallPath'
-                });
-                installPath.values((err: any, vals: any[]) => {
-                    vals.forEach((v) => {
-                        if (v.name == '(Default)')
-                            console.log(v.value);
-                    });
-                });
-            });
-        });
-        return;
-    }
-    */
 
     constructor() {
         this._requirements = [
@@ -82,7 +58,7 @@ export
         let condaEnvironments = this._loadCondaEnvironments();
         let allEnvironments = [pathEnvironments, condaEnvironments];
         if (process.platform === 'win32') {
-            let windowRegEnvironments = this._loadWindowsRegistryEnvironments();
+            let windowRegEnvironments = this._loadWindowsRegistryEnvironments(this._requirements);
             allEnvironments.push(windowRegEnvironments);
         }
 
@@ -138,14 +114,14 @@ export
 
                             resolve();
                         } else {
-                            this._buildEnvironmentFromPath(newDefaultPath, this._requirements).then(newEnv => {
+                            this._buildEnvironmentFromPath(newDefaultPath, this._requirements, Registry.IEnvironmentType.PATH).then(newEnv => {
                                 this._default = newEnv;
                                 resolve();
                             }).catch(reject);
                         }
                     }
                 } else {
-                    this._buildEnvironmentFromPath(newDefaultPath, this._requirements).then(newEnv => {
+                    this._buildEnvironmentFromPath(newDefaultPath, this._requirements, Registry.IEnvironmentType.PATH).then(newEnv => {
                         this._default = newEnv;
                         resolve();
                     }).catch(reject);
@@ -170,15 +146,15 @@ export
         });
     }
 
-    private _buildEnvironmentFromPath(pythonPath: string, requirements: Registry.IRequirement[]): Promise<Registry.IPythonEnvironment> {
-        let possibleNewDefault: Registry.IPythonEnvironment = {
+    private _buildEnvironmentFromPath(pythonPath: string, requirements: Registry.IRequirement[], type: Registry.IEnvironmentType): Promise<Registry.IPythonEnvironment> {
+        let newEnvironment: Registry.IPythonEnvironment = {
             name: `SetDefault-${basename(pythonPath)}`,
             path: pythonPath,
-            type: Registry.IEnvironmentType.PATH,
+            type: type,
             versions: {}
         };
 
-        let updatedEnv = this._updatePythonEnvironmentsWithRequirementVersions([possibleNewDefault], requirements);
+        let updatedEnv = this._updatePythonEnvironmentsWithRequirementVersions([newEnvironment], requirements);
 
         return updatedEnv.then(newEnvs => {
             let filteredEnvs = this._filterPythonEnvironmentsByRequirements(newEnvs, requirements);
@@ -193,10 +169,9 @@ export
     }
 
     private _loadPATHEnvironments(): Promise<Registry.IPythonEnvironment[]> {
-        let pathPythons = this._getExecutableInstances('python', process.env.PATH);
-        let pathPython3s = this._getExecutableInstances('python3', process.env.PATH);
+        let pathPythons = [this._getExecutableInstances('python', process.env.PATH), this._getExecutableInstances('python3', process.env.PATH)];
 
-        return Promise.all([pathPythons, pathPython3s]).then(([python2s, python3s]: [string[], string[]]) => {
+        return Promise.all(pathPythons).then(([python2s, python3s]: [string[], string[]]) => {
             let uniquePythons = python2s.concat(python3s).filter((value, index, self) => {
                 return self.indexOf(value) === index;
             });
@@ -303,11 +278,64 @@ export
     }
 
     private _getWindowsRegistryCondas(): Promise<string[]> {
-        return Promise.resolve([]);
+        let valuePredicate = (value: any) => {
+            return value.name === '(Default)';
+        };
+
+        return this._getAllMatchingValuesFromSubRegistry(winreg.HKCU, '\\SOFTWARE\\Python\\ContinuumAnalytics', 'InstallPath', valuePredicate);
     }
 
-    private _loadWindowsRegistryEnvironments(): Promise<Registry.IPythonEnvironment[]> {
-        return Promise.resolve([]);
+    private _loadWindowsRegistryEnvironments(requirements: Registry.IRequirement[]): Promise<Registry.IPythonEnvironment[]> {
+        let valuePredicate = (value: any) => {
+            return value.name === '(Default)';
+        };
+
+        let defaultPaths = this._getAllMatchingValuesFromSubRegistry(winreg.HKCU, '\\SOFTWARE\\Python\\PythonCore', 'InstallPath', valuePredicate);
+
+        return defaultPaths.then(installPaths => {
+            return Promise.all(installPaths.map(path => {
+                let finalPath = join(path, 'python.exe');
+                return this._buildEnvironmentFromPath(finalPath, requirements, Registry.IEnvironmentType.WindowsReg);
+            }));
+        });
+    }
+
+    private _getAllMatchingValuesFromSubRegistry(registryHive: any, mainRegPath: string, subDirectory: string, valueFilter: (value: any) => boolean): Promise<string[]> {
+        return new Promise((reject, resolve) => {
+            let mainWinRegistry = new winreg.Registry({
+                hive: registryHive,
+                key: mainRegPath
+            });
+
+            let installPaths: string[][] = [];
+            let rejected: boolean = false;
+            mainWinRegistry.keys((err: any, items: any[]) => {
+                if (err) {
+                    rejected = true;
+                    reject(err);
+                } else {
+                    items.forEach((item) => {
+                        let installPath = new winreg.Registry({
+                            hive: winreg.HKCU,
+                            key: item.key + '\\' + subDirectory
+                        });
+                        installPath.values((err: any, vals: any[]) => {
+                            if (err) {
+                                rejected = true;
+                                reject(err);
+                            } else {
+                                installPaths.push(vals.filter(valueFilter).map(v => v.value));
+                            }
+                        });
+                    });
+                }
+            });
+
+            if (!rejected) {
+                let flatInstallPaths: string[] = Array.prototype.concat.apply([], installPaths);
+                resolve(flatInstallPaths);
+            }
+        });
     }
 
     private _filterPythonEnvironmentsByRequirements(environments: Registry.IPythonEnvironment[], requirements: Registry.IRequirement[]): Registry.IPythonEnvironment[] {
@@ -324,6 +352,7 @@ export
 
     private _updatePythonEnvironmentsWithRequirementVersions(environments: Registry.IPythonEnvironment[], requirements: Registry.IRequirement[]): Promise<Registry.IPythonEnvironment[]> {
         let updatedEnvironments = environments.map(env => {
+            // Get versions for each requirement
             let versions: Promise<[string, string]>[] = requirements.map(req => {
                 let pythonOutput = this._runPythonModuleCommand(env.path, req.moduleName, req.commands);
                 let versionFromOutput = this._extractVersionFromExecOutput(pythonOutput);
@@ -334,6 +363,7 @@ export
                 });
             });
 
+            // Get version for python executable
             let pythonVersion = this._extractVersionFromExecOutput(this._runCommand(env.path, ['--version']))
                 .then<[string, string]>(versionString => {
                     return [basename(env.path), versionString];
@@ -372,7 +402,7 @@ export
                 } else {
                     resolve(matches[0]);
                 }
-            }, reason => {
+            }).catch(reason => {
                 console.log(reason);
                 reject(new Error(`Command output failed!`));
             });
@@ -409,7 +439,7 @@ export
 
     private _getExecutableInstances(executableName: string, path: string): Promise<string[]> {
         return new Promise<string[]>((resolve, reject) => {
-            which(executableName, { all: true, path: path }, (err: any, result: string) => {
+            which(executableName, { all: true, path: path }, (err: any, result: string | string[]) => {
                 if (err) {
                     if (err.code === 'ENOENT') {
                         resolve([]);
@@ -626,6 +656,7 @@ let service: IService = {
     activate: (): IRegistry => {
         let reg = new Registry();
 
+        // Should be taken out before WIP branch is complete
         reg.getEnvironmentList().then(envList => {
             console.log(JSON.stringify(envList));
         });
