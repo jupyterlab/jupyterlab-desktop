@@ -7,7 +7,7 @@ import {
 } from './main';
 
 import {
-    join, basename
+    join, basename, normalize
 } from 'path';
 
 import {
@@ -88,7 +88,10 @@ export
 
         this._registryBuilt = Promise.all<Registry.IPythonEnvironment[]>(allEnvironments).then(environments => {
             let flattenedEnvs: Registry.IPythonEnvironment[] = Array.prototype.concat.apply([], environments);
-            let updatedEnvs = this._updatePythonEnvironmentsWithRequirementVersions(flattenedEnvs, this._requirements);
+            let uniquePathEnvs = this._getUniqueObjectsByKey(flattenedEnvs, env => {
+                return env.path;
+            });
+            let updatedEnvs = this._updatePythonEnvironmentsWithRequirementVersions(uniquePathEnvs, this._requirements);
 
             return updatedEnvs.then(envs => {
                 let filteredEnvs = this._filterPythonEnvironmentsByRequirements(envs, this._requirements);
@@ -113,6 +116,8 @@ export
                 } else {
                     reject(new Error(`No default environment found!`));
                 }
+            }).catch(reason => {
+                reject(new Error(`Registry failed to build!`));
             });
         });
     }
@@ -145,6 +150,8 @@ export
                         resolve();
                     }).catch(reject);
                 }
+            }).catch(reason => {
+                reject(new Error(`Registry failed to build!`));
             });
         });
     }
@@ -157,6 +164,8 @@ export
                 } else {
                     reject(new Error(`No environment list found!`));
                 }
+            }).catch(reason => {
+                reject(new Error(`Registry failed to build!`));
             });
         });
     }
@@ -214,13 +223,61 @@ export
             allCondas.push(this._getWindowsRegistryCondas());
         }
 
-        return Promise.all(allCondas).then(allCondas => {
+        return this._loadRootCondaEnvironments(allCondas).then(rootEnvs => {
+            let subEnvs = rootEnvs.reduce<Promise<Registry.IPythonEnvironment[]>[]>((accum, currentRootEnv, index, self) => {
+                let rootSubEnvsFolderPath = normalize(join(currentRootEnv.path, '..', '..'));
+
+                accum.push(this._getSubEnvironmentsFromRoot(rootSubEnvsFolderPath));
+
+                return accum;
+            }, []);
+
+            return Promise.all(subEnvs).then(subEnvs => {
+                let flattenSubEnvs = Array.prototype.concat.apply([], subEnvs) as Registry.IPythonEnvironment[];
+
+                return rootEnvs.concat(flattenSubEnvs);
+            });
+        });
+    }
+
+    private _getSubEnvironmentsFromRoot(rootPath: string): Promise<Registry.IPythonEnvironment[]> {
+        let subEnvironmentsFolder = join(rootPath, 'envs');
+        let rootName = basename(rootPath);
+
+        return new Promise((resolve, reject) => {
+            fs.readdir(subEnvironmentsFolder, (err, files) => {
+                if (err) {
+                    reject(err);
+                } else {
+                    let subEnvsWithPython = this._filterNonexistantPaths(files.map(subEnvPath => {
+                        return join(subEnvironmentsFolder, subEnvPath, 'bin', 'python');
+                    }));
+
+                    subEnvsWithPython.catch(reject).then(subEnvs => {
+                        return Array.prototype.concat.apply([], subEnvs) as string[];
+                    }).then(subEnvsWithPython => {
+                        resolve(subEnvsWithPython.map(subEnvPath => {
+                            return {
+                                name: `${rootName}-${basename(normalize(join(subEnvPath, '..', '..')))}`,
+                                path: subEnvPath,
+                                type: Registry.IEnvironmentType.CondaEnv,
+                                versions: {}
+                            } as Registry.IPythonEnvironment;
+                        }));
+                    });
+                }
+            });
+        });
+    }
+
+    private _loadRootCondaEnvironments(condaRoots: Promise<string[]>[]): Promise<Registry.IPythonEnvironment[]> {
+        return Promise.all(condaRoots).then(allCondas => {
             let flattenedCondaRoots: string[] = Array.prototype.concat.apply([], allCondas);
             let uniqueCondaRoots = flattenedCondaRoots.filter((value: string, index, self) => {
                 return self.indexOf(value) === index;
             });
 
-            let rootEnvironments = uniqueCondaRoots.map(condaRootPath => {
+            return uniqueCondaRoots.map(condaRootPath => {
                 let newRootEnvironment: Registry.IPythonEnvironment = {
                     name: basename(condaRootPath),
                     path: join(condaRootPath, 'bin', 'python'),
@@ -230,8 +287,6 @@ export
 
                 return newRootEnvironment;
             });
-
-            return rootEnvironments;
         });
     }
 
@@ -278,6 +333,14 @@ export
                     return [req.name, Registry.NO_MODULE_SENTINEL];
                 });
             });
+
+            let pythonVersion = this._extractVersionFromExecOutput(this._runCommand(env.path, ['--version']))
+                .then<[string, string]>(versionString => {
+                    return [basename(env.path), versionString];
+                }).catch<[string, string]>(reason => {
+                    return [basename(env.path), Registry.NO_MODULE_SENTINEL];
+                });
+            versions.push(pythonVersion);
 
             return Promise.all(versions).then(versions => {
                 env.versions = versions.reduce((accum: Registry.IVersionContainer, current: [string, string], index, self) => {
@@ -381,22 +444,49 @@ export
     }
 
     private _runCommand(executablePath: string, commands: string[]): Promise<string> {
-        return new Promise<any>((resolve, reject) => {
+        return new Promise((resolve, reject) => {
             let executableRun = spawn(executablePath, commands);
+            let stdoutBufferChunks: Buffer[] = [];
+            let stdoutLength = 0;
+            let stderrBufferChunks: Buffer[] = [];
+            let stderrLength = 0;
 
-            executableRun.on('exit', () => {
+            executableRun.stdout.on('data', chunk => {
+                if (typeof chunk === 'string') {
+                    let newBuffer = Buffer.from(chunk);
+                    stdoutLength += newBuffer.length;
+                    stdoutBufferChunks.push(newBuffer);
+                } else {
+                    stdoutLength += chunk.length;
+                    stdoutBufferChunks.push(chunk);
+                }
+            });
+
+            executableRun.stderr.on('data', chunk => {
+                if (typeof chunk === 'string') {
+                    let newBuffer = Buffer.from(chunk);
+                    stderrLength += newBuffer.length;
+                    stderrBufferChunks.push(Buffer.from(newBuffer));
+                } else {
+                    stderrLength += chunk.length;
+                    stderrBufferChunks.push(chunk);
+                }
+            });
+
+            executableRun.on('close', () => {
                 executableRun.removeAllListeners();
 
-                let rawOutput = (executableRun.stdout.read() as Buffer);
-                if (!rawOutput) {
-                    let errOutput = (executableRun.stderr.read() as Buffer);
-                    if (!errOutput) {
-                        reject(new Error(`Command produced no output to stdout or stderr!`));
+                let stdoutOutput = Buffer.concat(stdoutBufferChunks, stdoutLength).toString();
+                let stderrOutput = Buffer.concat(stderrBufferChunks, stderrLength).toString();
+
+                if (stdoutOutput.length === 0) {
+                    if (stderrOutput.length === 0) {
+                        reject(new Error(`"${executablePath} ${commands.join(' ')}" produced no output to stdout or stderr!`));
                     } else {
-                        resolve(errOutput);
+                        resolve(stderrOutput);
                     }
                 } else {
-                    resolve(rawOutput.toString());
+                    resolve(stdoutOutput);
                 }
             });
         });
@@ -452,6 +542,23 @@ export
             default:
                 return 100;
         }
+    }
+
+    // Probably pretty slow, luckily won't ever be used on many values
+    private _getUniqueObjectsByKey<T, V>(arr: T[], keyFunction: (value: T) => V) {
+        let mappedIndices = arr.map(keyFunction).map((keyValue, index, self) => {
+            return self.indexOf(keyValue);
+        });
+
+        let filteredIndices = mappedIndices.filter((mappedIndex, actualIndex, self) => {
+            return mappedIndex === actualIndex;
+        });
+
+        let filteredValues = filteredIndices.map(index => {
+            return arr[index];
+        });
+
+        return filteredValues;
     }
 
     private _environments: Registry.IPythonEnvironment[];
@@ -517,7 +624,13 @@ let service: IService = {
     requirements: [],
     provides: 'IRegistry',
     activate: (): IRegistry => {
-        return new Registry();
+        let reg = new Registry();
+
+        reg.getEnvironmentList().then(envList => {
+            console.log(JSON.stringify(envList));
+        });
+
+        return reg;
     },
     autostart: true
 };
