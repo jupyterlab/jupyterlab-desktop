@@ -86,7 +86,7 @@ export class Registry implements IRegistry {
             });
 
         }).catch(reason => {
-            console.log(`Registry building failed! Reason: ${reason}`);
+            console.error(`Registry building failed! Reason: ${reason}`);
             this._default = undefined;
         });
     }
@@ -193,7 +193,7 @@ export class Registry implements IRegistry {
     getUserJupyterPath(): Promise<Registry.IPythonEnvironment> {
         return new Promise<Registry.IPythonEnvironment>((resolve, reject) => {
             dialog.showOpenDialog({
-                properties: ['openDirectory', 'showHiddenFiles'],
+                properties: ['openFile', 'showHiddenFiles'],
                 buttonLabel: 'Use Path'
             }, (filePaths: string[]) => {
                 if (!filePaths) {
@@ -229,7 +229,16 @@ export class Registry implements IRegistry {
     }
 
     private _loadPATHEnvironments(): Promise<Registry.IPythonEnvironment[]> {
-        return this._getExecutableInstances('python', process.env.PATH).then((pythons: string[]) => {
+        let pythonInstances = [this._getExecutableInstances('python', process.env.PATH)];
+        if (process.platform === 'darwin') {
+            pythonInstances.push(this._getExecutableInstances('python3', process.env.PATH));
+        }
+
+        let flattenedPythonPaths: Promise<string[]> = Promise.all(pythonInstances).then<string[]>(multiplePythons => {
+            return Array.prototype.concat.apply([], multiplePythons);
+        });
+
+        return flattenedPythonPaths.then((pythons: string[]) => {
             return pythons.map((pythonPath, index) => {
                 let newPythonEnvironment: Registry.IPythonEnvironment = {
                     name: `${basename(pythonPath)}-${index}`,
@@ -461,7 +470,6 @@ export class Registry implements IRegistry {
                     resolve(matches[0]);
                 }
             }).catch(reason => {
-                console.log(reason);
                 reject(new Error(`Command output failed!`));
             });
         });
