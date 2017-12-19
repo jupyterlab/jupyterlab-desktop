@@ -48,9 +48,7 @@
         "tar.gz",
         "AppImage"
       ],
-      "desktop": {
-        "Category": "Science;Development;"
-      }
+      "category": "Science;Development;"
     },
     "win": {
       "target": [
@@ -164,13 +162,13 @@
     "@jupyterlab/tooltip": "^0.9.0",
     "@jupyterlab/tooltip-extension": "^0.9.0",
     "@jupyterlab/vega2-extension": "^0.9.0",
-    "@types/react": "^16.0.0",
-    "@types/react-dom": "^15.5.1",
+    "@types/react": "~16.0.19",
+    "@types/react-dom": "~16.0.2",
     "bottlejs": "^1.6.1",
     "electron-debug": "^1.2.0",
     "es6-promise": "^4.1.0",
     "font-awesome": "^4.6.3",
-    "react": "^15.6.1",
-    "react-dom": "^15.6.1"
+    "react": "~16.0.0",
+    "react-dom": "~16.0.0"
   }
 }
