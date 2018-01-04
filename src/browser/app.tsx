@@ -213,13 +213,13 @@ class Application extends React.Component<Application.Props, Application.State> 
         });
 
         let rServer: Application.IRemoteServer = {...server, id: this._nextRemoteId++};
-        this.setState((prev: ServerManager.State) => {
+        this.setState((prevState: ServerManager.State) => {
             server.id = this._nextRemoteId++;
-            let conns = this.state.remotes.concat(rServer);
+            let remotes = this.state.remotes.concat(rServer);
             this._saveState();
             return({
                 renderState: this._renderEmpty,
-                conns: {servers: conns}
+                remotes: remotes
             });
         });
     }
