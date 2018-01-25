@@ -186,7 +186,11 @@ class JupyterLabSessions extends EventEmitter implements ISessions, IStatefulSer
             opts.uiState = opts.uiState || this._uiState;
             // pre launch a local server to improve load time
             if (opts.state === 'local') {
-                this._serverFactory.createFreeServer(({} as JupyterServer.IOptions));
+                if (opts.serverOpts) {
+                    this._serverFactory.createFreeServer(opts.serverOpts);
+                } else {
+                    this._serverFactory.createFreeServer(({} as JupyterServer.IOptions));
+                }
             }
 
             let session = new JupyterLabSession(this, opts);
@@ -507,6 +511,7 @@ namespace JupyterLabSession {
         width?: number;
         height?: number;
         remoteServerId?: number;
+        serverOpts?: JupyterServer.IOptions;
     }
 
     export

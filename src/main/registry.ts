@@ -18,6 +18,10 @@ import {
     Range, satisfies
 } from 'semver';
 
+import {
+    ArrayExt
+} from '@phosphor/algorithm';
+
 import * as fs from 'fs';
 
 let which = require('which');
@@ -26,6 +30,8 @@ let WinRegistry = require('winreg');
 export interface IRegistry {
 
     getDefaultEnvironment: () => Promise<Registry.IPythonEnvironment>;
+
+    getEnvironmentByPath: (path: string) => Promise<Registry.IPythonEnvironment>;
 
     setDefaultEnvironment: (path: string) => Promise<void>;
 
@@ -78,7 +84,7 @@ export class Registry implements IRegistry {
                     let filteredEnvs = this._filterPythonEnvironmentsByRequirements(envs, this._requirements);
                     this._sortEnvironments(filteredEnvs, this._requirements);
 
-                    this._default = filteredEnvs[0];
+                    this._setDefaultEnvironment(filteredEnvs[0]);
                     this._environments = this._environments.concat(filteredEnvs);
 
                     return;
@@ -86,8 +92,15 @@ export class Registry implements IRegistry {
             });
 
         }).catch(reason => {
-            console.error(`Registry building failed! Reason: ${reason}`);
-            this._default = undefined;
+            if (reason.fileName || reason.lineNumber) {
+                console.error(`Registry building failed! ${reason.name} at ${reason.fileName}:${reason.lineNumber}: ${reason.message}`);
+            } else if (reason.stack) {
+                console.error(`Registry building failed! ${reason.name}: ${reason.message}`);
+                console.error(reason.stack);
+            } else {
+                console.error(`Registry building failed! ${reason.name}: ${reason.message}`);
+            }
+            this._setDefaultEnvironment(undefined);
         });
     }
 
@@ -110,6 +123,22 @@ export class Registry implements IRegistry {
         });
     }
 
+    getEnvironmentByPath(pathToMatch: string): Promise<Registry.IPythonEnvironment> {
+        return new Promise((resolve, reject) => {
+            this._registryBuilt.then(() => {
+                let matchingEnv = ArrayExt.findFirstValue(this._environments, env => pathToMatch === env.path);
+
+                if (matchingEnv) {
+                    resolve(matchingEnv);
+                } else {
+                    reject(new Error(`No environment found with path matching "${pathToMatch}"`));
+                }
+            }).catch(reason => {
+                reject(new Error(`Registry failed to build!`));
+            });
+        });
+    }
+
     /**
      * Either find default environment by path if it exists in the list, or create a new environment that
      * will be used as the default.
@@ -123,17 +152,15 @@ export class Registry implements IRegistry {
                     if (this._default.path === newDefaultPath) {
                         resolve();
                     } else {
-                        let foundInList = this._environments.filter(env => {
-                            return env.path === newDefaultPath;
-                        })[0];
+                        let foundInList = ArrayExt.findFirstValue(this._environments, env => env.path === newDefaultPath);
 
                         if (foundInList) {
-                            this._default = foundInList;
+                            this._setDefaultEnvironment(foundInList);
 
                             resolve();
                         } else {
                             this._buildEnvironmentFromPath(newDefaultPath, this._requirements).then(newEnv => {
-                                this._default = newEnv;
+                                this._setDefaultEnvironment(newEnv);
                                 this._environments.unshift(newEnv);
                                 resolve();
                             }).catch(reject);
@@ -141,7 +168,7 @@ export class Registry implements IRegistry {
                     }
                 } else {
                     this._buildEnvironmentFromPath(newDefaultPath, this._requirements).then(newEnv => {
-                        this._default = newEnv;
+                        this._setDefaultEnvironment(newEnv);
                         this._environments.unshift(newEnv);
                         resolve();
                     }).catch(reject);
@@ -211,7 +238,8 @@ export class Registry implements IRegistry {
             name: `SetDefault-${basename(pythonPath)}`,
             path: pythonPath,
             type: Registry.IEnvironmentType.PATH,
-            versions: {}
+            versions: {},
+            default: false
         };
 
         let updatedEnv = this._updatePythonEnvironmentsWithRequirementVersions([newEnvironment], requirements);
@@ -251,7 +279,8 @@ export class Registry implements IRegistry {
                     name: `${basename(pythonPath)}-${index}`,
                     path: pythonPath,
                     type: Registry.IEnvironmentType.PATH,
-                    versions: {}
+                    versions: {},
+                    default: false
                 };
 
                 return newPythonEnvironment;
@@ -337,7 +366,8 @@ export class Registry implements IRegistry {
                     name: basename(condaRootPath),
                     path: path,
                     type: Registry.IEnvironmentType.CondaRoot,
-                    versions: {}
+                    versions: {},
+                    default: false
                 };
 
                 return newRootEnvironment;
@@ -349,7 +379,7 @@ export class Registry implements IRegistry {
         let PATH = process.env.PATH;
         return this._getExecutableInstances('conda', PATH).then(condasInPath => {
             return Promise.all(condasInPath.map(condaExecutablePath => {
-                let condaInfoOutput = this._runCommand(condaExecutablePath, ['info']);
+                let condaInfoOutput = this._runCommand(condaExecutablePath, ['info', '--json']);
                 return this._convertExecutableOutputFromJson(condaInfoOutput).then(condaInfoJSON => {
                     return condaInfoJSON.root_prefix as string;
                 });
@@ -508,6 +538,7 @@ export class Registry implements IRegistry {
                 try {
                     resolve(JSON.parse(output));
                 } catch (e) {
+                    console.error(output);
                     reject(e);
                 }
             }).catch(reject);
@@ -698,6 +729,16 @@ export class Registry implements IRegistry {
         });
     }
 
+    private _setDefaultEnvironment(newEnv: Registry.IPythonEnvironment) {
+        if (this._default) {
+            this._default.default = false;
+        }
+        this._default = newEnv;
+        if (this._default) {
+            this._default.default = true;
+        }
+    }
+
     private _environments: Registry.IPythonEnvironment[] = [];
 
     private _default: Registry.IPythonEnvironment;
@@ -731,6 +772,11 @@ namespace Registry {
          * There will also be a version that accompanies the python executable
          */
         versions: IVersionContainer;
+
+        /**
+         * True if this is the current default environment.
+         */
+        default: boolean;
     }
 
     /**
