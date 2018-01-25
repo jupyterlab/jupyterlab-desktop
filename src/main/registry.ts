@@ -21,7 +21,7 @@ import {
 import * as fs from 'fs';
 
 let which = require('which');
-let winreg = require('winreg');
+let WinRegistry = require('winreg');
 
 export interface IRegistry {
 
@@ -229,7 +229,14 @@ export class Registry implements IRegistry {
     }
 
     private _loadPATHEnvironments(): Promise<Registry.IPythonEnvironment[]> {
-        let pythonInstances = [this._getExecutableInstances('python', process.env.PATH)];
+        let pythonExecutableName: string;
+        if (process.platform === 'win32') {
+            pythonExecutableName = 'python.exe';
+        } else {
+            pythonExecutableName = 'python';
+        }
+
+        let pythonInstances = [this._getExecutableInstances(pythonExecutableName, process.env.PATH)];
         if (process.platform === 'darwin') {
             pythonInstances.push(this._getExecutableInstances('python3', process.env.PATH));
         }
@@ -263,7 +270,12 @@ export class Registry implements IRegistry {
 
         return this._loadRootCondaEnvironments(allCondas).then(rootEnvs => {
             let subEnvs = rootEnvs.reduce<Promise<Registry.IPythonEnvironment[]>[]>((accum, currentRootEnv, index, self) => {
-                let rootSubEnvsFolderPath = normalize(join(currentRootEnv.path, '..', '..'));
+                let rootSubEnvsFolderPath: string;
+                if (process.platform === 'win32') {
+                    rootSubEnvsFolderPath = normalize(join(currentRootEnv.path, '..'));
+                } else {
+                    rootSubEnvsFolderPath = normalize(join(currentRootEnv.path, '..', '..'));
+                }
 
                 accum.push(this._getSubEnvironmentsFromRoot(rootSubEnvsFolderPath));
 
@@ -314,9 +326,16 @@ export class Registry implements IRegistry {
             let uniqueCondaRoots = this._getUniqueObjects(flattenedCondaRoots);
 
             return uniqueCondaRoots.map(condaRootPath => {
+                let path: string;
+                if (process.platform === 'win32') {
+                    path = join(condaRootPath, 'python.exe');
+                } else {
+                    path = join(condaRootPath, 'bin', 'python');
+                }
+
                 let newRootEnvironment: Registry.IPythonEnvironment = {
                     name: basename(condaRootPath),
-                    path: join(condaRootPath, 'bin', 'python'),
+                    path: path,
                     type: Registry.IEnvironmentType.CondaRoot,
                     versions: {}
                 };
@@ -343,7 +362,7 @@ export class Registry implements IRegistry {
             return value.name === '(Default)';
         };
 
-        return this._getAllMatchingValuesFromSubRegistry(winreg.HKCU, '\\SOFTWARE\\Python\\ContinuumAnalytics', 'InstallPath', valuePredicate);
+        return this._getAllMatchingValuesFromSubRegistry(WinRegistry.HKCU, '\\SOFTWARE\\Python\\ContinuumAnalytics', 'InstallPath', valuePredicate);
     }
 
     private _loadWindowsRegistryEnvironments(requirements: Registry.IRequirement[]): Promise<Registry.IPythonEnvironment[]> {
@@ -351,7 +370,7 @@ export class Registry implements IRegistry {
             return value.name === '(Default)';
         };
 
-        let defaultPaths = this._getAllMatchingValuesFromSubRegistry(winreg.HKCU, '\\SOFTWARE\\Python\\PythonCore', 'InstallPath', valuePredicate);
+        let defaultPaths = this._getAllMatchingValuesFromSubRegistry(WinRegistry.HKCU, '\\SOFTWARE\\Python\\PythonCore', 'InstallPath', valuePredicate);
 
         return defaultPaths.then(installPaths => {
             return Promise.all(installPaths.map(path => {
@@ -367,41 +386,49 @@ export class Registry implements IRegistry {
         });
     }
 
-    private _getAllMatchingValuesFromSubRegistry(registryHive: any, mainRegPath: string, subDirectory: string, valueFilter: (value: any) => boolean): Promise<string[]> {
-        return new Promise((reject, resolve) => {
-            let mainWinRegistry = new winreg.Registry({
-                hive: registryHive,
-                key: mainRegPath
-            });
+    // This function will retrieve all subdirectories of the main registry path, and for each subdirectory(registry) it will search for the key
+    // matching the subDirectory parameter and the value the passes
+    private _getAllMatchingValuesFromSubRegistry(registryHive: string, mainRegPath: string, subDirectory: string, valueFilter: (value: any) => boolean): Promise<string[]> {
+        let mainWinRegistry = new WinRegistry({
+            hive: registryHive,
+            key: mainRegPath,
+        });
 
-            let installPaths: string[][] = [];
-            let rejected: boolean = false;
+        let getMainRegistryKeys: Promise<any[]> = new Promise((resolve, reject) => {
             mainWinRegistry.keys((err: any, items: any[]) => {
                 if (err) {
-                    rejected = true;
                     reject(err);
                 } else {
-                    items.forEach((item) => {
-                        let installPath = new winreg.Registry({
-                            hive: winreg.HKCU,
-                            key: item.key + '\\' + subDirectory
-                        });
-                        installPath.values((err: any, vals: any[]) => {
-                            if (err) {
-                                rejected = true;
-                                reject(err);
-                            } else {
-                                installPaths.push(vals.filter(valueFilter).map(v => v.value));
-                            }
-                        });
-                    });
+                    resolve(items);
                 }
             });
+        });
 
-            if (!rejected) {
-                let flatInstallPaths: string[] = Array.prototype.concat.apply([], installPaths);
-                resolve(flatInstallPaths);
-            }
+        let installPathValues: Promise<any[]> = getMainRegistryKeys.then(items => {
+            return Promise.all(items.map(item => {
+                let installPath = new WinRegistry({
+                    hive: registryHive,
+                    key: item.key + '\\' + subDirectory
+                });
+
+                let allValues: Promise<any[]> = new Promise((resolve, reject) => {
+                    installPath.values((err: any, values: any[]) => {
+                        if (err) {
+                            reject(err);
+                        } else {
+                            resolve(values);
+                        }
+                    });
+                });
+
+                return allValues;
+            }));
+        }).then(nestedInstallPathValues => {
+            return Array.prototype.concat.apply([], nestedInstallPathValues);
+        });
+
+        return installPathValues.then(values => {
+            return values.filter(valueFilter).map(v => v.value);
         });
     }
 
@@ -454,7 +481,7 @@ export class Registry implements IRegistry {
 
     private _extractVersionFromExecOutput(output: Promise<string>): Promise<string> {
         return new Promise((resolve, reject) => {
-            output.then(output => {
+            return output.then(output => {
                 let matches: string[] = [];
                 let currentMatch: RegExpExecArray;
                 do {
@@ -523,14 +550,16 @@ export class Registry implements IRegistry {
         let totalCommands = ['-m', moduleName].concat(commands);
         return new Promise<string>((resolve, reject) => {
             this._runCommand(pythonPath, totalCommands).then(output => {
-                let reg = new RegExp(`No module named ${moduleName}$`);
+                let missingModuleReg = new RegExp(`No module named ${moduleName}$`);
+                let commandErrorReg = new RegExp(`Error executing Jupyter command`);
 
-                if (reg.test(output)) {
+                if (missingModuleReg.test(output)) {
                     reject(new Error(`Python executable could not find ${moduleName} module!`));
+                } else if (commandErrorReg.test(output)) {
+                    reject(new Error(`Jupyter command execution failed! ${output}`));
                 } else {
                     resolve(output);
                 }
-
             }).catch(reject);
         });
     }
