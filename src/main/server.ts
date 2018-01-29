@@ -1,24 +1,24 @@
 import {
-    ChildProcess, spawn, execFile
+    ChildProcess, execFile
 } from 'child_process';
-
-import {
-    join
-} from 'path';
 
 import {
     IService
 } from './main';
 
 import {
-    app, dialog
+    IRegistry, Registry
+} from './registry';
+
+import {
+    app
 } from 'electron';
 
 import {
     AsyncRemote, asyncRemoteMain
 } from '../asyncremote';
 
-import{
+import {
     IApplication, IClosingService
 } from './app';
 
@@ -30,18 +30,17 @@ export
 class JupyterServer {
 
     constructor(options: JupyterServer.IOptions) {
-        if (options.path)
-            this._info.path = options.path;
+        this._info.environment = options.environment;
     }
 
     get info(): JupyterServer.IInfo {
         return this._info;
     }
-    
+
     /**
      * Start a local Jupyer server. This method can be
      * called multiple times without initiating multiple starts.
-     * 
+     *
      * @return a promise that is resolved when the server has started.
      */
     public start(): Promise<JupyterServer.IInfo> {
@@ -53,19 +52,10 @@ class JupyterServer {
             let urlRegExp = /http:\/\/localhost:\d+\/\S*/g;
             let tokenRegExp = /token=\w+/g;
             let baseRegExp = /http:\/\/localhost:\d+\//g;
-            let home = app.getPath("home");
+            let home = app.getPath('home');
 
-            if (this._info.path) {
-               this._nbServer = execFile(join(this._info.path, 'jupyter'), ['notebook', '--no-browser'], {cwd: home});
-            } else if (process.platform === "win32") {
-                // Windows will return win32 (even for 64-bit)
-                // Dont spawn shell for Windows
-                this._nbServer = spawn('jupyter', ['notebook', '--no-browser'], {cwd: home});
-            } else {
-                this._nbServer = spawn('/bin/bash', ['-i', '-l'], {cwd: home});
-                this._nbServer.stdin.write('exec jupyter notebook --no-browser || exit\n');
-            }
-            
+            this._nbServer = execFile(this._info.environment.path, ['-m', 'jupyter', 'notebook', '--no-browser'], { cwd: home });
+
             this._nbServer.on('exit', () => {
                 this._serverStartFailed();
                 reject(new Error('Could not find Jupyter in PATH'));
@@ -78,19 +68,20 @@ class JupyterServer {
 
             this._nbServer.stderr.on('data', (serverBuff: string) => {
                 let urlMatch = serverBuff.toString().match(urlRegExp);
-                if (!urlMatch)
+                if (!urlMatch) {
                     return;
+                }
 
                 let url = urlMatch[0].toString();
                 let token = (url.match(tokenRegExp));
-                
+
                 if (!token) {
                     this._cleanupListeners();
-                    reject(new Error("Update Jupyter notebook to version 4.3.0 or greater"));
+                    reject(new Error('Update Jupyter notebook to version 4.3.0 or greater'));
                     return;
                 }
-                
-                this._info.token = token[0].replace("token=", "");
+
+                this._info.token = token[0].replace('token=', '');
                 this._info.url = (url.match(baseRegExp))[0];
 
                 this._cleanupListeners();
@@ -103,27 +94,26 @@ class JupyterServer {
 
     /**
      * Stop the currently executing Jupyter server.
-     * 
+     *
      * @return a promise that is resolved when the server has stopped.
      */
     public stop(): Promise<void> {
         // If stop has already been initiated, just return the promise
-        if (this._stopServer)
+        if (this._stopServer) {
             return this._stopServer;
+        }
 
         this._stopServer = new Promise<void>((res, rej) => {
-            if (this._nbServer !== undefined){
-                if (process.platform === "win32"){
+            if (this._nbServer !== undefined) {
+                if (process.platform === 'win32') {
                     execFile('taskkill', ['/PID', String(this._nbServer.pid), '/T', '/F'], () => {
                         res();
                     });
-                }
-                else{
+                } else {
                     this._nbServer.kill();
                     res();
                 }
-            }
-            else{
+            } else {
                 res();
             }
         });
@@ -140,7 +130,7 @@ class JupyterServer {
         this._nbServer.removeAllListeners();
         this._nbServer.stderr.removeAllListeners();
     }
-    
+
     /**
      * The child process object for the Jupyter server
      */
@@ -150,7 +140,7 @@ class JupyterServer {
 
     private _startServer: Promise<JupyterServer.IInfo> = null;
 
-    private _info: JupyterServer.IInfo = {url: null, token: null, path: null};
+    private _info: JupyterServer.IInfo = { url: null, token: null, environment: null };
 }
 
 export
@@ -158,49 +148,49 @@ namespace JupyterServer {
 
     export
     interface IOptions {
-        path?: string;
+        environment: Registry.IPythonEnvironment;
     }
 
     export
     interface IInfo {
         url: string;
         token: string;
-        path: string;
+        environment: Registry.IPythonEnvironment;
     }
 }
 
 export
 interface IServerFactory {
-    
+
     /**
      * Create and start a 'free' server. The server created will be returned
      * in the next call to 'createServer'.
-     * 
+     *
      * This method is a way to pre-launch Jupyter servers to improve load
      * times.
-     * 
+     *
      * @param opts the Jupyter server options.
-     * 
+     *
      * @return the factory item.
      */
     createFreeServer: (opts: JupyterServer.IOptions) => JupyterServerFactory.IFactoryItem;
 
     /**
      * Create a Jupyter server.
-     * 
+     *
      * If a free server is available, it is preferred over
      * server creation.
-     * 
+     *
      * @param opts the Jupyter server options.
      * @param forceNewServer force the creation of a new server over a free server.
-     * 
+     *
      * @return the factory item.
      */
     createServer: (opts: JupyterServer.IOptions) => Promise<JupyterServerFactory.IFactoryItem>;
-    
+
     /**
      * Kill all currently running servers.
-     * 
+     *
      * @return a promise that is fulfilled when all servers are killed.
      */
     killAllServers: () => Promise<void[]>;
@@ -223,128 +213,148 @@ namespace IServerFactory {
     }
 
     export
-    let requestServerStart: AsyncRemote.IMethod<void, IServerStarted> = {
-        id: 'JupyterServerFactory-requestserverstart'
-    }
-    
-    export
-    let requestServerStop: AsyncRemote.IMethod<IServerStop, void> = {
-        id: 'JupyterServerFactory-requestserverstop'
-    }
-    
-    export
-    let requestServerStartPath: AsyncRemote.IMethod<void, IServerStarted> = {
-        id: 'JupyterServerFactory-requestserverstartpath'
-    }
+        let requestServerStart: AsyncRemote.IMethod<void, IServerStarted> = {
+            id: 'JupyterServerFactory-requestserverstart'
+        };
 
     export
-    let pathSelectedEvent: AsyncRemote.IEvent<void> = {
-        id: 'JupyterServerFactory-pathselectedevent'
-    }
+        let requestServerStop: AsyncRemote.IMethod<IServerStop, void> = {
+            id: 'JupyterServerFactory-requestserverstop'
+        };
+
+    export
+        let requestServerStartPath: AsyncRemote.IMethod<void, IServerStarted> = {
+            id: 'JupyterServerFactory-requestserverstartpath'
+        };
+
+    export
+        let pathSelectedEvent: AsyncRemote.IEvent<void> = {
+            id: 'JupyterServerFactory-pathselectedevent'
+        };
 }
 
 export
 class JupyterServerFactory implements IServerFactory, IClosingService {
-    
-    constructor(app: IApplication) {
+
+    constructor(app: IApplication, registry: IRegistry) {
+        this._registry = registry;
         app.registerClosingService(this);
-        
+
         asyncRemoteMain.registerRemoteMethod(IServerFactory.requestServerStart, () => {
-            return this.createServer({})
+            return this.createServer(({} as JupyterServer.IOptions))
                 .then((data: JupyterServerFactory.IFactoryItem) => {
                     return this._factoryToIPC(data);
-               })
+                })
                 .catch((e: Error) => {
                     return this._errorToIPC(e);
                 });
         });
-        
+
         asyncRemoteMain.registerRemoteMethod(IServerFactory.requestServerStartPath, (data: any, caller) => {
-            return this.getUserJupyterPath()
-                .then((path: string) => {
-                    asyncRemoteMain.emitRemoteEvent(IServerFactory.pathSelectedEvent, undefined, caller)
-                    return this.createServer({path})
+            return this._registry.getUserJupyterPath()
+                .then((environment: Registry.IPythonEnvironment) => {
+                    asyncRemoteMain.emitRemoteEvent(IServerFactory.pathSelectedEvent, undefined, caller);
+                    return this.createServer({ environment });
                 })
                 .then((data: JupyterServerFactory.IFactoryItem) => {
                     return this._factoryToIPC(data);
                 })
                 .catch((e: Error) => {
-                    if (e.message !== 'cancel'){
+                    if (e.message !== 'cancel') {
                         return this._errorToIPC(e);
                     }
                 });
         });
-        
+
         asyncRemoteMain.registerRemoteMethod(IServerFactory.requestServerStop, (arg: IServerFactory.IServerStop) => {
-            return this.stopServer(arg.factoryId)
+            return this.stopServer(arg.factoryId);
         });
     }
 
     /**
      * Create and start a 'free' server. The server created will be returned
      * in the next call to 'createServer'.
-     * 
+     *
      * This method is a way to pre-launch Jupyter servers to improve load
      * times.
-     * 
+     *
      * @param opts the Jupyter server options.
-     * 
+     *
      * @return the factory item.
      */
     createFreeServer(opts: JupyterServer.IOptions): JupyterServerFactory.IFactoryItem {
-        let item = this._createServer(opts);
+        let item: JupyterServerFactory.IFactoryItem;
+        let env: Promise<Registry.IPythonEnvironment>;
 
-        item.server.start()
-            .catch((e: Error) => {
-                // The server failed to start, remove it from the factory.
-                console.warn(e);
-            });
+        if (!opts.environment) {
+            env = this._registry.getDefaultEnvironment();
+        } else {
+            env = Promise.resolve(opts.environment);
+        }
+
+        env.then(env => {
+            opts.environment = env;
+            item = this._createServer(opts);
+
+            return item.server.start();
+        }).catch((e: Error) => {
+            // The server failed to start, remove it from the factory.
+            console.warn(e);
+        });
         return item;
     }
 
-
     /**
      * Create a Jupyter server.
-     * 
+     *
      * If a free server is available, it is preferred over
      * server creation.
-     * 
+     *
      * @param opts the Jupyter server options.
      * @param forceNewServer force the creation of a new server over a free server.
      */
     createServer(opts: JupyterServer.IOptions, forceNewServer?: boolean): Promise<JupyterServerFactory.IFactoryItem> {
         let server: JupyterServerFactory.IFactoryItem;
-        if (forceNewServer) {
-            server = this._createServer(opts);
-        } else {
-            server = this._findUnusedServer(opts) || this._createServer(opts);
-        }
-        server.used = true;
+        let env: Promise<Registry.IPythonEnvironment>;
 
-        return new Promise<JupyterServerFactory.IFactoryItem>((res, rej) => {
-            server.server.start()
-                .then((data: JupyterServer.IInfo) => {
-                    res(server);
-                })
-                .catch((e) => {
-                    rej(e);
-                    this._removeFailedServer(server.factoryId);
-                });
-        });
+        if (!opts.environment) {
+            env = this._registry.getDefaultEnvironment();
+        } else {
+            env = Promise.resolve(opts.environment);
+        }
+
+        return env.then(env => {
+            if (forceNewServer) {
+                server = this._createServer({ environment: env });
+            } else {
+                server = this._findUnusedServer({ environment: env }, !opts.environment) || this._createServer({ environment: env });
+            }
+            server.used = true;
+
+            return server.server.start();
+        })
+            .then((data: JupyterServer.IInfo) => {
+                return Promise.resolve(server);
+            })
+            .catch((e) => {
+                this._removeFailedServer(server.factoryId);
+                return Promise.reject(e);
+            });
     }
 
     /**
      * Stop a Jupyter server.
-     * 
+     *
      * @param factoryId the factory item id.
      */
     stopServer(factoryId: number): Promise<void> {
         let idx = this._getServerIdx(factoryId);
-        if (idx < 0)
+        if (idx < 0) {
             return Promise.reject(new Error('Invalid server id: ' + factoryId));
+        }
 
         let server = this._servers[idx];
-        if (server.closing){
+        if (server.closing) {
             return server.closing;
         }
         let promise = new Promise<void>((res, rej) => {
@@ -357,7 +367,7 @@ class JupyterServerFactory implements IServerFactory, IClosingService {
                     console.error(e);
                     ArrayExt.removeAt(this._servers, idx);
                     rej();
-                })
+                });
         });
         server.closing = promise;
         return promise;
@@ -365,7 +375,7 @@ class JupyterServerFactory implements IServerFactory, IClosingService {
 
     /**
      * Kill all currently running servers.
-     * 
+     *
      * @return a promise that is fulfilled when all servers are killed.
      */
     killAllServers(): Promise<void[]> {
@@ -375,7 +385,7 @@ class JupyterServerFactory implements IServerFactory, IClosingService {
         });
         // Empty the server array.
         this._servers = [];
-        return Promise.all(stopPromises)
+        return Promise.all(stopPromises);
     }
 
     /**
@@ -383,36 +393,15 @@ class JupyterServerFactory implements IServerFactory, IClosingService {
      * @return promise that is fulfilled when the server factory is ready to quit
      */
     finished(): Promise<void> {
-        let promise = new Promise<void>( (resolve, reject) => {
+        let promise = new Promise<void>((resolve, reject) => {
             this.killAllServers()
-            .then( () => {resolve()})
-            .catch( () => {reject()});
+                .then(() => { resolve(); })
+                .catch(() => { reject(); });
         });
         return promise;
     }
 
-    /**
-     * Open a file selection dialog so users
-     * can enter the local path to the Jupyter server.
-     * 
-     * @return a promise that is fulfilled with the user path.
-     */
-    getUserJupyterPath(): Promise<string> {
-        return new Promise<string>((res, rej) => {
-            dialog.showOpenDialog({
-                properties: ['openDirectory', 'showHiddenFiles'],
-                buttonLabel: 'Use Path'
-            }, (filePaths: string[]) => {
-                if (!filePaths) {
-                    rej(new Error('cancel'));
-                    return;
-                } else {
-                    res(filePaths[0]);
-                }
-            });
 
-        })
-    }
 
     private _createServer(opts: JupyterServer.IOptions): JupyterServerFactory.IFactoryItem {
         let item: JupyterServerFactory.IFactoryItem = {
@@ -426,30 +415,33 @@ class JupyterServerFactory implements IServerFactory, IClosingService {
         return item;
     }
 
-    private _findUnusedServer(opts: JupyterServer.IOptions): JupyterServerFactory.IFactoryItem | null {
-        let idx = ArrayExt.findFirstIndex(this._servers, (server: JupyterServerFactory.IFactoryItem, idx: number) => {
-            if (!server.used && opts.path == server.server.info.path)
-                return true;
-            return false;
+    private _findUnusedServer(opts: JupyterServer.IOptions, usedDefault: boolean): JupyterServerFactory.IFactoryItem | null {
+        let result = ArrayExt.findFirstValue(this._servers, (server: JupyterServerFactory.IFactoryItem, idx: number) => {
+            return !server.used && opts.environment.path === server.server.info.environment.path;
         });
 
-        if (idx < 0)
-            return null;
+        if (!result && usedDefault) {
+            result = ArrayExt.findFirstValue(this._servers, (server) => {
+                return !server.used;
+            });
+        }
 
-        return this._servers[idx];
+        return result;
     }
 
     private _removeFailedServer(factoryId: number): void {
         let idx = this._getServerIdx(factoryId);
-        if (idx < 0)
+        if (idx < 0) {
             return;
+        }
         ArrayExt.removeAt(this._servers, idx);
     }
 
     private _getServerIdx(factoryId: number): number {
         return ArrayExt.findFirstIndex(this._servers, (s: JupyterServerFactory.IFactoryItem, idx: number) => {
-            if (s.factoryId === factoryId)
+            if (s.factoryId === factoryId) {
                 return true;
+            }
             return false;
         });
     }
@@ -462,7 +454,7 @@ class JupyterServerFactory implements IServerFactory, IClosingService {
             token: info.token
         };
     }
-    
+
     private _errorToIPC(e: Error): IServerFactory.IServerStarted {
         return {
             factoryId: -1,
@@ -471,10 +463,12 @@ class JupyterServerFactory implements IServerFactory, IClosingService {
             err: e.message || 'Server creation error'
         };
     }
-    
+
     private _servers: JupyterServerFactory.IFactoryItem[] = [];
 
     private _nextId: number = 1;
+
+    private _registry: IRegistry;
 
 }
 
@@ -482,7 +476,7 @@ export
 namespace JupyterServerFactory {
 
     /**
-     * The object created by the JupyterServerFactory. 
+     * The object created by the JupyterServerFactory.
      */
     export
     interface IFactoryItem {
@@ -511,11 +505,11 @@ namespace JupyterServerFactory {
 }
 
 let service: IService = {
-    requirements: ['IApplication'],
+    requirements: ['IRegistry', 'IApplication'],
     provides: 'IServerFactory',
-    activate: (app: IApplication): IServerFactory => {
-        return new JupyterServerFactory(app);
+    activate: (registry: IRegistry, app: IApplication): IServerFactory => {
+        return new JupyterServerFactory(app, registry);
     },
     autostart: true
-}
+};
 export default service;

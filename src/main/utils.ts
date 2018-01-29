@@ -31,28 +31,28 @@ interface ISaveOptions {
 }
 
 export
-interface IElectronDataConnector extends IDataConnector<ISettingRegistry.IPlugin, JSONObject> {};
+interface IElectronDataConnector extends IDataConnector<ISettingRegistry.IPlugin, JSONObject> {}
 
 export
 namespace IElectronDataConnector {
     export
     let fetch: AsyncRemote.IMethod<string, ISettingRegistry.IPlugin> = {
         id: 'JupyterLabDataConnector-fetch'
-    }
+    };
 
     export
     let save: AsyncRemote.IMethod<ISaveOptions, void> = {
         id: 'JupyterLabDataConnector-save'
-    }
+    };
 }
 
 /**
  * Create a data connector to be used by the render
  * processes. Stores JupyterLab plugin settings that
  * need to be persistent.
- * 
+ *
  * If settings are not found in the apllication data
- * directory, default settings are read in from the 
+ * directory, default settings are read in from the
  * application bundle.
  */
 export
@@ -63,7 +63,7 @@ class JupyterLabDataConnector implements IStatefulService, IElectronDataConnecto
     constructor(app: IApplication) {
         this._settings = app.registerStatefulService(this)
             .then((settings: Private.IPluginData) => {
-                if(!settings) {
+                if (!settings) {
                     return this._getDefaultSettings();
                 }
                 return settings;
@@ -71,10 +71,10 @@ class JupyterLabDataConnector implements IStatefulService, IElectronDataConnecto
             .catch(() => {
                 return this._getDefaultSettings();
             });
-        
+
         // Create 'fetch' remote method
         asyncRemoteMain.registerRemoteMethod(IElectronDataConnector.fetch, this.fetch.bind(this));
-        
+
         // Create 'save' remote method
         asyncRemoteMain.registerRemoteMethod(IElectronDataConnector.save,
             (opts: ISaveOptions) => {
@@ -84,7 +84,7 @@ class JupyterLabDataConnector implements IStatefulService, IElectronDataConnecto
 
     /**
      * Fetch settings for a plugin.
-     * 
+     *
      * @param id The plugin id.
      */
     fetch(id: string): Promise<ISettingRegistry.IPlugin> {
@@ -99,12 +99,12 @@ class JupyterLabDataConnector implements IStatefulService, IElectronDataConnecto
                     schema: data[id].schema,
                     data: data[id].data
                 });
-            })
+            });
     }
 
     /**
      * Remove a setting. Not needed in this implementation.
-     * 
+     *
      * @param id The plugin id.
      */
     remove(id: string): Promise<void> {
@@ -113,9 +113,9 @@ class JupyterLabDataConnector implements IStatefulService, IElectronDataConnecto
 
     /**
      * Save user settings for a plugin.
-     * 
-     * @param id 
-     * @param user 
+     *
+     * @param id
+     * @param user
      */
     save(id: string, user: JSONObject): Promise<void> {
         let saving = this._settings
@@ -128,7 +128,7 @@ class JupyterLabDataConnector implements IStatefulService, IElectronDataConnecto
             });
 
         this._settings = saving;
-        return saving.then(() => {});
+        return saving.then(() => {return; });
     }
 
     getStateBeforeQuit(): Promise<JSONValue> {
@@ -171,7 +171,7 @@ class JupyterLabDataConnector implements IStatefulService, IElectronDataConnecto
                             res(null);
                             return;
                         }
-                        
+
                         res({
                             id: sectionName,
                             schema: JSON.parse(data.toString()),
@@ -183,15 +183,16 @@ class JupyterLabDataConnector implements IStatefulService, IElectronDataConnecto
         }).then((settings: ISettingRegistry.IPlugin[]) => {
             let iSettings: any = {};
             settings.forEach(setting => {
-                if (!setting)
+                if (!setting) {
                     return;
+                }
                 iSettings[setting.id] = {schema: setting.schema, data: setting.data};
             });
             return iSettings;
         }).catch((e) => {
             console.error(e);
             return Promise.resolve({});
-        })
+        });
     }
 
     private _settings: Promise<Private.IPluginData>;
@@ -212,6 +213,6 @@ let service: IService = {
         return new JupyterLabDataConnector(app);
     },
     autostart: true
-}
+};
 export default service;
 

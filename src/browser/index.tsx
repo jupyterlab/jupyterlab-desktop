@@ -20,7 +20,7 @@ import {
 
 /**
  * HACK
- * 
+ *
  * The JupyterLab coreutils package uses the process.cwd
  * function with the expectation that it returns a '/', which
  * is the case when the code is bundled by webpack. Since this code
@@ -29,7 +29,7 @@ import {
  * working directory of the nodeapplication. Here we are overrding it
  * to maintain the bahavior JupyterLab expects.
  */
-process.cwd = () => {return '/'}
+process.cwd = () => {return '/'; };
 
 
 function main() : void {

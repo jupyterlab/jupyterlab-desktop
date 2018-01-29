@@ -22,7 +22,7 @@ interface IAsyncRemoteMain {
     /**
      * Register a method with the API to expose it to the
      * renderer process.
-     * 
+     *
      * @param method The method descriptor.
      * @param execute The function to be executed when the method is called.
      */
@@ -30,7 +30,7 @@ interface IAsyncRemoteMain {
 
     /**
      * Emit an event to the renderer process.
-     * 
+     *
      * @param event The event descriptor.
      * @param data The event data.
      * @param contents The WebContents to send the event to. If no argument
@@ -44,11 +44,11 @@ class MainRemote implements IAsyncRemoteMain {
     constructor() {
         ipcMain.on(Utils.REQUEST_METHOD_EXECUTE, this._executeMethod.bind(this));
     }
-    
+
     /**
      * Register a method with the API to expose it to the
      * renderer process.
-     * 
+     *
      * @param method The method descriptor.
      * @param execute The function to be executed when the method is called.
      */
@@ -56,12 +56,12 @@ class MainRemote implements IAsyncRemoteMain {
         this._methods[method.id] = {
             ...method,
             execute
-        }
+        };
     }
 
     /**
      * Emit an event to the renderer process.
-     * 
+     *
      * @param event The event descriptor.
      * @param data The event data.
      * @param contents The WebContents to send the event to. If no argument
@@ -72,7 +72,7 @@ class MainRemote implements IAsyncRemoteMain {
             ...event,
             data
         };
-        
+
         contents = contents ? contents : webContents.getAllWebContents();
 
         contents.forEach((content: Electron.WebContents) => {
@@ -89,7 +89,7 @@ class MainRemote implements IAsyncRemoteMain {
             let payload: Utils.IMethodExecuteResponse<any> = {
                 resp: null,
                 err: new Error('Method ' + data.methodId + 'does not exist.')
-            }
+            };
             evt.sender.send(responseChannel, payload);
             return;
         }
@@ -98,13 +98,13 @@ class MainRemote implements IAsyncRemoteMain {
             .then((resp: any) => {
                 let payload: Utils.IMethodExecuteResponse<any> = {
                     resp: resp,
-                }
+                };
                 evt.sender.send(responseChannel, payload);
             }).catch(e => {
                 let payload: Utils.IMethodExecuteResponse<any> = {
                     resp: null,
                     err: e
-                }
+                };
                 evt.sender.send(responseChannel, payload);
             });
     }

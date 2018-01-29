@@ -9,13 +9,13 @@ export
 namespace Utils {
     export
     const REQUEST_METHOD_EXECUTE = 'async-remote:request-method-execute';
-    
+
     export
     const RESPOND_METHOD_EXECUTE = 'async-remote:respond-method-execute';
 
     export
     const EMIT_EVENT = 'async-remote:emit-event';
-    
+
     export
     interface IMethodExec<T, U> extends AsyncRemote.IMethod<T, U> {
 
@@ -24,7 +24,7 @@ namespace Utils {
 
     export
     interface IEventEmit<U> extends AsyncRemote.IEvent<U> {
-        data: U
+        data: U;
     }
 
     export

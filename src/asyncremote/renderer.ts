@@ -25,7 +25,7 @@ interface IAsyncRemoteRender {
     runRemoteMethod<T, U>(method: AsyncRemote.IMethod<T, U>, arg: T): Promise<U>;
 
     onRemoteEvent<U>(event: AsyncRemote.IEvent<U>, cb: (data: U) => void): void;
-    
+
     removeRemoteListener<U>(event: AsyncRemote.IEvent<U>, listener: (data: U) => void): void;
 }
 
@@ -37,7 +37,7 @@ class RenderRemote implements IAsyncRemoteRender {
             this._eventEmitter.emit(data.id, data.data);
         });
     }
-    
+
     createRemoteMethod<T, U>(method: AsyncRemote.IMethod<T, U>): (arg: T) => Promise<U> {
         let func = (arg: T) => {
             this.runRemoteMethod(method, arg);
@@ -60,7 +60,7 @@ class RenderRemote implements IAsyncRemoteRender {
                     return;
                 }
                 res(data.resp);
-            }
+            };
             ipcRenderer.on(responseChannel, handler);
 
             // Send request
@@ -70,13 +70,13 @@ class RenderRemote implements IAsyncRemoteRender {
                 arg: arg
             };
             ipcRenderer.send(Utils.REQUEST_METHOD_EXECUTE, payload);
-        })
+        });
     }
 
     onRemoteEvent<U>(event: AsyncRemote.IEvent<U>, cb: (data: U) => void): void {
         this._eventEmitter.on(event.id, cb);
     }
-    
+
     removeRemoteListener<U>(event: AsyncRemote.IEvent<U>, cb: (data: U) => void): void {
         this._eventEmitter.removeListener(event.id, cb);
     }

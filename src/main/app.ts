@@ -1,7 +1,7 @@
 // Copyright (c) Jupyter Development Team.
 // Distributed under the terms of the Modified BSD License.
 
-import { 
+import {
     app
 } from 'electron';
 
@@ -27,7 +27,7 @@ interface IApplication {
 
     /**
      * Register as service with persistent state.
-     * 
+     *
      * @return promise fulfileld with the service's previous state.
      */
     registerStatefulService: (service: IStatefulService) => Promise<JSONValue>;
@@ -56,16 +56,16 @@ interface IStatefulService {
      * Called before the application quits. Qutting will
      * be suspended until the returned promise is resolved with
      * the service's state.
-     * 
+     *
      * @return promise that is fulfilled with the service's state.
      */
     getStateBeforeQuit(): Promise<JSONValue>;
-    
+
     /**
      * Called before state is passed to the service. Implementing
      * services should scan the state for issues in this function.
      * If the data is invalid, the function should return false.
-     * 
+     *
      * @return true if the data is valid, false otherwise.
      */
     verifyState: (state: JSONValue) => boolean;
@@ -75,11 +75,11 @@ interface IStatefulService {
  * A service that has to complete some task on application exit
  */
 export
-interface IClosingService{
+interface IClosingService {
     /**
-     * Called before the application exits and after the states are saved. 
-     * Service resolves the promise upon a successful cleanup. 
-     * 
+     * Called before the application exits and after the states are saved.
+     * Service resolves the promise upon a successful cleanup.
+     *
      * @return promise that is fulfilled when the service is ready to quit
      */
     finished(): Promise<void>;
@@ -119,19 +119,19 @@ class JupyterApplication implements IApplication {
                     }
                     res(null);
                 })
-                .catch(() => {res(null)});
+                .catch(() => {res(null); });
         });
     }
 
     registerClosingService(service: IClosingService): void {
         this._closing.push(service);
     }
-    
+
     saveState(service: IStatefulService, data: JSONValue): Promise<void> {
         this._updateState(service.id, data);
         return this._saveState();
     }
-    
+
     private _updateState(id: string, data: JSONValue): void {
         let prevState = this._appState;
 
@@ -144,17 +144,17 @@ class JupyterApplication implements IApplication {
                 .catch((state: JSONObject) => res(state));
         });
     }
-    
+
     private _rewriteState(ids: string[], data: JSONValue[]): void {
         let prevState = this._appState;
 
         this._appState = new Promise<JSONObject>((res, rej) => {
             prevState
                 .then(() => {
-                    let state: JSONObject = {}
+                    let state: JSONObject = {};
                     ids.forEach((id: string, idx: number) => {
                         state[id] = data[idx];
-                    })
+                    });
                     res(state);
                 })
                 .catch((state: JSONObject) => res(state));
@@ -173,7 +173,7 @@ class JupyterApplication implements IApplication {
                 })
                 .catch((e) => {
                     rej(e);
-                })
+                });
         });
     }
 
@@ -181,7 +181,7 @@ class JupyterApplication implements IApplication {
      * Register all application event listeners
      */
     private _registerListeners(): void {
-        // On OS X it is common for applications and their menu bar to stay 
+        // On OS X it is common for applications and their menu bar to stay
         // active until the user quits explicitly with Cmd + Q.
         app.on('window-all-closed', () => {
             if (process.platform !== 'darwin') {
@@ -191,7 +191,7 @@ class JupyterApplication implements IApplication {
 
         app.on('will-quit', (event) => {
             event.preventDefault();
-            
+
             // Collect data from services
             let state: Promise<JSONValue>[] = this._services.map((s: IStatefulService) => {
                 return s.getStateBeforeQuit();
@@ -204,13 +204,13 @@ class JupyterApplication implements IApplication {
             Promise.all(state)
                 .then((data: JSONValue[]) => {
                     this._rewriteState(ids, data);
-                    return this._saveState()
+                    return this._saveState();
                 })
                 .then(() => {
-                    this._quit();     
+                    this._quit();
                 })
                 .catch(() => {
-                    console.error(new Error("JupyterLab did not save state successfully"));
+                    console.error(new Error('JupyterLab did not save state successfully'));
                     this._quit();
                 });
         });
@@ -222,9 +222,9 @@ class JupyterApplication implements IApplication {
         });
 
         Promise.all(closing)
-        .then( () => {process.exit()})
+        .then( () => {process.exit(); })
         .catch( (err) => {
-            console.error(new Error("JupyterLab could not close successfully"));
+            console.error(new Error('JupyterLab could not close successfully'));
             process.exit();
         });
     }
@@ -257,5 +257,5 @@ let service: IService = {
     activate: (): IApplication => {
         return new JupyterApplication();
     }
-}
+};
 export default service;
