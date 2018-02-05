@@ -189,6 +189,19 @@ class ElectronStateDB implements IStateDB {
     }
 
     /**
+     * Serialize a copy of the entire datastore.
+     *
+     * @returns A promise that contains the entire datastore.
+     */
+    toJSON(): Promise<JSONObject> {
+        return new Promise((resolve, reject) => {
+            return this._updateCache().then(() => {
+                resolve(this._cache);
+            }).catch(reject);
+        });
+    }
+
+    /**
      * Check if there is a write currently in progress. If there is,
      * wait until the write promise is fulfilled.
      *
