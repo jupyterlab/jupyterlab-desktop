@@ -327,7 +327,7 @@ class JupyterServerFactory implements IServerFactory, IClosingService {
             if (forceNewServer) {
                 server = this._createServer({ environment: env });
             } else {
-                server = this._findUnusedServer({ environment: env }) || this._createServer({ environment: env });
+                server = this._findUnusedServer({ environment: env }, !opts.environment) || this._createServer({ environment: env });
             }
             server.used = true;
 
@@ -415,19 +415,18 @@ class JupyterServerFactory implements IServerFactory, IClosingService {
         return item;
     }
 
-    private _findUnusedServer(opts: JupyterServer.IOptions): JupyterServerFactory.IFactoryItem | null {
-        let idx = ArrayExt.findFirstIndex(this._servers, (server: JupyterServerFactory.IFactoryItem, idx: number) => {
-            if (!server.used && opts.environment.path === server.server.info.environment.path) {
-                return true;
-            }
-            return false;
+    private _findUnusedServer(opts: JupyterServer.IOptions, usedDefault: boolean): JupyterServerFactory.IFactoryItem | null {
+        let result = ArrayExt.findFirstValue(this._servers, (server: JupyterServerFactory.IFactoryItem, idx: number) => {
+            return !server.used && opts.environment.path === server.server.info.environment.path;
         });
 
-        if (idx < 0) {
-            return null;
+        if (!result && usedDefault) {
+            result = ArrayExt.findFirstValue(this._servers, (server) => {
+                return !server.used;
+            });
         }
 
-        return this._servers[idx];
+        return result;
     }
 
     private _removeFailedServer(factoryId: number): void {

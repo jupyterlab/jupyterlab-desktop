@@ -38,18 +38,24 @@ class NativeMenu extends MenuBar implements IMainMenu {
 
         // Register click event listener
         asyncRemoteRenderer.onRemoteEvent(INativeMenu.clickEvent, (opts) => {
-            this.app.commands.execute(opts.command, opts.args);
+            if (opts.command === INativeMenu.launchNewEnvironment.id) {
+                asyncRemoteRenderer.runRemoteMethod(INativeMenu.launchNewEnvironment, opts);
+            } else if (this.app.commands.hasCommand(opts.command)) {
+                return this.app.commands.execute(opts.command, opts.args);
+            } else {
+                return Promise.reject(new Error(`Command (${opts.command}) not found`));
+            }
         });
     }
 
     /**
      * Convert phosphorJS menu configuration to a native electron
      * menu configuration.
-     * 
+     *
      * @param menu The phosphorJS menu object
-     * 
+     *
      * @return Array of electron menu items representing menu item
-     *         drop down contents 
+     *         drop down contents
      */
     private buildNativeMenu(menu: Menu): INativeMenu.IMenuItemOptions[] {
         let items = menu.items;
@@ -57,25 +63,25 @@ class NativeMenu extends MenuBar implements IMainMenu {
         for (let i = 0; i < items.length; i++) {
             nItems[i] = {command: null, type: null, label: null, submenu: null, accelerator: null};
 
-            if (items[i].type == 'command') {
+            if (items[i].type === 'command') {
                 nItems[i].type = 'normal';
-            }
-            else {
+            } else {
                 nItems[i].type = (items[i].type as 'normal' | 'submenu' | 'separator');
             }
             nItems[i].label = items[i].label;
             nItems[i].command = items[i].command;
             nItems[i].args = items[i].args;
 
-            if (items[i].submenu !== null)
+            if (items[i].submenu !== null) {
                 nItems[i].submenu = this.buildNativeMenu(items[i].submenu);
+            }
         }
         return nItems;
     }
 
     /**
      * Add PhosphorJS menu to native menu bar.
-     * 
+     *
      * @param menu PhosphorJS menu to add to menu bar
      * @param options Menu options
      */
@@ -89,8 +95,8 @@ class NativeMenu extends MenuBar implements IMainMenu {
             rank: rank,
             label: menu.title.label,
             submenu: this.buildNativeMenu(menu)
-        }
-        
+        };
+
         /* Add the menu to the native menu */
         asyncRemoteRenderer.runRemoteMethod(INativeMenu.addMenu, menuItem);
     }
