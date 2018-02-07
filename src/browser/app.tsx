@@ -62,7 +62,6 @@ class Application extends React.Component<Application.Props, Application.State> 
         this._renderErrorScreen = this._renderErrorScreen.bind(this);
         this._connectionAdded = this._connectionAdded.bind(this);
         this._launchFromPath = this._launchFromPath.bind(this);
-        this._labReady = this._setupLab();
         
         if (this.props.options.serverState == 'local') {
             this.state = {renderSplash: this._renderSplash, renderState: this._renderEmpty, remotes: []};
@@ -131,17 +130,17 @@ class Application extends React.Component<Application.Props, Application.State> 
 
         PageConfig.setOption("token", this._server.token);
         PageConfig.setOption("baseUrl", this._server.url);
+
+        this._setupLab()
         
-        this._labReady.then(() => {
-            try {
-                this._lab.start({"ignorePlugins": this._ignorePlugins});
-            } catch(e) {
-                console.log(e);
-            }
-            this._lab.restored.then( () => {
-                ipcRenderer.send('lab-ready');
-                (this.refs.splash as SplashScreen).fadeSplashScreen();
-            });
+        try {
+            this._lab.start({"ignorePlugins": this._ignorePlugins});
+        } catch(e) {
+            console.log(e);
+        }
+        this._lab.restored.then( () => {
+            ipcRenderer.send('lab-ready');
+            (this.refs.splash as SplashScreen).fadeSplashScreen();
         });
     }
     
@@ -162,8 +161,7 @@ class Application extends React.Component<Application.Props, Application.State> 
         this._serverState.save(Application.SERVER_STATE_ID, {remotes: this.state.remotes});
     }
 
-    private _setupLab(): Promise<void> {
-        return new Promise<void>((res, rej) => {
+    private _setupLab() {
         let version : string = PageConfig.getOption('appVersion') || 'unknown';
 
         if (this.props.options.platform == 'win32')
@@ -173,13 +171,6 @@ class Application extends React.Component<Application.Props, Application.State> 
             version = version.slice(1);
         }
 
-            try {
-                this._lab.registerPluginModules(extensions.jupyterlab);
-            } catch (e) {
-                console.error(e);
-            }
-            
-            res();
         this._lab = new ElectronJupyterLab({
             version: version,
             mimeExtensions: extensions.mime,
@@ -188,19 +179,23 @@ class Application extends React.Component<Application.Props, Application.State> 
             platform: this.props.options.platform,
             uiState: this.props.options.uiState
         });
+
+        try {
+            this._lab.registerPluginModules(extensions.jupyterlab);
+        } catch (e) {
+            console.error(e);
+        }
     }
 
     private _connectionAdded(server: JupyterServer.IServer) {
         PageConfig.setOption('baseUrl', server.url);
         PageConfig.setOption('token', server.token);
         
-        this._labReady.then(() => {
-            try {
-                this._lab.start({"ignorePlugins": this._ignorePlugins});
-            } catch(e) {
-                console.log(e);
-            }
-        });
+        try {
+            this._lab.start({"ignorePlugins": this._ignorePlugins});
+        } catch(e) {
+            console.log(e);
+        }
 
         let rServer: Application.IRemoteServer = {...server, id: this._nextRemoteId++};
         this.setState((prevState: ServerManager.State) => {
@@ -298,7 +293,7 @@ class Application extends React.Component<Application.Props, Application.State> 
     
     private _serverState: StateDB;
 
-    private _labReady: Promise<void>;
+    // private _labReady: Promise<void>;
 }
 
 export 
