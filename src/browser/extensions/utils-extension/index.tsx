@@ -204,7 +204,7 @@ const nativeMainMenuPlugin: JupyterLabPlugin<IMainMenu> = {
 /**
  * Create a data connector to access plugin settings.
  */
-function newConnector(): IDataConnector<ISettingRegistry.IPlugin, JSONObject> {
+function newConnector(): IDataConnector<ISettingRegistry.IPlugin, string> {
   return {
     /**
      * Retrieve a saved bundle from the data connector.
@@ -225,8 +225,8 @@ function newConnector(): IDataConnector<ISettingRegistry.IPlugin, JSONObject> {
     /**
      * Save the user setting data in the data connector.
      */
-    save(id: string, user: JSONObject): Promise<void> {
-        return asyncRemoteRenderer.runRemoteMethod(IElectronDataConnector.save, {id, user});
+    save(id: string, raw: string): Promise<void> {
+        return asyncRemoteRenderer.runRemoteMethod(IElectronDataConnector.save, {id, raw});
     }
   };
 }
