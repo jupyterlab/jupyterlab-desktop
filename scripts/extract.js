@@ -31,14 +31,11 @@ function extractNode(data) {
   }
 
   // Handle schemas.
-  var schemas = jlab['schemas'];
-  if (schemas) {
-    schemas.forEach(schema => {
-      schema = path.join(data.realpath, schema);
-      var file = path.basename(schema);
-      var to = path.join(schemaDest, file);
-      fs.copySync(schema, to);
-    });
+  var schemaDir = jlab['schemaDir'];
+  if (schemaDir) {
+    var from = path.join(data.realpath, schemaDir);
+    var to = path.join(schemaDest, data.package.name);
+    fs.copySync(from, to);
   }
 
   // Handle themes.
