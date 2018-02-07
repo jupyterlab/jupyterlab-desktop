@@ -3,7 +3,6 @@
 
 import './require';
 import 'font-awesome/css/font-awesome.min.css';
-import '@jupyterlab/theming/style/index.css';
 import './style/main.css';
 
 import {
