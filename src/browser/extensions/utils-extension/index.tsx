@@ -4,8 +4,12 @@
 |----------------------------------------------------------------------------*/
 
 import {
-  ICommandPalette, IMainMenu, MainMenu
+  ICommandPalette
 } from '@jupyterlab/apputils';
+
+import {
+    IMainMenu, MainMenu
+  } from '@jupyterlab/mainmenu';
 
 import {
     ISessions
@@ -150,7 +154,7 @@ function buildTitleBar(app: ElectronJupyterLab): Widget {
 }
 
 function buildPhosphorMenu(app: ElectronJupyterLab): IMainMenu {
-    let menu = new MainMenu();
+    let menu = new MainMenu(app.commands);
     let titleBar = buildTitleBar(app);
 
     menu.id = 'jpe-MainMenu-widget';
