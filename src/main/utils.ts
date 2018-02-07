@@ -180,7 +180,7 @@ class JupyterLabDataConnector implements IStatefulService, IElectronDataConnecto
                             id: sectionName,
                             schema: JSON.parse(raw),
                             data: {} as ISettingRegistry.ISettingBundle,
-                            // raw: raw
+                            raw: raw
                         });
                     });
                 });

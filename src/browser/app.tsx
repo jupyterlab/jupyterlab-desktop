@@ -164,31 +164,14 @@ class Application extends React.Component<Application.Props, Application.State> 
 
     private _setupLab(): Promise<void> {
         return new Promise<void>((res, rej) => {
-            let version : string = PageConfig.getOption('appVersion') || 'unknown';
-            let name : string = PageConfig.getOption('appName') || 'JupyterLab';
-            let namespace : string = PageConfig.getOption('appNamespace') || 'jupyterlab';
-            let devMode : string  = PageConfig.getOption('devMode') || 'false';
-            let settingsDir : string = PageConfig.getOption('settingsDir') || '';
-            let assetsDir : string = PageConfig.getOption('assetsDir') || '';
+        let version : string = PageConfig.getOption('appVersion') || 'unknown';
 
-            if (this.props.options.platform == 'win32')
-                PageConfig.setOption('terminalsAvailable', 'false');
+        if (this.props.options.platform == 'win32')
+            PageConfig.setOption('terminalsAvailable', 'false');
 
-            if (version[0] === 'v') {
-                version = version.slice(1);
-            }
-
-            this._lab = new ElectronJupyterLab({
-                namespace: namespace,
-                name: name,
-                version: version,
-                devMode: devMode.toLowerCase() === 'true',
-                settingsDir: settingsDir,
-                assetsDir: assetsDir,
-                mimeExtensions: extensions.mime,
-                platform: this.props.options.platform,
-                uiState: this.props.options.uiState
-            });
+        if (version[0] === 'v') {
+            version = version.slice(1);
+        }
 
             try {
                 this._lab.registerPluginModules(extensions.jupyterlab);
@@ -197,6 +180,13 @@ class Application extends React.Component<Application.Props, Application.State> 
             }
             
             res();
+        this._lab = new ElectronJupyterLab({
+            version: version,
+            mimeExtensions: extensions.mime,
+            // disabled: disabled, TODO Implement
+            // deferred: deferred, TODO Implement
+            platform: this.props.options.platform,
+            uiState: this.props.options.uiState
         });
     }
 

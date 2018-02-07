@@ -2,10 +2,6 @@
 // Distributed under the terms of the Modified BSD License.
 
 import {
-    JupyterLabSession
-} from '../../../main/sessions';
-
-import {
     Browser
 } from '../../utils';
 
@@ -30,7 +26,7 @@ import * as React from 'react';
 export namespace TitleBar {
     export
     interface Props {
-        uiState: JupyterLabSession.UIState;
+        uiState: string;
     }
     
     export
