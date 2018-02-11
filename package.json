@@ -103,6 +103,7 @@
     "file-loader": "~0.10.1",
     "fs-extra": "~4.0.2",
     "json-loader": "^0.5.4",
+    "node-loader": "^0.6.0",
     "node-watch": "^0.5.5",
     "raw-loader": "^0.5.1",
     "read-package-tree": "^5.1.6",

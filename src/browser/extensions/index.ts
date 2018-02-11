@@ -35,7 +35,7 @@ let mime = [
     require("@jupyterlab/json-extension"),
     require("@jupyterlab/pdf-extension"),
     require("@jupyterlab/vdom-extension"),
-    // require("@jupyterlab/vega2-extension")
+    require("@jupyterlab/vega2-extension")
 ];
 
 export default {jupyterlab, mime};

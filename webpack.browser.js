@@ -19,12 +19,6 @@ module.exports = {
     path: buildDir,
     filename: 'browser.bundle.js',
   },
-  resolve: {
-    extensions: ['.ts', '.tsx', '.js', '.jsx'],
-    alias: {
-      jupyterlab_app: path.resolve(__dirname, 'jupyterlab_app')
-    }
-  },
   externals: [
     function(context, request, callback) {
       if (/^@jupyterlab/g.test(request)){
@@ -52,6 +46,7 @@ module.exports = {
       { test: /\.txt$/, use: 'raw-loader' },
       { test: /\.(jpg|png|gif)$/, use: 'file-loader' },
       { test: /\.js.map$/, use: 'file-loader' },
+      { test: /\.node$/, use: 'node-loader' },
       { test: /\.woff2(\?v=\d+\.\d+\.\d+)?$/, use: 'url-loader?limit=10000&mimetype=application/font-woff' },
       { test: /\.woff(\?v=\d+\.\d+\.\d+)?$/, use: 'url-loader?limit=10000&mimetype=application/font-woff' },
       { test: /\.ttf(\?v=\d+\.\d+\.\d+)?$/, use: 'url-loader?limit=10000&mimetype=application/octet-stream' },
@@ -62,7 +57,8 @@ module.exports = {
   },
   externals: {
     module: 'commonjs module',
-    child_process: 'commonjs child_process'
+    child_process: 'commonjs child_process',
+    'try-thread-sleep': 'commonjs try-thread-sleep'
   },
   node: {
     fs: 'empty'
