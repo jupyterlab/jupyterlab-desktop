@@ -26,10 +26,9 @@ before_install:
 - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then sudo apt-key adv --keyserver pgp.mit.edu  --recv D101F7899D41F3C3; fi
 - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then echo "deb http://dl.yarnpkg.com/debian/  stable main" | sudo tee /etc/apt/sources.list.d/yarn.list; fi
 - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then sudo apt-get update -qq; fi
-- if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then sudo apt-get install -qq yarn libcairo2-dev libjpeg-dev libpango1.0-dev libgif-dev build-essential g++; fi
+- if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then sudo apt-get install -qq yarn; fi
 - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then docker pull electronuserland/electron-builder:wine; fi
 - if [[ "$TRAVIS_OS_NAME" == "osx"  ]]; then brew install --ignore-dependencies yarn; fi
-- if [[ "$TRAVIS_OS_NAME" == "osx"  ]]; then brew install pkg-config cairo libpng jpeg giflib; fi
 
 install:
 - if [[ "$TRAVIS_OS_NAME" == "osx"   ]]; then yarn install; fi

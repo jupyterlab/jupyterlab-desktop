@@ -46,7 +46,6 @@ module.exports = {
       { test: /\.txt$/, use: 'raw-loader' },
       { test: /\.(jpg|png|gif)$/, use: 'file-loader' },
       { test: /\.js.map$/, use: 'file-loader' },
-      { test: /\.node$/, use: 'node-loader' },
       { test: /\.woff2(\?v=\d+\.\d+\.\d+)?$/, use: 'url-loader?limit=10000&mimetype=application/font-woff' },
       { test: /\.woff(\?v=\d+\.\d+\.\d+)?$/, use: 'url-loader?limit=10000&mimetype=application/font-woff' },
       { test: /\.ttf(\?v=\d+\.\d+\.\d+)?$/, use: 'url-loader?limit=10000&mimetype=application/octet-stream' },
@@ -58,7 +57,8 @@ module.exports = {
   externals: {
     module: 'commonjs module',
     child_process: 'commonjs child_process',
-    'try-thread-sleep': 'commonjs try-thread-sleep'
+    'try-thread-sleep': 'commonjs try-thread-sleep',
+    'vega-scenegraph': 'commonjs vega-scenegraph'
   },
   node: {
     fs: 'empty'
