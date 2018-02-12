@@ -6,6 +6,10 @@ import {
 } from '@jupyterlab/application';
 
 import {
+  PageConfig
+} from '@jupyterlab/coreutils';
+
+import {
   ICommandPalette
 } from '@jupyterlab/apputils';
 
@@ -16,6 +20,10 @@ import {
 import {
   JupyterLabSession
 } from '../../../main/sessions';
+
+import {
+  ServiceManager, ServerConnection
+} from '@jupyterlab/services';
 
 import {
   each
@@ -61,18 +69,38 @@ export
 class ElectronJupyterLab extends JupyterLab {
 
   constructor(options: ElectronJupyterLab.IOptions) {
-    super(options);
+    /**
+     * WORKAROUND
+     * The constructor of JupyterLab in @jupyterlab/application initializes 
+     * the ServiceManager with the default options. The default options 
+     * include the baseUrl and token at the moment when the application starts
+     * without an option to override them. JupyterLab_app starts the server 
+     * and sets the relevant config data at runtime, so the default settings 
+     * no longer work. Therefore overriding the default options is the only 
+     * solution at the moment.
+     * 
+     * @jupyterlab/application 0.15.4
+     */
+    const oldMakeSettings = ServerConnection.makeSettings
+    ServerConnection.makeSettings = function(options?: Partial<ServerConnection.ISettings>) {
+      options = {
+        ...options,
+        ...{
+          baseUrl: PageConfig.getBaseUrl(),
+          pageUrl: PageConfig.getOption('pageUrl'),
+          wsUrl: PageConfig.getWsUrl(),
+          token: PageConfig.getToken()
+        }
+      };
+      return oldMakeSettings(options)
+    }
     
-    this._electronInfo = {
-      name: options.name || 'JupyterLab',
-      namespace: options.namespace || 'jupyterlab',
-      version:  options.version || 'unknown',
-      devMode: options.devMode || false,
-      settingsDir: options.settingsDir || '',
-      assetsDir: options.assetsDir || '',
-      platform: options.platform,
-      uiState: options.uiState || 'windows'
-    };
+    super(options);
+
+    this._electronInfo = { ...JupyterLab.defaultInfo, ...options };
+    if (this._electronInfo.devMode) {
+      this.shell.addClass('jp-mod-devMode');
+    }
 
     // Get the top panel widget
     let topPanel: Widget;
@@ -99,6 +127,11 @@ class ElectronJupyterLab extends JupyterLab {
     return this._electronInfo;
   }
 
+  /**
+   * The service manager used by the application.
+   */
+  readonly serviceManager: ServiceManager;
+  
   private _electronInfo: ElectronJupyterLab.IInfo;
 }
 
@@ -113,9 +146,18 @@ namespace ElectronJupyterLab {
 
   export
   interface IInfo extends JupyterLab.IInfo {
-    uiState: JupyterLabSession.UIState;
-    platform: NodeJS.Platform;
+    uiState?: string;
+    platform: string;
   }
+
+  /**
+   * The default application info.
+   */
+  export
+  const defaultInfo: IInfo = { ...{
+    uiState: PageConfig.getOption('uistate') || 'windows',
+    platform: PageConfig.getOption('platform')
+  }, ...JupyterLab.defaultInfo };
 }
 
 /**

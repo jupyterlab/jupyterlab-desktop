@@ -2,7 +2,7 @@
 // Distributed under the terms of the Modified BSD License.
 
 import {
-    JSONValue, JSONObject
+    JSONValue
 } from '@phosphor/coreutils';
 
 import {
@@ -27,11 +27,11 @@ import * as fs from 'fs';
 export
 interface ISaveOptions {
     id: string;
-    user: JSONObject;
+    raw: string;
 }
 
 export
-interface IElectronDataConnector extends IDataConnector<ISettingRegistry.IPlugin, JSONObject> {}
+interface IElectronDataConnector extends IDataConnector<ISettingRegistry.IPlugin, string> {}
 
 export
 namespace IElectronDataConnector {
@@ -78,7 +78,7 @@ class JupyterLabDataConnector implements IStatefulService, IElectronDataConnecto
         // Create 'save' remote method
         asyncRemoteMain.registerRemoteMethod(IElectronDataConnector.save,
             (opts: ISaveOptions) => {
-                return this.save(opts.id, opts.user);
+                return this.save(opts.id, opts.raw);
             });
     }
 
@@ -97,7 +97,8 @@ class JupyterLabDataConnector implements IStatefulService, IElectronDataConnecto
                 return Promise.resolve({
                     id: id,
                     schema: data[id].schema,
-                    data: data[id].data
+                    data: data[id].data,
+                    raw: data[id].raw
                 });
             });
     }
@@ -117,13 +118,15 @@ class JupyterLabDataConnector implements IStatefulService, IElectronDataConnecto
      * @param id
      * @param user
      */
-    save(id: string, user: JSONObject): Promise<void> {
+    save(id: string, raw: string): Promise<void> {
+        const user = JSON.parse(raw)
         let saving = this._settings
             .then((data: Private.IPluginData) => {
                 if (!user[id]) {
                     return Promise.reject(new Error('Schema not found for: ' + id ));
                 }
                 data[id].data = user as ISettingRegistry.ISettingBundle;
+                data[id].raw = raw
                 return Promise.resolve(data);
             });
 
@@ -172,10 +175,12 @@ class JupyterLabDataConnector implements IStatefulService, IElectronDataConnecto
                             return;
                         }
 
+                        const raw = data.toString()
                         res({
                             id: sectionName,
-                            schema: JSON.parse(data.toString()),
-                            data: {} as ISettingRegistry.ISettingBundle
+                            schema: JSON.parse(raw),
+                            data: {} as ISettingRegistry.ISettingBundle,
+                            raw: raw
                         });
                     });
                 });
@@ -202,14 +207,14 @@ namespace Private {
 
     export
     interface IPluginData {
-        [key: string]: {data: ISettingRegistry.ISettingBundle, schema: ISettingRegistry.ISchema};
+        [key: string]: {data: ISettingRegistry.ISettingBundle, schema: ISettingRegistry.ISchema, raw: string};
     }
 }
 
 let service: IService = {
     requirements: ['IApplication'],
     provides: 'IElectronDataConnector',
-    activate: (app: IApplication): IDataConnector<ISettingRegistry.IPlugin, JSONObject> => {
+    activate: (app: IApplication): IDataConnector<ISettingRegistry.IPlugin, string> => {
         return new JupyterLabDataConnector(app);
     },
     autostart: true

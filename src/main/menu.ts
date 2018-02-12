@@ -89,7 +89,7 @@ namespace INativeMenu {
 class JupyterMainMenu implements INativeMenu {
 
     constructor(app: IApplication, sessions: ISessions, registry: IRegistry) {
-        this._jupyterApp = app;
+        // this._jupyterApp = app;
         this._sessions = sessions;
         this._registry = registry;
         this._menu = new Menu();
@@ -263,7 +263,7 @@ class JupyterMainMenu implements INativeMenu {
      */
     private _menu: Electron.Menu;
 
-    private _jupyterApp: IApplication;
+    // private _jupyterApp: IApplication;
 
     private _sessions: ISessions;
 

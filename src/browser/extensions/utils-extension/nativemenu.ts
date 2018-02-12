@@ -6,7 +6,7 @@ import {
 } from '@phosphor/algorithm';
 
 import {
-    Menu, MenuBar
+    Menu
 } from '@phosphor/widgets';
 
 import {
@@ -22,8 +22,8 @@ import {
 } from '../../../asyncremote';
 
 import {
-    IMainMenu
-} from '@jupyterlab/apputils';
+    IMainMenu, MainMenu
+  } from '@jupyterlab/mainmenu';
 
 
 /**
@@ -31,10 +31,10 @@ import {
  * to setup native menu bar.
  */
 export
-class NativeMenu extends MenuBar implements IMainMenu {
+class NativeMenu extends MainMenu implements IMainMenu { // TODO: Reimplement native menu
 
     constructor(private app: JupyterLab) {
-        super();
+        super(app.commands);
 
         // Register click event listener
         asyncRemoteRenderer.onRemoteEvent(INativeMenu.clickEvent, (opts) => {
