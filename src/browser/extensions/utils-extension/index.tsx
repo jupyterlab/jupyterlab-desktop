@@ -24,7 +24,7 @@ import {
 } from '../../app';
 
 import {
-    StateDB, ISettingRegistry, SettingRegistry, IDataConnector
+    StateDB, ISettingRegistry, SettingRegistry, DataConnector
 } from '@jupyterlab/coreutils';
 
 import {
@@ -64,7 +64,7 @@ namespace CommandIDs {
     export
     const activateServerManager = 'electron-jupyterlab:activate-server-manager';
 
-    export 
+    export
     const connectToServer = 'electron-jupyterlab:connect-to-server';
 }
 
@@ -106,10 +106,10 @@ const serverManagerPlugin: JupyterLabPlugin<void> = {
     return null;
   },
   autoStart: true
-}
+};
 
 function createServerManager(app: ElectronJupyterLab, palette: ICommandPalette,
-                            menu: IMainMenu, servers: ServerManagerMenuArgs[]) {
+                             menu: IMainMenu, servers: ServerManagerMenuArgs[]) {
     app.commands.addCommand(CommandIDs.activateServerManager, {
         label: 'Add Server',
         execute: () => {
@@ -124,7 +124,7 @@ function createServerManager(app: ElectronJupyterLab, palette: ICommandPalette,
             asyncRemoteRenderer.runRemoteMethod(ISessions.createSession, {
                 state: args.type,
                 remoteServerId: args.remoteServerId
-            })
+            });
         }
     });
 
@@ -161,7 +161,7 @@ function buildPhosphorMenu(app: ElectronJupyterLab): IMainMenu {
     titleBar.id = 'jpe-TitleBar-widget';
 
     titleBar.addClass('jpe-mod-' + app.info.uiState);
-    
+
     let logo = new Widget();
     logo.addClass('jp-MainAreaPortraitIcon');
     logo.addClass('jpe-JupyterIcon');
@@ -181,7 +181,7 @@ function buildNativeMenu(app: ElectronJupyterLab): IMainMenu {
     titleBar.addClass('jpe-mod-' + app.info.uiState);
 
     app.shell.addToTopArea(titleBar);
-    
+
     return menu;
 }
 
@@ -195,7 +195,7 @@ const nativeMainMenuPlugin: JupyterLabPlugin<IMainMenu> = {
     // Create the menu
     let menu: IMainMenu;
     let uiState = app.info.uiState;
-    if (uiState == 'linux' || uiState == 'mac') {
+    if (uiState === 'linux' || uiState === 'mac') {
         menu = buildNativeMenu(app);
     } else {
         menu = buildPhosphorMenu(app);
@@ -205,43 +205,33 @@ const nativeMainMenuPlugin: JupyterLabPlugin<IMainMenu> = {
   }
 };
 
-/**
- * Create a data connector to access plugin settings.
- */
-function newConnector(): IDataConnector<ISettingRegistry.IPlugin, string> {
-  return {
-    /**
-     * Retrieve a saved bundle from the data connector.
-     */
-    fetch(settingsId: string): Promise<ISettingRegistry.IPlugin> {
-        return asyncRemoteRenderer.runRemoteMethod(IElectronDataConnector.fetch, settingsId);
-    },
+class SettingsConnector extends DataConnector<ISettingRegistry.IPlugin, string> {
 
-    /**
-     * Remove a value from the data connector.
-     */
-    remove(): Promise<void> {
-      const message = 'Removing setting resources is not supported.';
-
-      return Promise.reject(new Error(message));
-    },
-
-    /**
-     * Save the user setting data in the data connector.
-     */
-    save(id: string, raw: string): Promise<void> {
-        return asyncRemoteRenderer.runRemoteMethod(IElectronDataConnector.save, {id, raw});
+    constructor() {
+        super();
     }
-  };
+
+    fetch(id: string): Promise<ISettingRegistry.IPlugin> {
+        return asyncRemoteRenderer.runRemoteMethod(IElectronDataConnector.fetch, id);
+    }
+
+    remove(): Promise<void> {
+        return Promise.reject(new Error('Removing setting resource is not supported.'));
+    }
+
+    save(id: string, raw: string): Promise<void> {
+        return asyncRemoteRenderer.runRemoteMethod(IElectronDataConnector.save, { id, raw });
+    }
+
 }
 
 /**
  * The default setting registry provider.
  */
 const settingPlugin: JupyterLabPlugin<ISettingRegistry> = {
-  id: 'jupyter.services.setting-registry',
+  id: '@jupyterlab/apputils-extension:settings',
   activate: (): ISettingRegistry => {
-    return new SettingRegistry({ connector: newConnector() });
+    return new SettingRegistry({ connector: new SettingsConnector() });
   },
   autoStart: true,
   provides: ISettingRegistry
@@ -251,11 +241,14 @@ const settingPlugin: JupyterLabPlugin<ISettingRegistry> = {
  * Override Main Menu plugin from apputils-extension
  */
 let nPlugins = plugins.map((p: JupyterLabPlugin<any>) => {
-    if (p.id == 'jupyter.services.main-menu')
+    if (p.id === 'jupyter.services.main-menu') {
         return nativeMainMenuPlugin;
-    else if (p.id == 'jupyter.services.setting-registry')
+    } else if (p.id === '@jupyterlab/apputils-extension:settings') {
         return settingPlugin;
+    }
+
     return p;
 });
+
 nPlugins.push(serverManagerPlugin);
 export default nPlugins;

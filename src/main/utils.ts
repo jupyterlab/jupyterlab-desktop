@@ -31,7 +31,7 @@ interface ISaveOptions {
 }
 
 export
-interface IElectronDataConnector extends IDataConnector<ISettingRegistry.IPlugin, string> {}
+interface IElectronDataConnector extends IDataConnector<ISettingRegistry.IPlugin, string> { }
 
 export
 namespace IElectronDataConnector {
@@ -96,10 +96,10 @@ class JupyterLabDataConnector implements IStatefulService, IElectronDataConnecto
 
                 return Promise.resolve({
                     id: id,
-                    schema: data[id].schema,
-                    data: data[id].data,
-                    raw: data[id].raw
+                    ...data[id]
                 });
+            }).catch((reason) => {
+                return Promise.reject(new Error(`Private data store failed to load.`));
             });
     }
 
@@ -119,19 +119,19 @@ class JupyterLabDataConnector implements IStatefulService, IElectronDataConnecto
      * @param user
      */
     save(id: string, raw: string): Promise<void> {
-        const user = JSON.parse(raw)
+        const user = JSON.parse(raw);
         let saving = this._settings
             .then((data: Private.IPluginData) => {
                 if (!user[id]) {
-                    return Promise.reject(new Error('Schema not found for: ' + id ));
+                    return Promise.reject(new Error('Schema not found for: ' + id));
                 }
                 data[id].data = user as ISettingRegistry.ISettingBundle;
-                data[id].raw = raw
+                data[id].raw = raw;
                 return Promise.resolve(data);
             });
 
         this._settings = saving;
-        return saving.then(() => {return; });
+        return saving.then(() => { return; });
     }
 
     getStateBeforeQuit(): Promise<JSONValue> {
@@ -152,46 +152,92 @@ class JupyterLabDataConnector implements IStatefulService, IElectronDataConnecto
      * bundle.
      */
     private _getDefaultSettings(): Promise<Private.IPluginData> {
-        let schemasPath = path.join(__dirname, '../../schemas');
+        let schemasPath = path.join(__dirname, '../../schemas/');
 
-        return new Promise<string[]>((res, rej) => {
-            // Get files in schema directory
+        let getSettingProviders = new Promise<string[]>((resolve, reject) => {
             fs.readdir(schemasPath, (err, files) => {
                 if (err) {
-                    rej(err);
-                    return;
+                    reject(err);
+                } else {
+                    resolve(files);
                 }
-                res(files);
             });
-        }).then((files: string[]) => {
-            // Parse data in schema files
-            return Promise.all(files.map(file => {
-                let sectionName = path.basename(file);
-                sectionName = sectionName.slice(0, sectionName.length - '.json'.length);
-                return new Promise<ISettingRegistry.IPlugin>((res, rej) => {
-                    fs.readFile(path.join(schemasPath, file), (err, data: Buffer) => {
-                        if (err) {
-                            res(null);
-                            return;
-                        }
+        });
 
-                        const raw = data.toString()
-                        res({
-                            id: sectionName,
-                            schema: JSON.parse(raw),
-                            data: {} as ISettingRegistry.ISettingBundle,
-                            raw: raw
-                        });
+        let buildPluginProvider: Promise<{ provider: string, name: string }[]> = getSettingProviders.then(providers => {
+            return Promise.all(providers.map(provider => {
+                return new Promise<{ provider: string, name: string }[]>((resolve, reject) => {
+                    fs.readdir(path.join(schemasPath, provider), (err, plugins) => {
+                        if (err) {
+                            reject(err);
+                        } else {
+                            let allPlugins = plugins.map(plugin => {
+                                return {
+                                    provider: provider,
+                                    name: plugin
+                                };
+                            });
+                            resolve(allPlugins);
+                        }
+                    });
+                });
+            })).then(nestedPlugins => {
+                return Array.prototype.concat.apply([], nestedPlugins);
+            });
+        });
+
+        let buildPluginContents: Promise<{ provider: string, name: string, contentPath: string }[]> = buildPluginProvider.then(plugins => {
+            return Promise.all(plugins.map(plugin => {
+                return new Promise<{ provider: string, name: string, contentPath: string }[]>((resolve, reject) => {
+                    fs.readdir(path.join(schemasPath, plugin.provider, plugin.name), (err, settingFiles) => {
+                        if (err) {
+                            reject(err);
+                        } else {
+                            let allPlugins = settingFiles.map(settingFile => {
+                                return {
+                                    provider: plugin.provider,
+                                    name: plugin.name,
+                                    contentPath: settingFile
+                                };
+                            });
+
+                            resolve(allPlugins);
+                        }
+                    });
+                });
+            })).then(nestPlugins => Array.prototype.concat.apply([], nestPlugins));
+        });
+
+        let buildRegistryPlugins: Promise<ISettingRegistry.IPlugin[]> = buildPluginContents.then(plugins => {
+            return Promise.all(plugins.map(plugin => {
+                let contentPath = path.join(schemasPath, plugin.provider, plugin.name, plugin.contentPath);
+                let sectionName = plugin.provider + '/' + plugin.name + ':' + path.basename(plugin.contentPath, '.json');
+                return new Promise<ISettingRegistry.IPlugin>((resolve, reject) => {
+                    fs.readFile(contentPath, (err, data: Buffer) => {
+                        if (err) {
+                            reject(err);
+                        } else {
+                            let rawSchema = data.toString();
+
+                            resolve({
+                                id: sectionName,
+                                schema: JSON.parse(rawSchema),
+                                data: {} as ISettingRegistry.ISettingBundle,
+                                raw: '{}',
+                            });
+                        }
                     });
                 });
             }));
-        }).then((settings: ISettingRegistry.IPlugin[]) => {
-            let iSettings: any = {};
+        });
+
+        return buildRegistryPlugins.then((settings: ISettingRegistry.IPlugin[]) => {
+            let iSettings: Private.IPluginData = {};
             settings.forEach(setting => {
                 if (!setting) {
                     return;
                 }
-                iSettings[setting.id] = {schema: setting.schema, data: setting.data};
+                iSettings[setting.id] = setting;
             });
             return iSettings;
         }).catch((e) => {
@@ -207,7 +253,7 @@ namespace Private {
 
     export
     interface IPluginData {
-        [key: string]: {data: ISettingRegistry.ISettingBundle, schema: ISettingRegistry.ISchema, raw: string};
+        [id: string]: ISettingRegistry.IPlugin;
     }
 }
 
