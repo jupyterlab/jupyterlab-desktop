@@ -32,15 +32,15 @@ const extensions: any = {
     '@jupyterlab/terminal-extension': require('@jupyterlab/terminal-extension'),
     '@jupyterlab/theme-dark-extension': require('@jupyterlab/theme-dark-extension'),
     '@jupyterlab/theme-light-extension': require('@jupyterlab/theme-light-extension'),
-    '@jupyterlab/tooltip-extension': require('@jupyterlab/tooltip-extension'),
+    '@jupyterlab/tooltip-extension': require('@jupyterlab/tooltip-extension')
+} as { [key: string]: any };
+
+const mimeExtensions: any = {
     '@jupyterlab/json-extension': require('@jupyterlab/json-extension'),
     '@jupyterlab/pdf-extension': require('@jupyterlab/pdf-extension'),
     '@jupyterlab/vdom-extension': require('@jupyterlab/vdom-extension'),
     '@jupyterlab/vega2-extension': require('@jupyterlab/vega2-extension')
 } as { [key: string]: any };
-
-// tslint:disable-next-line:no-var-requires
-const jlab = require('../../../../package.json').jupyterlab;
 
 const disabled = { patterns: [] as string[], matches: [] as string[] };
 const deferred = { patterns: [] as string[], matches: [] as string[] };
@@ -86,9 +86,9 @@ function isDisabled(value: string) {
     });
 }
 
-function loadExtensions(extensionNames: string[]): any[] {
+function loadExtensions(extensions: { [key: string]: any }): any[] {
     const enabled: any[] = [];
-    for (const extensionName of extensionNames) {
+    for (const extensionName of Object.keys(extensions)) {
         try {
             if (isDeferred(extensionName)) {
                 deferred.matches.push(extensionName);
@@ -98,10 +98,6 @@ function loadExtensions(extensionNames: string[]): any[] {
                 disabled.matches.push(extensionName);
             } else {
                 const extension = extensions[extensionName];
-                if (!extension) {
-                    console.log(extensionName + ' not found');
-                    continue;
-                }
 
                 if (Array.isArray(extension)) {
                     extension.forEach(function (plugin) {
@@ -126,8 +122,8 @@ function loadExtensions(extensionNames: string[]): any[] {
     return enabled;
 }
 
-const jupyterlab = loadExtensions(jlab.extensions);
-const mime = loadExtensions(jlab.mimeExtensions);
+const jupyterlab = loadExtensions(extensions);
+const mime = loadExtensions(mimeExtensions);
 
 export default { jupyterlab, mime, disabled, deferred, ignored };
 
