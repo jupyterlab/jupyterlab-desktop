@@ -8,6 +8,7 @@ import * as Bottle from 'bottlejs';
  * Require debugging tools. Only
  * runs when in development.
  */
+// tslint:disable-next-line:no-var-requires
 require('electron-debug')({showDevTools: false});
 
 /**
@@ -33,7 +34,7 @@ interface IService {
     /**
      * A function to create the service object.
      */
-    activate: (...any: any[]) => any;
+    activate: (...x: any[]) => any;
 
     /**
      * Whether the service should be instantiated immediatelty,
@@ -45,15 +46,10 @@ interface IService {
 /**
  * Servies required by this application.
  */
-let services: IService[] = [
-    require('./app').default,
-    require('./sessions').default,
-    require('./server').default,
-    require('./menu').default,
-    require('./shortcuts').default,
-    require('./utils').default,
-    require('./registry').default,
-];
+const services = ['./app', './sessions', './server', './menu', './shortcuts', './utils', './registry']
+.map((service: string) => {
+    return require(service).default;
+});
 
 /**
  * Load all services when the electron app is
