@@ -61,8 +61,7 @@ namespace CommandIDs {
 
   export
   const toggleMode: string = 'main-jupyterlab:toggle-mode';
-};
-
+}
 
 
 export
@@ -71,17 +70,17 @@ class ElectronJupyterLab extends JupyterLab {
   constructor(options: ElectronJupyterLab.IOptions) {
     /**
      * WORKAROUND
-     * The constructor of JupyterLab in @jupyterlab/application initializes 
-     * the ServiceManager with the default options. The default options 
+     * The constructor of JupyterLab in @jupyterlab/application initializes
+     * the ServiceManager with the default options. The default options
      * include the baseUrl and token at the moment when the application starts
-     * without an option to override them. JupyterLab_app starts the server 
-     * and sets the relevant config data at runtime, so the default settings 
-     * no longer work. Therefore overriding the default options is the only 
+     * without an option to override them. JupyterLab_app starts the server
+     * and sets the relevant config data at runtime, so the default settings
+     * no longer work. Therefore overriding the default options is the only
      * solution at the moment.
-     * 
+     *
      * @jupyterlab/application 0.15.4
      */
-    const oldMakeSettings = ServerConnection.makeSettings
+    const oldMakeSettings = ServerConnection.makeSettings;
     ServerConnection.makeSettings = function(options?: Partial<ServerConnection.ISettings>) {
       options = {
         ...options,
@@ -92,9 +91,9 @@ class ElectronJupyterLab extends JupyterLab {
           token: PageConfig.getToken()
         }
       };
-      return oldMakeSettings(options)
-    }
-    
+      return oldMakeSettings(options);
+    };
+
     super(options);
 
     this._electronInfo = { ...JupyterLab.defaultInfo, ...options };
@@ -105,14 +104,14 @@ class ElectronJupyterLab extends JupyterLab {
     // Get the top panel widget
     let topPanel: Widget;
     each(this.shell.layout.iter(), (widget: Widget) => {
-      if (widget.id == 'jp-top-panel') {
+      if (widget.id === 'jp-top-panel') {
         topPanel = widget;
         return false;
       }
     });
     topPanel.addClass('jpe-mod-' + options.uiState);
-    
-    if (options.uiState == 'mac') {
+
+    if (options.uiState === 'mac') {
       // Resize the top panel based on zoom factor
       topPanel.node.style.minHeight = topPanel.node.style.height = String(Browser.getTopPanelSize()) + 'px';
       // Resize the top panel on zoom events
@@ -131,7 +130,7 @@ class ElectronJupyterLab extends JupyterLab {
    * The service manager used by the application.
    */
   readonly serviceManager: ServiceManager;
-  
+
   private _electronInfo: ElectronJupyterLab.IInfo;
 }
 
@@ -231,8 +230,9 @@ function addCommands(app: JupyterLab, palette: ICommandPalette): void {
  * Override default jupyterlab plugins
  */
 let nPlugins = plugins.map((p: JupyterLabPlugin<any>) => {
-    if (p.id == 'jupyter.extensions.main')
-        return mainPlugin;
+    if (p.id === 'jupyter.extensions.main') {
+      return mainPlugin;
+    }
     return p;
 });
 export default nPlugins;

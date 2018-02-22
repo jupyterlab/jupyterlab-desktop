@@ -1,7 +1,6 @@
 // Copyright (c) Jupyter Development Team.
 // Distributed under the terms of the Modified BSD License.
 
-import './require';
 import 'font-awesome/css/font-awesome.min.css';
 import './style/main.css';
 
