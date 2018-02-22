@@ -68,7 +68,7 @@ namespace CommandIDs {
     const connectToServer = 'electron-jupyterlab:connect-to-server';
 }
 
-interface ServerManagerMenuArgs extends JSONObject {
+interface IServerManagerMenuArgs extends JSONObject {
     name: string;
     type: 'local' | 'remote';
     remoteServerId?: number;
@@ -80,7 +80,7 @@ const serverManagerPlugin: JupyterLabPlugin<void> = {
     activate: (app: ElectronJupyterLab, palette: ICommandPalette, menu: IMainMenu) => {
     let serverState = new StateDB({namespace: Application.STATE_NAMESPACE});
     // Insert a local server
-    let servers: ServerManagerMenuArgs[] = [{name: 'Local', type: 'local'}];
+    let servers: IServerManagerMenuArgs[] = [{name: 'Local', type: 'local'}];
 
     serverState.fetch(Application.SERVER_STATE_ID)
         .then((data: Application.IRemoteServerState | null) => {
@@ -92,7 +92,7 @@ const serverManagerPlugin: JupyterLabPlugin<void> = {
                         type: 'remote',
                         name: remote.name,
                         id: remote.id
-                    } as ServerManagerMenuArgs;
+                    } as IServerManagerMenuArgs;
                 }));
                 createServerManager(app, palette, menu, servers);
             }
@@ -109,7 +109,7 @@ const serverManagerPlugin: JupyterLabPlugin<void> = {
 };
 
 function createServerManager(app: ElectronJupyterLab, palette: ICommandPalette,
-                             menu: IMainMenu, servers: ServerManagerMenuArgs[]) {
+                             menu: IMainMenu, servers: IServerManagerMenuArgs[]) {
     app.commands.addCommand(CommandIDs.activateServerManager, {
         label: 'Add Server',
         execute: () => {
@@ -120,7 +120,7 @@ function createServerManager(app: ElectronJupyterLab, palette: ICommandPalette,
     });
     app.commands.addCommand(CommandIDs.connectToServer, {
         label: (args) => args.name as string,
-        execute: (args: ServerManagerMenuArgs) => {
+        execute: (args: IServerManagerMenuArgs) => {
             asyncRemoteRenderer.runRemoteMethod(ISessions.createSession, {
                 state: args.type,
                 remoteServerId: args.remoteServerId
@@ -246,7 +246,6 @@ let nPlugins = plugins.map((p: JupyterLabPlugin<any>) => {
     } else if (p.id === '@jupyterlab/apputils-extension:settings') {
         return settingPlugin;
     }
-
     return p;
 });
 

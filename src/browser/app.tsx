@@ -50,9 +50,9 @@ import extensions from './extensions';
 
 
 export
-class Application extends React.Component<Application.Props, Application.State> {
+class Application extends React.Component<Application.IProps, Application.IState> {
 
-    constructor(props: Application.Props) {
+    constructor(props: Application.IProps) {
         super(props);
         this._setLabDir();
         this._preventDefaults();
@@ -62,28 +62,30 @@ class Application extends React.Component<Application.Props, Application.State> 
         this._renderErrorScreen = this._renderErrorScreen.bind(this);
         this._connectionAdded = this._connectionAdded.bind(this);
         this._launchFromPath = this._launchFromPath.bind(this);
-        
-        if (this.props.options.serverState == 'local') {
+
+        if (this.props.options.serverState === 'local') {
             this.state = {renderSplash: this._renderSplash, renderState: this._renderEmpty, remotes: []};
             asyncRemoteRenderer.runRemoteMethod(IServerFactory.requestServerStart, undefined)
                 .then((data) => {
                     this._serverReady(data);
-                })
+                });
         } else {
             this.state = {renderSplash: this._renderEmpty, renderState: this._renderServerManager, remotes: []};
         }
-        
+
         this._serverState = new StateDB({namespace: Application.STATE_NAMESPACE});
         this._serverState.fetch(Application.SERVER_STATE_ID)
             .then((data: Application.IRemoteServerState | null) => {
-                if (!data || !data.remotes)
+                if (!data || !data.remotes) {
                     return;
+                }
                 // Find max connection ID
                 let maxID = 0;
                 for (let val of data.remotes) {
                     // Check validity of server state
-                    if (!val.id || val.id < this._nextRemoteId || !JupyterServer.verifyServer(val))
+                    if (!val.id || val.id < this._nextRemoteId || !JupyterServer.verifyServer(val)) {
                         continue;
+                    }
                     maxID = Math.max(maxID, val.id);
                 }
                 this._nextRemoteId = maxID + 1;
@@ -94,7 +96,7 @@ class Application extends React.Component<Application.Props, Application.State> 
                 console.log(e);
             });
     }
-    
+
     render() {
         let splash = this.state.renderSplash();
         let content = this.state.renderState();
@@ -120,7 +122,7 @@ class Application extends React.Component<Application.Props, Application.State> 
                 factoryId: data.factoryId
             });
         });
-        
+
         this._server = {
             token: data.token,
             url: data.url,
@@ -128,14 +130,14 @@ class Application extends React.Component<Application.Props, Application.State> 
             type: 'local',
         };
 
-        PageConfig.setOption("token", this._server.token);
-        PageConfig.setOption("baseUrl", this._server.url);
+        PageConfig.setOption('token', this._server.token);
+        PageConfig.setOption('baseUrl', this._server.url);
 
-        this._setupLab()
-        
+        this._setupLab();
+
         try {
-            this._lab.start({"ignorePlugins": this._ignorePlugins});
-        } catch(e) {
+            this._lab.start({'ignorePlugins': this._ignorePlugins});
+        } catch (e) {
             console.log(e);
         }
         this._lab.restored.then( () => {
@@ -143,7 +145,7 @@ class Application extends React.Component<Application.Props, Application.State> 
             (this.refs.splash as SplashScreen).fadeSplashScreen();
         });
     }
-    
+
     private _launchFromPath() {
         asyncRemoteRenderer.runRemoteMethod(IServerFactory.requestServerStartPath, undefined)
             .then((data: IServerFactory.IServerStarted) => {
@@ -153,7 +155,7 @@ class Application extends React.Component<Application.Props, Application.State> 
         let pathSelected = () => {
             asyncRemoteRenderer.removeRemoteListener(IServerFactory.pathSelectedEvent, pathSelected);
             this.setState({renderSplash: this._renderSplash, renderState: this._renderEmpty});
-        }
+        };
         asyncRemoteRenderer.onRemoteEvent(IServerFactory.pathSelectedEvent, pathSelected);
     }
 
@@ -163,22 +165,23 @@ class Application extends React.Component<Application.Props, Application.State> 
 
     private _setupLab() {
         let version : string = PageConfig.getOption('appVersion') || 'unknown';
-
-        if (this.props.options.platform == 'win32')
-            PageConfig.setOption('terminalsAvailable', 'false');
-
         if (version[0] === 'v') {
             version = version.slice(1);
+        }
+
+        if (this.props.options.platform === 'win32') {
+            PageConfig.setOption('terminalsAvailable', 'false');
         }
 
         this._lab = new ElectronJupyterLab({
             version: version,
             mimeExtensions: extensions.mime,
-            // disabled: disabled, TODO Implement
-            // deferred: deferred, TODO Implement
+            disabled: extensions.disabled,
+            deferred: extensions.deferred,
             platform: this.props.options.platform,
             uiState: this.props.options.uiState
         });
+        this._ignorePlugins.push(...extensions.ignored);
 
         try {
             this._lab.registerPluginModules(extensions.jupyterlab);
@@ -190,10 +193,10 @@ class Application extends React.Component<Application.Props, Application.State> 
     private _connectionAdded(server: JupyterServer.IServer) {
         PageConfig.setOption('baseUrl', server.url);
         PageConfig.setOption('token', server.token);
-        
+
         try {
-            this._lab.start({"ignorePlugins": this._ignorePlugins});
-        } catch(e) {
+            this._lab.start({'ignorePlugins': this._ignorePlugins});
+        } catch (e) {
             console.log(e);
         }
 
@@ -222,7 +225,7 @@ class Application extends React.Component<Application.Props, Application.State> 
         return (
             <div className='jpe-content'>
                 <SplashScreen  ref='splash' uiState={this.props.options.uiState} finished={() => {
-                    this.setState({renderSplash: this._renderEmpty});}
+                    this.setState({renderSplash: this._renderEmpty}); }
                 } />
             </div>
         );
@@ -234,7 +237,7 @@ class Application extends React.Component<Application.Props, Application.State> 
                 <TitleBar uiState={this.props.options.uiState} />
                 <ServerError launchFromPath={this._launchFromPath}/>
             </div>
-        )
+        );
     }
 
     private _renderEmpty(): JSX.Element {
@@ -260,7 +263,7 @@ class Application extends React.Component<Application.Props, Application.State> 
         document.ondrop = (event: DragEvent) => {
             event.preventDefault();
             let files = event.dataTransfer.files;
-            for (let i = 0; i < files.length; i ++){
+            for (let i = 0; i < files.length; i ++) {
                 this._openFile(files[i].path);
             }
         };
@@ -268,16 +271,16 @@ class Application extends React.Component<Application.Props, Application.State> 
         asyncRemoteRenderer.onRemoteEvent(ISessions.openFileEvent, this._openFile);
     }
 
-    private _openFile(path: string){
-        if (this._labDir){
+    private _openFile(path: string) {
+        if (this._labDir) {
             let relPath = path.replace(this._labDir, '');
             let winConvert = relPath.split('\\').join('/');
-            relPath = winConvert.replace("/", "");
+            relPath = winConvert.replace('/', '');
             this._lab.commands.execute('docmanager:open', {path: relPath});
         }
     }
 
-    private _setLabDir(){
+    private _setLabDir() {
         this._labDir = remote.app.getPath('home');
     }
 
@@ -290,15 +293,15 @@ class Application extends React.Component<Application.Props, Application.State> 
     private _server: JupyterServer.IServer = null;
 
     private _nextRemoteId: number = 1;
-    
+
     private _serverState: StateDB;
 
     // private _labReady: Promise<void>;
 }
 
-export 
+export
 namespace Application {
-    
+
     /**
      * Namspace for server manager state stored in StateDB
      */
@@ -312,12 +315,12 @@ namespace Application {
     const SERVER_STATE_ID = 'servers';
 
     export
-    interface Props {
+    interface IProps {
         options: JupyterLabSession.IInfo;
     }
 
     export
-    interface State {
+    interface IState {
         renderState: () => any;
         renderSplash: () => any;
         remotes: IRemoteServer[];

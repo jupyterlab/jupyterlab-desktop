@@ -19,7 +19,7 @@ You will need the development packages of libcairo, libjpeg, and libgif.  In Deb
 
 ### Building for distribution
 
-To test building for distribution you can install [Docker](https://docs.docker.com/engine/installation/) and run `yarn dockerdist:platform` where "platform" is either "linux", "win" or "mac".
+To test building for distribution you can install [Docker](https://docs.docker.com/engine/installation/) and run `yarn dockerdist:platform` where "platform" is either "linux" or "win". To build for macOS a macOS computer is required.
 
 If you don't want to user Docker but instead want to build locally, there are a few [dependencies](https://github.com/electron-userland/electron-builder/wiki/Multi-Platform-Build) you're required to install.
 
