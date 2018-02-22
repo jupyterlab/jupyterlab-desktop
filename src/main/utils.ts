@@ -58,18 +58,21 @@ namespace IElectronDataConnector {
 export
 class JupyterLabDataConnector implements IStatefulService, IElectronDataConnector {
 
+    SCHEMAS_PATH: string = path.join(__dirname, '../../schemas/');
     id: string = 'JupyterLabSettings';
 
     constructor(app: IApplication) {
+        this._availableSchemas = this._getAllDefaultSchemas();
+
         this._settings = app.registerStatefulService(this)
             .then((settings: Private.IPluginData) => {
                 if (!settings) {
-                    return this._getDefaultSettings();
+                    return this._availableSchemas.then(schemas => this._getDefaultSettings(schemas));
                 }
                 return settings;
             })
             .catch(() => {
-                return this._getDefaultSettings();
+                return this._availableSchemas.then(schemas => this._getDefaultSettings(schemas));
             });
 
         // Create 'fetch' remote method
@@ -89,15 +92,25 @@ class JupyterLabDataConnector implements IStatefulService, IElectronDataConnecto
      */
     fetch(id: string): Promise<ISettingRegistry.IPlugin> {
         return this._settings
-            .then((data: any) => {
+            .then(data => {
                 if (!data[id]) {
-                    return Promise.reject(new Error('Setting ' + id + ' not available'));
-                }
+                    return this._availableSchemas.then(schemas => {
+                        if (id in schemas) {
+                            return this._loadSingleDefault(schemas[id], id).then(pluginDefault => {
+                                data[id] = pluginDefault;
 
-                return Promise.resolve({
-                    id: id,
-                    ...data[id]
-                });
+                                return pluginDefault;
+                            });
+                        } else {
+                            return Promise.reject(new Error('Setting ' + id + ' not available'));
+                        }
+                    });
+                } else {
+                    return Promise.resolve({
+                        id: id,
+                        ...data[id]
+                    });
+                }
             }).catch((reason) => {
                 return Promise.reject(new Error(`Private data store failed to load.`));
             });
@@ -121,13 +134,26 @@ class JupyterLabDataConnector implements IStatefulService, IElectronDataConnecto
     save(id: string, raw: string): Promise<void> {
         const user = JSON.parse(raw);
         let saving = this._settings
-            .then((data: Private.IPluginData) => {
+            .then(data => {
                 if (!user[id]) {
-                    return Promise.reject(new Error('Schema not found for: ' + id));
+                    return this._availableSchemas.then(schemas => {
+                        if (id in schemas) {
+                            return this._loadSingleDefault(schemas[id], id).then(pluginDefault => {
+                                pluginDefault.data = user as ISettingRegistry.ISettingBundle;
+                                pluginDefault.raw = raw;
+                                data[id] = pluginDefault;
+
+                                return data;
+                            });
+                        } else {
+                            return Promise.reject(new Error('Setting ' + id + ' not available'));
+                        }
+                    });
+                } else {
+                    data[id].data = user as ISettingRegistry.ISettingBundle;
+                    data[id].raw = raw;
+                    return Promise.resolve(data);
                 }
-                data[id].data = user as ISettingRegistry.ISettingBundle;
-                data[id].raw = raw;
-                return Promise.resolve(data);
             });
 
         this._settings = saving;
@@ -151,85 +177,11 @@ class JupyterLabDataConnector implements IStatefulService, IElectronDataConnecto
      * Get default JupyterLab settings from application
      * bundle.
      */
-    private _getDefaultSettings(): Promise<Private.IPluginData> {
-        let schemasPath = path.join(__dirname, '../../schemas/');
-
-        let getSettingProviders = new Promise<string[]>((resolve, reject) => {
-            fs.readdir(schemasPath, (err, files) => {
-                if (err) {
-                    reject(err);
-                } else {
-                    resolve(files);
-                }
-            });
-        });
-
-        let buildPluginProvider: Promise<{ provider: string, name: string }[]> = getSettingProviders.then(providers => {
-            return Promise.all(providers.map(provider => {
-                return new Promise<{ provider: string, name: string }[]>((resolve, reject) => {
-                    fs.readdir(path.join(schemasPath, provider), (err, plugins) => {
-                        if (err) {
-                            reject(err);
-                        } else {
-                            let allPlugins = plugins.map(plugin => {
-                                return {
-                                    provider: provider,
-                                    name: plugin
-                                };
-                            });
-                            resolve(allPlugins);
-                        }
-                    });
-                });
-            })).then(nestedPlugins => {
-                return Array.prototype.concat.apply([], nestedPlugins);
-            });
-        });
-
-        let buildPluginContents: Promise<{ provider: string, name: string, contentPath: string }[]> = buildPluginProvider.then(plugins => {
-            return Promise.all(plugins.map(plugin => {
-                return new Promise<{ provider: string, name: string, contentPath: string }[]>((resolve, reject) => {
-                    fs.readdir(path.join(schemasPath, plugin.provider, plugin.name), (err, settingFiles) => {
-                        if (err) {
-                            reject(err);
-                        } else {
-                            let allPlugins = settingFiles.map(settingFile => {
-                                return {
-                                    provider: plugin.provider,
-                                    name: plugin.name,
-                                    contentPath: settingFile
-                                };
-                            });
-
-                            resolve(allPlugins);
-                        }
-                    });
-                });
-            })).then(nestPlugins => Array.prototype.concat.apply([], nestPlugins));
-        });
-
-        let buildRegistryPlugins: Promise<ISettingRegistry.IPlugin[]> = buildPluginContents.then(plugins => {
-            return Promise.all(plugins.map(plugin => {
-                let contentPath = path.join(schemasPath, plugin.provider, plugin.name, plugin.contentPath);
-                let sectionName = plugin.provider + '/' + plugin.name + ':' + path.basename(plugin.contentPath, '.json');
-                return new Promise<ISettingRegistry.IPlugin>((resolve, reject) => {
-                    fs.readFile(contentPath, (err, data: Buffer) => {
-                        if (err) {
-                            reject(err);
-                        } else {
-                            let rawSchema = data.toString();
-
-                            resolve({
-                                id: sectionName,
-                                schema: JSON.parse(rawSchema),
-                                data: {} as ISettingRegistry.ISettingBundle,
-                                raw: '{}',
-                            });
-                        }
-                    });
-                });
-            }));
-        });
+    private _getDefaultSettings(schemaPaths: Private.ISchemaPathContainer): Promise<Private.IPluginData> {
+        let buildRegistryPlugins: Promise<ISettingRegistry.IPlugin[]> = Promise.all(Object.keys(schemaPaths).map(schemaID => {
+            let schemaPath = schemaPaths[schemaID];
+            return this._loadSingleDefault(schemaPath, schemaID);
+        }));
 
         return buildRegistryPlugins.then((settings: ISettingRegistry.IPlugin[]) => {
             let iSettings: Private.IPluginData = {};
@@ -246,6 +198,82 @@ class JupyterLabDataConnector implements IStatefulService, IElectronDataConnecto
         });
     }
 
+    private _loadSingleDefault(schemaPath: string, schemaID: string): Promise<ISettingRegistry.IPlugin> {
+        return new Promise<ISettingRegistry.IPlugin>((resolve, reject) => {
+            fs.readFile(schemaPath, (err, data: Buffer) => {
+                if (err) {
+                    reject(err);
+                } else {
+                    let rawSchema = data.toString();
+
+                    resolve({
+                        id: schemaID,
+                        schema: JSON.parse(rawSchema),
+                        data: {} as ISettingRegistry.ISettingBundle,
+                        raw: '{}',
+                    });
+                }
+            });
+        });
+    }
+
+    private _getAllDefaultSchemas(): Promise<Private.ISchemaPathContainer> {
+        let getSettingProviders = this._readDirectoryFilenames(this.SCHEMAS_PATH);
+
+        let buildPluginProvider: Promise<{ provider: string, name: string }[]> = getSettingProviders.then(providers => {
+            return Promise.all(providers.map(provider => {
+                return this._readDirectoryFilenames(path.join(this.SCHEMAS_PATH, provider)).then(plugins => {
+                    return plugins.map(plugin => {
+                        return {
+                            provider: provider,
+                            name: plugin
+                        };
+                    });
+                });
+            })).then(nestedPlugins => {
+                return Array.prototype.concat.apply([], nestedPlugins);
+            });
+        });
+
+        return buildPluginProvider.then(plugins => {
+            return Promise.all(plugins.map(plugin => {
+                return this._readDirectoryFilenames(path.join(this.SCHEMAS_PATH, plugin.provider, plugin.name)).then(settingFiles => {
+                    let allPlugins = settingFiles.map(settingFile => {
+                        let schemaPath = path.join(this.SCHEMAS_PATH, plugin.provider, plugin.name, settingFile);
+                        let id = plugin.provider + '/' + plugin.name + ':' + path.basename(settingFile, '.json');
+                        return {
+                            path: schemaPath, id
+                        };
+                    });
+
+                    return allPlugins;
+                });
+            })).then(nestPlugins => {
+                let flattenedPlugins: { path: string, id: string }[] = Array.prototype.concat.apply([], nestPlugins);
+                let schemaContainer = {} as Private.ISchemaPathContainer;
+
+                flattenedPlugins.forEach(plugin => {
+                    schemaContainer[plugin.id] = plugin.path;
+                });
+
+                return schemaContainer;
+            });
+        });
+    }
+
+    private _readDirectoryFilenames(directoryPath: string): Promise<string[]> {
+        return new Promise((resolve, reject) => {
+            fs.readdir(directoryPath, (err, filenames) => {
+                if (err) {
+                    reject(err);
+                } else {
+                    resolve(filenames);
+                }
+            });
+        });
+    }
+
+    private _availableSchemas: Promise<Private.ISchemaPathContainer>;
     private _settings: Promise<Private.IPluginData>;
 }
 
@@ -254,6 +282,11 @@ namespace Private {
     export
     interface IPluginData {
         [id: string]: ISettingRegistry.IPlugin;
+    }
+
+    export
+    interface ISchemaPathContainer {
+        [id: string]: string;
     }
 }
 
