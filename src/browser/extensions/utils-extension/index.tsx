@@ -8,7 +8,7 @@ import {
 } from '@jupyterlab/apputils';
 
 import {
-    IMainMenu, MainMenu
+    IMainMenu
   } from '@jupyterlab/mainmenu';
 
 import {
@@ -58,6 +58,13 @@ import {
 import * as React from 'react';
 import * as ReactDOM from 'react-dom';
 import plugins from '@jupyterlab/apputils-extension';
+
+import {
+    createEditMenu, createFileMenu, createKernelMenu, createRunMenu, createSettingsMenu, createTabsMenu, createViewMenu,
+    CommandIDs as MainMenuExtensionCommandIDs
+} from '@jupyterlab/mainmenu-extension';
+
+let mainMenuExtension = import('@jupyterlab/mainmenu-extension');
 
 
 namespace CommandIDs {
@@ -153,57 +160,62 @@ function buildTitleBar(app: ElectronJupyterLab): Widget {
     return titleBar;
 }
 
-function buildPhosphorMenu(app: ElectronJupyterLab): IMainMenu {
-    let menu = new MainMenu(app.commands);
-    let titleBar = buildTitleBar(app);
-
-    menu.id = 'jpe-MainMenu-widget';
-    titleBar.id = 'jpe-TitleBar-widget';
-
-    titleBar.addClass('jpe-mod-' + app.info.uiState);
-
-    let logo = new Widget();
-    logo.addClass('jp-MainAreaPortraitIcon');
-    logo.addClass('jpe-JupyterIcon');
-    logo.id = 'jp-MainLogo';
-
-    app.shell.addToTopArea(logo);
-
-    app.shell.addToTopArea(menu);
-    app.shell.addToTopArea(titleBar);
-    return menu;
-}
-
-function buildNativeMenu(app: ElectronJupyterLab): IMainMenu {
+function buildNativeMenu(app: ElectronJupyterLab, palette: ICommandPalette): IMainMenu {
     let menu = new NativeMenu(app);
+
     let titleBar = buildTitleBar(app);
     titleBar.id = 'jpe-TitleBar-widget';
     titleBar.addClass('jpe-mod-' + app.info.uiState);
 
     app.shell.addToTopArea(titleBar);
+
+    createEditMenu(app, menu.editMenu);
+    createFileMenu(app, menu.fileMenu);
+    createKernelMenu(app, menu.kernelMenu);
+    createRunMenu(app, menu.runMenu);
+    createSettingsMenu(app, menu.settingsMenu);
+    createViewMenu(app, menu.viewMenu);
+    createTabsMenu(app, menu.tabsMenu);
+
+    palette.addItem({
+        command: MainMenuExtensionCommandIDs.shutdownAllKernels,
+        category: 'Kernel Operations'
+    });
 
     return menu;
 }
 
 /**
- * A service providing an native menu bar.
+ * Override main menu plugin in @jupyterlab/mainmenu-extension
  */
-const nativeMainMenuPlugin: JupyterLabPlugin<IMainMenu> = {
-  id: 'jupyter.services.main-menu',
-  provides: IMainMenu,
-  activate: (app: ElectronJupyterLab): IMainMenu => {
-    // Create the menu
-    let menu: IMainMenu;
-    let uiState = app.info.uiState;
-    if (uiState === 'linux' || uiState === 'mac') {
-        menu = buildNativeMenu(app);
-    } else {
-        menu = buildPhosphorMenu(app);
-    }
+mainMenuExtension.then(ext => {
 
-    return menu;
-  }
-};
+    let oldPlugin = ext.default;
+    /**
+     * A service providing an native menu bar.
+     */
+    const nativeMainMenuPlugin: JupyterLabPlugin<IMainMenu> = {
+        id: '@jupyterlab/mainmenu-extension:plugin',
+        requires: [ICommandPalette],
+        provides: IMainMenu,
+        activate: (app: ElectronJupyterLab, palette: ICommandPalette): IMainMenu | Promise<IMainMenu> => {
+
+            let menu: IMainMenu | Promise<IMainMenu>;
+            let uiState = app.info.uiState;
+            if (uiState === 'linux' || uiState === 'mac') {
+                menu = buildNativeMenu(app, palette);
+            } else {
+                menu = oldPlugin.activate(app, palette);
+            }
+
+            return menu;
+        }
+    };
+
+    ext.default = nativeMainMenuPlugin;
+}).catch(reason => {
+    console.error(`Failed to load @jupyterlab/mainmenu-extension because ${reason}`);
+});
 
 class SettingsConnector extends DataConnector<ISettingRegistry.IPlugin, string> {
 
@@ -241,9 +253,7 @@ const settingPlugin: JupyterLabPlugin<ISettingRegistry> = {
  * Override Main Menu plugin from apputils-extension
  */
 let nPlugins = plugins.map((p: JupyterLabPlugin<any>) => {
-    if (p.id === 'jupyter.services.main-menu') {
-        return nativeMainMenuPlugin;
-    } else if (p.id === '@jupyterlab/apputils-extension:settings') {
+    if (p.id === '@jupyterlab/apputils-extension:settings') {
         return settingPlugin;
     }
     return p;
