@@ -209,7 +209,7 @@ class JupyterMainMenu implements INativeMenu {
 
     finalizeMenubar(): Promise<void> {
         this._applicationMenu = new Promise<ElectronMenu>((resolve, reject) => {
-            if (process.platform === 'darwin') {
+            if (process.platform === 'darwin' && this._menuConstructors[0].label !== 'JupyterLab') {
                 /* Add macOS 'JupyterLab' app menu with standard menu items */
                 let appMenu = {
                     label: 'JupyterLab',
