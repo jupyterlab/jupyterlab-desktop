@@ -4,12 +4,16 @@
 |----------------------------------------------------------------------------*/
 
 import {
-    Menu, MenuItem
+    Menu as ElectronMenu
 } from 'electron';
 
 import {
     ArrayExt
 } from '@phosphor/algorithm';
+
+import {
+    Menu as PhosphorMenu
+} from '@phosphor/widgets';
 
 import {
     IApplication
@@ -34,7 +38,7 @@ import {
 import { JupyterServer } from 'src/main/server';
 
 export
-    interface INativeMenu {
+interface INativeMenu {
 
     addMenu: (menu: INativeMenu.IMenuItemOptions) => Promise<void>;
 }
@@ -43,26 +47,36 @@ export
 namespace INativeMenu {
 
     export
-        let addMenu: AsyncRemote.IMethod<IMenuItemOptions, void> = {
-            id: 'JupyterMainMenu-addmenu'
-        };
+    let addMenu: AsyncRemote.IMethod<IMenuItemOptions, void> = {
+        id: 'JupyterMainMenu-addmenu'
+    };
 
     export
-        let clickEvent: AsyncRemote.IEvent<IMenuItemOptions> = {
-            id: 'JupyterMainMenu-click'
-        };
+    let clickEvent: AsyncRemote.IEvent<IMenuItemOptions> = {
+        id: 'JupyterMainMenu-click'
+    };
 
     export
-        let launchNewEnvironment: AsyncRemote.IMethod<IMenuItemOptions, void> = {
-            id: 'JupyterEnvironments-launch'
-        };
+    let launchNewEnvironment: AsyncRemote.IMethod<IMenuItemOptions, void> = {
+        id: 'JupyterEnvironments-launch'
+    };
+
+    export
+    let updateMenu: AsyncRemote.IMethod<IMenuItemOptions, void> = {
+        id: 'JupyterMainMenu-updatemenu'
+    };
+
+    export
+    let finalizeMenubar: AsyncRemote.IMethod<IMenuItemOptions, void> = {
+        id: 'JupyterMainMenu-finalizemenubar'
+    };
 
     /**
      * Jupyter main menu item description. Conforms to the menu description
      * required by electron.
      */
     export
-        interface IMenuItemOptions extends Electron.MenuItemConstructorOptions {
+    interface IMenuItemOptions extends Electron.MenuItemConstructorOptions {
 
         /**
          * Rank of the menu item. Lower ranks float to the front of the menu.
@@ -81,6 +95,13 @@ namespace INativeMenu {
          */
         args?: any;
     }
+
+    export
+    interface IUpdateMenuItemOptions {
+        rank?: number;
+        label: string;
+        updateItems: PhosphorMenu.IItemOptions[];
+    }
 }
 
 /**
@@ -92,38 +113,19 @@ class JupyterMainMenu implements INativeMenu {
         // this._jupyterApp = app;
         this._sessions = sessions;
         this._registry = registry;
-        this._menu = new Menu();
-
-        if (process.platform === 'darwin') {
-            /* Add macOS 'JupyterLab' app menu with standard menu items */
-            let appMenu = {
-                id: '-1',
-                label: 'JupyterLab',
-                submenu: [
-                    {
-                        label: 'About JupyterLab',
-                        command: 'help:about',
-                    },
-                    { type: 'separator' },
-                    { role: 'services', submenu: [] },
-                    { type: 'separator' },
-                    { role: 'hide' },
-                    { role: 'hideothers' },
-                    { role: 'unhide' },
-                    { type: 'separator' },
-                    { role: 'quit' },
-                ]
-            } as INativeMenu.IMenuItemOptions;
-            this._setClickEvents(appMenu);
-            this._menu.append(new MenuItem(appMenu));
-        }
-        Menu.setApplicationMenu(this._menu);
+        this._menuConstructors = [];
 
         // Register 'menuAdd' remote method
         asyncRemoteMain.registerRemoteMethod(INativeMenu.addMenu, this.addMenu.bind(this));
 
         // Register 'launchNewEnvironment' remote method
         asyncRemoteMain.registerRemoteMethod(INativeMenu.launchNewEnvironment, this.launchNewEnv.bind(this));
+
+        // Register 'updateMenu' remote method
+        asyncRemoteMain.registerRemoteMethod(INativeMenu.updateMenu, this.updateMenu.bind(this));
+
+        // register 'finalizeMenubar' remote method
+        asyncRemoteMain.registerRemoteMethod(INativeMenu.finalizeMenubar, this.finalizeMenubar.bind(this));
     }
 
     /**
@@ -153,8 +155,8 @@ class JupyterMainMenu implements INativeMenu {
      * @param menu The menu item configuration
      */
     addMenu(menu: INativeMenu.IMenuItemOptions): Promise<void> {
-        return new Promise((reject, resolve) => {
-            let items = this._menu.items;
+        return new Promise((resolve, reject) => {
+            let items = this._menuConstructors;
             /* Check if item has already been inserted */
             for (let i = 0, n = items.length; i < n; i++) {
                 if (items[i].label === menu.label) {
@@ -163,56 +165,14 @@ class JupyterMainMenu implements INativeMenu {
                 }
             }
 
-            if (process.platform === 'darwin') {
-                if (menu.label === 'Help') {
-                    /* Tag the Help menu so that macOS adds the standard search box */
-                    menu.role = 'help';
-                    /* Remove the Help > About menu item, which belongs in the JupyterLab menu on macOS */
-                    let submenu = (menu.submenu as INativeMenu.IMenuItemOptions[]);
-                    menu.submenu = submenu.filter(item => item.command !== 'help:about');
-                }
-            }
-
-            if (menu.label === 'File') {
-                this._generateRegistryMenu(this._registry).then(registrySubMenu => {
-                    (menu.submenu as INativeMenu.IMenuItemOptions[]).splice(1, 0, registrySubMenu);
-
-                    return menu;
-                }).then(updatedMenu => {
-                    this._setClickEvents(updatedMenu);
-
-                    if (!updatedMenu.rank) {
-                        updatedMenu.rank = 100;
-                    }
-
-                    /* Set position in the native menu bar */
-                    let index = ArrayExt.upperBound((items as INativeMenu.IMenuItemOptions[]), updatedMenu,
-                        (f: INativeMenu.IMenuItemOptions, s: INativeMenu.IMenuItemOptions) => {
-                            return f.rank - s.rank;
-                        });
-
-                    this._menu.insert(index, new MenuItem(updatedMenu));
-                    Menu.setApplicationMenu(this._menu);
-
-                    resolve();
+            /* Set position in the native menu bar */
+            let index = ArrayExt.upperBound((items as INativeMenu.IMenuItemOptions[]), menu,
+                (f: INativeMenu.IMenuItemOptions, s: INativeMenu.IMenuItemOptions) => {
+                    return f.rank - s.rank;
                 });
-            } else {
-                this._setClickEvents(menu);
 
-                if (!menu.rank) {
-                    menu.rank = 100;
-                }
-
-                /* Set position in the native menu bar */
-                let index = ArrayExt.upperBound((items as INativeMenu.IMenuItemOptions[]), menu,
-                    (f: INativeMenu.IMenuItemOptions, s: INativeMenu.IMenuItemOptions) => {
-                        return f.rank - s.rank;
-                    });
-
-                this._menu.insert(index, new MenuItem(menu));
-                Menu.setApplicationMenu(this._menu);
-                resolve();
-            }
+            ArrayExt.insert(this._menuConstructors, index, menu);
+            resolve();
         });
     }
 
@@ -221,6 +181,120 @@ class JupyterMainMenu implements INativeMenu {
             this._registry.getEnvironmentByPath(menu.args).then(environment => {
                 return this._sessions.createSession({ state: 'local', serverOpts: { environment } as JupyterServer.IOptions });
             }).catch(reject);
+        });
+    }
+
+    updateMenu(menu: INativeMenu.IMenuItemOptions): Promise<void> {
+        let updateMenu = new Promise<number>((resolve, reject) => {
+            let updateIndex = ArrayExt.findFirstIndex(this._menuConstructors, (template, idx) => {
+                return template.label === menu.label;
+            });
+
+            if (updateIndex !== -1) {
+                this._menuConstructors[updateIndex].submenu = menu.submenu;
+                resolve(updateIndex);
+            } else {
+                reject(new Error(`Menu to update (id: ${menu.label}) not found!`));
+            }
+        });
+
+        let buildMenu = updateMenu.then(updateIndex => {
+            return new Promise<void>((reject, resolve) => {
+                this._buildMenu(updateIndex, this._menuConstructors[updateIndex]).then(resolve).catch(reject);
+            });
+        });
+
+        return buildMenu;
+    }
+
+    finalizeMenubar(): Promise<void> {
+        this._applicationMenu = new Promise<ElectronMenu>((resolve, reject) => {
+            if (process.platform === 'darwin' && this._menuConstructors[0].label !== 'JupyterLab') {
+                /* Add macOS 'JupyterLab' app menu with standard menu items */
+                let appMenu = {
+                    label: 'JupyterLab',
+                    submenu: [
+                        {
+                            label: 'About JupyterLab',
+                            command: 'help:about',
+                        },
+                        { type: 'separator' },
+                        { role: 'services', submenu: [] },
+                        { type: 'separator' },
+                        { role: 'hide' },
+                        { role: 'hideothers' },
+                        { role: 'unhide' },
+                        { type: 'separator' },
+                        { role: 'quit' },
+                    ]
+                } as INativeMenu.IMenuItemOptions;
+                this._menuConstructors.unshift(appMenu);
+            }
+
+            let applicationMenu = ElectronMenu.buildFromTemplate(this._menuConstructors);
+
+            ElectronMenu.setApplicationMenu(applicationMenu);
+
+            resolve(applicationMenu);
+        });
+
+        return this._applicationMenu.then(() => {
+            return Promise.resolve();
+        }).catch(reason => {
+            return Promise.reject(reason);
+        });
+    }
+
+    private _buildMenu(updateIndex: number, menuConstructor: INativeMenu.IMenuItemOptions): Promise<void> {
+        return new Promise((resolveMenu, rejectMenu) => {
+
+            let updatedMenuItems = new Promise<INativeMenu.IMenuItemOptions>((resolveItem, rejectItem) => {
+                if (process.platform === 'darwin' && menuConstructor.label === 'Help') {
+                    /* Tag the Help menu so that macOS adds the standard search box */
+                    menuConstructor.role = 'help';
+                    /* Remove the Help > About menu item, which belongs in the JupyterLab menu on macOS */
+                    let submenu = (menuConstructor.submenu as INativeMenu.IMenuItemOptions[]);
+                    menuConstructor.submenu = submenu.filter(item => item.command !== 'help:about');
+
+                    resolveItem(menuConstructor);
+                } else if (menuConstructor.label === 'File') {
+                    this._generateRegistryMenu(this._registry).then(registrySubMenu => {
+                        (menuConstructor.submenu as INativeMenu.IMenuItemOptions[]).splice(1, 0, registrySubMenu);
+
+                        return menuConstructor;
+                    }).then(resolveItem).catch(reason => {
+                        console.log(`Rejecting item: ${reason}`);
+                        rejectItem(reason);
+                    });
+                } else {
+                    resolveItem(menuConstructor);
+                }
+
+            });
+
+            updatedMenuItems.then(menuItem => {
+                this._setClickEvents(menuItem);
+
+                return this._applicationMenu.then(appMenu => {
+                    try {
+                        let menuIdxToUpdate = ArrayExt.findFirstIndex(this._menuConstructors, (value, idx) => {
+                            return value.label === menuItem.label;
+                        });
+
+                        this._menuConstructors[menuIdxToUpdate] = menuItem;
+                        let applicationMenu = ElectronMenu.buildFromTemplate(this._menuConstructors);
+
+                        ElectronMenu.setApplicationMenu(applicationMenu);
+                        this._applicationMenu = Promise.resolve(applicationMenu);
+                    } catch (e) {
+                        console.log(`Failed to build MenuItem: ${e}`);
+                        rejectMenu(new Error(`Failed to build MenuItem: ${e}`));
+                    }
+                }).then(resolveMenu).catch(rejectMenu);
+            }).catch(reason => {
+                console.log(`Rejecting menu: ${reason}`);
+                rejectMenu(reason);
+            });
         });
     }
 
@@ -259,9 +333,15 @@ class JupyterMainMenu implements INativeMenu {
     }
 
     /**
-     * Electron menu object. Stores menu bar contents.
+     * Object that describes the content of the menubar. Will be used to finally
+     * construct the actual menu.
      */
-    private _menu: Electron.Menu;
+    private _menuConstructors: INativeMenu.IMenuItemOptions[];
+
+    /**
+     * Application menubar. Once instantiated with top level menus, those will never change.
+     */
+    private _applicationMenu: Promise<ElectronMenu>;
 
     // private _jupyterApp: IApplication;
 
