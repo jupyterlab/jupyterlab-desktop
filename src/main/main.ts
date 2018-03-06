@@ -5,12 +5,22 @@ import {
 import * as Bottle from 'bottlejs';
 import log from 'electron-log';
 
+const isDevMode = process.mainModule.filename.indexOf( 'app.asar' ) === -1;
+
 /**
  * Require debugging tools. Only
  * runs when in development.
  */
 // tslint:disable-next-line:no-var-requires
 require('electron-debug')({showDevTools: false});
+
+if (isDevMode) {
+    log.transports.file.level = false;
+    log.transports.console.level = 'info';
+} else {
+    log.transports.file.level = 'info';
+    log.transports.console.level = false;
+}
 
 /**
  * A user-defined service.
