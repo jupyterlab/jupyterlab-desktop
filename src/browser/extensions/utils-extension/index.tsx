@@ -58,6 +58,7 @@ import {
 import * as React from 'react';
 import * as ReactDOM from 'react-dom';
 import plugins from '@jupyterlab/apputils-extension';
+import log from 'electron-log';
 
 import {
     createEditMenu, createFileMenu, createKernelMenu, createRunMenu, createSettingsMenu, createTabsMenu, createViewMenu,
@@ -105,7 +106,7 @@ const serverManagerPlugin: JupyterLabPlugin<void> = {
             }
         })
         .catch((e) => {
-            console.log(e);
+            log.log(e);
             createServerManager(app, palette, menu, servers);
         });
 
@@ -214,7 +215,7 @@ mainMenuExtension.then(ext => {
 
     ext.default = nativeMainMenuPlugin;
 }).catch(reason => {
-    console.error(`Failed to load @jupyterlab/mainmenu-extension because ${reason}`);
+    log.error(`Failed to load @jupyterlab/mainmenu-extension because ${reason}`);
 });
 
 class SettingsConnector extends DataConnector<ISettingRegistry.IPlugin, string> {

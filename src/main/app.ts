@@ -21,6 +21,7 @@ import {
     JupyterLabSession
 } from './sessions';
 
+import log from 'electron-log';
 
 export
 interface IApplication {
@@ -101,7 +102,7 @@ class JupyterApplication implements IApplication {
                     res(state);
                 })
                 .catch( (e) => {
-                    console.error(e);
+                    log.error(e);
                     res({});
                 });
         });
@@ -210,7 +211,7 @@ class JupyterApplication implements IApplication {
                     this._quit();
                 })
                 .catch(() => {
-                    console.error(new Error('JupyterLab did not save state successfully'));
+                    log.error(new Error('JupyterLab did not save state successfully'));
                     this._quit();
                 });
         });
@@ -224,7 +225,7 @@ class JupyterApplication implements IApplication {
         Promise.all(closing)
         .then( () => {process.exit(); })
         .catch( (err) => {
-            console.error(new Error('JupyterLab could not close successfully'));
+            log.error(new Error('JupyterLab could not close successfully'));
             process.exit();
         });
     }

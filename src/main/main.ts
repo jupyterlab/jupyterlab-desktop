@@ -3,6 +3,7 @@ import {
 } from 'electron';
 
 import * as Bottle from 'bottlejs';
+import log from 'electron-log';
 
 /**
  * Require debugging tools. Only
@@ -74,7 +75,7 @@ app.on('ready', () => {
         serviceManager.digest(autostarts);
     })
     .catch( (e) => {
-        console.error(e);
+        log.error(e);
         app.quit();
     });
 });

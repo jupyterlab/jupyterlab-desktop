@@ -23,6 +23,7 @@ import {
 } from '@phosphor/algorithm';
 
 import * as fs from 'fs';
+import log from 'electron-log';
 
 let which = require('which');
 let WinRegistry = require('winreg');
@@ -93,12 +94,12 @@ export class Registry implements IRegistry {
 
         }).catch(reason => {
             if (reason.fileName || reason.lineNumber) {
-                console.error(`Registry building failed! ${reason.name} at ${reason.fileName}:${reason.lineNumber}: ${reason.message}`);
+                log.error(`Registry building failed! ${reason.name} at ${reason.fileName}:${reason.lineNumber}: ${reason.message}`);
             } else if (reason.stack) {
-                console.error(`Registry building failed! ${reason.name}: ${reason.message}`);
-                console.error(reason.stack);
+                log.error(`Registry building failed! ${reason.name}: ${reason.message}`);
+                log.error(reason.stack);
             } else {
-                console.error(`Registry building failed! ${reason.name}: ${reason.message}`);
+                log.error(`Registry building failed! ${reason.name}: ${reason.message}`);
             }
             this._setDefaultEnvironment(undefined);
         });
@@ -538,7 +539,7 @@ export class Registry implements IRegistry {
                 try {
                     resolve(JSON.parse(output));
                 } catch (e) {
-                    console.error(output);
+                    log.error(output);
                     reject(e);
                 }
             }).catch(reject);

@@ -14,6 +14,7 @@ import {
 } from '@jupyterlab/coreutils';
 
 import * as fs from 'fs';
+import log from 'electron-log';
 
 /**
  * Read and write electron application data asynchronously.
@@ -149,7 +150,7 @@ class ElectronStateDB implements IStateDB {
                                     value: JSON.parse(window.localStorage.getItem(key))
                                 });
                             } catch (error) {
-                                console.warn(error);
+                                log.warn(error);
                             }
                         }
                     }
