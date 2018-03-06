@@ -179,6 +179,7 @@
     "@types/semver": "^5.4.0",
     "bottlejs": "^1.6.1",
     "electron-debug": "^1.2.0",
+    "electron-log": "^2.2.14",
     "es6-promise": "^4.1.1",
     "font-awesome": "^4.7.0",
     "jshint": "^2.9.5",
