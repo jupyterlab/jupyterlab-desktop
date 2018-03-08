@@ -17,9 +17,13 @@ require('electron-debug')({showDevTools: false});
 if (isDevMode) {
     log.transports.file.level = false;
     log.transports.console.level = 'info';
+    log.info('In development mode');
+    log.info(`Logging to console`);
 } else {
     log.transports.file.level = 'info';
     log.transports.console.level = false;
+    log.info('In production mode');
+    log.info(`Logging to file (${log.transports.file.findLogPath()})`);
 }
 
 /**
