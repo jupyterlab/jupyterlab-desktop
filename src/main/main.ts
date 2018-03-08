@@ -11,8 +11,13 @@ import * as Bottle from 'bottlejs';
 // tslint:disable-next-line:no-var-requires
 require('electron-debug')({showDevTools: false});
 
-const fixPath = require('fix-path');
-fixPath();
+/**
+ * On Mac OSX the PATH env variable a packaged app gets does not
+ * contain all the information that is usually set in .bashrc, .bash_profile, etc.
+ * This package fixes the PATH variable
+ */
+require('fix-path')();
+
 /**
  * A user-defined service.
  *
