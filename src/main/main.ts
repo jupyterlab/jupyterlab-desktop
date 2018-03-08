@@ -11,6 +11,8 @@ import * as Bottle from 'bottlejs';
 // tslint:disable-next-line:no-var-requires
 require('electron-debug')({showDevTools: false});
 
+const fixPath = require('fix-path');
+fixPath();
 /**
  * A user-defined service.
  *
