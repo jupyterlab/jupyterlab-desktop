@@ -89,7 +89,7 @@ class NativeMenu implements IMainMenu {
         let menuItem: INativeMenu.IMenuItemOptions = {
             rank: rank,
             label: menu.title.label,
-            submenu: buildNativeMenu(menu)
+            submenu: buildNativeMenu(menu),
         };
 
         ArrayExt.insert(this._items, index, rankItem);
@@ -323,6 +323,10 @@ function buildNativeMenu(menu: Menu): INativeMenu.IMenuItemOptions[] {
         nItems[i].label = items[i].label;
         nItems[i].command = items[i].command;
         nItems[i].args = items[i].args;
+
+        // Dynmaic values will need to wait for a better native menu system
+        // nItems[i].checked = items[i].isToggled;
+        // nItems[i].enabled = !items[i].isEnabled;
 
         if (items[i].submenu !== null) {
             nItems[i].submenu = buildNativeMenu(items[i].submenu);

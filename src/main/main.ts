@@ -15,6 +15,13 @@ const isDevMode = process.mainModule.filename.indexOf( 'app.asar' ) === -1;
 require('electron-debug')({showDevTools: false});
 
 /**
+ *  * On Mac OSX the PATH env variable a packaged app gets does not
+ * contain all the information that is usually set in .bashrc, .bash_profile, etc.
+ * This package fixes the PATH variable
+ */
+require('fix-path')();
+
+/**
  * Enabled separate logging for development and packaged environments.
  * Also override console methods so that future addition will route to
  * using this package.

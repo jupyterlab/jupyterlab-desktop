@@ -181,6 +181,7 @@
     "electron-debug": "^1.2.0",
     "electron-log": "^2.2.14",
     "es6-promise": "^4.1.1",
+    "fix-path": "^2.1.0",
     "font-awesome": "^4.7.0",
     "jshint": "^2.9.5",
     "react": "~16.2.0",
