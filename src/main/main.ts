@@ -14,6 +14,11 @@ const isDevMode = process.mainModule.filename.indexOf( 'app.asar' ) === -1;
 // tslint:disable-next-line:no-var-requires
 require('electron-debug')({showDevTools: false});
 
+/**
+ * Enabled separate logging for development and packaged environments.
+ * Also override console methods so that future addition will route to
+ * using this package.
+ */
 if (isDevMode) {
     log.transports.file.level = false;
     log.transports.console.level = 'info';
@@ -25,6 +30,12 @@ if (isDevMode) {
     log.info('In production mode');
     log.info(`Logging to file (${log.transports.file.findLogPath()})`);
 }
+
+console.log = log.log;
+console.error = log.error;
+console.warn = log.warn;
+console.info = log.info;
+console.debug = log.debug;
 
 /**
  * A user-defined service.
