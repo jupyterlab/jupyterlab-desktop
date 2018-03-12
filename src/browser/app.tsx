@@ -47,6 +47,7 @@ import {
 
 import * as React from 'react';
 import extensions from './extensions';
+import log from 'electron-log';
 
 
 export
@@ -93,7 +94,7 @@ class Application extends React.Component<Application.IProps, Application.IState
                 this.setState({remotes: data.remotes});
             })
             .catch((e) => {
-                console.log(e);
+                log.log(e);
             });
     }
 
@@ -111,7 +112,7 @@ class Application extends React.Component<Application.IProps, Application.IState
 
     private _serverReady(data: IServerFactory.IServerStarted): void {
         if (data.err) {
-            console.error(data.err);
+            log.error(data.err);
             this.setState({renderState: this._renderErrorScreen});
             (this.refs.splash as SplashScreen).fadeSplashScreen();
             return;
@@ -138,7 +139,7 @@ class Application extends React.Component<Application.IProps, Application.IState
         try {
             this._lab.start({'ignorePlugins': this._ignorePlugins});
         } catch (e) {
-            console.log(e);
+            log.log(e);
         }
         this._lab.restored.then( () => {
             ipcRenderer.send('lab-ready');
@@ -186,7 +187,7 @@ class Application extends React.Component<Application.IProps, Application.IState
         try {
             this._lab.registerPluginModules(extensions.jupyterlab);
         } catch (e) {
-            console.error(e);
+            log.error(e);
         }
     }
 
@@ -197,7 +198,7 @@ class Application extends React.Component<Application.IProps, Application.IState
         try {
             this._lab.start({'ignorePlugins': this._ignorePlugins});
         } catch (e) {
-            console.log(e);
+            log.log(e);
         }
 
         let rServer: Application.IRemoteServer = {...server, id: this._nextRemoteId++};

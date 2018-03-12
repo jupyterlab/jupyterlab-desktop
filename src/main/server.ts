@@ -26,6 +26,8 @@ import {
     ArrayExt
 } from '@phosphor/algorithm';
 
+import log from 'electron-log';
+
 export
 class JupyterServer {
 
@@ -299,7 +301,7 @@ class JupyterServerFactory implements IServerFactory, IClosingService {
             return item.server.start();
         }).catch((e: Error) => {
             // The server failed to start, remove it from the factory.
-            console.warn(e);
+            log.warn(e);
         });
         return item;
     }
@@ -364,7 +366,7 @@ class JupyterServerFactory implements IServerFactory, IClosingService {
                     res();
                 })
                 .catch((e) => {
-                    console.error(e);
+                    log.error(e);
                     ArrayExt.removeAt(this._servers, idx);
                     rej();
                 });

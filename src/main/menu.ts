@@ -36,6 +36,7 @@ import {
 } from './registry';
 
 import { JupyterServer } from 'src/main/server';
+import log from 'electron-log';
 
 export
 interface INativeMenu {
@@ -263,7 +264,7 @@ class JupyterMainMenu implements INativeMenu {
 
                         return menuConstructor;
                     }).then(resolveItem).catch(reason => {
-                        console.log(`Rejecting item: ${reason}`);
+                        log.log(`Rejecting item: ${reason}`);
                         rejectItem(reason);
                     });
                 } else {
@@ -287,12 +288,12 @@ class JupyterMainMenu implements INativeMenu {
                         ElectronMenu.setApplicationMenu(applicationMenu);
                         this._applicationMenu = Promise.resolve(applicationMenu);
                     } catch (e) {
-                        console.log(`Failed to build MenuItem: ${e}`);
+                        log.log(`Failed to build MenuItem: ${e}`);
                         rejectMenu(new Error(`Failed to build MenuItem: ${e}`));
                     }
                 }).then(resolveMenu).catch(rejectMenu);
             }).catch(reason => {
-                console.log(`Rejecting menu: ${reason}`);
+                log.log(`Rejecting menu: ${reason}`);
                 rejectMenu(reason);
             });
         });

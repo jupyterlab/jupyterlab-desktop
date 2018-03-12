@@ -4,6 +4,7 @@
 import {
     PageConfig
 } from '@jupyterlab/coreutils';
+import log from 'electron-log';
 
 const extensions: any = {
     './electron-extension': require('./electron-extension'),
@@ -57,7 +58,7 @@ try {
         });
     }
 } catch (error) {
-    console.warn('Unable to parse disabled extensions.', error);
+    log.warn('Unable to parse disabled extensions.', error);
 }
 
 // Get the deferred extensions.
@@ -71,7 +72,7 @@ try {
         });
     }
 } catch (error) {
-    console.warn('Unable to parse deferred extensions.', error);
+    log.warn('Unable to parse deferred extensions.', error);
 }
 
 function isDeferred(value: string) {
@@ -116,7 +117,7 @@ function loadExtensions(extensions: { [key: string]: any }): any[] {
                 }
             }
         } catch (e) {
-            console.error(e);
+            log.error(e);
         }
     }
     return enabled;

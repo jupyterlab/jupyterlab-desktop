@@ -6,28 +6,29 @@ import {
 } from '../../utils';
 
 import * as React from 'react';
+import log from 'electron-log';
 
 
 
 /**
  * The main ServerManager component. This component
  * allows configuring multiple Jupyter connections.
- * 
- * @param props ServerManager properties 
+ *
+ * @param props ServerManager properties
  */
 export
 class ServerManager extends React.Component<ServerManager.Props, ServerManager.State> {
-    
+
     constructor(props: ServerManager.Props) {
         super(props);
         this.serverAdded = this.serverAdded.bind(this);
         this.addFormCancel = this.addFormCancel.bind(this);
     }
-    
+
     private addFormCancel() {
-        console.log('Cancel')
+        log.log('Cancel');
     }
-    
+
     private serverAdded(server: JupyterServer.IServer) {
         this.props.serverAdded(server);
     }
@@ -64,7 +65,7 @@ namespace ServerManager {
     export
     interface State {
     }
-    
+
     /**
      * ServerManager header component.
      */
@@ -77,7 +78,7 @@ namespace ServerManager {
         </div>
         );
     }
-    
+
     /**
      * ServerManager footer component.
      */
@@ -184,5 +185,5 @@ namespace ServerManager {
             token: string;
         }
     }
-    
+
 }

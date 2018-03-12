@@ -23,6 +23,7 @@ import {
 
 import * as path from 'path';
 import * as fs from 'fs';
+import log from 'electron-log';
 
 export
 interface ISaveOptions {
@@ -193,7 +194,7 @@ class JupyterLabDataConnector implements IStatefulService, IElectronDataConnecto
             });
             return iSettings;
         }).catch((e) => {
-            console.error(e);
+            log.error(e);
             return Promise.resolve({});
         });
     }
