@@ -12,6 +12,13 @@ import * as Bottle from 'bottlejs';
 require('electron-debug')({showDevTools: false});
 
 /**
+ * On Mac OSX the PATH env variable a packaged app gets does not
+ * contain all the information that is usually set in .bashrc, .bash_profile, etc.
+ * This package fixes the PATH variable
+ */
+require('fix-path')();
+
+/**
  * A user-defined service.
  *
  * Services make up the core functionality of the
