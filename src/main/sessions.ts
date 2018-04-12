@@ -65,12 +65,12 @@ namespace ISessions {
     };
 
     export
-    let maximizeEvent: AsyncRemote.IEvent<void> = {
+    let enterFullScreenEvent: AsyncRemote.IEvent<void> = {
         id: 'JupyterLabSessions-maximize'
     };
 
     export
-    let unmaximizeEvent: AsyncRemote.IEvent<void> = {
+    let leaveFullScreenEvent: AsyncRemote.IEvent<void> = {
         id: 'JupyterLabSessions-unmaximize'
     };
 
@@ -466,16 +466,26 @@ class JupyterLabSession {
             }
         });
 
-        this._window.on('maximize', () => {
-            asyncRemoteMain.emitRemoteEvent(ISessions.maximizeEvent, undefined, this._window.webContents);
-        });
+        if (this.info.uiState === 'mac') {
+            this._window.on('enter-full-screen', () => {
+                asyncRemoteMain.emitRemoteEvent(ISessions.enterFullScreenEvent, undefined, this._window.webContents);
+            });
+
+            this._window.on('leave-full-screen', () => {
+                asyncRemoteMain.emitRemoteEvent(ISessions.leaveFullScreenEvent, undefined, this._window.webContents);
+            });
+        } else {
+            this._window.on('maximize', () => {
+                asyncRemoteMain.emitRemoteEvent(ISessions.enterFullScreenEvent, undefined, this._window.webContents);
+            });
+
+            this._window.on('unmaximize', () => {
+                asyncRemoteMain.emitRemoteEvent(ISessions.leaveFullScreenEvent, undefined, this._window.webContents);
+            });
+        }
 
         this._window.on('minimize', () => {
             asyncRemoteMain.emitRemoteEvent(ISessions.minimizeEvent, undefined, this._window.webContents);
-        });
-
-        this._window.on('unmaximize', () => {
-            asyncRemoteMain.emitRemoteEvent(ISessions.unmaximizeEvent, undefined, this._window.webContents);
         });
 
         this._window.on('restore', () => {

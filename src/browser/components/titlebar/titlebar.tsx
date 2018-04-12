@@ -56,18 +56,18 @@ class TitleBar extends React.Component<TitleBar.Props, TitleBar.State> {
         };
 
         this._handleZoom = this._handleZoom.bind(this);
-        this._handleMaximize = this._handleMaximize.bind(this);
-        this._handleUnmaximize = this._handleUnmaximize.bind(this);
+        this._handleEnterFullScreen = this._handleEnterFullScreen.bind(this);
+        this._handleLeaveFullScreen = this._handleLeaveFullScreen.bind(this);
 
         asyncRemoteRenderer.onRemoteEvent(IShortcutManager.zoomEvent, this._handleZoom);
-        asyncRemoteRenderer.onRemoteEvent(ISessions.maximizeEvent, this._handleMaximize);
-        asyncRemoteRenderer.onRemoteEvent(ISessions.unmaximizeEvent, this._handleUnmaximize);
+        asyncRemoteRenderer.onRemoteEvent(ISessions.enterFullScreenEvent, this._handleEnterFullScreen);
+        asyncRemoteRenderer.onRemoteEvent(ISessions.leaveFullScreenEvent, this._handleLeaveFullScreen);
     }
 
     componentWillUnmount() {
         asyncRemoteRenderer.removeRemoteListener(IShortcutManager.zoomEvent, this._handleZoom);
-        asyncRemoteRenderer.removeRemoteListener(ISessions.maximizeEvent, this._handleMaximize);
-        asyncRemoteRenderer.removeRemoteListener(ISessions.unmaximizeEvent, this._handleUnmaximize);
+        asyncRemoteRenderer.removeRemoteListener(ISessions.enterFullScreenEvent, this._handleEnterFullScreen);
+        asyncRemoteRenderer.removeRemoteListener(ISessions.leaveFullScreenEvent, this._handleLeaveFullScreen);
     }
 
     render() {
@@ -115,11 +115,11 @@ class TitleBar extends React.Component<TitleBar.Props, TitleBar.State> {
         this.setState({ titleBarSize: Browser.getTopPanelSize() });
     }
 
-    private _handleMaximize() {
+    private _handleEnterFullScreen() {
         this.setState({ maxButtonState: 'restore' });
     }
 
-    private _handleUnmaximize() {
+    private _handleLeaveFullScreen() {
         this.setState({ maxButtonState: 'max' });
     }
 }
