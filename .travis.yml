@@ -34,7 +34,7 @@ install:
 - if [[ "$TRAVIS_OS_NAME" == "osx"   ]]; then yarn install; fi
 
 script:
-- if [[ "$TRAVIS_OS_NAME" == "linux"   ]]; then docker run --rm -ti -e GH_TOKEN=$GH_TOKEN --env-file <(env | grep TRAVIS) -v ${PWD}:/project -v ${PWD##*/}-node-modules:/project/node_modules -v ~/.electron:/root/.electron electronuserland/electron-builder:wine /bin/bash -c "yarn && yarn dist:linux"; fi
+- if [[ "$TRAVIS_OS_NAME" == "linux"   ]]; then docker run --rm -ti -e GH_TOKEN=$GH_TOKEN --env-file <(env | grep TRAVIS) -v ${PWD}:/project -v ${PWD##*/}-node-modules:/project/node_modules -v ~/.electron:/root/.electron electronuserland/electron-builder:wine /bin/bash -c "yarn &&  yarn dist:linux"; fi
 - if [[ "$TRAVIS_OS_NAME" == "linux"   ]]; then docker run --rm -ti -e GH_TOKEN=$GH_TOKEN --env-file <(env | grep TRAVIS) -v ${PWD}:/project -v ${PWD##*/}-node-modules:/project/node_modules -v ~/.electron:/root/.electron electronuserland/electron-builder:wine /bin/bash -c "yarn && yarn dist:win"; fi
 - if [[ "$TRAVIS_OS_NAME" == "osx"   ]]; then yarn dist:mac; fi
 
