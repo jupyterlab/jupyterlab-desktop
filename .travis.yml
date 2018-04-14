@@ -18,9 +18,7 @@ env:
   - ELECTRON_CACHE=$HOME/.cache/electron
   - ELECTRON_BUILDER_CACHE=$HOME/.cache/electron-builder
 
-cache:
-  directories:
-  - "$HOME/.yarn-cache"
+cache: yarn
 
 before_install:
 - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then sudo apt-key adv --keyserver pgp.mit.edu  --recv D101F7899D41F3C3; fi
