@@ -8,7 +8,7 @@ import {
 } from '@jupyterlab/apputils';
 
 import {
-    IMainMenu
+    IMainMenu, MainMenu
 } from '@jupyterlab/mainmenu';
 
 import {
@@ -70,7 +70,6 @@ import {
 } from '@jupyterlab/mainmenu-extension';
 
 let mainMenuExtension = import('@jupyterlab/mainmenu-extension');
-
 
 namespace CommandIDs {
     export
@@ -164,6 +163,27 @@ function buildTitleBar(app: ElectronJupyterLab): Widget {
     return titleBar;
 }
 
+function buildPhosphorMenu(app: ElectronJupyterLab): IMainMenu {
+    let menu = new MainMenu(app.commands);
+    let titleBar = buildTitleBar(app);
+
+    menu.id = 'jpe-MainMenu-widget';
+    titleBar.id = 'jpe-TitleBar-widget';
+
+    titleBar.addClass('jpe-mod-' + app.info.uiState);
+
+    let logo = new Widget();
+    logo.addClass('jp-MainAreaPortraitIcon');
+    logo.addClass('jpe-JupyterIcon');
+    logo.id = 'jp-MainLogo';
+
+    app.shell.addToTopArea(logo);
+
+    app.shell.addToTopArea(menu);
+    app.shell.addToTopArea(titleBar);
+    return menu;
+}
+
 function buildNativeMenu(app: ElectronJupyterLab, palette: ICommandPalette): IMainMenu {
     let menu = new NativeMenu(app);
 
@@ -193,8 +213,6 @@ function buildNativeMenu(app: ElectronJupyterLab, palette: ICommandPalette): IMa
  * Override main menu plugin in @jupyterlab/mainmenu-extension
  */
 mainMenuExtension.then(ext => {
-
-    let oldPlugin = ext.default;
     /**
      * A service providing an native menu bar.
      */
@@ -209,7 +227,7 @@ mainMenuExtension.then(ext => {
             if (uiState === 'linux' || uiState === 'mac') {
                 menu = buildNativeMenu(app, palette);
             } else {
-                menu = oldPlugin.activate(app, palette);
+                menu = buildPhosphorMenu(app);
             }
 
             return menu;
