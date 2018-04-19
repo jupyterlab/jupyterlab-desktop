@@ -18,7 +18,7 @@ import {
 } from '../../utils';
 
 import {
-  JupyterLabSession
+  JupyterLabSession, ISessions
 } from '../../../main/sessions';
 
 import {
@@ -118,6 +118,14 @@ class ElectronJupyterLab extends JupyterLab {
       asyncRemoteRenderer.onRemoteEvent(IShortcutManager.zoomEvent, () => {
         topPanel.node.style.minHeight = topPanel.node.style.height = String(Browser.getTopPanelSize()) + 'px';
         this.shell.fit();
+      });
+
+      asyncRemoteRenderer.onRemoteEvent(ISessions.enterFullScreenEvent, () => {
+        topPanel.hide();
+      });
+
+      asyncRemoteRenderer.onRemoteEvent(ISessions.leaveFullScreenEvent, () => {
+        topPanel.show();
       });
     }
   }
