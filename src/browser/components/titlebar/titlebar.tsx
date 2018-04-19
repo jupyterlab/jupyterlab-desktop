@@ -28,7 +28,7 @@ export namespace TitleBar {
     interface Props {
         uiState: string;
     }
-    
+
     export
     interface State {
         titleBarSize: number;
@@ -41,8 +41,8 @@ export namespace TitleBar {
 
 export
 class TitleBar extends React.Component<TitleBar.Props, TitleBar.State> {
-    
-    constructor (props: TitleBar.Props) {
+
+    constructor(props: TitleBar.Props) {
         super(props);
 
         let maxButtonState = 'max';
@@ -56,30 +56,30 @@ class TitleBar extends React.Component<TitleBar.Props, TitleBar.State> {
         };
 
         this._handleZoom = this._handleZoom.bind(this);
-        this._handleMaximize = this._handleMaximize.bind(this);
-        this._handleUnmaximize = this._handleUnmaximize.bind(this);
+        this._handleEnterFullScreen = this._handleEnterFullScreen.bind(this);
+        this._handleLeaveFullScreen = this._handleLeaveFullScreen.bind(this);
 
         asyncRemoteRenderer.onRemoteEvent(IShortcutManager.zoomEvent, this._handleZoom);
-        asyncRemoteRenderer.onRemoteEvent(ISessions.maximizeEvent, this._handleMaximize);
-        asyncRemoteRenderer.onRemoteEvent(ISessions.unmaximizeEvent, this._handleUnmaximize);
+        asyncRemoteRenderer.onRemoteEvent(ISessions.enterFullScreenEvent, this._handleEnterFullScreen);
+        asyncRemoteRenderer.onRemoteEvent(ISessions.leaveFullScreenEvent, this._handleLeaveFullScreen);
     }
 
     componentWillUnmount() {
         asyncRemoteRenderer.removeRemoteListener(IShortcutManager.zoomEvent, this._handleZoom);
-        asyncRemoteRenderer.removeRemoteListener(ISessions.maximizeEvent, this._handleMaximize);
-        asyncRemoteRenderer.removeRemoteListener(ISessions.unmaximizeEvent, this._handleUnmaximize);
+        asyncRemoteRenderer.removeRemoteListener(ISessions.enterFullScreenEvent, this._handleEnterFullScreen);
+        asyncRemoteRenderer.removeRemoteListener(ISessions.leaveFullScreenEvent, this._handleLeaveFullScreen);
     }
 
-    render () {
+    render() {
         let modClass = 'jpe-mod-' + this.props.uiState;
 
-        let style: any = {height: null, minHeight: null};
-        if (this.props.uiState == 'mac') {
+        let style: any = { height: null, minHeight: null };
+        if (this.props.uiState === 'mac') {
             style.minHeight = style.height = this.state.titleBarSize;
         }
-        
+
         // Don't return title bar content on linux and max
-        if (this.props.uiState == 'linux' || this.props.uiState == 'mac') {
+        if (this.props.uiState === 'linux' || this.props.uiState === 'mac') {
             return (
                 <div className={'jpe-TitleBar-body ' + modClass} style={style} />
             );
@@ -87,38 +87,39 @@ class TitleBar extends React.Component<TitleBar.Props, TitleBar.State> {
 
         let clicked = (type: string) => {
             let window = remote.getCurrentWindow();
-            if (type == 'close') {
+            if (type === 'close') {
                 window.close();
-            } else if (type == 'minimize') {
+            } else if (type === 'minimize') {
                 window.minimize();
             } else {
-                if (this.state.maxButtonState == 'restore')
+                if (this.state.maxButtonState === 'restore') {
                     window.unmaximize();
-                else
+                } else {
                     window.maximize();
+                }
             }
-        }
+        };
 
         return (
             <div className={'jpe-TitleBar-body ' + modClass} style={style}>
                 <div className={'jpe-TitleBar-button-container ' + modClass}>
-                    <div className={'jpe-TitleBar-button jpe-TitleBar-close ' + modClass} onClick={() => {clicked('close')}} />
-                    <div className={'jpe-TitleBar-button jpe-TitleBar-' + this.state.maxButtonState + ' ' + modClass} onClick={() => {clicked('maximize')}} />
-                    <div className={'jpe-TitleBar-button jpe-TitleBar-min ' + modClass} onClick={() => {clicked('minimize')}} />
+                    <div className={'jpe-TitleBar-button jpe-TitleBar-close ' + modClass} onClick={() => { clicked('close'); }} />
+                    <div className={'jpe-TitleBar-button jpe-TitleBar-' + this.state.maxButtonState + ' ' + modClass} onClick={() => { clicked('maximize'); }} />
+                    <div className={'jpe-TitleBar-button jpe-TitleBar-min ' + modClass} onClick={() => { clicked('minimize'); }} />
                 </div>
             </div>
         );
     }
 
     private _handleZoom() {
-        this.setState({titleBarSize: Browser.getTopPanelSize()});
+        this.setState({ titleBarSize: Browser.getTopPanelSize() });
     }
-    
-    private _handleMaximize() {
-        this.setState({maxButtonState: 'restore'});
+
+    private _handleEnterFullScreen() {
+        this.setState({ maxButtonState: 'restore' });
     }
-    
-    private _handleUnmaximize() {
-        this.setState({maxButtonState: 'max'});
+
+    private _handleLeaveFullScreen() {
+        this.setState({ maxButtonState: 'max' });
     }
 }
