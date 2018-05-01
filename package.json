@@ -48,7 +48,9 @@
         "tar.gz",
         "AppImage"
       ],
-      "category": "Science;Development;"
+      "desktop": {
+        "Categories":  "Science;Development;"
+      }
     },
     "win": {
       "target": [
