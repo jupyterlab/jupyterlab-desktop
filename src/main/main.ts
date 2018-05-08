@@ -73,8 +73,8 @@ console.debug = log.debug;
  * A user-defined service.
  *
  * Services make up the core functionality of the
- * application. Each service is istatntiated
- * once and then becomes available to every other serivce.
+ * application. Each service is instantiated
+ * once and then becomes available to every other service.
  */
 export
 interface IService {
@@ -95,14 +95,14 @@ interface IService {
     activate: (...x: any[]) => any;
 
     /**
-     * Whether the service should be instantiated immediatelty,
+     * Whether the service should be instantiated immediately,
      * or lazy loaded.
      */
     autostart?: boolean;
 }
 
 /**
- * Servies required by this application.
+ * Services required by this application.
  */
 const services = ['./app', './sessions', './server', './menu', './shortcuts', './utils', './registry']
 .map((service: string) => {
