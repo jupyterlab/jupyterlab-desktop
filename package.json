@@ -13,17 +13,17 @@
     "watch:pack": "webpack --progress --colors --watch --config webpack.browser.js",
     "watch:tsc": "tsc -w",
     "watch:assets": "node ./scripts/extract.js && node ./scripts/copyassets.js watch",
-    "watch": "concurrently \"npm run watch:tsc\" \"npm run watch:assets\" \"npm run watch:pack\" ",
+    "watch": "concurrently \"yarn watch:tsc\" \"yarn watch:assets\" \"yarn watch:pack\" ",
     "build:pack": "webpack --config webpack.browser.js",
-    "build": "tsc && node ./scripts/extract.js && node ./scripts/copyassets.js && npm run build:pack",
-    "build:all": "npm run build && npm start",
+    "build": "tsc && node ./scripts/extract.js && node ./scripts/copyassets.js && yarn build:pack",
+    "build:all": "yarn build && yarn start",
     "extract": "node scripts/extract.js",
-    "pack": "npm run build && electron-builder --dir",
-    "dist": "npm run build && electron-builder",
-    "dist:linux": "npm run build && electron-builder --linux",
+    "pack": "yarn build && electron-builder --dir",
+    "dist": "yarn build && electron-builder",
+    "dist:linux": "yarn build && electron-builder --linux",
     "dockerdist:linux": "docker run --rm -ti -v ${PWD}:/project -v ${PWD##*/}-node-modules:/project/node_modules -v ~/.electron:/root/.electron electronuserland/electron-builder:wine /bin/bash -c \"yarn && yarn dist:linux\"",
-    "dist:mac": "npm run build && electron-builder --macos",
-    "dist:win": "npm run build && electron-builder --win",
+    "dist:mac": "yarn build && electron-builder --macos",
+    "dist:win": "yarn build && electron-builder --win",
     "dockerdist:win": "docker run --rm -ti -v ${PWD}:/project -v ${PWD##*/}-node-modules:/project/node_modules -v ~/.electron:/root/.electron electronuserland/electron-builder:wine /bin/bash -c \"yarn && yarn dist:win\"",
     "release": "electron-builder --publish onTagOrDraft"
   },
@@ -49,7 +49,7 @@
         "AppImage"
       ],
       "desktop": {
-        "Categories":  "Science;Development;"
+        "Categories": "Science;Development;"
       }
     },
     "win": {
