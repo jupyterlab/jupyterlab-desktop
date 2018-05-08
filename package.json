@@ -179,6 +179,7 @@
     "@types/react": "~16.0.19",
     "@types/react-dom": "^16.0.4",
     "@types/semver": "^5.4.0",
+    "@types/yargs": "^11.0.0",
     "bottlejs": "^1.6.1",
     "electron-debug": "^1.2.0",
     "electron-log": "^2.2.14",
@@ -191,7 +192,8 @@
     "semver": "^5.4.1",
     "which": "^1.3.0",
     "winreg": "^1.2.4",
-    "xterm": "^3.0.2"
+    "xterm": "^3.0.2",
+    "yargs": "^11.0.0"
   },
   "resolutions": {
     "@types/react-dom/@types/react": "~16.0.19"
