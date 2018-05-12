@@ -15,6 +15,13 @@ import {
     JupyterLabSession
 } from '../main/sessions';
 
+import log from 'electron-log';
+
+console.log = log.log;
+console.error = log.error;
+console.warn = log.warn;
+console.info = log.info;
+console.debug = log.debug;
 
 /**
  * HACK

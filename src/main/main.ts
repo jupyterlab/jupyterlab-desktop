@@ -4,6 +4,7 @@ import {
 
 import * as Bottle from 'bottlejs';
 import log from 'electron-log';
+import * as yargs from 'yargs';
 
 const isDevMode = process.mainModule.filename.indexOf( 'app.asar' ) === -1;
 
@@ -21,21 +22,45 @@ require('electron-debug')({showDevTools: false});
  */
 require('fix-path')();
 
+let argv = yargs.option('v', {
+    'alias': 'verbose',
+    'count': true,
+    'type': 'boolean',
+    'describe': 'verbose output to terminal',
+}).help().argv;
+
 /**
  * Enabled separate logging for development and packaged environments.
  * Also override console methods so that future addition will route to
  * using this package.
  */
+let adjustedVerbose = argv.verbose - 2;
 if (isDevMode) {
+    if (adjustedVerbose === 0) {
+        log.transports.console.level = 'info';
+    } else if (adjustedVerbose === 1) {
+        log.transports.console.level = 'verbose';
+    } else if (adjustedVerbose >= 2) {
+        log.transports.console.level = 'debug';
+    }
+
     log.transports.file.level = false;
-    log.transports.console.level = 'info';
+
     log.info('In development mode');
-    log.info(`Logging to console`);
+    log.info(`Logging to console at '${log.transports.console.level}' level`);
 } else {
-    log.transports.file.level = 'info';
+    if (adjustedVerbose === 0) {
+        log.transports.file.level = 'info';
+    } else if (adjustedVerbose === 1) {
+        log.transports.file.level = 'verbose';
+    } else if (adjustedVerbose >= 2) {
+        log.transports.file.level = 'debug';
+    }
+
     log.transports.console.level = false;
+
     log.info('In production mode');
-    log.info(`Logging to file (${log.transports.file.findLogPath()})`);
+    log.info(`Logging to file (${log.transports.file.findLogPath()}) at '${log.transports.console.level}' level`);
 }
 
 console.log = log.log;
@@ -48,8 +73,8 @@ console.debug = log.debug;
  * A user-defined service.
  *
  * Services make up the core functionality of the
- * application. Each service is istatntiated
- * once and then becomes available to every other serivce.
+ * application. Each service is instantiated
+ * once and then becomes available to every other service.
  */
 export
 interface IService {
@@ -70,14 +95,14 @@ interface IService {
     activate: (...x: any[]) => any;
 
     /**
-     * Whether the service should be instantiated immediatelty,
+     * Whether the service should be instantiated immediately,
      * or lazy loaded.
      */
     autostart?: boolean;
 }
 
 /**
- * Servies required by this application.
+ * Services required by this application.
  */
 const services = ['./app', './sessions', './server', './menu', './shortcuts', './utils', './registry']
 .map((service: string) => {
