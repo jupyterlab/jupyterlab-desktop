@@ -3,7 +3,7 @@
 [![Build Status](https://travis-ci.org/jupyterlab/jupyterlab_app.svg?branch=master)](https://travis-ci.org/jupyterlab/jupyterlab_app)
 
 
-A native app for [JupyterLab](https://github.com/jupyterlab/jupyterlab), based on [Electron](https://electron.atom.io/).
+A desktop application for [JupyterLab](https://github.com/jupyterlab/jupyterlab), based on [Electron](https://electron.atom.io/).
 
 ### Build dependencies
 
