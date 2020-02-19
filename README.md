@@ -23,4 +23,4 @@ To test building for distribution you can install [Docker](https://docs.docker.c
 
 If you don't want to user Docker but instead want to build locally, there are a few [dependencies](https://github.com/electron-userland/electron-builder/wiki/Multi-Platform-Build) you're required to install.
 
-Regarding releasing please check out [release](release.md)
+Regarding releasing please check out [release](Release.md)
