@@ -133,6 +133,7 @@ class Application extends React.Component<Application.IProps, Application.IState
 
         PageConfig.setOption('token', this._server.token);
         PageConfig.setOption('baseUrl', `${this._server.url}`);
+        PageConfig.setOption('appUrl', 'lab');
         PageConfig.setOption('translationsApiUrl', 'lab/api/translations');
         PageConfig.setOption('themesUrl', 'lab/api/themes');
 
