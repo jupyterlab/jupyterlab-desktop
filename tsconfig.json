@@ -9,7 +9,7 @@
     "esModuleInterop": true,
     "jsx": "react",
     "target": "es6",
-    "lib": ["es5", "es2015.collection", "es2015.promise", "dom"],
+    "lib": ["es6", "es2015.collection", "es2015.promise", "dom"],
     "baseUrl": ".",
     "outDir": "./build/out",
     "sourceMap": true
