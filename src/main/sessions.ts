@@ -7,7 +7,7 @@ import {
 
 import {
     JSONObject
-} from '@phosphor/coreutils';
+} from '@lumino/coreutils';
 
 import {
     AsyncRemote, asyncRemoteMain
@@ -23,7 +23,7 @@ import {
 
 import {
     ArrayExt
-} from '@phosphor/algorithm';
+} from '@lumino/algorithm';
 
 import {
     IService
@@ -196,7 +196,7 @@ class JupyterLabSessions extends EventEmitter implements ISessions, IStatefulSer
             let session = new JupyterLabSession(this, opts);
             // Register dialog on window close
             session.browserWindow.on('close', (event: Event) => {
-                let buttonClicked = dialog.showMessageBox({
+                let buttonClicked = dialog.showMessageBoxSync({
                     type: 'warning',
                     message: 'Do you want to leave?',
                     detail: 'Changes you made may not be saved.',
@@ -238,7 +238,8 @@ class JupyterLabSessions extends EventEmitter implements ISessions, IStatefulSer
         // On OS X it's common to re-create a window in the app when the dock icon is clicked and there are no other
         // windows open.
         // Need to double check this code to ensure it has expected behaviour
-        app.on('activate', () => {
+        // TODO: double check
+        app.on('ready', () => {
             if (this._startingSession) {
                 return;
             }
@@ -330,7 +331,7 @@ class JupyterLabSessions extends EventEmitter implements ISessions, IStatefulSer
      * and rejects if it is not.
      * @param path the absolute path to the file
      */
-    private _isFile(path: string): Promise<{}> {
+    private _isFile(path: string): Promise<void> {
         return new Promise( (resolve, reject) => {
             fs.lstat(path, (err: any, stats: fs.Stats) => {
                 if (stats === null || stats === undefined) {
@@ -404,7 +405,11 @@ class JupyterLabSession {
             frame: showFrame,
             show: false,
             title: 'JupyterLab',
-            titleBarStyle: titleBarStyle
+            titleBarStyle: titleBarStyle,
+            webPreferences: {
+                nodeIntegration: true,
+                enableRemoteModule: true
+            }
         });
 
         if (this._info.x && this._info.y) {
@@ -555,7 +560,8 @@ if (process && process.type !== 'renderer') {
     app.once('will-finish-launching', (e: Electron.Event) => {
         app.on('open-file', (event: Electron.Event, path: string) => {
             ipcMain.once('lab-ready', (event: Electron.Event) => {
-                asyncRemoteMain.emitRemoteEvent(ISessions.openFileEvent, path, event.sender);
+                // TODO: double check
+                asyncRemoteMain.emitRemoteEvent(ISessions.openFileEvent, path/*, event.sender*/);
             });
         });
     });

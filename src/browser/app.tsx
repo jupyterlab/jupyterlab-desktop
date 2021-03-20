@@ -3,7 +3,7 @@
 
 import {
     JSONObject
-} from '@phosphor/coreutils';
+} from '@lumino/coreutils';
 
 import {
     PageConfig
@@ -11,7 +11,7 @@ import {
 
 import {
     StateDB
-} from '@jupyterlab/coreutils';
+} from '@jupyterlab/statedb';
 
 import {
     asyncRemoteRenderer
@@ -48,7 +48,7 @@ import {
 import * as React from 'react';
 import extensions from './extensions';
 import log from 'electron-log';
-
+import { LabShell } from '@jupyterlab/application';
 
 export
 class Application extends React.Component<Application.IProps, Application.IState> {
@@ -74,7 +74,7 @@ class Application extends React.Component<Application.IProps, Application.IState
             this.state = {renderSplash: this._renderEmpty, renderState: this._renderServerManager, remotes: []};
         }
 
-        this._serverState = new StateDB({namespace: Application.STATE_NAMESPACE});
+        this._serverState = new StateDB(/*{namespace: Application.STATE_NAMESPACE}*/);
         this._serverState.fetch(Application.SERVER_STATE_ID)
             .then((data: Application.IRemoteServerState | null) => {
                 if (!data || !data.remotes) {
@@ -93,7 +93,7 @@ class Application extends React.Component<Application.IProps, Application.IState
                 // Render UI with saved servers
                 this.setState({remotes: data.remotes});
             })
-            .catch((e) => {
+            .catch((e: any) => {
                 log.log(e);
             });
     }
@@ -132,7 +132,9 @@ class Application extends React.Component<Application.IProps, Application.IState
         };
 
         PageConfig.setOption('token', this._server.token);
-        PageConfig.setOption('baseUrl', this._server.url);
+        PageConfig.setOption('baseUrl', `${this._server.url}`);
+        PageConfig.setOption('translationsApiUrl', 'lab/api/translations');
+        PageConfig.setOption('themesUrl', 'lab/api/themes');
 
         this._setupLab();
 
@@ -175,7 +177,7 @@ class Application extends React.Component<Application.IProps, Application.IState
         }
 
         this._lab = new ElectronJupyterLab({
-            version: version,
+            shell: new LabShell(),
             mimeExtensions: extensions.mime,
             disabled: extensions.disabled,
             deferred: extensions.deferred,

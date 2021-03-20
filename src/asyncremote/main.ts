@@ -80,7 +80,7 @@ class MainRemote implements IAsyncRemoteMain {
         });
     }
 
-    private _executeMethod(evt: Electron.Event, data: Utils.IMethodExecuteRequest<any>): void {
+    private _executeMethod(evt: Electron.IpcMainEvent, data: Utils.IMethodExecuteRequest<any>): void {
         let responseChannel = Utils.makeResponseChannel(data.methodId, data.messageId);
 
         // Check that the method exists

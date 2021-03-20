@@ -20,7 +20,7 @@ import {
 
 import {
     ArrayExt
-} from '@phosphor/algorithm';
+} from '@lumino/algorithm';
 
 import * as fs from 'fs';
 import log from 'electron-log';
@@ -223,7 +223,7 @@ export class Registry implements IRegistry {
             dialog.showOpenDialog({
                 properties: ['openFile', 'showHiddenFiles'],
                 buttonLabel: 'Use Path'
-            }, (filePaths: string[]) => {
+            }).then(({filePaths}) => {
                 if (!filePaths) {
                     reject(new Error('cancel'));
                 } else {

@@ -84,28 +84,26 @@ class KeyboardShortcutManager implements IShortcutManager {
 
     zoomIn() {
         let contents = webContents.getFocusedWebContents();
-        contents.getZoomLevel( (zoom: number) => {
-            if (zoom >= 3) {
-                return;
-            }
-            contents.setZoomLevel(zoom + 1);
+        const zoom = contents.getZoomLevel();
+        if (zoom >= 3) {
+            return;
+        }
+        contents.setZoomLevel(zoom + 1);
 
-            // Emit zoom event
-            asyncRemoteMain.emitRemoteEvent(IShortcutManager.zoomEvent, undefined, contents);
-        });
+        // Emit zoom event
+        asyncRemoteMain.emitRemoteEvent(IShortcutManager.zoomEvent, undefined, contents);
     }
 
     zoomOut() {
         let contents = webContents.getFocusedWebContents();
-        contents.getZoomLevel( (zoom: number) => {
-            if (zoom <= -7) {
-                return;
-            }
-            contents.setZoomLevel(zoom - 1);
+        const zoom = contents.getZoomLevel();
+        if (zoom <= -7) {
+            return;
+        }
+        contents.setZoomLevel(zoom - 1);
 
-            // Emit zoom event
-            asyncRemoteMain.emitRemoteEvent(IShortcutManager.zoomEvent, undefined, contents);
-        });
+        // Emit zoom event
+        asyncRemoteMain.emitRemoteEvent(IShortcutManager.zoomEvent, undefined, contents);
     }
 
     quit() {

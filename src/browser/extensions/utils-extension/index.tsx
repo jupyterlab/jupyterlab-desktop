@@ -17,22 +17,30 @@ import {
 
 import {
     JSONObject
-} from '@phosphor/coreutils';
+} from '@lumino/coreutils';
 
 import {
     Application
 } from '../../app';
 
 import {
-    StateDB, ISettingRegistry, SettingRegistry, DataConnector
-} from '@jupyterlab/coreutils';
+    StateDB, DataConnector
+} from '@jupyterlab/statedb';
+
+import {
+    ISettingRegistry, SettingRegistry
+} from '@jupyterlab/settingregistry';
+
+import {
+    nullTranslator
+} from '@jupyterlab/translation';
 
 import {
     Menu, Widget
-} from '@phosphor/widgets';
+} from '@lumino/widgets';
 
 import {
-    JupyterLabPlugin, JupyterLab
+    IRouter, JupyterFrontEndPlugin, JupyterLab
 } from '@jupyterlab/application';
 
 import {
@@ -85,11 +93,11 @@ interface IServerManagerMenuArgs extends JSONObject {
     remoteServerId?: number;
 }
 
-const serverManagerPlugin: JupyterLabPlugin<void> = {
+const serverManagerPlugin: JupyterFrontEndPlugin<void> = {
     id: 'jupyter.extensions.server-manager',
     requires: [ICommandPalette, IMainMenu],
     activate: (app: ElectronJupyterLab, palette: ICommandPalette, menu: IMainMenu) => {
-        let serverState = new StateDB({ namespace: Application.STATE_NAMESPACE });
+        let serverState = new StateDB(/*{ namespace: Application.STATE_NAMESPACE }*/);
         // Insert a local server
         let servers: IServerManagerMenuArgs[] = [{ name: 'Local', type: 'local' }];
 
@@ -177,29 +185,30 @@ function buildPhosphorMenu(app: ElectronJupyterLab): IMainMenu {
     logo.addClass('jpe-JupyterIcon');
     logo.id = 'jp-MainLogo';
 
-    app.shell.addToTopArea(logo);
+    app.shell.add(logo, 'top');
 
-    app.shell.addToTopArea(menu);
-    app.shell.addToTopArea(titleBar);
+    app.shell.add(menu, 'top');
+    app.shell.add(titleBar, 'top');
     return menu;
 }
 
-function buildNativeMenu(app: ElectronJupyterLab, palette: ICommandPalette): IMainMenu {
+function buildNativeMenu(app: ElectronJupyterLab, palette: ICommandPalette, router: IRouter): IMainMenu {
     let menu = new NativeMenu(app);
+    const trans = nullTranslator.load('jupyterlab');
 
     let titleBar = buildTitleBar(app);
     titleBar.id = 'jpe-TitleBar-widget';
     titleBar.addClass('jpe-mod-' + app.info.uiState);
 
-    app.shell.addToTopArea(titleBar);
+    app.shell.add(titleBar, 'top');
 
-    createEditMenu(app, menu.editMenu);
-    createFileMenu(app, menu.fileMenu);
-    createKernelMenu(app, menu.kernelMenu);
-    createRunMenu(app, menu.runMenu);
-    createSettingsMenu(app, menu.settingsMenu);
-    createViewMenu(app, menu.viewMenu);
-    createTabsMenu(app, menu.tabsMenu);
+    createEditMenu(app, menu.editMenu, trans);
+    createFileMenu(app, menu.fileMenu, router, trans);
+    createKernelMenu(app, menu.kernelMenu, trans);
+    createRunMenu(app, menu.runMenu, trans);
+    createSettingsMenu(app, menu.settingsMenu, trans);
+    createViewMenu(app, menu.viewMenu, trans);
+    createTabsMenu(app, menu.tabsMenu, app.shell, trans);
 
     palette.addItem({
         command: MainMenuExtensionCommandIDs.shutdownAllKernels,
@@ -216,16 +225,17 @@ mainMenuExtension.then(ext => {
     /**
      * A service providing an native menu bar.
      */
-    const nativeMainMenuPlugin: JupyterLabPlugin<IMainMenu> = {
+    // @ts-ignore
+    const nativeMainMenuPlugin: JupyterFrontEndPlugin<IMainMenu> = {
         id: '@jupyterlab/mainmenu-extension:plugin',
-        requires: [ICommandPalette],
+        requires: [ICommandPalette, IRouter],
         provides: IMainMenu,
-        activate: (app: ElectronJupyterLab, palette: ICommandPalette): IMainMenu | Promise<IMainMenu> => {
+        activate: (app: ElectronJupyterLab, palette: ICommandPalette, router: IRouter): IMainMenu | Promise<IMainMenu> => {
 
             let menu: IMainMenu | Promise<IMainMenu>;
             let uiState = app.info.uiState;
             if (uiState === 'linux' || uiState === 'mac') {
-                menu = buildNativeMenu(app, palette);
+                menu = buildNativeMenu(app, palette, router);
             } else {
                 menu = buildPhosphorMenu(app);
             }
@@ -234,7 +244,7 @@ mainMenuExtension.then(ext => {
         }
     };
 
-    ext.default = nativeMainMenuPlugin;
+    //ext.default = nativeMainMenuPlugin;
 }).catch(reason => {
     log.error(`Failed to load @jupyterlab/mainmenu-extension because ${reason}`);
 });
@@ -262,7 +272,7 @@ class SettingsConnector extends DataConnector<ISettingRegistry.IPlugin, string> 
 /**
  * The default setting registry provider.
  */
-const settingPlugin: JupyterLabPlugin<ISettingRegistry> = {
+const settingPlugin: JupyterFrontEndPlugin<ISettingRegistry> = {
     id: '@jupyterlab/apputils-extension:settings',
     activate: (): ISettingRegistry => {
         return new SettingRegistry({ connector: new SettingsConnector() });
@@ -274,21 +284,21 @@ const settingPlugin: JupyterLabPlugin<ISettingRegistry> = {
 /**
  * The native theme manager provider.
  */
-const themesPlugin: JupyterLabPlugin<IThemeManager> = {
+const themesPlugin: JupyterFrontEndPlugin<IThemeManager> = {
     id: '@jupyterlab/apputils-extension:themes',
     requires: [ISettingRegistry, ISplashScreen],
     optional: [ICommandPalette, IMainMenu],
     activate: (app: JupyterLab, settingRegistry: ISettingRegistry, splash: ISplashScreen, palette: ICommandPalette | null, mainMenu: IMainMenu | null): IThemeManager => {
         const host = app.shell;
-        const when = app.started;
+        // const when = app.started;
         const commands = app.commands;
 
         const manager = new ThemeManager({
             key: themesPlugin.id,
-            host, settingRegistry,
-            url: app.info.urls.themes,
+            host, settings: settingRegistry,
+            url: app.paths.urls.base + app.paths.urls.themes,
             splash,
-            when
+            // when
         });
 
         commands.addCommand('apputils:change-theme', {
@@ -310,7 +320,7 @@ const themesPlugin: JupyterLabPlugin<IThemeManager> = {
         if (mainMenu) {
             const themeMenu = new Menu({ commands });
             themeMenu.title.label = 'JupyterLab Theme';
-            manager.ready.then(() => {
+            // manager.ready.then(() => {
                 const command = 'apputils:change-theme';
                 const isPalette = false;
 
@@ -321,12 +331,12 @@ const themesPlugin: JupyterLabPlugin<IThemeManager> = {
                 mainMenu.settingsMenu.addGroup([{
                     type: 'submenu' as Menu.ItemType, submenu: themeMenu
                 }], 0);
-            });
+            // });
         }
 
         // If we have a command palette, add theme switching options to it.
         if (palette) {
-            manager.ready.then(() => {
+            // manager.ready.then(() => {
                 const category = 'Settings';
                 const command = 'apputils:change-theme';
                 const isPalette = true;
@@ -334,7 +344,7 @@ const themesPlugin: JupyterLabPlugin<IThemeManager> = {
                 manager.themes.forEach(theme => {
                     palette.addItem({ command, args: { isPalette, theme }, category });
                 });
-            });
+            // });
         }
 
         return manager;
@@ -346,7 +356,7 @@ const themesPlugin: JupyterLabPlugin<IThemeManager> = {
 /**
  * Override Main Menu plugin from apputils-extension
  */
-let nPlugins = plugins.map((p: JupyterLabPlugin<any>) => {
+let nPlugins = plugins.map((p: JupyterFrontEndPlugin<any>) => {
     switch (p.id) {
         case settingPlugin.id:
             return settingPlugin;

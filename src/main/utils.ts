@@ -3,7 +3,7 @@
 
 import {
     JSONValue
-} from '@phosphor/coreutils';
+} from '@lumino/coreutils';
 
 import {
     IApplication, IStatefulService
@@ -14,8 +14,12 @@ import {
 } from '../asyncremote';
 
 import {
-    IDataConnector, ISettingRegistry
-} from '@jupyterlab/coreutils';
+    ISettingRegistry
+} from '@jupyterlab/settingregistry';
+
+import {
+    IDataConnector
+} from '@jupyterlab/statedb';
 
 import {
     IService
@@ -117,6 +121,16 @@ class JupyterLabDataConnector implements IStatefulService, IElectronDataConnecto
             });
     }
 
+    list(query?: string): Promise<{
+        ids: string[];
+        values: ISettingRegistry.IPlugin[];
+    }> {
+        return Promise.resolve({
+            ids: [],
+            values: []
+        });
+    }
+
     /**
      * Remove a setting. Not needed in this implementation.
      *
@@ -212,6 +226,7 @@ class JupyterLabDataConnector implements IStatefulService, IElectronDataConnecto
                         schema: JSON.parse(rawSchema),
                         data: {} as ISettingRegistry.ISettingBundle,
                         raw: '{}',
+                        version: ''
                     });
                 }
             });

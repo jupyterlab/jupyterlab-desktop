@@ -15,7 +15,7 @@ import {
 
 import {
     JSONObject, JSONValue
-} from '@phosphor/coreutils';
+} from '@lumino/coreutils';
 
 import {
     JupyterLabSession

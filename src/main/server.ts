@@ -24,7 +24,7 @@ import {
 
 import {
     ArrayExt
-} from '@phosphor/algorithm';
+} from '@lumino/algorithm';
 
 import log from 'electron-log';
 
@@ -56,7 +56,7 @@ class JupyterServer {
             let baseRegExp = /http:\/\/localhost:\d+\//g;
             let home = app.getPath('home');
 
-            this._nbServer = execFile(this._info.environment.path, ['-m', 'jupyter', 'notebook', '--no-browser'], { cwd: home });
+            this._nbServer = execFile(this._info.environment.path, ['-m', 'jupyter', 'lab', '--no-browser', '--ServerApp.password', '', '--ServerApp.disable_check_xsrf', 'True', '--NotebookApp.allow_origin', '*'], { cwd: home });
 
             this._nbServer.on('exit', () => {
                 this._serverStartFailed();

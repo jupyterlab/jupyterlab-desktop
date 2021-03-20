@@ -9,11 +9,11 @@ import {
 
 import {
     ArrayExt
-} from '@phosphor/algorithm';
+} from '@lumino/algorithm';
 
 import {
     Menu as PhosphorMenu
-} from '@phosphor/widgets';
+} from '@lumino/widgets';
 
 import {
     IApplication
@@ -306,7 +306,7 @@ class JupyterMainMenu implements INativeMenu {
         // Application window is in focus
         if (window) {
             asyncRemoteMain.emitRemoteEvent(INativeMenu.clickEvent,
-                menu as INativeMenu.IMenuItemOptions, window.webContents);
+                menu as unknown as INativeMenu.IMenuItemOptions, window.webContents);
         } else {
             if (menu.label === 'Add Server') {
                 this._sessions.createSession({ state: 'remote' });

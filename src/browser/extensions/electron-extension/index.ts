@@ -2,7 +2,7 @@
 // Distributed under the terms of the Modified BSD License.
 
 import {
-  JupyterLab, JupyterLabPlugin,
+  JupyterLab, JupyterFrontEndPlugin, JupyterFrontEnd
 } from '@jupyterlab/application';
 
 import {
@@ -27,11 +27,11 @@ import {
 
 import {
   each
-} from '@phosphor/algorithm';
+} from '@lumino/algorithm';
 
 import {
   Widget
-} from '@phosphor/widgets';
+} from '@lumino/widgets';
 
 import {
     asyncRemoteRenderer
@@ -134,6 +134,35 @@ class ElectronJupyterLab extends JupyterLab {
     return this._electronInfo;
   }
 
+  get paths(): JupyterFrontEnd.IPaths {
+    return {
+      urls: {
+        base: PageConfig.getOption('baseUrl'),
+        notFound: PageConfig.getOption('notFoundUrl'),
+        app: PageConfig.getOption('appUrl'),
+        static: PageConfig.getOption('staticUrl'),
+        settings: PageConfig.getOption('settingsUrl'),
+        themes: PageConfig.getOption('themesUrl'),
+        doc: PageConfig.getOption('docUrl'),
+        translations: PageConfig.getOption('translationsApiUrl'),
+        hubHost: PageConfig.getOption('hubHost') || undefined,
+        hubPrefix: PageConfig.getOption('hubPrefix') || undefined,
+        hubUser: PageConfig.getOption('hubUser') || undefined,
+        hubServerName: PageConfig.getOption('hubServerName') || undefined
+      },
+      directories: {
+        appSettings: PageConfig.getOption('appSettingsDir'),
+        schemas: PageConfig.getOption('schemasDir'),
+        static: PageConfig.getOption('staticDir'),
+        templates: PageConfig.getOption('templatesDir'),
+        themes: PageConfig.getOption('themesDir'),
+        userSettings: PageConfig.getOption('userSettingsDir'),
+        serverRoot: PageConfig.getOption('serverRoot'),
+        workspaces: PageConfig.getOption('workspacesDir')
+      }
+    };
+  }
+
   /**
    * The service manager used by the application.
    */
@@ -170,7 +199,7 @@ namespace ElectronJupyterLab {
 /**
  * The main extension.
  */
-const mainPlugin: JupyterLabPlugin<void> = {
+const mainPlugin: JupyterFrontEndPlugin<void> = {
   id: 'jupyter.extensions.main',
   requires: [ICommandPalette],
   activate: (app: JupyterLab, palette: ICommandPalette) => {
@@ -237,7 +266,7 @@ function addCommands(app: JupyterLab, palette: ICommandPalette): void {
 /**
  * Override default jupyterlab plugins
  */
-let nPlugins = plugins.map((p: JupyterLabPlugin<any>) => {
+let nPlugins = plugins.map((p: JupyterFrontEndPlugin<any>) => {
     if (p.id === 'jupyter.extensions.main') {
       return mainPlugin;
     }

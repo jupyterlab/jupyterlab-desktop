@@ -1,46 +1,30 @@
-var webpack = require('webpack');
-var path = require('path');
-var fs = require('fs-extra');
-var crypto = require('crypto');
-var package_data = require('./package.json');
-const ExtractTextPlugin = require("extract-text-webpack-plugin");
-var buildDir = path.resolve('./build');
+const webpack = require('webpack');
+const path = require('path');
+const fs = require('fs-extra');
+const crypto = require('crypto');
+const MiniCssExtractPlugin = require('mini-css-extract-plugin');
+const buildDir = path.resolve('./build');
 
 // Create the hash
-var hash = crypto.createHash('md5');
+const hash = crypto.createHash('md5');
 hash.update(fs.readFileSync('./package.json'));
-var digest = hash.digest('hex');
+const digest = hash.digest('hex');
 fs.writeFileSync(path.resolve(buildDir, 'hash.md5'), digest);
 
 module.exports = {
   entry:  './build/out/browser/index.js',
-  target: 'electron',
+  target: 'electron-renderer',
   output: {
     path: buildDir,
-    filename: 'browser.bundle.js',
+    filename: 'browser.bundle.js'
   },
-  externals: [
-    function(context, request, callback) {
-      if (/^@jupyterlab/g.test(request)){
-        return callback();
-      } else if (/^\.\/jupyterlab_app\/src\/browser/g.test(request)){
-        return callback();
-      } else if (/^\jupyterlab_app\/src\/browser/g.test(request)){
-        return callback();
-      }
-
-      callback(null, 'commonjs ' + request);
-    }
-  ],
+  mode: 'development',
+  optimization: {
+    minimize: false
+  },
   module: {
     rules: [
-      { test: /\.css$/, 
-        use: ExtractTextPlugin.extract({ 
-          use: 'css-loader', 
-          fallback: 'style-loader' 
-        }
-      )},
-      { test: /\.json$/, use: 'json-loader' },
+      { test: /\.css$/, use: ['style-loader', 'css-loader'] },
       { test: /\.html$/, use: 'file-loader?name=[name].[ext]' },
       { test: /\.md$/, use: 'raw-loader' },
       { test: /\.txt$/, use: 'raw-loader' },
@@ -54,18 +38,8 @@ module.exports = {
       { test: /\.svg(\?v=\d+\.\d+\.\d+)?$/, use: 'url-loader?limit=10000&mimetype=image/svg+xml' }
     ],
   },
-  externals: {
-    module: 'commonjs module',
-    child_process: 'commonjs child_process',
-    'try-thread-sleep': 'commonjs try-thread-sleep',
-    'vega-scenegraph': 'commonjs vega-scenegraph'
-  },
-  node: {
-    fs: 'empty'
-  },
   plugins: [
-    new ExtractTextPlugin("styles.css"),
+    new MiniCssExtractPlugin({filename: "styles.css"}),
   ],
-  bail: true,
-  devtool: 'cheap-source-map'
+  devtool: 'source-map'
 }

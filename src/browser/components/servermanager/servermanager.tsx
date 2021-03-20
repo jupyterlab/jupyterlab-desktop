@@ -137,12 +137,12 @@ namespace ServerManager {
         }
 
         handleInputChange(event: any) {
-            const value = event.target.value;
-            const name = event.target.name;
+            // const value = event.target.value;
+            // const name = event.target.name;
 
-            this.setState({
-                [name]: value
-            });
+            // this.setState({
+            //     [name]: value
+            // });
         }
 
         render() {
