@@ -32,6 +32,6 @@ namespace Browser {
 
     export
     function getTopPanelSize(): number {
-        return 23 / webFrame.getZoomFactor();
+        return 28 / webFrame.getZoomFactor();
     }
 }

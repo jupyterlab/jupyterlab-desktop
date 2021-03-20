@@ -29,6 +29,16 @@
     bottom: 0;
 }
 
+#jp-top-panel {
+    -webkit-app-region: drag;
+}
+#jp-top-panel.jpe-mod-mac {
+    padding-left: 65px;
+}
+#jp-menu-panel {
+    -webkit-app-region: no-drag;
+}
+
 /* Resetting CSS styles */
 :root {
     --jp-code-font-family: 'SourceCodePro' !important;
