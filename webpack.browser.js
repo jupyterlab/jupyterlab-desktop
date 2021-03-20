@@ -2,7 +2,6 @@ const webpack = require('webpack');
 const path = require('path');
 const fs = require('fs-extra');
 const crypto = require('crypto');
-const MiniCssExtractPlugin = require('mini-css-extract-plugin');
 const buildDir = path.resolve('./build');
 
 // Create the hash
@@ -38,8 +37,5 @@ module.exports = {
       { test: /\.svg(\?v=\d+\.\d+\.\d+)?$/, use: 'url-loader?limit=10000&mimetype=image/svg+xml' }
     ],
   },
-  plugins: [
-    new MiniCssExtractPlugin({filename: "styles.css"}),
-  ],
   devtool: 'source-map'
 }
