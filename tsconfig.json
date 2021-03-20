@@ -11,7 +11,8 @@
     "target": "es6",
     "lib": ["es5", "es2015.collection", "es2015.promise", "dom"],
     "baseUrl": ".",
-    "outDir": "./build/out"
+    "outDir": "./build/out",
+    "sourceMap": true
   },
  "include": [
    "./src/**/*.*"

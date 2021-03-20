@@ -4,7 +4,8 @@ dist
 lib
 node_modules
 .cache
-.vscode
+.vscode/*
+!.vscode/launch.json
 *.py[co]
 __pycache__
 *.egg-info
