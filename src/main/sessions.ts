@@ -424,6 +424,8 @@ class JupyterLabSession {
             this._window.show();
         });
 
+        console.log('LOAD HTML: ', path.join(__dirname, '../browser/index.html'));
+
         this._window.loadURL(url.format({
             pathname: path.join(__dirname, '../browser/index.html'),
             protocol: 'file:',
@@ -495,6 +497,10 @@ class JupyterLabSession {
 
         this._window.on('restore', () => {
             asyncRemoteMain.emitRemoteEvent(ISessions.restoreEvent, undefined, this._window.webContents);
+        });
+
+        this._window.on('close', () => {
+            console.log('on close');
         });
 
     }

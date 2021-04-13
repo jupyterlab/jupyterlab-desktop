@@ -1,5 +1,5 @@
 import {
-    ChildProcess, execFile
+    ChildProcess, execFile, execSync
 } from 'child_process';
 
 import {
@@ -11,7 +11,7 @@ import {
 } from './registry';
 
 import {
-    app
+    app, dialog
 } from 'electron';
 
 import {
@@ -27,6 +27,9 @@ import {
 } from '@lumino/algorithm';
 
 import log from 'electron-log';
+
+import * as path from 'path';
+import * as fs from 'fs-extra';
 
 export
 class JupyterServer {
@@ -54,9 +57,28 @@ class JupyterServer {
             let urlRegExp = /http:\/\/localhost:\d+\/\S*/g;
             let tokenRegExp = /token=\w+/g;
             let baseRegExp = /http:\/\/localhost:\d+\//g;
+            // @ts-ignore
             let home = app.getPath('home');
+            const envPath = '/Users/username/jupyterlab_app_env/bin/python';
 
-            this._nbServer = execFile(this._info.environment.path, ['-m', 'jupyter', 'lab', '--no-browser', '--ServerApp.password', '', '--ServerApp.disable_check_xsrf', 'True', '--NotebookApp.allow_origin', '*'], { cwd: home });
+            if (!fs.existsSync(envPath)) {
+                let env_setup = path.join (__dirname, '../../../../env_setup/JupyterLab-3.0.7-MacOSX-x86_64.sh');
+                console.log(env_setup);
+
+                dialog.showMessageBox({message: env_setup});
+
+                execSync(`${env_setup} -b -p /Users/username/jupyterlab_app_env`);
+            }
+
+            //this._info.environment.path = '/Users/username/miniconda3/envs/jlab3/bin/python';
+            this._info.environment.path = envPath;
+
+            this._nbServer = execFile(this._info.environment.path, ['-m', 'jupyter', 'lab', '--expose-app-in-browser', '--no-browser', '--ServerApp.password', '', '--ServerApp.disable_check_xsrf', 'True', '--NotebookApp.allow_origin', '*'], {
+                cwd: '/Users/username/jupyterlab_app_env/bin'/*home*/,
+                env: {
+                    PATH: `/Users/username/jupyterlab_app_env/bin:${process.env['PATH']}`
+                }
+            });
 
             this._nbServer.on('exit', () => {
                 this._serverStartFailed();

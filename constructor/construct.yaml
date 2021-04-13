@@ -1,0 +1,28 @@
+name: JupyterLab
+version: 3.0.7
+
+channels:
+  - http://repo.anaconda.com/pkgs/main/
+
+specs:
+  - python 3.8*
+  - conda
+  - nomkl                               # [not win]
+  - numpy
+  - scipy
+  - pandas
+  - jupyterlab 3.0*
+  - matplotlib
+#  - lighttpd                            # [unix]
+
+# exclude:
+  # - qt
+  # - sip
+  # - pyqt
+
+# installer_type: pkg
+
+license_file: EULA.txt
+
+# Welcome image for Windows installer
+welcome_image: welcome.png                # [win]

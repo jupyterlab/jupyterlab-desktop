@@ -272,6 +272,7 @@ class SettingsConnector extends DataConnector<ISettingRegistry.IPlugin, string> 
 /**
  * The default setting registry provider.
  */
+// @ts-ignore
 const settingPlugin: JupyterFrontEndPlugin<ISettingRegistry> = {
     id: '@jupyterlab/apputils-extension:settings',
     activate: (): ISettingRegistry => {
@@ -284,6 +285,7 @@ const settingPlugin: JupyterFrontEndPlugin<ISettingRegistry> = {
 /**
  * The native theme manager provider.
  */
+// @ts-ignore
 const themesPlugin: JupyterFrontEndPlugin<IThemeManager> = {
     id: '@jupyterlab/apputils-extension:themes',
     requires: [ISettingRegistry, ISplashScreen],
@@ -358,10 +360,10 @@ const themesPlugin: JupyterFrontEndPlugin<IThemeManager> = {
  */
 let nPlugins = plugins.map((p: JupyterFrontEndPlugin<any>) => {
     switch (p.id) {
-        case settingPlugin.id:
-            return settingPlugin;
-        case themesPlugin.id:
-            return themesPlugin;
+        // case settingPlugin.id:
+        //     return settingPlugin;
+        // case themesPlugin.id:
+        //     return themesPlugin;
         default:
             return p;
     }
