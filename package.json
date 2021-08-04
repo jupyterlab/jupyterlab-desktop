@@ -98,7 +98,7 @@
     "concurrently": "^3.5.0",
     "css-loader": "~0.28.7",
     "devtron": "^1.4.0",
-    "electron": "^1.8.2",
+    "electron": "^9.4.0",
     "electron-builder": "^19.13.0",
     "extract-text-webpack-plugin": "^3.0.2",
     "file": "^0.2.2",
