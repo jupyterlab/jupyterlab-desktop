@@ -205,6 +205,13 @@ class Application extends React.Component<Application.IProps, Application.IState
     private _connectionAdded(server: JupyterServer.IServer) {
         PageConfig.setOption('baseUrl', server.url);
         PageConfig.setOption('token', server.token);
+        PageConfig.setOption('appUrl', 'lab');
+        PageConfig.setOption('translationsApiUrl', 'lab/api/translations');
+        PageConfig.setOption('themesUrl', 'lab/api/themes');
+        PageConfig.setOption('fullMathjaxUrl', 'https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/MathJax.js');
+        PageConfig.setOption('mathjaxConfig', 'TeX-AMS_HTML-full,Safe&amp;delayStartupUntil=configured');
+        
+        this._setupLab();
 
         try {
             this._lab.start({'ignorePlugins': this._ignorePlugins});

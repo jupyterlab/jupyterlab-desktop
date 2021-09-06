@@ -73,7 +73,7 @@ import plugins from '@jupyterlab/apputils-extension';
 import log from 'electron-log';
 
 import {
-    createEditMenu, createFileMenu, createKernelMenu, createRunMenu, createSettingsMenu, createTabsMenu, createViewMenu,
+    createEditMenu, createFileMenu, createKernelMenu, createRunMenu, /*createSettingsMenu, */ createTabsMenu, createViewMenu,
     CommandIDs as MainMenuExtensionCommandIDs
 } from '@jupyterlab/mainmenu-extension';
 
@@ -206,7 +206,7 @@ function buildNativeMenu(app: ElectronJupyterLab, palette: ICommandPalette, rout
     createFileMenu(app, menu.fileMenu, router, trans);
     createKernelMenu(app, menu.kernelMenu, trans);
     createRunMenu(app, menu.runMenu, trans);
-    createSettingsMenu(app, menu.settingsMenu, trans);
+    // createSettingsMenu(app, menu.settingsMenu, trans);
     createViewMenu(app, menu.viewMenu, trans);
     createTabsMenu(app, menu.tabsMenu, app.shell, trans);
 

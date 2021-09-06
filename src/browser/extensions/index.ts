@@ -10,6 +10,9 @@ const extensions: any = {
     './electron-extension': require('./electron-extension'),
     './utils-extension': require('./utils-extension'),
 
+    // '@jupyterlab/application-extension': require('@jupyterlab/application-extension'),
+    // '@jupyterlab/apputils-extension': require('@jupyterlab/apputils-extension'),
+    '@jupyterlab/celltags-extension': require('@jupyterlab/celltags-extension'),
     '@jupyterlab/codemirror-extension': require('@jupyterlab/codemirror-extension'),
     '@jupyterlab/completer-extension': require('@jupyterlab/completer-extension'),
     '@jupyterlab/console-extension': require('@jupyterlab/console-extension'),
@@ -33,11 +36,12 @@ const extensions: any = {
     '@jupyterlab/terminal-extension': require('@jupyterlab/terminal-extension'),
     '@jupyterlab/theme-dark-extension': require('@jupyterlab/theme-dark-extension'),
     '@jupyterlab/theme-light-extension': require('@jupyterlab/theme-light-extension'),
+    '@jupyterlab/toc-extension': require('@jupyterlab/toc-extension'),
     '@jupyterlab/tooltip-extension': require('@jupyterlab/tooltip-extension'),
     '@jupyterlab/translation-extension': require('@jupyterlab/translation-extension'),
     '@jupyterlab/ui-components-extension': require('@jupyterlab/ui-components-extension'),
 
-    '@jupyter-widgets/jupyterlab-manager': require('@jupyter-widgets/jupyterlab-manager'), // ipywidgets support
+    // '@jupyter-widgets/jupyterlab-manager': require('@jupyter-widgets/jupyterlab-manager'), // ipywidgets support
 } as { [key: string]: any };
 
 const mimeExtensions: any = {
