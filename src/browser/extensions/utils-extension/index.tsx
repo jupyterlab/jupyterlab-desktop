@@ -73,7 +73,7 @@ import plugins from '@jupyterlab/apputils-extension';
 import log from 'electron-log';
 
 import {
-    createEditMenu, createFileMenu, createKernelMenu, createRunMenu, createSettingsMenu, createTabsMenu, createViewMenu,
+    createEditMenu, createFileMenu, createKernelMenu, createRunMenu, /*createSettingsMenu, */ createTabsMenu, createViewMenu,
     CommandIDs as MainMenuExtensionCommandIDs
 } from '@jupyterlab/mainmenu-extension';
 
@@ -206,7 +206,7 @@ function buildNativeMenu(app: ElectronJupyterLab, palette: ICommandPalette, rout
     createFileMenu(app, menu.fileMenu, router, trans);
     createKernelMenu(app, menu.kernelMenu, trans);
     createRunMenu(app, menu.runMenu, trans);
-    createSettingsMenu(app, menu.settingsMenu, trans);
+    // createSettingsMenu(app, menu.settingsMenu, trans);
     createViewMenu(app, menu.viewMenu, trans);
     createTabsMenu(app, menu.tabsMenu, app.shell, trans);
 
@@ -272,6 +272,7 @@ class SettingsConnector extends DataConnector<ISettingRegistry.IPlugin, string> 
 /**
  * The default setting registry provider.
  */
+// @ts-ignore
 const settingPlugin: JupyterFrontEndPlugin<ISettingRegistry> = {
     id: '@jupyterlab/apputils-extension:settings',
     activate: (): ISettingRegistry => {
@@ -284,6 +285,7 @@ const settingPlugin: JupyterFrontEndPlugin<ISettingRegistry> = {
 /**
  * The native theme manager provider.
  */
+// @ts-ignore
 const themesPlugin: JupyterFrontEndPlugin<IThemeManager> = {
     id: '@jupyterlab/apputils-extension:themes',
     requires: [ISettingRegistry, ISplashScreen],
@@ -358,10 +360,10 @@ const themesPlugin: JupyterFrontEndPlugin<IThemeManager> = {
  */
 let nPlugins = plugins.map((p: JupyterFrontEndPlugin<any>) => {
     switch (p.id) {
-        case settingPlugin.id:
-            return settingPlugin;
-        case themesPlugin.id:
-            return themesPlugin;
+        // case settingPlugin.id:
+        //     return settingPlugin;
+        // case themesPlugin.id:
+        //     return themesPlugin;
         default:
             return p;
     }

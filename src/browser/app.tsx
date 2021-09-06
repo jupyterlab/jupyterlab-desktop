@@ -64,10 +64,13 @@ class Application extends React.Component<Application.IProps, Application.IState
         this._connectionAdded = this._connectionAdded.bind(this);
         this._launchFromPath = this._launchFromPath.bind(this);
 
+        console.log('APP LAUNCHED: ', this.props.options);
+
         if (this.props.options.serverState === 'local') {
             this.state = {renderSplash: this._renderSplash, renderState: this._renderEmpty, remotes: []};
             asyncRemoteRenderer.runRemoteMethod(IServerFactory.requestServerStart, undefined)
                 .then((data) => {
+                    console.log('SERVER READY: ', data);
                     this._serverReady(data);
                 });
         } else {
@@ -111,6 +114,7 @@ class Application extends React.Component<Application.IProps, Application.IState
     }
 
     private _serverReady(data: IServerFactory.IServerStarted): void {
+        log.error('_SERVER READY', data);
         if (data.err) {
             log.error(data.err);
             this.setState({renderState: this._renderErrorScreen});
@@ -119,9 +123,11 @@ class Application extends React.Component<Application.IProps, Application.IState
         }
         this._registerFileHandler();
         window.addEventListener('beforeunload', () => {
-            asyncRemoteRenderer.runRemoteMethod(IServerFactory.requestServerStop, {
-                factoryId: data.factoryId
-            });
+            console.log('BEFOFE UNLOAD');
+            log.error('BEFORE UNLOAD', window.location.href);
+            // asyncRemoteRenderer.runRemoteMethod(IServerFactory.requestServerStop, {
+            //     factoryId: data.factoryId
+            // });
         });
 
         this._server = {
@@ -199,6 +205,13 @@ class Application extends React.Component<Application.IProps, Application.IState
     private _connectionAdded(server: JupyterServer.IServer) {
         PageConfig.setOption('baseUrl', server.url);
         PageConfig.setOption('token', server.token);
+        PageConfig.setOption('appUrl', 'lab');
+        PageConfig.setOption('translationsApiUrl', 'lab/api/translations');
+        PageConfig.setOption('themesUrl', 'lab/api/themes');
+        PageConfig.setOption('fullMathjaxUrl', 'https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/MathJax.js');
+        PageConfig.setOption('mathjaxConfig', 'TeX-AMS_HTML-full,Safe&amp;delayStartupUntil=configured');
+        
+        this._setupLab();
 
         try {
             this._lab.start({'ignorePlugins': this._ignorePlugins});
@@ -294,7 +307,7 @@ class Application extends React.Component<Application.IProps, Application.IState
 
     private _lab: ElectronJupyterLab;
 
-    private _ignorePlugins: string[] = ['jupyter.extensions.server-manager'];
+    private _ignorePlugins: string[] = [];//['jupyter.extensions.server-manager'];
 
     private _server: JupyterServer.IServer = null;
 

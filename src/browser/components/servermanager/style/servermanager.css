@@ -198,6 +198,7 @@
 
 
 .jpe-ServerManager-input {
+    background-color: var(--jp-layout-color1);
     border: none;
     border-bottom: 1px solid var(--md-grey-300);
     font-size: 16px;
