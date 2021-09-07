@@ -22,4 +22,4 @@ __pycache__
 
 *.log
 
-env_setup/JupyterLab*.sh
+env_installer/JupyterLab*.sh

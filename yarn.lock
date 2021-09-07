@@ -101,6 +101,71 @@
     gud "^1.0.0"
     warning "^4.0.3"
 
+"@jupyter-widgets/base@^4.0.0":
+  version "4.0.0"
+  resolved "https://registry.yarnpkg.com/@jupyter-widgets/base/-/base-4.0.0.tgz#6935461a3bd78df5523022e1c3d370ae24c9a454"
+  dependencies:
+    "@jupyterlab/services" "^6.0.0"
+    "@lumino/coreutils" "^1.2.0"
+    "@lumino/messaging" "^1.2.1"
+    "@lumino/widgets" "^1.3.0"
+    "@types/backbone" "^1.4.1"
+    "@types/lodash" "^4.14.134"
+    backbone "1.2.3"
+    base64-js "^1.2.1"
+    jquery "^3.1.1"
+    lodash "^4.17.4"
+
+"@jupyter-widgets/controls@^3.0.0":
+  version "3.0.0"
+  resolved "https://registry.yarnpkg.com/@jupyter-widgets/controls/-/controls-3.0.0.tgz#76e0c343627f0d300908e2dbdb524651f1be6315"
+  dependencies:
+    "@jupyter-widgets/base" "^4.0.0"
+    "@lumino/algorithm" "^1.1.0"
+    "@lumino/domutils" "^1.1.0"
+    "@lumino/messaging" "^1.2.1"
+    "@lumino/signaling" "^1.2.0"
+    "@lumino/widgets" "^1.3.0"
+    d3-format "^1.3.0"
+    jquery "^3.1.1"
+    jquery-ui "^1.12.1"
+    underscore "^1.8.3"
+
+"@jupyter-widgets/jupyterlab-manager@~3.0.1":
+  version "3.0.1"
+  resolved "https://registry.yarnpkg.com/@jupyter-widgets/jupyterlab-manager/-/jupyterlab-manager-3.0.1.tgz#ba70c14282fb8bd3c6560588f4c7b90b2b2b05fb"
+  dependencies:
+    "@jupyter-widgets/base" "^4.0.0"
+    "@jupyter-widgets/controls" "^3.0.0"
+    "@jupyter-widgets/output" "^4.0.0"
+    "@jupyterlab/application" "^3.0.0"
+    "@jupyterlab/docregistry" "^3.0.0"
+    "@jupyterlab/logconsole" "^3.0.0"
+    "@jupyterlab/mainmenu" "^3.0.0"
+    "@jupyterlab/nbformat" "^3.0.0"
+    "@jupyterlab/notebook" "^3.0.0"
+    "@jupyterlab/outputarea" "^3.0.0"
+    "@jupyterlab/rendermime" "^3.0.0"
+    "@jupyterlab/rendermime-interfaces" "^3.0.0"
+    "@jupyterlab/services" "^6.0.0"
+    "@jupyterlab/settingregistry" "^3.0.0"
+    "@lumino/algorithm" "^1.1.0"
+    "@lumino/coreutils" "^1.3.0"
+    "@lumino/disposable" "^1.1.1"
+    "@lumino/messaging" "^1.2.1"
+    "@lumino/properties" "^1.1.0"
+    "@lumino/signaling" "^1.2.0"
+    "@lumino/widgets" "^1.3.0"
+    "@types/backbone" "^1.4.1"
+    jquery "^3.1.1"
+    semver "^6.1.1"
+
+"@jupyter-widgets/output@^4.0.0":
+  version "4.0.0"
+  resolved "https://registry.yarnpkg.com/@jupyter-widgets/output/-/output-4.0.0.tgz#1dd759b1bfb699f707cc7fd0235a0e8d0c012c52"
+  dependencies:
+    "@jupyter-widgets/base" "^4.0.0"
+
 "@jupyterlab/application-extension@^3.1.9", "@jupyterlab/application-extension@~3.1.9":
   version "3.1.9"
   resolved "https://registry.yarnpkg.com/@jupyterlab/application-extension/-/application-extension-3.1.9.tgz#1caece5b46bd51fa4866f3b409526f2551f81db9"
@@ -119,7 +184,7 @@
     "@lumino/widgets" "^1.19.0"
     react "^17.0.1"
 
-"@jupyterlab/application@^3.1.9", "@jupyterlab/application@~3.1.9":
+"@jupyterlab/application@^3.0.0", "@jupyterlab/application@^3.1.9", "@jupyterlab/application@~3.1.9":
   version "3.1.9"
   resolved "https://registry.yarnpkg.com/@jupyterlab/application/-/application-3.1.9.tgz#e8fe4178128e410a420e6ec27ecb5aee343d6266"
   dependencies:
@@ -598,7 +663,7 @@
     y-websocket "^1.3.15"
     yjs "^13.5.6"
 
-"@jupyterlab/docregistry@^3.1.9", "@jupyterlab/docregistry@~3.1.9":
+"@jupyterlab/docregistry@^3.0.0", "@jupyterlab/docregistry@^3.1.9", "@jupyterlab/docregistry@~3.1.9":
   version "3.1.9"
   resolved "https://registry.yarnpkg.com/@jupyterlab/docregistry/-/docregistry-3.1.9.tgz#f8f1317e54473f7a022d07a19de3ac2635ca4273"
   dependencies:
@@ -938,7 +1003,7 @@
     "@lumino/widgets" "^1.19.0"
     react "^17.0.1"
 
-"@jupyterlab/logconsole@^3.1.9", "@jupyterlab/logconsole@~3.1.9":
+"@jupyterlab/logconsole@^3.0.0", "@jupyterlab/logconsole@^3.1.9", "@jupyterlab/logconsole@~3.1.9":
   version "3.1.9"
   resolved "https://registry.yarnpkg.com/@jupyterlab/logconsole/-/logconsole-3.1.9.tgz#e72f5534cc8fc1f02c54866867f3224129b8f80e"
   dependencies:
@@ -970,7 +1035,7 @@
     "@lumino/disposable" "^1.4.3"
     "@lumino/widgets" "^1.19.0"
 
-"@jupyterlab/mainmenu@^3.1.9", "@jupyterlab/mainmenu@~3.1.9":
+"@jupyterlab/mainmenu@^3.0.0", "@jupyterlab/mainmenu@^3.1.9", "@jupyterlab/mainmenu@~3.1.9":
   version "3.1.9"
   resolved "https://registry.yarnpkg.com/@jupyterlab/mainmenu/-/mainmenu-3.1.9.tgz#a9e5884a1e6f1149fcf7dfaad58d6705e4a64aa5"
   dependencies:
@@ -1131,7 +1196,7 @@
     "@jupyterlab/outputarea" "^3.1.9"
     "@jupyterlab/rendermime" "^3.1.9"
 
-"@jupyterlab/nbformat@^3.1.9", "@jupyterlab/nbformat@~3.1.9":
+"@jupyterlab/nbformat@^3.0.0", "@jupyterlab/nbformat@^3.1.9", "@jupyterlab/nbformat@~3.1.9":
   version "3.1.9"
   resolved "https://registry.yarnpkg.com/@jupyterlab/nbformat/-/nbformat-3.1.9.tgz#bdf581467ae748dcde3f0463321d4cf040b7968d"
   dependencies:
@@ -1169,7 +1234,7 @@
     "@lumino/messaging" "^1.4.3"
     "@lumino/widgets" "^1.19.0"
 
-"@jupyterlab/notebook@^3.1.9", "@jupyterlab/notebook@~3.1.9":
+"@jupyterlab/notebook@^3.0.0", "@jupyterlab/notebook@^3.1.9", "@jupyterlab/notebook@~3.1.9":
   version "3.1.9"
   resolved "https://registry.yarnpkg.com/@jupyterlab/notebook/-/notebook-3.1.9.tgz#d207a04a1657ecbba7db35c3d9cb0ff6a8c0949a"
   dependencies:
@@ -1207,7 +1272,7 @@
     "@lumino/messaging" "^1.4.3"
     "@lumino/signaling" "^1.4.3"
 
-"@jupyterlab/outputarea@^3.1.9", "@jupyterlab/outputarea@~3.1.9":
+"@jupyterlab/outputarea@^3.0.0", "@jupyterlab/outputarea@^3.1.9", "@jupyterlab/outputarea@~3.1.9":
   version "3.1.9"
   resolved "https://registry.yarnpkg.com/@jupyterlab/outputarea/-/outputarea-3.1.9.tgz#30b80dc88b17ea506b5215bdde61d73ec8ad6952"
   dependencies:
@@ -1258,7 +1323,7 @@
     "@jupyterlab/rendermime" "^3.1.9"
     "@jupyterlab/translation" "^3.1.9"
 
-"@jupyterlab/rendermime-interfaces@^3.1.9", "@jupyterlab/rendermime-interfaces@~3.1.9":
+"@jupyterlab/rendermime-interfaces@^3.0.0", "@jupyterlab/rendermime-interfaces@^3.1.9", "@jupyterlab/rendermime-interfaces@~3.1.9":
   version "3.1.9"
   resolved "https://registry.yarnpkg.com/@jupyterlab/rendermime-interfaces/-/rendermime-interfaces-3.1.9.tgz#14b05dc9815aff883db3c1e89f12612638aa0ecf"
   dependencies:
@@ -1266,7 +1331,7 @@
     "@lumino/coreutils" "^1.5.3"
     "@lumino/widgets" "^1.19.0"
 
-"@jupyterlab/rendermime@^3.1.9", "@jupyterlab/rendermime@~3.1.9":
+"@jupyterlab/rendermime@^3.0.0", "@jupyterlab/rendermime@^3.1.9", "@jupyterlab/rendermime@~3.1.9":
   version "3.1.9"
   resolved "https://registry.yarnpkg.com/@jupyterlab/rendermime/-/rendermime-3.1.9.tgz#99d6abfab69c4d29dab20ab503ecfe0d26033e4e"
   dependencies:
@@ -1313,7 +1378,7 @@
     "@lumino/signaling" "^1.4.3"
     react "^17.0.1"
 
-"@jupyterlab/services@^6.1.9", "@jupyterlab/services@~6.1.9":
+"@jupyterlab/services@^6.0.0", "@jupyterlab/services@^6.1.9", "@jupyterlab/services@~6.1.9":
   version "6.1.9"
   resolved "https://registry.yarnpkg.com/@jupyterlab/services/-/services-6.1.9.tgz#55cab7a55a9d6573a340680b61bf0b6ba7cf7414"
   dependencies:
@@ -1365,7 +1430,7 @@
     react "^17.0.1"
     react-dom "^17.0.1"
 
-"@jupyterlab/settingregistry@^3.1.9", "@jupyterlab/settingregistry@~3.1.9":
+"@jupyterlab/settingregistry@^3.0.0", "@jupyterlab/settingregistry@^3.1.9", "@jupyterlab/settingregistry@~3.1.9":
   version "3.1.9"
   resolved "https://registry.yarnpkg.com/@jupyterlab/settingregistry/-/settingregistry-3.1.9.tgz#e61c19bda1808b5ef5d666676dce4eb9765ee3fc"
   dependencies:
@@ -1640,7 +1705,7 @@
     vega-embed "^6.2.1"
     vega-lite "^4.0.2"
 
-"@lumino/algorithm@^1.3.3", "@lumino/algorithm@^1.6.2":
+"@lumino/algorithm@^1.1.0", "@lumino/algorithm@^1.3.3", "@lumino/algorithm@^1.6.2":
   version "1.6.2"
   resolved "https://registry.yarnpkg.com/@lumino/algorithm/-/algorithm-1.6.2.tgz#c68968d04857f7fbe9f4856ab3078aee7694868e"
 
@@ -1670,7 +1735,7 @@
     "@lumino/signaling" "^1.7.2"
     "@lumino/virtualdom" "^1.11.2"
 
-"@lumino/coreutils@^1.5.3", "@lumino/coreutils@^1.8.2":
+"@lumino/coreutils@^1.2.0", "@lumino/coreutils@^1.3.0", "@lumino/coreutils@^1.5.3", "@lumino/coreutils@^1.8.2":
   version "1.8.2"
   resolved "https://registry.yarnpkg.com/@lumino/coreutils/-/coreutils-1.8.2.tgz#e303a3b12a319f0f304b835269ca85319346d219"
 
@@ -1688,14 +1753,14 @@
     "@lumino/signaling" "^1.4.3"
     "@lumino/widgets" "^1.19.0"
 
-"@lumino/disposable@^1.4.3", "@lumino/disposable@^1.7.2":
+"@lumino/disposable@^1.1.1", "@lumino/disposable@^1.4.3", "@lumino/disposable@^1.7.2":
   version "1.7.2"
   resolved "https://registry.yarnpkg.com/@lumino/disposable/-/disposable-1.7.2.tgz#86c30bee7335bc624881195501de58a074195b34"
   dependencies:
     "@lumino/algorithm" "^1.6.2"
     "@lumino/signaling" "^1.7.2"
 
-"@lumino/domutils@^1.2.3", "@lumino/domutils@^1.5.2":
+"@lumino/domutils@^1.1.0", "@lumino/domutils@^1.2.3", "@lumino/domutils@^1.5.2":
   version "1.5.2"
   resolved "https://registry.yarnpkg.com/@lumino/domutils/-/domutils-1.5.2.tgz#a0130967b95aa4a81cd7abc21db98e2f3416ce51"
 
@@ -1710,7 +1775,7 @@
   version "1.5.2"
   resolved "https://registry.yarnpkg.com/@lumino/keyboard/-/keyboard-1.5.2.tgz#1d937cf071b16a6dbed3a2a5876e0892a504f9df"
 
-"@lumino/messaging@^1.4.3", "@lumino/messaging@^1.7.2":
+"@lumino/messaging@^1.2.1", "@lumino/messaging@^1.4.3", "@lumino/messaging@^1.7.2":
   version "1.7.2"
   resolved "https://registry.yarnpkg.com/@lumino/messaging/-/messaging-1.7.2.tgz#568f38d4fa5ef3cecef24cde3f85e582b038f5ed"
   dependencies:
@@ -1725,11 +1790,11 @@
     "@lumino/disposable" "^1.7.2"
     "@lumino/signaling" "^1.7.2"
 
-"@lumino/properties@^1.2.3", "@lumino/properties@^1.5.2":
+"@lumino/properties@^1.1.0", "@lumino/properties@^1.2.3", "@lumino/properties@^1.5.2":
   version "1.5.2"
   resolved "https://registry.yarnpkg.com/@lumino/properties/-/properties-1.5.2.tgz#aa3211552ddb2e9566f90cd75f074be53879ad6e"
 
-"@lumino/signaling@^1.4.3", "@lumino/signaling@^1.7.2":
+"@lumino/signaling@^1.2.0", "@lumino/signaling@^1.4.3", "@lumino/signaling@^1.7.2":
   version "1.7.2"
   resolved "https://registry.yarnpkg.com/@lumino/signaling/-/signaling-1.7.2.tgz#76eec02b6edf333b804b232fdd6cc5aff669076a"
   dependencies:
@@ -1741,7 +1806,7 @@
   dependencies:
     "@lumino/algorithm" "^1.6.2"
 
-"@lumino/widgets@^1.19.0", "@lumino/widgets@^1.26.2":
+"@lumino/widgets@^1.19.0", "@lumino/widgets@^1.26.2", "@lumino/widgets@^1.3.0":
   version "1.26.2"
   resolved "https://registry.yarnpkg.com/@lumino/widgets/-/widgets-1.26.2.tgz#f8833af7112558d270e1931b05a55c6341ffae7f"
   dependencies:
@@ -1820,6 +1885,13 @@
   dependencies:
     defer-to-connect "^1.0.1"
 
+"@types/backbone@^1.4.1":
+  version "1.4.11"
+  resolved "https://registry.yarnpkg.com/@types/backbone/-/backbone-1.4.11.tgz#ec3b5296d865b662e806b5220305ed528a6ff45e"
+  dependencies:
+    "@types/jquery" "*"
+    "@types/underscore" "*"
+
 "@types/base16@^1.0.2":
   version "1.0.2"
   resolved "https://registry.yarnpkg.com/@types/base16/-/base16-1.0.2.tgz#eb3a07db52309bfefb9ba010dfdb3c0784971f65"
@@ -1875,6 +1947,12 @@
     "@types/minimatch" "*"
     "@types/node" "*"
 
+"@types/jquery@*":
+  version "3.5.6"
+  resolved "https://registry.yarnpkg.com/@types/jquery/-/jquery-3.5.6.tgz#97ac8e36dccd8ad8ed3f3f3b48933614d9fd8cf0"
+  dependencies:
+    "@types/sizzle" "*"
+
 "@types/json-schema@*", "@types/json-schema@^7.0.5", "@types/json-schema@^7.0.8":
   version "7.0.9"
   resolved "https://registry.yarnpkg.com/@types/json-schema/-/json-schema-7.0.9.tgz#97edc9037ea0c38585320b28964dde3b39e4660d"
@@ -1885,7 +1963,7 @@
   dependencies:
     "@types/lodash" "*"
 
-"@types/lodash@*":
+"@types/lodash@*", "@types/lodash@^4.14.134":
   version "4.14.172"
   resolved "https://registry.yarnpkg.com/@types/lodash/-/lodash-4.14.172.tgz#aad774c28e7bfd7a67de25408e03ee5a8c3d028a"
 
@@ -1938,9 +2016,17 @@
   version "7.3.8"
   resolved "https://registry.yarnpkg.com/@types/semver/-/semver-7.3.8.tgz#508a27995498d7586dcecd77c25e289bfaf90c59"
 
+"@types/sizzle@*":
+  version "2.3.3"
+  resolved "https://registry.yarnpkg.com/@types/sizzle/-/sizzle-2.3.3.tgz#ff5e2f1902969d305225a047c8a0fd5c915cebef"
+
 "@types/source-list-map@*":
   version "0.1.2"
   resolved "https://registry.yarnpkg.com/@types/source-list-map/-/source-list-map-0.1.2.tgz#0078836063ffaf17412349bba364087e0ac02ec9"
+
+"@types/underscore@*":
+  version "1.11.3"
+  resolved "https://registry.yarnpkg.com/@types/underscore/-/underscore-1.11.3.tgz#d6734f3741ce41b2630018c6b61c6745f6188c07"
 
 "@types/verror@^1.10.3":
   version "1.10.5"
@@ -2381,6 +2467,12 @@ aws4@^1.8.0:
   version "1.11.0"
   resolved "https://registry.yarnpkg.com/aws4/-/aws4-1.11.0.tgz#d61f46d83b2519250e2784daf5b09479a8b41c59"
 
+backbone@1.2.3:
+  version "1.2.3"
+  resolved "https://registry.yarnpkg.com/backbone/-/backbone-1.2.3.tgz#c22cfd07fc86ebbeae61d18929ed115e999d65b9"
+  dependencies:
+    underscore ">=1.7.0"
+
 balanced-match@^1.0.0:
   version "1.0.2"
   resolved "https://registry.yarnpkg.com/balanced-match/-/balanced-match-1.0.2.tgz#e83e3a7e3f300b34cb9d87f615fa0cbf357690ee"
@@ -2389,7 +2481,7 @@ base16@^1.0.0:
   version "1.0.0"
   resolved "https://registry.yarnpkg.com/base16/-/base16-1.0.0.tgz#e297f60d7ec1014a7a971a39ebc8a98c0b681e70"
 
-base64-js@^1.3.1, base64-js@^1.5.1:
+base64-js@^1.2.1, base64-js@^1.3.1, base64-js@^1.5.1:
   version "1.5.1"
   resolved "https://registry.yarnpkg.com/base64-js/-/base64-js-1.5.1.tgz#1b1b440160a5bf7ad40b650f095963481903930a"
 
@@ -3008,6 +3100,10 @@ d3-force@^2.1.1:
 "d3-format@1 - 2", d3-format@^2.0.0:
   version "2.0.0"
   resolved "https://registry.yarnpkg.com/d3-format/-/d3-format-2.0.0.tgz#a10bcc0f986c372b729ba447382413aabf5b0767"
+
+d3-format@^1.3.0:
+  version "1.4.5"
+  resolved "https://registry.yarnpkg.com/d3-format/-/d3-format-1.4.5.tgz#374f2ba1320e3717eb74a9356c67daee17a7edb4"
 
 d3-geo-projection@^3.0.0:
   version "3.0.0"
@@ -4528,6 +4624,14 @@ jest-worker@^27.0.6:
     "@types/node" "*"
     merge-stream "^2.0.0"
     supports-color "^8.0.0"
+
+jquery-ui@^1.12.1:
+  version "1.12.1"
+  resolved "https://registry.yarnpkg.com/jquery-ui/-/jquery-ui-1.12.1.tgz#bcb4045c8dd0539c134bc1488cdd3e768a7a9e51"
+
+jquery@^3.1.1:
+  version "3.6.0"
+  resolved "https://registry.yarnpkg.com/jquery/-/jquery-3.6.0.tgz#c72a09f15c1bdce142f49dbf1170bdf8adac2470"
 
 "js-tokens@^3.0.0 || ^4.0.0":
   version "4.0.0"
@@ -6050,7 +6154,7 @@ semver@7.3.5, semver@^7.3.2, semver@^7.3.4, semver@^7.3.5:
   dependencies:
     lru-cache "^6.0.0"
 
-semver@^6.0.0, semver@^6.2.0, semver@^6.3.0:
+semver@^6.0.0, semver@^6.1.1, semver@^6.2.0, semver@^6.3.0:
   version "6.3.0"
   resolved "https://registry.yarnpkg.com/semver/-/semver-6.3.0.tgz#ee0a64c8af5e8ceea67687b133761e1becbd1d3d"
 
@@ -6651,6 +6755,10 @@ unbox-primitive@^1.0.1:
     has-bigints "^1.0.1"
     has-symbols "^1.0.2"
     which-boxed-primitive "^1.0.2"
+
+underscore@>=1.7.0, underscore@^1.8.3:
+  version "1.13.1"
+  resolved "https://registry.yarnpkg.com/underscore/-/underscore-1.13.1.tgz#0c1c6bd2df54b6b69f2314066d65b6cde6fcf9d1"
 
 unique-filename@^1.1.1:
   version "1.1.1"

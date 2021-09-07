@@ -3,24 +3,38 @@
 [![Build Status](https://travis-ci.org/jupyterlab/jupyterlab_app.svg?branch=master)](https://travis-ci.org/jupyterlab/jupyterlab_app)
 
 
-A desktop application for [JupyterLab](https://github.com/jupyterlab/jupyterlab), based on [Electron](https://electron.atom.io/).
+A desktop application for [JupyterLab](https://github.com/jupyterlab/jupyterlab), based on [Electron](https://www.electronjs.org/).
 
-### Build dependencies
+## Build dependencies
 
-#### Linux
+JupyterLab App uses [(conda) Constructor](https://github.com/conda/constructor) to bundle JupyterLab backend into the stand-alone application. You can install Constructor using:
+
+`conda install constructor`
+
+### Linux
 
 You will need the development packages of libcairo, libjpeg, and libgif.  In Debian-based distributions, these are provided by the `libcairo2-dev`, `libjpeg8-dev`, and `libgif-dev` packages.
 
-### Getting started
+## Getting started
 
 1. run `git clone git@github.com:jupyterlab/jupyterlab_app.git`
 2. run `yarn install` or `npm install`
 3. run `yarn build:all` or `npm run build:all`
 
-### Building for distribution
+## Building for distribution
 
-To test building for distribution you can install [Docker](https://docs.docker.com/engine/installation/) and run `yarn dockerdist:platform` where "platform" is either "linux" or "win". To build for macOS a macOS computer is required.
+### macOS
 
-If you don't want to user Docker but instead want to build locally, there are a few [dependencies](https://github.com/electron-userland/electron-builder/wiki/Multi-Platform-Build) you're required to install.
+1. Build the application
+
+    `yarn clean && yarn build`
+
+2. Create conda environment installer for backend bundle
+
+    `yarn create_env_installer`
+
+3. Create macOS installer. Installer will be created in `dist/JupyterLab.pkg`
+
+    `yarn dist`
 
 Regarding releasing please check out [release](Release.md)

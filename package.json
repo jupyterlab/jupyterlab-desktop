@@ -26,7 +26,7 @@
     "dist:win": "yarn build && electron-builder --win",
     "dockerdist:win": "docker run --rm -ti -v ${PWD}:/project -v ${PWD##*/}-node-modules:/project/node_modules -v ~/.electron:/root/.electron electronuserland/electron-builder:wine /bin/bash -c \"yarn && yarn dist:win\"",
     "release": "electron-builder --publish onTagOrDraft",
-    "create_env_bundle": "rm -rf ./env_setup/JupyterLab*.sh && constructor ./env_setup --output-dir ./env_setup"
+    "create_env_installer": "rm -rf ./env_installer/JupyterLab*.sh && constructor ./env_installer --output-dir ./env_installer"
   },
   "build": {
     "productName": "JupyterLab",
@@ -41,10 +41,10 @@
     },
     "files": [
       "!**/*.d.ts",
-      "!env_setup/JupyterLab-3.1.10-MacOSX-x86_64.sh"
+      "!env_installer/JupyterLab-3.1.10-MacOSX-x86_64.sh"
     ],
     "extraResources": [
-      "env_setup/JupyterLab-3.1.10-MacOSX-x86_64.sh"
+      "env_installer/JupyterLab-3.1.10-MacOSX-x86_64.sh"
     ],
     "linux": {
       "target": [
@@ -219,7 +219,7 @@
     "@jupyterlab/ui-components-extension": "~3.1.9",
     "@jupyterlab/vdom": "~3.1.10",
     "@jupyterlab/vdom-extension": "~3.1.10",
-
+    "@jupyter-widgets/jupyterlab-manager": "~3.0.1",
     "@fortawesome/fontawesome-free": "^5.15.2",
     "@types/node": "^14.14.31",
     "@types/react": "~17.0.2",

@@ -41,7 +41,7 @@ const extensions: any = {
     '@jupyterlab/translation-extension': require('@jupyterlab/translation-extension'),
     '@jupyterlab/ui-components-extension': require('@jupyterlab/ui-components-extension'),
 
-    // '@jupyter-widgets/jupyterlab-manager': require('@jupyter-widgets/jupyterlab-manager'), // ipywidgets support
+    '@jupyter-widgets/jupyterlab-manager': require('@jupyter-widgets/jupyterlab-manager'), // ipywidgets support
 } as { [key: string]: any };
 
 const mimeExtensions: any = {

@@ -1,0 +1,18 @@
+name: JupyterLab
+version: 3.1.10
+
+channels:
+  - https://conda.anaconda.org/conda-forge
+  - http://repo.anaconda.com/pkgs/main/
+
+specs:
+  - python 3.8*
+  - conda
+  - numpy
+  - scipy
+  - pandas
+  - jupyterlab 3.1.10
+  - ipywidgets 7.6.4
+  - matplotlib
+
+license_file: EULA.txt
