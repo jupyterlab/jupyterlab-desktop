@@ -21,3 +21,5 @@ __pycache__
 .idea/
 
 *.log
+
+env_setup/JupyterLab*.sh

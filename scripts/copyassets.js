@@ -45,6 +45,10 @@ function copyAssests() {
     // Copy html into build directory
     const htmlPath = path.join('browser', 'index.html');
     fs.copySync(path.join(srcDir, htmlPath), path.join(dest, htmlPath));
+
+    // Copy install scripts
+    fs.copySync(path.join(path.resolve('./'), 'pkg-scripts', 'postinstall'), path.join(buildDir, 'pkg-scripts', 'postinstall'));
+
     console.log('done');
 }
 copyAssests();

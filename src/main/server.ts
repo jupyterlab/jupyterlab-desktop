@@ -1,5 +1,5 @@
 import {
-    ChildProcess, execFile, execSync
+    ChildProcess, execFile
 } from 'child_process';
 
 import {
@@ -57,26 +57,19 @@ class JupyterServer {
             let urlRegExp = /http:\/\/localhost:\d+\/\S*/g;
             let tokenRegExp = /token=\w+/g;
             let baseRegExp = /http:\/\/localhost:\d+\//g;
-            // @ts-ignore
-            let home = app.getPath('home');
-            const envPath = '/Users/username/jupyterlab_app_env/bin/python';
-
-            if (!fs.existsSync(envPath)) {
-                let env_setup = path.join (__dirname, '../../../../env_setup/JupyterLab-3.0.7-MacOSX-x86_64.sh');
-                console.log(env_setup);
-
-                dialog.showMessageBox({message: env_setup});
-
-                execSync(`${env_setup} -b -p /Users/username/jupyterlab_app_env`);
+            const home = app.getPath('home');
+            const envPath = path.join(path.dirname(app.getAppPath()), 'server', 'bin');
+            const pythonPath = path.join(envPath, 'python');
+            if (!fs.existsSync(pythonPath)) {
+                dialog.showMessageBox({message: `Environment not found at: ${pythonPath}`, type: 'error' });
             }
 
-            //this._info.environment.path = '/Users/username/miniconda3/envs/jlab3/bin/python';
-            this._info.environment.path = envPath;
+            this._info.environment.path = pythonPath;
 
-            this._nbServer = execFile(this._info.environment.path, ['-m', 'jupyter', 'lab', '--expose-app-in-browser', '--no-browser', '--ServerApp.password', '', '--ServerApp.disable_check_xsrf', 'True', '--NotebookApp.allow_origin', '*'], {
-                cwd: '/Users/username/jupyterlab_app_env/bin'/*home*/,
+            this._nbServer = execFile(this._info.environment.path, ['-m', 'jupyter', 'lab', '--no-browser', '--ServerApp.password', '', '--ServerApp.disable_check_xsrf', 'True', '--NotebookApp.allow_origin', '*'], {
+                cwd: home,
                 env: {
-                    PATH: `/Users/username/jupyterlab_app_env/bin:${process.env['PATH']}`
+                    PATH: `${envPath}:${process.env['PATH']}`
                 }
             });
 
