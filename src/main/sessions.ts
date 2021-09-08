@@ -412,6 +412,8 @@ class JupyterLabSession {
             }
         });
 
+        this._window.setMenuBarVisibility(false);
+
         if (this._info.x && this._info.y) {
             this._window.setBounds({x: this._info.x, y: this._info.y, height: this._info.height, width: this._info.width });
         } else {

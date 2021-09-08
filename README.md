@@ -31,10 +31,10 @@ You will need the development packages of libcairo, libjpeg, and libgif.  In Deb
 
 2. Create conda environment installer for backend bundle
 
-    `yarn create_env_installer`
+    `yarn create_env_installer:mac`
 
 3. Create macOS installer. Installer will be created in `dist/JupyterLab.pkg`
 
-    `yarn dist`
+    `yarn dist:mac`
 
 Regarding releasing please check out [release](Release.md)

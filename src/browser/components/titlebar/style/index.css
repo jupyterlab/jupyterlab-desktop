@@ -4,7 +4,7 @@
 |----------------------------------------------------------------------------*/
 
 :root {
-    --jpe-TitleBar-height-linux: 0;
+    --jpe-TitleBar-height-linux: var(--jp-private-menubar-height);
     --jpe-TitleBar-height-mac: 15px;
     --jpe-TitleBar-height-windows: var(--jp-private-menubar-height);
 }
