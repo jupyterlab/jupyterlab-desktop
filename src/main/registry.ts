@@ -22,6 +22,7 @@ import {
     ArrayExt
 } from '@lumino/algorithm';
 
+import * as os from 'os';
 import * as fs from 'fs';
 import log from 'electron-log';
 
@@ -111,8 +112,12 @@ export class Registry implements IRegistry {
      * @returns a promise containin the default environment
      */
     getDefaultEnvironment(): Promise<Registry.IPythonEnvironment> {
-        const envPath = join(dirname(app.getAppPath()), 'server', 'bin');
-        const pythonPath = join(envPath, 'python');
+        const platform = os.platform();
+        let envPath = join(dirname(app.getAppPath()), 'server');
+        if (platform !== 'win32') {
+            envPath = join(envPath, 'bin');
+        }
+        const pythonPath = join(envPath, `python${platform === 'win32' ? '.exe' : ''}`);
         
         return Promise.resolve({
             path: pythonPath,

@@ -9,7 +9,7 @@
     "start:linux": "electron . --linux-ui",
     "start:mac": "electron . --mac-ui",
     "test": "echo \"Error: no test specified\" && exit 1",
-    "clean": "rm -rf build dist",
+    "clean": "rimraf build dist",
     "watch:pack": "webpack --progress --colors --watch --config webpack.browser.js",
     "watch:tsc": "tsc -w",
     "watch:assets": "node ./scripts/extract.js && node ./scripts/copyassets.js watch",
@@ -26,9 +26,9 @@
     "dist:win": "yarn build && electron-builder --win",
     "dockerdist:win": "docker run --rm -ti -v ${PWD}:/project -v ${PWD##*/}-node-modules:/project/node_modules -v ~/.electron:/root/.electron electronuserland/builder:wine /bin/bash -c \"yarn && yarn dist:win\"",
     "release": "electron-builder --publish onTagOrDraft",
-    "create_env_installer:mac": "rm -rf ./env_installer/JupyterLab*.sh && constructor ./env_installer --platform=osx-64 --output-dir ./env_installer",
-    "create_env_installer:linux": "rm -rf ./env_installer/JupyterLab*.sh && constructor ./env_installer --platform=linux-64 --conda-exe=$CONDA_EXE --output-dir ./env_installer",
-    "create_env_installer:win": "rm -rf ./env_installer/JupyterLab*.sh && constructor ./env_installer --platform=win-64 --conda-exe=$CONDA_EXE --output-dir ./env_installer"
+    "create_env_installer:mac": "rimraf ./env_installer/JupyterLab*.sh && constructor ./env_installer --platform=osx-64 --output-dir ./env_installer",
+    "create_env_installer:linux": "rimraf ./env_installer/JupyterLab*.sh && constructor ./env_installer --platform=linux-64 --conda-exe=$CONDA_EXE --output-dir ./env_installer",
+    "create_env_installer:win": "rimraf ./env_installer/JupyterLab*.sh && constructor ./env_installer --platform=win-64 --conda-exe=$CONDA_EXE --output-dir ./env_installer"
   },
   "build": {
     "productName": "JupyterLab",
@@ -121,6 +121,7 @@
     "node-watch": "^0.7.1",
     "raw-loader": "^4.0.2",
     "read-package-tree": "^5.1.6",
+    "rimraf": "~3.0.0",
     "style-loader": "~2.0.0",
     "typescript": "~4.2.2",
     "url-loader": "~4.1.1",

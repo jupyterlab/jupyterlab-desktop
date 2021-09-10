@@ -30,6 +30,7 @@ import log from 'electron-log';
 
 import * as path from 'path';
 import * as fs from 'fs-extra';
+import * as os from 'os';
 
 export
 class JupyterServer {
@@ -57,19 +58,30 @@ class JupyterServer {
             let urlRegExp = /http:\/\/localhost:\d+\/\S*/g;
             let tokenRegExp = /token=\w+/g;
             let baseRegExp = /http:\/\/localhost:\d+\//g;
+            const platform = os.platform();
             const home = app.getPath('home');
-            const envPath = path.join(path.dirname(app.getAppPath()), 'server', 'bin');
-            const pythonPath = path.join(envPath, 'python');
+            let envPath = path.join(path.dirname(app.getAppPath()), 'server');
+            if (platform !== 'win32') {
+                envPath = path.join(envPath, 'bin');
+            }
+            const pythonPath = path.join(envPath, `python${platform === 'win32' ? '.exe' : ''}`);
             if (!fs.existsSync(pythonPath)) {
                 dialog.showMessageBox({message: `Environment not found at: ${pythonPath}`, type: 'error' });
             }
 
             this._info.environment.path = pythonPath;
 
-            this._nbServer = execFile(this._info.environment.path, ['-m', 'jupyter', 'lab', '--no-browser', '--ServerApp.password', '', '--ServerApp.disable_check_xsrf', 'True', '--NotebookApp.allow_origin', '*'], {
+            let PATH_ENV = '';
+            if (platform === 'win32') {
+                PATH_ENV = `${envPath};${envPath}\\Library\\mingw-w64\\bin;${envPath}\\Library\\usr\\bin;${envPath}\\Library\\bin;${envPath}\\Scripts;${envPath}\\bin;${process.env['PATH']}`;
+            } else {
+                PATH_ENV = `${envPath}:${process.env['PATH']}`;
+            }
+
+            this._nbServer = execFile(this._info.environment.path, ['-m', 'jupyter', 'lab', '--no-browser', '--ServerApp.password', '', '--ServerApp.disable_check_xsrf', 'True', '--ServerApp.allow_origin', '*'], {
                 cwd: home,
                 env: {
-                    PATH: `${envPath}:${process.env['PATH']}`
+                    PATH: PATH_ENV
                 }
             });
 
