@@ -1,7 +1,9 @@
 const path = require('path');
 const fs = require('fs-extra');
+const os = require('os');
 const watch = require('node-watch');
 
+const platform = os.platform();
 const buildDir = path.resolve('./build');
 const srcDir = path.resolve('./src');
 
@@ -47,7 +49,11 @@ function copyAssests() {
     fs.copySync(path.join(srcDir, htmlPath), path.join(dest, htmlPath));
 
     // Copy install scripts
-    fs.copySync(path.join(path.resolve('./'), 'pkg-scripts', 'postinstall'), path.join(buildDir, 'pkg-scripts', 'postinstall'));
+    if (platform === 'darwin') {
+        fs.copySync(path.join(path.resolve('./'), 'electron-builder-scripts', 'postinstall'), path.join(buildDir, 'pkg-scripts', 'postinstall'));
+    } else if (platform === 'win32') {
+        fs.copySync(path.join(path.resolve('./'), 'electron-builder-scripts', 'wininstall.nsh'), path.join(buildDir, 'wininstall.nsh'));
+    }
 
     console.log('done');
 }

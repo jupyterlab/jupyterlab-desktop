@@ -1,0 +1,5 @@
+#!/bin/bash 
+
+"$2/JupyterLab.app/Contents/Resources/env_installer/JupyterLabAppServer-3.1.10-MacOSX-x86_64.sh" -b -p "$2/JupyterLab.app/Contents/Resources/server"
+
+exit 0

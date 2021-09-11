@@ -27,8 +27,8 @@
     "dockerdist:win": "docker run --rm -ti -v ${PWD}:/project -v ${PWD##*/}-node-modules:/project/node_modules -v ~/.electron:/root/.electron electronuserland/builder:wine /bin/bash -c \"yarn && yarn dist:win\"",
     "release": "electron-builder --publish onTagOrDraft",
     "create_env_installer:mac": "rimraf ./env_installer/JupyterLab*.sh && constructor ./env_installer --platform=osx-64 --output-dir ./env_installer",
-    "create_env_installer:linux": "rimraf ./env_installer/JupyterLab*.sh && constructor ./env_installer --platform=linux-64 --conda-exe=$CONDA_EXE --output-dir ./env_installer",
-    "create_env_installer:win": "rimraf ./env_installer/JupyterLab*.sh && constructor ./env_installer --platform=win-64 --conda-exe=$CONDA_EXE --output-dir ./env_installer"
+    "create_env_installer:linux": "rimraf ./env_installer/JupyterLab*.sh && constructor ./env_installer --platform=linux-64 --output-dir ./env_installer",
+    "create_env_installer:win": "rimraf ./env_installer/JupyterLab*.exe && constructor ./env_installer --platform=win-64 --output-dir ./env_installer"
   },
   "build": {
     "productName": "JupyterLab",
@@ -41,10 +41,11 @@
     },
     "files": [
       "!**/*.d.ts",
-      "!env_installer/JupyterLab-3.1.10-MacOSX-x86_64.sh"
+      "!env_installer/JupyterLab*.*"
     ],
     "extraResources": [
-      "env_installer/JupyterLab-3.1.10-MacOSX-x86_64.sh"
+      "env_installer/JupyterLabAppServer-3.1.10-MacOSX-x86_64.sh",
+      "env_installer/JupyterLabAppServer-3.1.10-Windows-x86_64.exe"
     ],
     "linux": {
       "target": [
@@ -75,7 +76,8 @@
       "deleteAppDataOnUninstall": true,
       "license": "LICENSE",
       "language": "1033",
-      "installerSidebar": "installerSidebar.bmp"
+      "installerSidebar": "installerSidebar.bmp",
+      "include": "build/wininstall.nsh"
     },
     "mac": {
       "category": "public.app-category.productivity",

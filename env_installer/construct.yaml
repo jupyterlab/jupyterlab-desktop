@@ -1,4 +1,4 @@
-name: JupyterLab
+name: JupyterLabAppServer
 version: 3.1.10
 
 channels:
@@ -15,4 +15,7 @@ specs:
   - ipywidgets 7.6.4
   - matplotlib
 
-license_file: EULA.txt
+default_prefix: "%HOMEDRIVE%\\JupyterLab\\resources\\server"
+default_prefix_all_users: "%HOMEDRIVE%\\JupyterLab\\resources\\server"
+
+license_file: ../LICENSE
