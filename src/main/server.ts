@@ -60,7 +60,7 @@ class JupyterServer {
             let baseRegExp = /http:\/\/localhost:\d+\//g;
             const platform = os.platform();
             const home = app.getPath('home');
-            let envPath = path.join(path.dirname(app.getAppPath()), 'server');
+            let envPath = path.join(path.dirname(app.getAppPath()), 'jlab_server');
             if (platform !== 'win32') {
                 envPath = path.join(envPath, 'bin');
             }

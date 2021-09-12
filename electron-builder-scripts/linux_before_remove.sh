@@ -1,1 +1,1 @@
-rm -rf "/opt/JupyterLab/resources/server"
+rm -rf "/opt/JupyterLab/resources/jlab_server"

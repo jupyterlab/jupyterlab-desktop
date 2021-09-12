@@ -8,10 +8,10 @@ import log from 'electron-log';
 
 const extensions: any = {
     './electron-extension': require('./electron-extension'),
-    './utils-extension': require('./utils-extension'),
+    // './utils-extension': require('./utils-extension'),
 
     // '@jupyterlab/application-extension': require('@jupyterlab/application-extension'),
-    // '@jupyterlab/apputils-extension': require('@jupyterlab/apputils-extension'),
+    '@jupyterlab/apputils-extension': require('@jupyterlab/apputils-extension'),
     '@jupyterlab/celltags-extension': require('@jupyterlab/celltags-extension'),
     '@jupyterlab/codemirror-extension': require('@jupyterlab/codemirror-extension'),
     '@jupyterlab/completer-extension': require('@jupyterlab/completer-extension'),
@@ -40,8 +40,8 @@ const extensions: any = {
     '@jupyterlab/tooltip-extension': require('@jupyterlab/tooltip-extension'),
     '@jupyterlab/translation-extension': require('@jupyterlab/translation-extension'),
     '@jupyterlab/ui-components-extension': require('@jupyterlab/ui-components-extension'),
-
-    '@jupyter-widgets/jupyterlab-manager': require('@jupyter-widgets/jupyterlab-manager'), // ipywidgets support
+    // ipywidgets support
+    '@jupyter-widgets/jupyterlab-manager': require('@jupyter-widgets/jupyterlab-manager'),
 } as { [key: string]: any };
 
 const mimeExtensions: any = {

@@ -386,11 +386,7 @@ class JupyterLabSession {
             }
         }
 
-        let titleBarStyle: 'default' | 'hidden' = 'default';
-        if (this._info.uiState === 'mac') {
-            titleBarStyle = 'hidden';
-        }
-        let showFrame = false;
+        let showFrame = true;
         if (this._info.uiState === 'linux') {
             showFrame = true;
         }
@@ -405,7 +401,6 @@ class JupyterLabSession {
             frame: showFrame,
             show: false,
             title: 'JupyterLab',
-            titleBarStyle: titleBarStyle,
             webPreferences: {
                 nodeIntegration: true,
                 enableRemoteModule: true

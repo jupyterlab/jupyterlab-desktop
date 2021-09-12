@@ -113,7 +113,7 @@ export class Registry implements IRegistry {
      */
     getDefaultEnvironment(): Promise<Registry.IPythonEnvironment> {
         const platform = os.platform();
-        let envPath = join(dirname(app.getAppPath()), 'server');
+        let envPath = join(dirname(app.getAppPath()), 'jlab_server');
         if (platform !== 'win32') {
             envPath = join(envPath, 'bin');
         }
