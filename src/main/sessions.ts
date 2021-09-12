@@ -386,11 +386,6 @@ class JupyterLabSession {
             }
         }
 
-        let showFrame = true;
-        if (this._info.uiState === 'linux') {
-            showFrame = true;
-        }
-
         this._window = new BrowserWindow({
             width: this._info.width,
             height: this._info.height,
@@ -398,7 +393,6 @@ class JupyterLabSession {
             y: this._info.y,
             minWidth: 400,
             minHeight: 300,
-            frame: showFrame,
             show: false,
             title: 'JupyterLab',
             webPreferences: {

@@ -3,7 +3,7 @@ const fs = require('fs-extra');
 const os = require('os');
 const watch = require('node-watch');
 
-const platform = os.platform();
+const platform = process.platform;
 const buildDir = path.resolve('./build');
 const srcDir = path.resolve('./src');
 

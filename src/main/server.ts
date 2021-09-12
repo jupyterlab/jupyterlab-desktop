@@ -30,7 +30,6 @@ import log from 'electron-log';
 
 import * as path from 'path';
 import * as fs from 'fs-extra';
-import * as os from 'os';
 
 export
 class JupyterServer {
@@ -58,7 +57,7 @@ class JupyterServer {
             let urlRegExp = /http:\/\/localhost:\d+\/\S*/g;
             let tokenRegExp = /token=\w+/g;
             let baseRegExp = /http:\/\/localhost:\d+\//g;
-            const platform = os.platform();
+            const platform = process.platform;
             const home = app.getPath('home');
             let envPath = path.join(path.dirname(app.getAppPath()), 'jlab_server');
             if (platform !== 'win32') {
