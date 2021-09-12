@@ -45,18 +45,18 @@
     ],
     "extraResources": [
       "env_installer/JupyterLabAppServer-3.1.10-MacOSX-x86_64.sh",
+      "env_installer/JupyterLabAppServer-3.1.10-Linux-x86_64.sh",
       "env_installer/JupyterLabAppServer-3.1.10-Windows-x86_64.exe"
     ],
     "linux": {
       "target": [
         "deb",
-        "rpm",
-        "tar.gz",
-        "AppImage"
+        "rpm"
       ],
-      "desktop": {
-        "Categories": "Science;Development;"
-      }
+      "category": "Science;Development;"
+    },
+    "deb": {
+      "fpm": ["--after-install=build/linux_after_install.sh", "--before-remove=build/linux_before_remove.sh"]
     },
     "win": {
       "target": [
@@ -67,7 +67,8 @@
     "rpm": {
       "depends": [
         "libXScrnSaver"
-      ]
+      ],
+      "fpm": ["--after-install=build/linux_after_install.sh", "--before-remove=build/linux_before_remove.sh"]
     },
     "nsis": {
       "oneClick": "false",
