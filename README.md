@@ -1,40 +1,66 @@
-# Jupyterlab App
-
-[![Build Status](https://travis-ci.org/jupyterlab/jupyterlab_app.svg?branch=master)](https://travis-ci.org/jupyterlab/jupyterlab_app)
-
+# JupyterLab App
 
 A desktop application for [JupyterLab](https://github.com/jupyterlab/jupyterlab), based on [Electron](https://www.electronjs.org/).
 
 ## Build dependencies
 
-JupyterLab App uses [(conda) Constructor](https://github.com/conda/constructor) to bundle JupyterLab backend into the stand-alone application. You can install Constructor using:
 
-`conda install constructor`
+- [conda](https://docs.conda.io/en/latest/miniconda.html)
+    
+    You can install miniconda from https://docs.conda.io/en/latest/miniconda.html
 
-### Linux
+- [(conda) Constructor](https://github.com/conda/constructor) to bundle JupyterLab App Server into the stand-alone application. You can install Constructor using:
 
-You will need the development packages of libcairo, libjpeg, and libgif.  In Debian-based distributions, these are provided by the `libcairo2-dev`, `libjpeg8-dev`, and `libgif-dev` packages.
+    `conda install constructor`
 
-## Getting started
+- nodejs
 
-1. run `git clone git@github.com:jupyterlab/jupyterlab_app.git`
-2. run `yarn install` or `npm install`
-3. run `yarn build:all` or `npm run build:all`
+    You can install from https://nodejs.org/en/download/ or run `conda install nodejs`
+
+- yarn
+
+    Install using `npm install --global yarn`
+
+## Local development
+
+JupyterLab App bundles JupyterLab front-end and a conda environment as JupyterLab App Server as its backend into an Electron application.
+
+`<platform>`: mac, linux or win
+
+- Get the project source code
+
+    `git clone https://github.com/jupyterlab/jupyterlab_app.git`
+
+- Install dependencies and build JupyterLab App
+
+    `yarn`
+
+    `yarn build`
+
+- Create the JupyterLab App Server installer using
+
+    `yarn create_env_installer:<platform>`
+
+    Installer will be created in one of `env_installer/JupyterLabAppServer<version>-MacOSX-x86_64.sh`, `env_installer/JupyterLabAppServer-<version>-Linux-x86_64.sh`, `env_installer/JupyterLabAppServer-<version>-Windows-x86_64.exe` based on your platform
+
+- Run the installer to install the JupyterLab App Server. Make sure to set install location to `jlab_server` directory that is at the same level as `jupyterlab_app` project source code
+
+- Now you can launch the JupyterLab App locally using:
+
+    `yarn start`
 
 ## Building for distribution
 
-### macOS
+- Build the application
 
-1. Build the application
+    `yarn run clean && yarn build`
 
-    `yarn clean && yarn build`
+- Create JupyterLab App Server installer
 
-2. Create conda environment installer for backend bundle
+    `yarn create_env_installer:<platform>`
 
-    `yarn create_env_installer:mac`
+- Create JupyterLab App installer which will also bundle JupyterLab App Server installer.
 
-3. Create macOS installer. Installer will be created in `dist/JupyterLab.pkg`
+    `yarn dist:<platform>`
 
-    `yarn dist:mac`
-
-Regarding releasing please check out [release](Release.md)
+    App Installer will be created in `dist/JupyterLab.pkg` (macOS), `dist/JupyterLab.deb` (Debian, Ubuntu), `dist/JupyterLab.rpm` (Red Hat, Fedora) and `dist/JupyterLab-Setup.exe` (Windows) based on the platform

@@ -64,13 +64,10 @@ class Application extends React.Component<Application.IProps, Application.IState
         this._connectionAdded = this._connectionAdded.bind(this);
         this._launchFromPath = this._launchFromPath.bind(this);
 
-        console.log('APP LAUNCHED: ', this.props.options);
-
         if (this.props.options.serverState === 'local') {
             this.state = {renderSplash: this._renderSplash, renderState: this._renderEmpty, remotes: []};
             asyncRemoteRenderer.runRemoteMethod(IServerFactory.requestServerStart, undefined)
                 .then((data) => {
-                    console.log('SERVER READY: ', data);
                     this._serverReady(data);
                 });
         } else {
@@ -123,7 +120,6 @@ class Application extends React.Component<Application.IProps, Application.IState
         }
         this._registerFileHandler();
         window.addEventListener('beforeunload', () => {
-            console.log('BEFOFE UNLOAD');
             log.error('BEFORE UNLOAD', window.location.href);
             // asyncRemoteRenderer.runRemoteMethod(IServerFactory.requestServerStop, {
             //     factoryId: data.factoryId
