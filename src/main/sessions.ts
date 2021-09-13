@@ -7,7 +7,7 @@ import {
 
 import {
     JSONObject
-} from '@phosphor/coreutils';
+} from '@lumino/coreutils';
 
 import {
     AsyncRemote, asyncRemoteMain
@@ -23,7 +23,7 @@ import {
 
 import {
     ArrayExt
-} from '@phosphor/algorithm';
+} from '@lumino/algorithm';
 
 import {
     IService
@@ -196,7 +196,7 @@ class JupyterLabSessions extends EventEmitter implements ISessions, IStatefulSer
             let session = new JupyterLabSession(this, opts);
             // Register dialog on window close
             session.browserWindow.on('close', (event: Event) => {
-                let buttonClicked = dialog.showMessageBox({
+                let buttonClicked = dialog.showMessageBoxSync({
                     type: 'warning',
                     message: 'Do you want to leave?',
                     detail: 'Changes you made may not be saved.',
@@ -238,7 +238,8 @@ class JupyterLabSessions extends EventEmitter implements ISessions, IStatefulSer
         // On OS X it's common to re-create a window in the app when the dock icon is clicked and there are no other
         // windows open.
         // Need to double check this code to ensure it has expected behaviour
-        app.on('activate', () => {
+        // TODO: double check
+        app.on('ready', () => {
             if (this._startingSession) {
                 return;
             }
@@ -330,7 +331,7 @@ class JupyterLabSessions extends EventEmitter implements ISessions, IStatefulSer
      * and rejects if it is not.
      * @param path the absolute path to the file
      */
-    private _isFile(path: string): Promise<{}> {
+    private _isFile(path: string): Promise<void> {
         return new Promise( (resolve, reject) => {
             fs.lstat(path, (err: any, stats: fs.Stats) => {
                 if (stats === null || stats === undefined) {
@@ -385,15 +386,6 @@ class JupyterLabSession {
             }
         }
 
-        let titleBarStyle: 'default' | 'hidden' = 'default';
-        if (this._info.uiState === 'mac') {
-            titleBarStyle = 'hidden';
-        }
-        let showFrame = false;
-        if (this._info.uiState === 'linux') {
-            showFrame = true;
-        }
-
         this._window = new BrowserWindow({
             width: this._info.width,
             height: this._info.height,
@@ -401,11 +393,15 @@ class JupyterLabSession {
             y: this._info.y,
             minWidth: 400,
             minHeight: 300,
-            frame: showFrame,
             show: false,
             title: 'JupyterLab',
-            titleBarStyle: titleBarStyle
+            webPreferences: {
+                nodeIntegration: true,
+                enableRemoteModule: true
+            }
         });
+
+        this._window.setMenuBarVisibility(false);
 
         if (this._info.x && this._info.y) {
             this._window.setBounds({x: this._info.x, y: this._info.y, height: this._info.height, width: this._info.width });
@@ -491,7 +487,6 @@ class JupyterLabSession {
         this._window.on('restore', () => {
             asyncRemoteMain.emitRemoteEvent(ISessions.restoreEvent, undefined, this._window.webContents);
         });
-
     }
 
     private _sessionManager: JupyterLabSessions = null;
@@ -555,7 +550,8 @@ if (process && process.type !== 'renderer') {
     app.once('will-finish-launching', (e: Electron.Event) => {
         app.on('open-file', (event: Electron.Event, path: string) => {
             ipcMain.once('lab-ready', (event: Electron.Event) => {
-                asyncRemoteMain.emitRemoteEvent(ISessions.openFileEvent, path, event.sender);
+                // TODO: double check
+                asyncRemoteMain.emitRemoteEvent(ISessions.openFileEvent, path/*, event.sender*/);
             });
         });
     });

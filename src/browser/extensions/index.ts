@@ -8,13 +8,15 @@ import log from 'electron-log';
 
 const extensions: any = {
     './electron-extension': require('./electron-extension'),
-    './utils-extension': require('./utils-extension'),
+    // turn off menu customization for now
+    // './utils-extension': require('./utils-extension'),
+    '@jupyterlab/apputils-extension': require('@jupyterlab/apputils-extension'),
+    '@jupyterlab/celltags-extension': require('@jupyterlab/celltags-extension'),
     '@jupyterlab/codemirror-extension': require('@jupyterlab/codemirror-extension'),
     '@jupyterlab/completer-extension': require('@jupyterlab/completer-extension'),
     '@jupyterlab/console-extension': require('@jupyterlab/console-extension'),
     '@jupyterlab/csvviewer-extension': require('@jupyterlab/csvviewer-extension'),
     '@jupyterlab/docmanager-extension': require('@jupyterlab/docmanager-extension'),
-    '@jupyterlab/faq-extension': require('@jupyterlab/faq-extension'),
     '@jupyterlab/filebrowser-extension': require('@jupyterlab/filebrowser-extension'),
     '@jupyterlab/fileeditor-extension': require('@jupyterlab/fileeditor-extension'),
     '@jupyterlab/help-extension': require('@jupyterlab/help-extension'),
@@ -29,18 +31,21 @@ const extensions: any = {
     '@jupyterlab/running-extension': require('@jupyterlab/running-extension'),
     '@jupyterlab/settingeditor-extension': require('@jupyterlab/settingeditor-extension'),
     '@jupyterlab/shortcuts-extension': require('@jupyterlab/shortcuts-extension'),
-    '@jupyterlab/tabmanager-extension': require('@jupyterlab/tabmanager-extension'),
+    '@jupyterlab/statusbar-extension': require('@jupyterlab/statusbar-extension'),
     '@jupyterlab/terminal-extension': require('@jupyterlab/terminal-extension'),
     '@jupyterlab/theme-dark-extension': require('@jupyterlab/theme-dark-extension'),
     '@jupyterlab/theme-light-extension': require('@jupyterlab/theme-light-extension'),
-    '@jupyterlab/tooltip-extension': require('@jupyterlab/tooltip-extension')
+    '@jupyterlab/toc-extension': require('@jupyterlab/toc-extension'),
+    '@jupyterlab/tooltip-extension': require('@jupyterlab/tooltip-extension'),
+    '@jupyterlab/translation-extension': require('@jupyterlab/translation-extension'),
+    '@jupyterlab/ui-components-extension': require('@jupyterlab/ui-components-extension'),
+    // ipywidgets support
+    '@jupyter-widgets/jupyterlab-manager': require('@jupyter-widgets/jupyterlab-manager'),
 } as { [key: string]: any };
 
 const mimeExtensions: any = {
     '@jupyterlab/json-extension': require('@jupyterlab/json-extension'),
     '@jupyterlab/pdf-extension': require('@jupyterlab/pdf-extension'),
-    '@jupyterlab/vdom-extension': require('@jupyterlab/vdom-extension'),
-    '@jupyterlab/vega2-extension': require('@jupyterlab/vega2-extension')
 } as { [key: string]: any };
 
 const disabled = { patterns: [] as string[], matches: [] as string[] };

@@ -3,7 +3,7 @@
 
 import {
     JSONObject
-} from '@phosphor/coreutils';
+} from '@lumino/coreutils';
 
 import {
     webFrame
@@ -32,6 +32,6 @@ namespace Browser {
 
     export
     function getTopPanelSize(): number {
-        return 23 / webFrame.getZoomFactor();
+        return 28 / webFrame.getZoomFactor();
     }
 }

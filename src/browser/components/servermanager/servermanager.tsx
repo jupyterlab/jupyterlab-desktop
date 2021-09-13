@@ -142,7 +142,7 @@ namespace ServerManager {
 
             this.setState({
                 [name]: value
-            });
+            } as any);
         }
 
         render() {

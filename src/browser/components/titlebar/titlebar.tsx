@@ -78,12 +78,13 @@ class TitleBar extends React.Component<TitleBar.Props, TitleBar.State> {
             style.minHeight = style.height = this.state.titleBarSize;
         }
 
+        // Don't show custom title bar for now
         // Don't return title bar content on linux and max
-        if (this.props.uiState === 'linux' || this.props.uiState === 'mac') {
+        // if (this.props.uiState === 'linux' || this.props.uiState === 'mac') {
             return (
                 <div className={'jpe-TitleBar-body ' + modClass} style={style} />
             );
-        }
+        // }
 
         let clicked = (type: string) => {
             let window = remote.getCurrentWindow();

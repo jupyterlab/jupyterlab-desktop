@@ -1,3 +1,18 @@
+#root {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+}
+
+#jp-top-panel {
+    -webkit-app-region: drag;
+}
+#jp-menu-panel {
+    -webkit-app-region: no-drag;
+}
+
 /* Resetting CSS styles */
 :root {
     --jp-code-font-family: 'SourceCodePro' !important;

@@ -1,9 +1,23 @@
-var path = require('path');
-var fs = require('fs-extra');
-var buildDir = path.resolve('./build');
-var srcDir = path.resolve('./src');
-var file = require('file');
-var watch = require('node-watch');
+const path = require('path');
+const fs = require('fs-extra');
+const os = require('os');
+const watch = require('node-watch');
+
+const platform = process.platform;
+const buildDir = path.resolve('./build');
+const srcDir = path.resolve('./src');
+
+function walkSync(currentDirPath, callback) {
+    fs.readdirSync(currentDirPath).forEach((name) => {
+        const filePath = path.join(currentDirPath, name);
+        const stat = fs.statSync(filePath);
+        if (stat.isFile()) {
+            callback(filePath, stat);
+        } else if (stat.isDirectory()) {
+            walkSync(filePath, callback);
+        }
+    });
+}
 
 /**
  * Copy assets into build dir so they can be resolved.
@@ -15,25 +29,35 @@ function copyAssests() {
         process.exit();
     }
 
-    var dest = path.resolve(path.join(buildDir, 'out'));
+    const dest = path.resolve(path.join(buildDir, 'out'));
     if (!fs.existsSync(dest)) {
         console.error('jupyterlab_app build: could not find target directory.');
         process.exit();
     }
     
     // Copy style and img directories into build directory
-    file.walkSync(srcDir, (srcPath) => {
-        var destPath = srcPath.replace(srcDir, dest);
-        
-        if (srcPath.slice(srcPath.length - 'style'.length) == 'style' ||
-            srcPath.slice(srcPath.length - 'img'.length) == 'img') {
+    walkSync(srcDir, (srcPath) => {
+        const destPath = srcPath.replace(srcDir, dest);
+
+        if (srcPath.includes('style') || srcPath.includes('img')) {
             fs.copySync(srcPath, destPath);
         }
     });
 
     // Copy html into build directory
-    let htmlPath = path.join('browser', 'index.html');
+    const htmlPath = path.join('browser', 'index.html');
     fs.copySync(path.join(srcDir, htmlPath), path.join(dest, htmlPath));
+
+    // Copy install scripts
+    if (platform === 'darwin') {
+        fs.copySync(path.join(path.resolve('./'), 'electron-builder-scripts', 'postinstall'), path.join(buildDir, 'pkg-scripts', 'postinstall'));
+    } else if (platform === 'win32') {
+        fs.copySync(path.join(path.resolve('./'), 'electron-builder-scripts', 'wininstall.nsh'), path.join(buildDir, 'wininstall.nsh'));
+    } else {
+        fs.copySync(path.join(path.resolve('./'), 'electron-builder-scripts', 'linux_after_install.sh'), path.join(buildDir, 'linux_after_install.sh'));
+        fs.copySync(path.join(path.resolve('./'), 'electron-builder-scripts', 'linux_before_remove.sh'), path.join(buildDir, 'linux_before_remove.sh'));
+    }
+
     console.log('done');
 }
 copyAssests();

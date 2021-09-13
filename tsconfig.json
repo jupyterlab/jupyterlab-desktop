@@ -6,11 +6,13 @@
     "noUnusedLocals": true,
     "module": "commonjs",
     "moduleResolution": "node",
+    "esModuleInterop": true,
     "jsx": "react",
-    "target": "es5",
-    "lib": ["es5", "es2015.collection", "es2015.promise", "dom"],
+    "target": "es6",
+    "lib": ["es6", "es2015.collection", "es2015.promise", "dom"],
     "baseUrl": ".",
-    "outDir": "./build/out"
+    "outDir": "./build/out",
+    "sourceMap": true
   },
  "include": [
    "./src/**/*.*"

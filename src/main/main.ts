@@ -2,7 +2,7 @@ import {
     app
 } from 'electron';
 
-import * as Bottle from 'bottlejs';
+const Bottle = require('bottlejs');
 import log from 'electron-log';
 import * as yargs from 'yargs';
 
@@ -34,7 +34,7 @@ let argv = yargs.option('v', {
  * Also override console methods so that future addition will route to
  * using this package.
  */
-let adjustedVerbose = argv.verbose - 2;
+let adjustedVerbose = parseInt(argv.verbose as unknown as string) - 2;
 if (isDevMode) {
     if (adjustedVerbose === 0) {
         log.transports.console.level = 'info';
@@ -147,15 +147,15 @@ app.on('ready', () => {
  */
 function handOverArguments(): Promise<void> {
     let promise = new Promise<void>( (resolve, reject) => {
-        let second = app.makeSingleInstance((argv: string[], workingDirectory: string) => {
+        app.requestSingleInstanceLock();
+        // TODO; double check this logic
+        app.on('second-instance', (event, argv, cwd) => {
             // Skip JupyterLab Executable
             for (let i = 1; i < argv.length; i ++) {
                 app.emit('open-file', null, argv[i]);
             }
-        });
-        if (second) {
             reject();
-        }
+        });
         resolve();
     });
     return promise;

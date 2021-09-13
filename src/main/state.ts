@@ -7,11 +7,17 @@ import {
 
 import {
     JSONObject
-} from '@phosphor/coreutils';
+} from '@lumino/coreutils';
 
 import {
-    IStateDB, IStateItem
-} from '@jupyterlab/coreutils';
+    IStateDB
+} from '@jupyterlab/statedb';
+
+// TODO: double check
+type IStateItem = {
+    ids: string[];
+    values: any[];
+};
 
 import * as fs from 'fs';
 import log from 'electron-log';
@@ -133,22 +139,20 @@ class ElectronStateDB implements IStateDB {
      * If there are any errors in retrieving the data, they will be logged to the
      * console in order to optimistically return any extant data without failing.
      * This promise will always succeed.
-     */
-    fetchNamespace(namespace: string): Promise<IStateItem[]> {
-        return new Promise<IStateItem[]>((res, rej) => {
+    */
+    list(namespace: string): Promise<IStateItem> {
+        return new Promise<IStateItem>((res, rej) => {
             const prefix = `${this.namespace}:${namespace}:`;
             const regex = new RegExp(`^${this.namespace}\:`);
-            let items: IStateItem[] = [];
+            let items: IStateItem = {ids: [], values: []};
 
             this._updateCache()
                 .then(() => {
                     for (let key in this._cache) {
                         if (key.indexOf(prefix) === 0) {
                             try {
-                                items.push({
-                                    id: key.replace(regex, ''),
-                                    value: JSON.parse(window.localStorage.getItem(key))
-                                });
+                                items.ids.push(key.replace(regex, ''));
+                                items.values.push(JSON.parse(window.localStorage.getItem(key)));
                             } catch (error) {
                                 log.warn(error);
                             }

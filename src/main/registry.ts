@@ -7,7 +7,7 @@ import {
 } from './main';
 
 import {
-    join, basename, normalize
+    join, basename, normalize, dirname
 } from 'path';
 
 import {
@@ -20,7 +20,7 @@ import {
 
 import {
     ArrayExt
-} from '@phosphor/algorithm';
+} from '@lumino/algorithm';
 
 import * as fs from 'fs';
 import log from 'electron-log';
@@ -53,13 +53,13 @@ export class Registry implements IRegistry {
                 name: 'jupyter_core',
                 moduleName: 'jupyter',
                 commands: ['--version'],
-                versionRange: new Range('>=4.2.0')
+                versionRange: new Range('>=4.7.0')
             },
             {
                 name: 'notebook',
                 moduleName: 'jupyter',
                 commands: ['notebook', '--version'],
-                versionRange: new Range('>=5.0.0')
+                versionRange: new Range('>=6.0.0')
             }
         ];
 
@@ -111,17 +111,34 @@ export class Registry implements IRegistry {
      * @returns a promise containin the default environment
      */
     getDefaultEnvironment(): Promise<Registry.IPythonEnvironment> {
-        return new Promise((resolve, reject) => {
-            this._registryBuilt.then(() => {
-                if (this._default) {
-                    resolve(this._default);
-                } else {
-                    reject(new Error(`No default environment found!`));
-                }
-            }).catch(reason => {
-                reject(new Error(`Registry failed to build!`));
-            });
+        const platform = process.platform;
+        let envPath = join(dirname(app.getAppPath()), 'jlab_server');
+        if (platform !== 'win32') {
+            envPath = join(envPath, 'bin');
+        }
+        const pythonPath = join(envPath, `python${platform === 'win32' ? '.exe' : ''}`);
+        
+        return Promise.resolve({
+            path: pythonPath,
+            name: 'App bundled',
+            type: Registry.IEnvironmentType.PATH,
+            versions: {
+                'jupyter_core': '4.7.0',
+                'notebook': '6.0.0'
+            },
+            default: true,
         });
+        // return new Promise((resolve, reject) => {
+        //     this._registryBuilt.then(() => {
+        //         if (this._default) {
+        //             resolve(this._default);
+        //         } else {
+        //             reject(new Error(`No default environment found!`));
+        //         }
+        //     }).catch(reason => {
+        //         reject(new Error(`Registry failed to build!`));
+        //     });
+        // });
     }
 
     getEnvironmentByPath(pathToMatch: string): Promise<Registry.IPythonEnvironment> {
@@ -223,7 +240,7 @@ export class Registry implements IRegistry {
             dialog.showOpenDialog({
                 properties: ['openFile', 'showHiddenFiles'],
                 buttonLabel: 'Use Path'
-            }, (filePaths: string[]) => {
+            }).then(({filePaths}) => {
                 if (!filePaths) {
                     reject(new Error('cancel'));
                 } else {

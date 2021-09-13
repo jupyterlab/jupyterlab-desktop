@@ -3,11 +3,15 @@
 
 import {
     ArrayExt
-} from '@phosphor/algorithm';
+} from '@lumino/algorithm';
 
 import {
     Menu
-} from '@phosphor/widgets';
+} from '@lumino/widgets';
+
+import {
+    IDisposable
+} from '@lumino/disposable';
 
 import {
     JupyterLab
@@ -169,8 +173,8 @@ class NativeEditMenu extends EditMenu {
         super(options);
     }
 
-    addGroup(items: Menu.IItemOptions[], rank?: number): void {
-        super.addGroup(items, rank);
+    addGroup(items: Menu.IItemOptions[], rank?: number): IDisposable {
+        const added = super.addGroup(items, rank);
 
         let menuItem: INativeMenu.IMenuItemOptions = {
             label: this.menu.title.label,
@@ -178,6 +182,8 @@ class NativeEditMenu extends EditMenu {
         };
 
         asyncRemoteRenderer.runRemoteMethod(INativeMenu.updateMenu, menuItem);
+
+        return added;
     }
 }
 
@@ -186,8 +192,8 @@ class NativeFileMenu extends FileMenu {
         super(options);
     }
 
-    addGroup(items: Menu.IItemOptions[], rank?: number): void {
-        super.addGroup(items, rank);
+    addGroup(items: Menu.IItemOptions[], rank?: number): IDisposable {
+        const res = super.addGroup(items, rank);
 
         let menuItem: INativeMenu.IMenuItemOptions = {
             label: this.menu.title.label,
@@ -195,6 +201,8 @@ class NativeFileMenu extends FileMenu {
         };
 
         asyncRemoteRenderer.runRemoteMethod(INativeMenu.updateMenu, menuItem);
+
+        return res;
     }
 }
 
@@ -203,8 +211,8 @@ class NativeHelpMenu extends HelpMenu {
         super(options);
     }
 
-    addGroup(items: Menu.IItemOptions[], rank?: number): void {
-        super.addGroup(items, rank);
+    addGroup(items: Menu.IItemOptions[], rank?: number): IDisposable {
+        const added = super.addGroup(items, rank);
 
         let menuItem: INativeMenu.IMenuItemOptions = {
             label: this.menu.title.label,
@@ -212,6 +220,8 @@ class NativeHelpMenu extends HelpMenu {
         };
 
         asyncRemoteRenderer.runRemoteMethod(INativeMenu.updateMenu, menuItem);
+
+        return added;
     }
 }
 
@@ -220,8 +230,8 @@ class NativeKernelMenu extends KernelMenu {
         super(options);
     }
 
-    addGroup(items: Menu.IItemOptions[], rank?: number): void {
-        super.addGroup(items, rank);
+    addGroup(items: Menu.IItemOptions[], rank?: number): IDisposable {
+        const added = super.addGroup(items, rank);
 
         let menuItem: INativeMenu.IMenuItemOptions = {
             label: this.menu.title.label,
@@ -229,6 +239,8 @@ class NativeKernelMenu extends KernelMenu {
         };
 
         asyncRemoteRenderer.runRemoteMethod(INativeMenu.updateMenu, menuItem);
+
+        return added;
     }
 }
 
@@ -237,8 +249,8 @@ class NativeRunMenu extends RunMenu {
         super(options);
     }
 
-    addGroup(items: Menu.IItemOptions[], rank?: number): void {
-        super.addGroup(items, rank);
+    addGroup(items: Menu.IItemOptions[], rank?: number): IDisposable {
+        const res = super.addGroup(items, rank);
 
         let menuItem: INativeMenu.IMenuItemOptions = {
             label: this.menu.title.label,
@@ -246,6 +258,8 @@ class NativeRunMenu extends RunMenu {
         };
 
         asyncRemoteRenderer.runRemoteMethod(INativeMenu.updateMenu, menuItem);
+
+        return res;
     }
 }
 
@@ -254,8 +268,8 @@ class NativeSettingsMenu extends SettingsMenu {
         super(options);
     }
 
-    addGroup(items: Menu.IItemOptions[], rank?: number): void {
-        super.addGroup(items, rank);
+    addGroup(items: Menu.IItemOptions[], rank?: number): IDisposable {
+        const res = super.addGroup(items, rank);
 
         let menuItem: INativeMenu.IMenuItemOptions = {
             label: this.menu.title.label,
@@ -263,6 +277,8 @@ class NativeSettingsMenu extends SettingsMenu {
         };
 
         asyncRemoteRenderer.runRemoteMethod(INativeMenu.updateMenu, menuItem);
+
+        return res;
     }
 }
 
@@ -271,8 +287,8 @@ class NativeViewMenu extends ViewMenu {
         super(options);
     }
 
-    addGroup(items: Menu.IItemOptions[], rank?: number): void {
-        super.addGroup(items, rank);
+    addGroup(items: Menu.IItemOptions[], rank?: number): IDisposable {
+        const res = super.addGroup(items, rank);
 
         let menuItem: INativeMenu.IMenuItemOptions = {
             label: this.menu.title.label,
@@ -280,6 +296,8 @@ class NativeViewMenu extends ViewMenu {
         };
 
         asyncRemoteRenderer.runRemoteMethod(INativeMenu.updateMenu, menuItem);
+        
+        return res;
     }
 }
 
@@ -288,8 +306,8 @@ class NativeTabsMenu extends TabsMenu {
         super(options);
     }
 
-    addGroup(items: Menu.IItemOptions[], rank?: number): void {
-        super.addGroup(items, rank);
+    addGroup(items: Menu.IItemOptions[], rank?: number): IDisposable {
+        const res = super.addGroup(items, rank);
 
         let menuItem: INativeMenu.IMenuItemOptions = {
             label: this.menu.title.label,
@@ -297,6 +315,8 @@ class NativeTabsMenu extends TabsMenu {
         };
 
         asyncRemoteRenderer.runRemoteMethod(INativeMenu.updateMenu, menuItem);
+
+        return res;
     }
 }
 
