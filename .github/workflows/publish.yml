@@ -10,11 +10,17 @@ on:
   workflow_dispatch:
 
 jobs:
-  linux:
-    runs-on: ubuntu-latest
+  publish:
+    strategy:
+      matrix:
+        cfg:
+        - { platform: linux, os: ubuntu-latest }
+        - { platform: windows, os: windows-latest }
+        
+    name: 'Publish ${{ matrix.cfg.os }} installer'
+    runs-on: ${{ matrix.cfg.os }}
 
     steps:
-      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
       - uses: actions/checkout@v2
       - uses: s-weigand/setup-conda@v1
 
@@ -27,21 +33,18 @@ jobs:
         run: |
           npm install --global yarn
           conda install constructor
-
-      - name: Build
-        run: |
-          yarn
-          yarn run build
+          yarn install
 
       - name: Create App Server Installer
         run: |
-          yarn create_env_installer:linux
+          yarn create_env_installer:${{ matrix.cfg.platform }}
 
       - name: Create App Installers
         run: |
-          yarn dist:linux
+          yarn dist:${{ matrix.cfg.platform }}
 
       - name: Upload Debian Installer
+        if: ${{ matrix.cfg.platform }} == 'linux'
         uses: actions/upload-artifact@v2
         with:
           name: debian-installer
@@ -49,8 +52,17 @@ jobs:
             dist/JupyterLab.deb
 
       - name: Upload Fedora Installer
+        if: ${{ matrix.cfg.platform }} == 'linux'
         uses: actions/upload-artifact@v2
         with:
           name: fedora-installer
           path: |
             dist/JupyterLab.rpm
+
+      - name: Upload Windows Installer
+        if: ${{ matrix.cfg.platform }} == 'windows'
+        uses: actions/upload-artifact@v2
+        with:
+          name: windows-installer
+          path: |
+            dist/JupyterLab-Setup.exe
