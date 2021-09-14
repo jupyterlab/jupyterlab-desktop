@@ -62,7 +62,8 @@
       "target": [
         "nsis",
         "portable"
-      ]
+      ],
+      "verifyUpdateCodeSignature": false
     },
     "rpm": {
       "depends": [
