@@ -20,14 +20,13 @@
     "extract": "node scripts/extract.js",
     "pack": "yarn build && electron-builder --dir",
     "dist": "yarn build && electron-builder",
-    "dist:linux": "yarn build && electron-builder --linux",
+    "dist:linux": "yarn build && electron-builder --linux --publish never",
+    "dist:mac": "yarn build && electron-builder --macos --publish never",
+    "dist:win": "yarn build && electron-builder --win --publish never",
     "dockerdist:linux": "docker run --rm -ti -v ${PWD}:/project -v ${PWD##*/}-node-modules:/project/node_modules -v ~/.electron:/root/.electron electronuserland/builder:wine /bin/bash -c \"yarn && yarn dist:linux\"",
-    "dist:mac": "yarn build && electron-builder --macos",
-    "dist:win": "yarn build && electron-builder --win",
     "dockerdist:win": "docker run --rm -ti -v ${PWD}:/project -v ${PWD##*/}-node-modules:/project/node_modules -v ~/.electron:/root/.electron electronuserland/builder:wine /bin/bash -c \"yarn && yarn dist:win\"",
-    "release": "electron-builder --publish onTagOrDraft",
-    "create_env_installer:mac": "rimraf ./env_installer/JupyterLab*.sh && constructor ./env_installer --platform=osx-64 --output-dir ./env_installer",
     "create_env_installer:linux": "rimraf ./env_installer/JupyterLab*.sh && constructor ./env_installer --platform=linux-64 --output-dir ./env_installer",
+    "create_env_installer:mac": "rimraf ./env_installer/JupyterLab*.sh && constructor ./env_installer --platform=osx-64 --output-dir ./env_installer",
     "create_env_installer:win": "rimraf ./env_installer/JupyterLab*.exe && constructor ./env_installer --platform=win-64 --output-dir ./env_installer"
   },
   "build": {
