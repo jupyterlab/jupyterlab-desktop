@@ -111,7 +111,6 @@ class Application extends React.Component<Application.IProps, Application.IState
     }
 
     private _serverReady(data: IServerFactory.IServerStarted): void {
-        log.error('_SERVER READY', data);
         if (data.err) {
             log.error(data.err);
             this.setState({renderState: this._renderErrorScreen});
@@ -120,7 +119,6 @@ class Application extends React.Component<Application.IProps, Application.IState
         }
         this._registerFileHandler();
         window.addEventListener('beforeunload', () => {
-            log.error('BEFORE UNLOAD', window.location.href);
             // asyncRemoteRenderer.runRemoteMethod(IServerFactory.requestServerStop, {
             //     factoryId: data.factoryId
             // });
