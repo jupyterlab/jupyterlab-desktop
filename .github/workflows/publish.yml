@@ -36,9 +36,9 @@ jobs:
           conda install constructor
           yarn install
 
-      - name: Create App Server Installer
-        run: |
-          yarn create_env_installer:${{ matrix.cfg.platform }}
+      # - name: Create App Server Installer
+      #   run: |
+      #     yarn create_env_installer:${{ matrix.cfg.platform }}
 
       - name: Create App Installer
         run: |
