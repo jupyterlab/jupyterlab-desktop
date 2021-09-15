@@ -11,15 +11,23 @@ A desktop application for [JupyterLab](https://github.com/jupyterlab/jupyterlab)
 
 - [(conda) Constructor](https://github.com/conda/constructor) to bundle JupyterLab App Server into the stand-alone application. You can install Constructor using:
 
-    `conda install constructor`
+    ```bash
+    conda install constructor
+    ```
 
 - nodejs
 
-    You can install from https://nodejs.org/en/download/ or run `conda install nodejs`
+    You can install from https://nodejs.org/en/download/ or run:
+    ```bash
+    conda install nodejs
+    ```
 
 - yarn
 
-    Install using `npm install --global yarn`
+    Install using
+    ```bash
+    npm install --global yarn
+    ```
 
 ## Local development
 
@@ -29,17 +37,22 @@ JupyterLab App bundles JupyterLab front-end and a conda environment as JupyterLa
 
 - Get the project source code
 
-    `git clone https://github.com/jupyterlab/jupyterlab_app.git`
+    ```bash
+    git clone https://github.com/jupyterlab/jupyterlab_app.git
+    ```
 
 - Install dependencies and build JupyterLab App
 
-    `yarn`
-
-    `yarn build`
+    ```bash
+    yarn
+    yarn build
+    ```
 
 - Create the JupyterLab App Server installer using
 
-    `yarn create_env_installer:<platform>`
+    ```bash
+    yarn create_env_installer:<platform>
+    ```
 
     Installer will be created in one of `env_installer/JupyterLabAppServer<version>-MacOSX-x86_64.sh`, `env_installer/JupyterLabAppServer-<version>-Linux-x86_64.sh`, `env_installer/JupyterLabAppServer-<version>-Windows-x86_64.exe` based on your platform
 
@@ -47,20 +60,28 @@ JupyterLab App bundles JupyterLab front-end and a conda environment as JupyterLa
 
 - Now you can launch the JupyterLab App locally using:
 
-    `yarn start`
+    ```bash
+    yarn start
+    ```
 
 ## Building for distribution
 
 - Build the application
 
-    `yarn run clean && yarn build`
+    ```bash
+    yarn run clean && yarn build
+    ```
 
 - Create JupyterLab App Server installer
 
-    `yarn create_env_installer:<platform>`
+    ```bash
+    yarn create_env_installer:<platform>
+    ```
 
 - Create JupyterLab App installer which will also bundle JupyterLab App Server installer.
 
-    `yarn dist:<platform>`
+    ```bash
+    yarn dist:<platform>
+    ```
 
     App Installer will be created in `dist/JupyterLab.pkg` (macOS), `dist/JupyterLab.deb` (Debian, Ubuntu), `dist/JupyterLab.rpm` (Red Hat, Fedora) and `dist/JupyterLab-Setup.exe` (Windows) based on the platform
