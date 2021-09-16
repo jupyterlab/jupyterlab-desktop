@@ -13,10 +13,11 @@ specs:
   - scipy
   - pandas
   - jupyterlab 3.1.10
-  - ipywidgets 7.6.4
+  - ipywidgets 7.6.5
   - matplotlib
 
 default_prefix: "%HOMEDRIVE%\\JupyterLab\\resources\\jlab_server"
 default_prefix_all_users: "%HOMEDRIVE%\\JupyterLab\\resources\\jlab_server"
 
 license_file: ../LICENSE
+register_python_default: false
