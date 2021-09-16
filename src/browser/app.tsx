@@ -175,10 +175,6 @@ class Application extends React.Component<Application.IProps, Application.IState
             version = version.slice(1);
         }
 
-        if (this.props.options.platform === 'win32') {
-            PageConfig.setOption('terminalsAvailable', 'false');
-        }
-
         this._lab = new ElectronJupyterLab({
             shell: new LabShell(),
             mimeExtensions: extensions.mime,
