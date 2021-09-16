@@ -194,6 +194,12 @@ class JupyterLabSessions extends EventEmitter implements ISessions, IStatefulSer
             }
 
             let session = new JupyterLabSession(this, opts);
+
+            // disable leave confirmation prompt of JupyterLab
+            session.browserWindow.webContents.on('will-prevent-unload', (event) => {
+                event.preventDefault();
+            });
+
             // Register dialog on window close
             session.browserWindow.on('close', (event: Event) => {
                 let buttonClicked = dialog.showMessageBoxSync({
