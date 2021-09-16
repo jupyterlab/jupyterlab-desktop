@@ -2,6 +2,9 @@ name: JupyterLabAppServer
 version: 3.1.10
 company: "Project Jupyter"
 
+welcome_image_text: "JupyterLab"
+header_image_text: "JupyterLab"
+
 channels:
   - https://conda.anaconda.org/conda-forge
   - http://repo.anaconda.com/pkgs/main/
