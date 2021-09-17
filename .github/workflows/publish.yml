@@ -59,8 +59,8 @@ jobs:
       - name: Upload Debian Installer
         if: matrix.cfg.platform == 'linux'
         uses: svenstaro/upload-release-action@v2
-        with:
-          repo_token: ${{ secrets.JLAB_APP_TOKEN }}
+          with:
+            repo_token: ${{ secrets.JLAB_APP_TOKEN }}
             file: dist/JupyterLab.deb
             asset_name: JupyterLab.deb
             tag: v3.1.12
@@ -69,8 +69,8 @@ jobs:
       - name: Upload Fedora Installer
         if: matrix.cfg.platform == 'linux'
         uses: svenstaro/upload-release-action@v2
-        with:
-          repo_token: ${{ secrets.JLAB_APP_TOKEN }}
+          with:
+            repo_token: ${{ secrets.JLAB_APP_TOKEN }}
             file: dist/JupyterLab.rpm
             asset_name: JupyterLab.rpm
             tag: v3.1.12
