@@ -85,3 +85,4 @@ JupyterLab App bundles JupyterLab front-end and a conda environment as JupyterLa
     ```
 
     App Installer will be created in `dist/JupyterLab.pkg` (macOS), `dist/JupyterLab.deb` (Debian, Ubuntu), `dist/JupyterLab.rpm` (Red Hat, Fedora) and `dist/JupyterLab-Setup.exe` (Windows) based on the platform
+
