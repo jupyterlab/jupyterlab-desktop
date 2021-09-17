@@ -20,9 +20,9 @@
     "extract": "node scripts/extract.js",
     "pack": "yarn build && electron-builder --dir",
     "dist": "yarn build && electron-builder",
-    "dist:linux": "yarn build && electron-builder --linux --publish never",
-    "dist:mac": "yarn build && electron-builder --macos --publish never",
-    "dist:win": "yarn build && electron-builder --win --publish never",
+    "dist:linux": "yarn build && electron-builder --linux --publish onTagOrDraft",
+    "dist:mac": "yarn build && electron-builder --macos --publish onTagOrDraft",
+    "dist:win": "yarn build && electron-builder --win --publish onTagOrDraft",
     "dockerdist:linux": "docker run --rm -ti -v ${PWD}:/project -v ${PWD##*/}-node-modules:/project/node_modules -v ~/.electron:/root/.electron electronuserland/builder:wine /bin/bash -c \"yarn && yarn dist:linux\"",
     "dockerdist:win": "docker run --rm -ti -v ${PWD}:/project -v ${PWD##*/}-node-modules:/project/node_modules -v ~/.electron:/root/.electron electronuserland/builder:wine /bin/bash -c \"yarn && yarn dist:win\"",
     "create_env_installer:linux": "rimraf ./env_installer/JupyterLab*.sh && constructor ./env_installer --platform=linux-64 --output-dir ./env_installer",
@@ -100,7 +100,8 @@
       "isVersionChecked": true,
       "isRelocatable": false,
       "overwriteAction": "upgrade"
-    }
+    },
+    "publish": ["github"]
   },
   "author": {
     "name": "Project Jupyter",
