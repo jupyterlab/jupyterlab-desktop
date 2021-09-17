@@ -14,8 +14,8 @@ jobs:
     strategy:
       matrix:
         cfg:
-        - { platform: linux, platform_name: Linux,  os: ubuntu-latest }
-        - { platform: mac, platform_name: macOS, os: macos-latest }
+        # - { platform: linux, platform_name: Linux,  os: ubuntu-latest }
+        # - { platform: mac, platform_name: macOS, os: macos-latest }
         - { platform: win, platform_name: Windows, os: windows-latest }
         
     name: '${{ matrix.cfg.platform_name }} installer'
@@ -48,37 +48,39 @@ jobs:
           conda install constructor
           yarn install
 
-      - name: Create App Server Installer
-        run: |
-          yarn create_env_installer:${{ matrix.cfg.platform }}
+      # - name: Create App Server Installer
+      #   run: |
+      #     yarn create_env_installer:${{ matrix.cfg.platform }}
 
       - name: Create App Installer
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           yarn dist:${{ matrix.cfg.platform }}
 
-      - name: Upload Debian Installer
-        if: matrix.cfg.platform == 'linux'
-        uses: actions/upload-artifact@v2
-        with:
-          name: debian-installer
-          path: |
-            dist/JupyterLab.deb
+      # - name: Upload Debian Installer
+      #   if: matrix.cfg.platform == 'linux'
+      #   uses: actions/upload-artifact@v2
+      #   with:
+      #     name: debian-installer
+      #     path: |
+      #       dist/JupyterLab.deb
 
-      - name: Upload Fedora Installer
-        if: matrix.cfg.platform == 'linux'
-        uses: actions/upload-artifact@v2
-        with:
-          name: fedora-installer
-          path: |
-            dist/JupyterLab.rpm
+      # - name: Upload Fedora Installer
+      #   if: matrix.cfg.platform == 'linux'
+      #   uses: actions/upload-artifact@v2
+      #   with:
+      #     name: fedora-installer
+      #     path: |
+      #       dist/JupyterLab.rpm
 
-      - name: Upload macOS Installer
-        if: matrix.cfg.platform == 'mac'
-        uses: actions/upload-artifact@v2
-        with:
-          name: mac-installer
-          path: |
-            dist/JupyterLab.pkg
+      # - name: Upload macOS Installer
+      #   if: matrix.cfg.platform == 'mac'
+      #   uses: actions/upload-artifact@v2
+      #   with:
+      #     name: mac-installer
+      #     path: |
+      #       dist/JupyterLab.pkg
 
       - name: Upload Windows Installer
         if: matrix.cfg.platform == 'win'
