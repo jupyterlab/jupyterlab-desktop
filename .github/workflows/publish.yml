@@ -14,8 +14,8 @@ jobs:
     strategy:
       matrix:
         cfg:
-        # - { platform: linux, platform_name: Linux,  os: ubuntu-latest }
-        # - { platform: mac, platform_name: macOS, os: macos-latest }
+        - { platform: linux, platform_name: Linux,  os: ubuntu-latest }
+        - { platform: mac, platform_name: macOS, os: macos-latest }
         - { platform: win, platform_name: Windows, os: windows-latest }
         
     name: '${{ matrix.cfg.platform_name }} installer'
@@ -23,7 +23,7 @@ jobs:
 
     steps:
       - uses: actions/checkout@v2
-      # - uses: s-weigand/setup-conda@v1
+      - uses: s-weigand/setup-conda@v1
 
       - name: Install node
         uses: actions/setup-node@v2
@@ -45,56 +45,53 @@ jobs:
       - name: Install dependencies
         run: |
           npm install --global yarn
-          # conda install constructor
+          conda install constructor
           yarn install
 
-      # - name: Create App Server Installer
-      #   run: |
-      #     yarn create_env_installer:${{ matrix.cfg.platform }}
+      - name: Create App Server Installer
+        run: |
+          yarn create_env_installer:${{ matrix.cfg.platform }}
 
       - name: Create App Installer
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           yarn dist:${{ matrix.cfg.platform }}
 
-      # - name: Upload Debian Installer
-      #   if: matrix.cfg.platform == 'linux'
-      #   uses: actions/upload-artifact@v2
-      #   with:
-      #     name: debian-installer
-      #     path: |
-      #       dist/JupyterLab.deb
-
-      # - name: Upload Fedora Installer
-      #   if: matrix.cfg.platform == 'linux'
-      #   uses: actions/upload-artifact@v2
-      #   with:
-      #     name: fedora-installer
-      #     path: |
-      #       dist/JupyterLab.rpm
-
-      # - name: Upload macOS Installer
-      #   if: matrix.cfg.platform == 'mac'
-      #   uses: actions/upload-artifact@v2
-      #   with:
-      #     name: mac-installer
-      #     path: |
-      #       dist/JupyterLab.pkg
-
-      # - name: Upload Windows Installer
-      #   if: matrix.cfg.platform == 'win'
-      #   uses: actions/upload-artifact@v2
-      #   with:
-      #     name: windows-installer
-      #     path: |
-      #       dist/JupyterLab-Setup.exe
-
-      - name: Upload binaries to release
+      - name: Upload Debian Installer
+        if: matrix.cfg.platform == 'linux'
         uses: svenstaro/upload-release-action@v2
         with:
           repo_token: ${{ secrets.JLAB_APP_TOKEN }}
-          file: dist/JupyterLab-Setup.exe
-          asset_name: JupyterLab-Setup.exe
-          tag: v3.1.12
-          overwrite: true
+            file: dist/JupyterLab.deb
+            asset_name: JupyterLab.deb
+            tag: v3.1.12
+            overwrite: true
+
+      - name: Upload Fedora Installer
+        if: matrix.cfg.platform == 'linux'
+        uses: svenstaro/upload-release-action@v2
+        with:
+          repo_token: ${{ secrets.JLAB_APP_TOKEN }}
+            file: dist/JupyterLab.rpm
+            asset_name: JupyterLab.rpm
+            tag: v3.1.12
+            overwrite: true
+
+      - name: Upload macOS Installer
+        if: matrix.cfg.platform == 'mac'
+        uses: svenstaro/upload-release-action@v2
+          with:
+            repo_token: ${{ secrets.JLAB_APP_TOKEN }}
+            file: dist/JupyterLab.pkg
+            asset_name: JupyterLab.pkg
+            tag: v3.1.12
+            overwrite: true
+
+      - name: Upload Windows Installer
+        if: matrix.cfg.platform == 'win'
+        uses: svenstaro/upload-release-action@v2
+          with:
+            repo_token: ${{ secrets.JLAB_APP_TOKEN }}
+            file: dist/JupyterLab-Setup.exe
+            asset_name: JupyterLab-Setup.exe
+            tag: v3.1.12
+            overwrite: true
