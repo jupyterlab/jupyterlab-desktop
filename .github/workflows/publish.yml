@@ -55,7 +55,7 @@ jobs:
       - name: Create App Installer
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          EP_DRAFT: false
+          EP_DRAFT: true
         run: |
           yarn dist:${{ matrix.cfg.platform }}
 
