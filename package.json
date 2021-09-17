@@ -101,7 +101,12 @@
       "isRelocatable": false,
       "overwriteAction": "upgrade"
     },
-    "publish": ["github"]
+    "publish": {
+      "provider": "github",
+      "owner": "jupyterlab",
+      "repo": "jupyterlab_app",
+      "releaseType": "draft"
+    }
   },
   "author": {
     "name": "Project Jupyter",
