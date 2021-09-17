@@ -5,5 +5,5 @@
 !macroend
 
 !macro customInstall
-  ExecWait "$INSTDIR\resources\env_installer\JupyterLabAppServer-3.1.10-Windows-x86_64.exe"
+  ExecWait "$INSTDIR\resources\env_installer\JupyterLabAppServer-3.1.12-Windows-x86_64.exe"
 !macroend

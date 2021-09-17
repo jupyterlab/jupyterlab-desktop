@@ -22,4 +22,5 @@ __pycache__
 
 *.log
 
-env_installer/JupyterLab*[.sh,.exe]
+env_installer/
+!env_installer/construct.yaml
