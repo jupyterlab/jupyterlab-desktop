@@ -105,7 +105,7 @@
       "provider": "github",
       "owner": "jupyterlab",
       "repo": "jupyterlab_app",
-      "releaseType": "draft"
+      "releaseType": "prerelease"
     }
   },
   "author": {
