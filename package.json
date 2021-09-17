@@ -1,6 +1,6 @@
 {
   "name": "jupyterlab_app",
-  "version": "3.1.12",
+  "version": "3.1.12-1",
   "description": "A native app for JupyterLab, based on electron.",
   "main": "./build/out/main/main.js",
   "scripts": {
@@ -43,9 +43,7 @@
       "!env_installer/JupyterLab*.*"
     ],
     "extraResources": [
-      "env_installer/JupyterLabAppServer-3.1.12-MacOSX-x86_64.sh",
-      "env_installer/JupyterLabAppServer-3.1.12-Linux-x86_64.sh",
-      "env_installer/JupyterLabAppServer-3.1.12-Windows-x86_64.exe"
+      "env_installer/JupyterLabAppServer-*[.sh,.exe]"
     ],
     "linux": {
       "target": [
