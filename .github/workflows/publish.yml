@@ -14,76 +14,108 @@ jobs:
     strategy:
       matrix:
         cfg:
-        - { platform: linux, platform_name: Linux,  os: ubuntu-latest }
+        # - { platform: linux, platform_name: Linux,  os: ubuntu-latest }
         - { platform: mac, platform_name: macOS, os: macos-latest }
-        - { platform: win, platform_name: Windows, os: windows-latest }
+        # - { platform: win, platform_name: Windows, os: windows-latest }
         
     name: '${{ matrix.cfg.platform_name }} installer'
     runs-on: ${{ matrix.cfg.os }}
 
     steps:
       - uses: actions/checkout@v2
-      - uses: s-weigand/setup-conda@v1
+      # - uses: s-weigand/setup-conda@v1
 
-      - name: Install node
-        uses: actions/setup-node@v2
+      # - name: Install node
+      #   uses: actions/setup-node@v2
+      #   with:
+      #     node-version: '14.x'
+
+      # - name: Get yarn cache directory path
+      #   id: yarn-cache-dir-path
+      #   run: echo "::set-output name=dir::$(yarn cache dir)"
+      # - name: Cache yarn
+      #   uses: actions/cache@v2
+      #   id: yarn-cache # use this to check for `cache-hit` (`steps.yarn-cache.outputs.cache-hit != 'true'`)
+      #   with:
+      #     path: ${{ steps.yarn-cache-dir-path.outputs.dir }}
+      #     key: ${{ runner.os }}-${{ matrix.cfg.platform }}-yarn-${{ hashFiles('**/yarn.lock') }}
+      #     restore-keys: |
+      #       ${{ runner.os }}-${{ matrix.cfg.platform }}-yarn-
+
+      # - name: Install dependencies
+      #   run: |
+      #     npm install --global yarn
+      #     # conda install constructor
+      #     yarn install
+
+      # # - name: Create App Server Installer
+      # #   run: |
+      # #     yarn create_env_installer:${{ matrix.cfg.platform }}
+
+      # - name: Create App Installer
+      #   run: |
+      #     yarn dist:${{ matrix.cfg.platform }}
+
+      # - name: Upload Debian Installer
+      #   if: matrix.cfg.platform == 'linux'
+      #   uses: actions/upload-artifact@v2
+      #   with:
+      #     name: debian-installer
+      #     path: |
+      #       dist/JupyterLab.deb
+
+      # - name: Upload Fedora Installer
+      #   if: matrix.cfg.platform == 'linux'
+      #   uses: actions/upload-artifact@v2
+      #   with:
+      #     name: fedora-installer
+      #     path: |
+      #       dist/JupyterLab.rpm
+
+      # - name: Upload macOS Installer
+      #   if: matrix.cfg.platform == 'mac'
+      #   uses: actions/upload-artifact@v2
+      #   with:
+      #     name: mac-installer
+      #     path: |
+      #       dist/JupyterLab.pkg
+
+      # - name: Upload Windows Installer
+      #   if: matrix.cfg.platform == 'win'
+      #   uses: actions/upload-artifact@v2
+      #   with:
+      #     name: windows-installer
+      #     path: |
+      #       dist/JupyterLab-Setup.exe
+
+      - name: Get package info
+        id: package-info
+        uses: codex-team/action-nodejs-package-info@v1
+
+      - name: Get release info
+        uses: actions/github-script@v4
+        id: release-exists
+        env:
+          APP_VERSION: ${{ steps.package-info.outputs.version}}
         with:
-          node-version: '14.x'
+          script: |
+            const releases = await github.repos.listReleases({
+              owner: context.repo.owner,
+              repo: context.repo.repo
+            })
+            const tagName = `v${process.env.APP_VERSION}`
+            console.log('tagName', tagName, 'owner', context.repo.owner, 'repo', context.repo.repo)
+            console.log(`releases`, releases)
+            const releaseWithTag = releases.data.find(release => release.tag_name === tagName && (release.draft || release.prerelease))
+            return releaseWithTag ? 'true' : 'false'
+          result-encoding: string
 
-      - name: Get yarn cache directory path
-        id: yarn-cache-dir-path
-        run: echo "::set-output name=dir::$(yarn cache dir)"
-      - name: Cache yarn
-        uses: actions/cache@v2
-        id: yarn-cache # use this to check for `cache-hit` (`steps.yarn-cache.outputs.cache-hit != 'true'`)
+      - name: Upload macOS Installer release asset
+        if: matrix.cfg.platform == 'mac' && steps.release-exists.outputs.result == 'true'
+        uses: svenstaro/upload-release-action@v2
         with:
-          path: ${{ steps.yarn-cache-dir-path.outputs.dir }}
-          key: ${{ runner.os }}-${{ matrix.cfg.platform }}-yarn-${{ hashFiles('**/yarn.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-${{ matrix.cfg.platform }}-yarn-
-
-      - name: Install dependencies
-        run: |
-          npm install --global yarn
-          conda install constructor
-          yarn install
-
-      - name: Create App Server Installer
-        run: |
-          yarn create_env_installer:${{ matrix.cfg.platform }}
-
-      - name: Create App Installer
-        run: |
-          yarn dist:${{ matrix.cfg.platform }}
-
-      - name: Upload Debian Installer
-        if: matrix.cfg.platform == 'linux'
-        uses: actions/upload-artifact@v2
-        with:
-          name: debian-installer
-          path: |
-            dist/JupyterLab.deb
-
-      - name: Upload Fedora Installer
-        if: matrix.cfg.platform == 'linux'
-        uses: actions/upload-artifact@v2
-        with:
-          name: fedora-installer
-          path: |
-            dist/JupyterLab.rpm
-
-      - name: Upload macOS Installer
-        if: matrix.cfg.platform == 'mac'
-        uses: actions/upload-artifact@v2
-        with:
-          name: mac-installer
-          path: |
-            dist/JupyterLab.pkg
-
-      - name: Upload Windows Installer
-        if: matrix.cfg.platform == 'win'
-        uses: actions/upload-artifact@v2
-        with:
-          name: windows-installer
-          path: |
-            dist/JupyterLab-Setup.exe
+          repo_token: ${{ secrets.JLAB_APP_TOKEN }}
+          file: package.json
+          asset_name: package.json
+          tag: v${{ steps.package-info.outputs.version}}
+          overwrite: true
