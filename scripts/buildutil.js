@@ -129,8 +129,8 @@ if (cli.flags.checkVersionMatch) {
         platform === "darwin"
             ? "postinstall"
             : platform === "win32"
-                ? "electron-builder-scripts/wininstall.nsh"
-                : "electron-builder-scripts/linux_after_install.sh";
+                ? "wininstall.nsh"
+                : "linux_after_install.sh";
     const envInstallScriptPath = path.resolve(
         __dirname,
         `../electron-builder-scripts/${envInstallerScriptName}`
