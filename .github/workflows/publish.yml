@@ -88,14 +88,14 @@ jobs:
           path: |
             dist/JupyterLab-Setup.exe
 
-      - name: get-npm-version
-        id: package-version
-        uses: martinbeentjes/npm-get-version-action@master
+      - name: Get package info
+        id: package-info
+        uses: codex-team/action-nodejs-package-info@v1
 
       - uses: actions/github-script@v4
         id: release-exists
         env:
-          APP_VERSION: ${{ steps.package-version.outputs.current-version}}
+          APP_VERSION: ${{ steps.package-info.outputs.version}}
         with:
           script: |
             const releases = await github.repos.listReleases({
@@ -114,5 +114,5 @@ jobs:
           repo_token: ${{ secrets.JLAB_APP_TOKEN }}
           file: dist/JupyterLab.pkg
           asset_name: JupyterLab-Setup-macOS.pkg
-          tag: v${{ steps.package-version.outputs.current-version}}
+          tag: v${{ steps.package-info.outputs.version}}
           overwrite: true
