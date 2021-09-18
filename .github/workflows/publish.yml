@@ -98,7 +98,7 @@ jobs:
         env:
           APP_VERSION: ${{ steps.package-info.outputs.version}}
         with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
+          github-token: ${{ secrets.JLAB_APP_TOKEN }}
           script: |
             const releases = await github.repos.listReleases({
               owner: context.repo.owner,
@@ -107,7 +107,7 @@ jobs:
             const tagName = `v${process.env.APP_VERSION}`
             console.log('tagName', tagName, 'owner', context.repo.owner, 'repo', context.repo.repo)
             console.log(`releases`, releases)
-            const releaseWithTag = releases.find(release => release.tag_name === tagName && release.draft)
+            const releaseWithTag = releases.data.find(release => release.tag_name === tagName && release.draft)
             return releaseWithTag ? 'true' : 'false'
           result-encoding: string
 
