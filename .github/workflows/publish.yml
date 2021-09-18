@@ -87,3 +87,32 @@ jobs:
           name: windows-installer
           path: |
             dist/JupyterLab-Setup.exe
+
+      - name: get-npm-version
+        id: package-version
+        uses: martinbeentjes/npm-get-version-action@master
+
+      - uses: actions/github-script@v4
+        id: release-exists
+        env:
+          APP_VERSION: ${{ steps.package-version.outputs.current-version}}
+        with:
+          script: |
+            const releases = await github.repos.listReleases({
+              owner: context.repo.owner,
+              repo: context.repo.repo
+            })
+            const tagName = `v${process.env.APP_VERSION}`
+            const releaseWithTag = releases.find(release => release.tag_name === tagName && release.draft)
+            return releaseWithTag ? 'true' : 'false'
+        result-encoding: string
+
+      - name: Upload macOS Installer release asset
+        if: matrix.cfg.platform == 'mac' && steps.release-exists.outputs.result == 'true'
+        uses: svenstaro/upload-release-action@v2
+        with:
+          repo_token: ${{ secrets.JLAB_APP_TOKEN }}
+          file: dist/JupyterLab.pkg
+          asset_name: JupyterLab-Setup-macOS.pkg
+          tag: v${{ steps.package-version.outputs.current-version}}
+          overwrite: true
