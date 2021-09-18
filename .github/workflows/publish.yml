@@ -114,6 +114,26 @@ jobs:
             return releaseWithTag ? 'true' : 'false'
           result-encoding: string
 
+      - name: Upload Debian Installer as Release asset
+        if: matrix.cfg.platform == 'linux' && steps.release-exists.outputs.result == 'true'
+        uses: svenstaro/upload-release-action@v2
+        with:
+          repo_token: ${{ secrets.JLAB_APP_TOKEN }}
+          file: dist/JupyterLab.deb
+          asset_name: JupyterLab-Setup-Debian.deb
+          tag: v${{ steps.package-info.outputs.version}}
+          overwrite: true
+
+      - name: Upload Fedora Installer as Release asset
+        if: matrix.cfg.platform == 'linux' && steps.release-exists.outputs.result == 'true'
+        uses: svenstaro/upload-release-action@v2
+        with:
+          repo_token: ${{ secrets.JLAB_APP_TOKEN }}
+          file: dist/JupyterLab.rpm
+          asset_name: JupyterLab-Setup-Fedora.rpm
+          tag: v${{ steps.package-info.outputs.version}}
+          overwrite: true
+
       - name: Upload macOS Installer as Release asset
         if: matrix.cfg.platform == 'mac' && steps.release-exists.outputs.result == 'true'
         uses: svenstaro/upload-release-action@v2
@@ -121,5 +141,15 @@ jobs:
           repo_token: ${{ secrets.JLAB_APP_TOKEN }}
           file: dist/JupyterLab.pkg
           asset_name: JupyterLab-Setup-macOS.pkg
+          tag: v${{ steps.package-info.outputs.version}}
+          overwrite: true
+
+      - name: Upload Windows Installer as Release asset
+        if: matrix.cfg.platform == 'win' && steps.release-exists.outputs.result == 'true'
+        uses: svenstaro/upload-release-action@v2
+        with:
+          repo_token: ${{ secrets.JLAB_APP_TOKEN }}
+          file: dist/JupyterLab-Setup.exe
+          asset_name: JupyterLab-Setup-Windows.exe
           tag: v${{ steps.package-info.outputs.version}}
           overwrite: true
