@@ -1,6 +1,6 @@
 {
   "name": "jupyterlab_app",
-  "version": "3.1.12",
+  "version": "3.1.12-1",
   "description": "A native app for JupyterLab, based on electron.",
   "main": "./build/out/main/main.js",
   "scripts": {
@@ -27,7 +27,8 @@
     "dockerdist:win": "docker run --rm -ti -v ${PWD}:/project -v ${PWD##*/}-node-modules:/project/node_modules -v ~/.electron:/root/.electron electronuserland/builder:wine /bin/bash -c \"yarn && yarn dist:win\"",
     "create_env_installer:linux": "rimraf ./env_installer/JupyterLab*.sh && constructor ./env_installer --platform=linux-64 --output-dir ./env_installer",
     "create_env_installer:mac": "rimraf ./env_installer/JupyterLab*.sh && constructor ./env_installer --platform=osx-64 --output-dir ./env_installer",
-    "create_env_installer:win": "rimraf ./env_installer/JupyterLab*.exe && constructor ./env_installer --platform=win-64 --output-dir ./env_installer"
+    "create_env_installer:win": "rimraf ./env_installer/JupyterLab*.exe && constructor ./env_installer --platform=win-64 --output-dir ./env_installer",
+    "check_version_match": "node scripts/buildutil.js --check-version-match"
   },
   "build": {
     "productName": "JupyterLab",
@@ -43,9 +44,7 @@
       "!env_installer/JupyterLab*.*"
     ],
     "extraResources": [
-      "env_installer/JupyterLabAppServer-3.1.12-MacOSX-x86_64.sh",
-      "env_installer/JupyterLabAppServer-3.1.12-Linux-x86_64.sh",
-      "env_installer/JupyterLabAppServer-3.1.12-Windows-x86_64.exe"
+      "env_installer/JupyterLabAppServer-*[.sh,.exe]"
     ],
     "linux": {
       "target": [
@@ -114,11 +113,14 @@
   "repository": "github:jupyterlab/jupyterlab",
   "license": "BSD-3-Clause",
   "devDependencies": {
+    "@yarnpkg/lockfile": "~1.1.0",
     "css-loader": "~5.1.1",
     "electron": "^10.1.3",
     "electron-builder": "^22.10.5",
     "file-loader": "~6.2.0",
     "fs-extra": "~9.1.0",
+    "js-yaml": "^4.1.0",
+    "meow": "^6.0.1",
     "mini-css-extract-plugin": "^1.3.9",
     "node-watch": "^0.7.1",
     "raw-loader": "^4.0.2",

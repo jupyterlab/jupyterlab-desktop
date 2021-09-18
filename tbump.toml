@@ -1,0 +1,49 @@
+# github_url = "https://github.com/jupyterlab/jupyterlab_app/"
+
+[version]
+current = "3.1.12-1"
+
+regex = '''
+  (?P<major>\d+)
+  \.
+  (?P<minor>\d+)
+  \.
+  (?P<patch>\d+)
+  \-
+  (?P<build>\d+)
+  '''
+
+[git]
+message_template = "Bump to {new_version}"
+tag_template = "v{new_version}"
+
+[[file]]
+src = "package.json"
+search = '"version": "{current_version}"'
+[[file]]
+src = "electron-builder-scripts/linux_after_install.sh"
+search = 'JupyterLabAppServer-{current_version}-Linux'
+[[file]]
+src = "electron-builder-scripts/postinstall"
+search = 'JupyterLabAppServer-{current_version}-MacOSX'
+[[file]]
+src = "electron-builder-scripts/wininstall.nsh"
+search = 'JupyterLabAppServer-{current_version}-Windows'
+[[file]]
+src = "env_installer/construct.yaml"
+search = 'version: {current_version}'
+[[file]]
+src = "env_installer/construct.yaml"
+version_template = "{major}.{minor}.{patch}"
+search = '- jupyterlab {current_version}'
+[[file]]
+src = "src/browser/index.html"
+search = '"appVersion": "{current_version}"'
+
+#  [[before_commit]]
+#  name = "check changelog"
+#  cmd = "grep -q {new_version} Changelog.rst"
+
+#  [[after_push]]
+#  name = "publish"
+#  cmd = "./publish.sh"
