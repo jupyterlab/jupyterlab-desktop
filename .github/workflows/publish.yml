@@ -45,8 +45,12 @@ jobs:
       - name: Install dependencies
         run: |
           npm install --global yarn
-          # conda install constructor
+          conda install constructor
           yarn install
+
+      - name: Check JupyterLab version match
+        run: |
+          yarn check_version_match
 
       - name: Create App Server Installer
         run: |
