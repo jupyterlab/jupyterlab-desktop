@@ -108,8 +108,6 @@ jobs:
               repo: context.repo.repo
             })
             const tagName = `v${process.env.APP_VERSION}`
-            console.log('tagName', tagName, 'owner', context.repo.owner, 'repo', context.repo.repo)
-            console.log(`releases`, releases)
             const releaseWithTag = releases.data.find(release => release.tag_name === tagName && (release.draft || release.prerelease))
             return releaseWithTag ? 'true' : 'false'
           result-encoding: string
