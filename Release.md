@@ -42,8 +42,8 @@ In order to change the JupyterLab version bundled with the App:
 
     tbump will list changes to be applied, confirm the changes to proceed with apply.
 
-2. Create a commit with the version changes and create a PR. The PR must be created from main repo and not from a fork. This is necessary for GitHub Actions to be able to attach installers to the release.
+3. Create a commit with the version changes and create a PR. The PR must be created from main repo and not from a fork. This is necessary for GitHub Actions to be able to attach installers to the release.
 
-3. GitHub Actions will automatically create installers for each platform (Linux, macOS, Windows) and upload them as release assets. Assets will be uploaded only if a release of type `draft` or `pre-release` with tag matching the JupyterLab App's version with a `v` prefix is found. For example, if the JupyterLab App version in the PR is `3.1.12-2`, the installers will be uploaded to a release that is flagged as `draft` or `pre-release` and has a tag `v3.1.12-2`. New commits to PR will overwrite the installer assets of the release.
+4. GitHub Actions will automatically create installers for each platform (Linux, macOS, Windows) and upload them as release assets. Assets will be uploaded only if a release of type `draft` or `pre-release` with tag matching the JupyterLab App's version with a `v` prefix is found. For example, if the JupyterLab App version in the PR is `3.1.12-2`, the installers will be uploaded to a release that is flagged as `draft` or `pre-release` and has a tag `v3.1.12-2`. New commits to PR will overwrite the installer assets of the release.
 
-4. Once all the changes are complete, and installers are uploaded to the release then publish the release.
+5. Once all the changes are complete, and installers are uploaded to the release then publish the release.
