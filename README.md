@@ -2,6 +2,14 @@
 
 A desktop application for [JupyterLab](https://github.com/jupyterlab/jupyterlab), based on [Electron](https://www.electronjs.org/).
 
+## Download
+![GitHub release (latest by date)](https://img.shields.io/github/v/release/jupyterlab/jupyterlab_app)
+
+- [Debian, Ubuntu Linux Installer](https://github.com/jupyterlab/jupyterlab_app/releases/latest/download/JupyterLab-Setup-Debian.deb)
+- [Red Hat, Fedora, SUSE Linux Installer](https://github.com/jupyterlab/jupyterlab_app/releases/latest/download/JupyterLab-Setup-Fedora.rpm)
+- [macOS Installer](https://github.com/jupyterlab/jupyterlab_app/releases/latest/download/JupyterLab-Setup-macOS.pkg)
+- [Windows Installer](https://github.com/jupyterlab/jupyterlab_app/releases/latest/download/JupyterLab-Setup-Windows.exe)
+
 ## Build dependencies
 
 
