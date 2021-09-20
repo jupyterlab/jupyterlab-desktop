@@ -2,6 +2,8 @@
 
 A desktop application for [JupyterLab](https://github.com/jupyterlab/jupyterlab), based on [Electron](https://www.electronjs.org/).
 
+![JupyterLab App](media/jupyterlab-app.png)
+
 ## Download
 ![GitHub release (latest by date)](https://img.shields.io/github/v/release/jupyterlab/jupyterlab_app)
 
