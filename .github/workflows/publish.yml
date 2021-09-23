@@ -45,7 +45,7 @@ jobs:
       - name: Install dependencies
         run: |
           npm install --global yarn
-          conda install -conda-forge constructor
+          conda install -c conda-forge constructor
           yarn install
 
       - name: Check JupyterLab version match
