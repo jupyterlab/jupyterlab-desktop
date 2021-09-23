@@ -5,19 +5,29 @@ company: "Project Jupyter"
 welcome_image_text: "JupyterLab"
 header_image_text: "JupyterLab"
 
+# see https://github.com/conda-forge/miniforge/blob/master/Miniforge3/construct.yaml
 channels:
-  - https://conda.anaconda.org/conda-forge
-  - http://repo.anaconda.com/pkgs/main/
+  # specifying the channel with the full URL adds two channels
+  # when the end user adds the channel without the full URL
+  # - https://conda.anaconda.org/conda-forge
+  - conda-forge
+
+write_condarc: True
+# keep pkgs for space-saving implications for hardlinks when create new environments
+# and keep the same with Miniconda
+keep_pkgs: True
+license_file: ../LICENSE
 
 specs:
-  - python 3.8*
   - conda
-  - numpy
-  - scipy
-  - pandas
-  - jupyterlab 3.1.12
   - ipywidgets 7.6.5
-  - matplotlib
+  - jupyterlab 3.1.12
+  - matplotlib-base
+  - numpy
+  - pandas
+  - pip
+  - python 3.8*
+  - scipy
 
 default_prefix: "%HOMEDRIVE%\\JupyterLab\\resources\\jlab_server"
 default_prefix_all_users: "%HOMEDRIVE%\\JupyterLab\\resources\\jlab_server"
