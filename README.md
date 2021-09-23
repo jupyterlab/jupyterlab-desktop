@@ -14,22 +14,22 @@ A desktop application for [JupyterLab](https://github.com/jupyterlab/jupyterlab)
 
 ## Build dependencies
 
-
-- [conda](https://docs.conda.io/en/latest/miniconda.html)
+- [conda](https://docs.conda.io)
     
-    You can install miniconda from https://docs.conda.io/en/latest/miniconda.html
+    You can install `conda` as part of a [Miniforge](https://github.com/conda-forge/miniforge) installer.
+    
 
 - [(conda) Constructor](https://github.com/conda/constructor) to bundle JupyterLab App Server into the stand-alone application. You can install Constructor using:
 
     ```bash
-    conda install constructor
+    conda install -c conda-forge constructor
     ```
 
 - nodejs
 
     You can install from https://nodejs.org/en/download/ or run:
     ```bash
-    conda install nodejs
+    conda install -c conda-forge nodejs
     ```
 
 - yarn
