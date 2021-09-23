@@ -32,5 +32,4 @@ specs:
 default_prefix: "%HOMEDRIVE%\\JupyterLab\\resources\\jlab_server"
 default_prefix_all_users: "%HOMEDRIVE%\\JupyterLab\\resources\\jlab_server"
 
-license_file: ../LICENSE
 register_python_default: false
