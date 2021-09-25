@@ -6,7 +6,7 @@ JupyterLab App is a self-contained standalone desktop application which bundles 
 
 On Linux, JupyterLab App is installed into `/opt/JupyterLab` and Python environment is created in `/opt/JupyterLab/resources/jlab_server`
 
-- Install the App by double clicking the installer file and wait for then installation to finish.
+- Install the App by double clicking the installer file and wait for the installation to finish.
 - Linux installs JupyterLab App as the root user. That's why it is necessary to change the ownership to current user to be able to customize JupyterLab App's Python environment.
 - Before launching JupyterLab App, open a Terminal and run the following command with your `username` to change App file system ownership.
 ```bash
