@@ -88,7 +88,11 @@ class KeyboardShortcutManager implements IShortcutManager {
 
     toggleFullscreen() {
         const wasFullscreen = this._window.isFullScreen();
+        const wasMenuBarVisible = this._window.menuBarVisible;
         this._window.setFullScreen(!wasFullscreen);
+        // workaround for Electron bug https://github.com/electron/electron/issues/20237
+        // (contrary to some comments still present on Linux in Electron 10.x)
+        this._window.setMenuBarVisibility(wasMenuBarVisible);
     }
 
     zoomIn() {
