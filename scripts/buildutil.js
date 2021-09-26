@@ -13,11 +13,12 @@ const cli = meow(
       $ node buildutil <options>
 
     Options
-      --check-version-match     check for JupyterLab version match
+      --check-version-match      check for JupyterLab version match
+      --set-jupyterlab-version   set JupyterLab version
 
     Other options:
-      --help                    show usage information
-      --version                 show version information
+      --help                     show usage information
+      --version                  show version information
 
     Examples
       $ node buildutil --check-version-match
@@ -28,6 +29,10 @@ const cli = meow(
                 type: "boolean",
                 default: false,
             },
+            setJupyterlabVersion: {
+                type: "string",
+                default: ""
+            }
         },
     }
 );
@@ -156,5 +161,63 @@ if (cli.flags.checkVersionMatch) {
         process.exit(1);
     }
 
+    console.log('JupyterLab version match satisfied!');
     process.exit(0);
+}
+
+if (cli.flags.setJupyterlabVersion !== "") {
+    const https = require('https');
+    const newVersion = cli.flags.setJupyterlabVersion;
+    console.log(`Downloading JupyterLab v${newVersion} package.json`);
+
+    const url = `https://raw.githubusercontent.com/jupyterlab/jupyterlab/v${newVersion}/jupyterlab/staging/package.json`;
+
+    https.get(url, (res) => {
+        let body = "";
+
+        res.on("data", (chunk) => {
+            body += chunk;
+        });
+
+        res.on("end", () => {
+            try {
+                let newPkgData = JSON.parse(body);
+                if (!(newPkgData.devDependencies && newPkgData.resolutions)) {
+                    console.error(`Invalid package.json format for v${newVersion}!`);
+                    process.exit(1);
+                }
+                
+                const newDependencies = {...newPkgData.devDependencies, ...newPkgData.resolutions};
+
+                const pkgjsonFilePath = path.resolve(__dirname, "../package.json");
+                const pkgjsonFileData = fs.existsSync(pkgjsonFilePath)
+                    ? fs.readJSONSync(pkgjsonFilePath)
+                    : undefined;
+                if (!pkgjsonFileData) {
+                    console.error("package.json not found!");
+                    process.exit(1);
+                }
+
+                const oldDependencies = pkgjsonFileData.dependencies;
+
+                for (const packageName in oldDependencies) {
+                    if (packageName.startsWith('@jupyterlab') && packageName in newDependencies) {
+                        oldDependencies[packageName] = newDependencies[packageName];
+                    }
+                }
+
+                fs.writeFileSync(pkgjsonFilePath, JSON.stringify(pkgjsonFileData, null, 2));
+
+                console.log(`JupyterLab dependencies updated to v${newVersion}`);
+
+                process.exit(0);
+            } catch (error) {
+                console.error(error.message);
+                process.exit(1);
+            };
+        });
+    }).on("error", (error) => {
+        console.error(error.message);
+        process.exit(1);
+    });
 }
