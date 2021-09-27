@@ -421,6 +421,7 @@ class JupyterLabSession {
                 win.show();
             });
 
+            win.setMenuBarVisibility(false);
             win.loadURL(url);
 
             event.newGuest = win;
