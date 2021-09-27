@@ -6,6 +6,7 @@ const lockfile = require("@yarnpkg/lockfile");
 const yaml = require("js-yaml");
 
 const platform = process.platform;
+const pkgjsonFilePath = path.resolve(__dirname, "../package.json");
 
 const cli = meow(
     `
@@ -48,9 +49,43 @@ const searchTextInFile = (filePath, text) => {
     return false;
 };
 
+/*
+* Checks if JupyterLab extensions listed in package.json
+* are properly included into the bundle in "extensions/index.ts"
+*/
+function checkExtensionImports() {
+    console.log('Checking for missing extension imports...');
+
+    const pkgjsonFileData = fs.existsSync(pkgjsonFilePath)
+        ? fs.readJSONSync(pkgjsonFilePath)
+        : undefined;
+    if (!pkgjsonFileData) {
+        console.error("package.json not found!");
+        process.exit(1);
+    }
+
+    const extensions = pkgjsonFileData.jupyterlab.extensions;
+    const mimeExtensions = pkgjsonFileData.jupyterlab.mimeExtensions;
+    const extensionsFilePath = path.resolve(__dirname, `../src/browser/extensions/index.ts`);
+    let extensionsFileContent = '';
+    try {
+        extensionsFileContent = fs.readFileSync(extensionsFilePath, "utf8");
+    } catch (e) {
+        console.error('Error loading "extensions/index.ts"', e);
+    }
+
+    for (const extension in {...extensions, ...mimeExtensions}) {
+        if (!extensionsFileContent.includes(`require('${extension}')`)) {
+            console.error(`${extension} is not imported in "extensions/index.ts"`);
+            process.exit(1);
+        }
+    }
+
+    console.log('All extensions are bundled correctly.');
+}
+
 if (cli.flags.checkVersionMatch) {
     // parse App version
-    const pkgjsonFilePath = path.resolve(__dirname, "../package.json");
     const pkgjsonFileData = fs.existsSync(pkgjsonFilePath)
         ? fs.readJSONSync(pkgjsonFilePath)
         : undefined;
@@ -161,6 +196,8 @@ if (cli.flags.checkVersionMatch) {
         process.exit(1);
     }
 
+    checkExtensionImports();
+
     console.log('JupyterLab version match satisfied!');
     process.exit(0);
 }
@@ -189,7 +226,6 @@ if (cli.flags.setJupyterlabVersion !== "") {
                 
                 const newDependencies = {...newPkgData.devDependencies, ...newPkgData.resolutions};
 
-                const pkgjsonFilePath = path.resolve(__dirname, "../package.json");
                 const pkgjsonFileData = fs.existsSync(pkgjsonFilePath)
                     ? fs.readJSONSync(pkgjsonFilePath)
                     : undefined;
@@ -209,6 +245,38 @@ if (cli.flags.setJupyterlabVersion !== "") {
                 fs.writeFileSync(pkgjsonFilePath, JSON.stringify(pkgjsonFileData, null, 2));
 
                 console.log(`JupyterLab dependencies updated to v${newVersion}`);
+
+                checkExtensionImports();
+
+                // Check if all extensions of the new JupyterLab version are
+                // bundled into the application
+                console.log('Checking for extension list match...');
+                const extensions = pkgjsonFileData.jupyterlab.extensions;
+                const mimeExtensions = pkgjsonFileData.jupyterlab.mimeExtensions;
+                const excludedExtensions = pkgjsonFileData.jupyterlab.excludedExtensions;
+
+                const extensionSet = {...extensions, ...excludedExtensions};
+                const mimeExtensionSet = {...mimeExtensions, ...excludedExtensions};
+
+                for (const extension in newPkgData.jupyterlab.extensions) {
+                    if (!(extension in extensionSet)) {
+                        console.error(
+                            `JupyterLab v${newVersion} ${extension} is not bundled into the application!`
+                        );
+                        process.exit(1);
+                    }
+                }
+
+                for (const extension in newPkgData.jupyterlab.mimeExtensions) {
+                    if (!(extension in mimeExtensionSet)) {
+                        console.error(
+                            `JupyterLab v${newVersion} ${extension} is not bundled into the application!`
+                        );
+                        process.exit(1);
+                    }
+                }
+
+                console.log('All extensions in the new version are bundled correctly.');
 
                 process.exit(0);
             } catch (error) {
