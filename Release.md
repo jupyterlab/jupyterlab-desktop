@@ -30,8 +30,6 @@ In order to change the JupyterLab version bundled with the App:
 
 3. Update `jupyterlab` and `ipywidgets` python package versions in [`env_installer/construct.yaml`](env_installer/construct.yaml)
 
-4. If new extension packages were added (or removed) update the constant with the list of `extensions` in [`src/browser/extensions/index.ts`](src/browser/extensions/index.ts)
-
 Note that after updating the bundled JupyterLab version, it is necessary to bump JupyterLab App version using `tbump` as described in the section below. Run `check_version_match` script before committing the changes to ensure version integrity.
 
 ```bash
