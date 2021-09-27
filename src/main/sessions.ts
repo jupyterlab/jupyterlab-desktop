@@ -431,6 +431,20 @@ class JupyterLabSession {
         this._window.on('focus', () => {
             this._sessionManager.setFocusedSession(this);
         });
+
+        // show popups in a new BrowserWindow with default configuration
+        this._window.webContents.on('new-window', (event, url) => {
+            event.preventDefault();
+            const win = new BrowserWindow({show: false});
+
+            win.webContents.on('did-finish-load', () => {
+                win.show();
+            });
+
+            win.loadURL(url);
+
+            event.newGuest = win;
+        });
     }
 
     get info(): JupyterLabSession.IInfo {
