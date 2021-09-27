@@ -27,6 +27,11 @@ namespace IShortcutManager {
     let zoomEvent: AsyncRemote.IEvent<void> = {
         id: 'KeyboardShortcutManager-zoom'
     };
+
+    export
+    let fullscreenToggledEvent: AsyncRemote.IEvent<void> = {
+        id: 'KeyboardShortcutManager-fullscreen'
+    };
 }
 
 /**
@@ -38,11 +43,10 @@ interface IKeyboardShortcut {
 }
 
 class KeyboardShortcutManager implements IShortcutManager {
-
     /**
      * Create a new shortcut manager
      *
-     * @param options - The application windows
+     * @param sessions - The application sessions
      */
     constructor(sessions: ISessions) {
         this._sessions = sessions;
@@ -55,7 +59,7 @@ class KeyboardShortcutManager implements IShortcutManager {
 
         app.on('browser-window-focus', (event: Event, window: Electron.BrowserWindow) => {
             if (!this._active) {
-                this.enableShortcuts();
+                this.enableShortcuts(window);
             }
         });
 
@@ -80,6 +84,15 @@ class KeyboardShortcutManager implements IShortcutManager {
 
     cut() {
         webContents.getFocusedWebContents().cut();
+    }
+
+    toggleFullscreen() {
+        const wasFullscreen = this._window.isFullScreen();
+        const wasMenuBarVisible = this._window.menuBarVisible;
+        this._window.setFullScreen(!wasFullscreen);
+        // workaround for Electron bug https://github.com/electron/electron/issues/20237
+        // (contrary to some comments still present on Linux in Electron 10.x)
+        this._window.setMenuBarVisibility(wasMenuBarVisible);
     }
 
     zoomIn() {
@@ -113,8 +126,9 @@ class KeyboardShortcutManager implements IShortcutManager {
     /**
      * Enables all shortcuts
      */
-    private enableShortcuts() {
+    private enableShortcuts(window: Electron.BrowserWindow) {
         this._active = true;
+        this._window = window;
         this._shortcuts.forEach( ({accelerator, command}) => {
             globalShortcut.register(accelerator, command);
         });
@@ -134,9 +148,14 @@ class KeyboardShortcutManager implements IShortcutManager {
     private _active: boolean;
 
     /**
-     * All application windows
+     * All application sessions
      */
     private _sessions: ISessions;
+
+    /**
+     * The most recently focused window
+     */
+    private _window: Electron.BrowserWindow;
 
     /**
      * The enabled shortcuts
@@ -147,6 +166,7 @@ class KeyboardShortcutManager implements IShortcutManager {
         {accelerator: 'CmdOrCtrl+x', command: this.cut.bind(this)},
         {accelerator: 'CmdOrCtrl+=', command: this.zoomIn.bind(this)},
         {accelerator: 'CmdOrCtrl+-', command: this.zoomOut.bind(this)},
+        {accelerator: 'F11', command: this.toggleFullscreen.bind(this)},
         {accelerator: process.platform === 'darwin' ? 'Cmd+q' : (process.platform === 'win32' ? 'Alt+F4' : 'Ctrl+Shift+q'), command: this.quit.bind(this)}
     ];
 }
