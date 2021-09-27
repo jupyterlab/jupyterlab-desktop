@@ -230,6 +230,7 @@
     "@jupyterlab/ui-components-extension": "~3.1.11",
     "@jupyterlab/vdom": "~3.1.12",
     "@jupyterlab/vdom-extension": "~3.1.12",
+    "@jupyterlab/vega5-extension": "~3.1.12",
     "@jupyter-widgets/jupyterlab-manager": "~3.0.1",
     "@fortawesome/fontawesome-free": "^5.15.2",
     "@types/node": "^14.14.31",

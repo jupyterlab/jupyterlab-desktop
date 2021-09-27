@@ -16,7 +16,9 @@ const extensions: any = {
     '@jupyterlab/completer-extension': require('@jupyterlab/completer-extension'),
     '@jupyterlab/console-extension': require('@jupyterlab/console-extension'),
     '@jupyterlab/csvviewer-extension': require('@jupyterlab/csvviewer-extension'),
+    '@jupyterlab/debugger-extension': require('@jupyterlab/debugger-extension'),
     '@jupyterlab/docmanager-extension': require('@jupyterlab/docmanager-extension'),
+    '@jupyterlab/docprovider-extension': require('@jupyterlab/docprovider-extension'),
     '@jupyterlab/documentsearch-extension': require('@jupyterlab/documentsearch-extension'),
     '@jupyterlab/filebrowser-extension': require('@jupyterlab/filebrowser-extension'),
     '@jupyterlab/fileeditor-extension': require('@jupyterlab/fileeditor-extension'),
@@ -42,13 +44,16 @@ const extensions: any = {
     '@jupyterlab/tooltip-extension': require('@jupyterlab/tooltip-extension'),
     '@jupyterlab/translation-extension': require('@jupyterlab/translation-extension'),
     '@jupyterlab/ui-components-extension': require('@jupyterlab/ui-components-extension'),
+    '@jupyterlab/vdom-extension': require('@jupyterlab/vdom-extension'),
     // ipywidgets support
     '@jupyter-widgets/jupyterlab-manager': require('@jupyter-widgets/jupyterlab-manager'),
 } as { [key: string]: any };
 
 const mimeExtensions: any = {
+    '@jupyterlab/javascript-extension': require('@jupyterlab/javascript-extension'),
     '@jupyterlab/json-extension': require('@jupyterlab/json-extension'),
     '@jupyterlab/pdf-extension': require('@jupyterlab/pdf-extension'),
+    '@jupyterlab/vega5-extension': require('@jupyterlab/vega5-extension'),
 } as { [key: string]: any };
 
 const disabled = { patterns: [] as string[], matches: [] as string[] };
