@@ -2,7 +2,7 @@
 // Distributed under the terms of the Modified BSD License.
 
 import {
-    BrowserWindow, ipcMain, dialog, app
+    BrowserWindow, ipcMain, app
 } from 'electron';
 
 import {
@@ -195,28 +195,8 @@ class JupyterLabSessions extends EventEmitter implements ISessions, IStatefulSer
 
             let session = new JupyterLabSession(this, opts);
 
-            // disable leave confirmation prompt of JupyterLab
-            session.browserWindow.webContents.on('will-prevent-unload', (event) => {
-                event.preventDefault();
-            });
-
             // Register dialog on window close
             session.browserWindow.on('close', (event: Event) => {
-                let buttonClicked = dialog.showMessageBoxSync({
-                    type: 'warning',
-                    message: 'Do you want to leave?',
-                    detail: 'Changes you made may not be saved.',
-                    buttons: ['Leave', 'Stay'],
-                    defaultId: 0,
-                    cancelId: 1
-                });
-
-                if (buttonClicked === 1) {
-                    // Stop the window from closing
-                    event.preventDefault();
-                    return;
-                }
-
                 // Save session state
                 this._lastWindowState = session.state();
             });
@@ -430,6 +410,21 @@ class JupyterLabSession {
 
         this._window.on('focus', () => {
             this._sessionManager.setFocusedSession(this);
+        });
+
+        // show popups in a new BrowserWindow with default configuration
+        this._window.webContents.on('new-window', (event, url) => {
+            event.preventDefault();
+            const win = new BrowserWindow({show: false});
+
+            win.webContents.on('did-finish-load', () => {
+                win.show();
+            });
+
+            win.setMenuBarVisibility(false);
+            win.loadURL(url);
+
+            event.newGuest = win;
         });
     }
 

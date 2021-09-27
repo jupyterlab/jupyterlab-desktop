@@ -1,5 +1,5 @@
 import {
-    app
+    app, BrowserWindow, dialog, WebContents
 } from 'electron';
 
 const Bottle = require('bottlejs');
@@ -137,6 +137,24 @@ app.on('ready', () => {
     });
 });
 
+// handle page's beforeunload prompt natively
+app.on("web-contents-created", (_event: any, webContents: WebContents) => {
+    webContents.on("will-prevent-unload", (event: Event) => {
+        const win = BrowserWindow.fromWebContents(webContents);
+        const choice = dialog.showMessageBoxSync(win, {
+            type: "warning",
+            message: 'Do you want to leave?',
+            detail: 'Changes you made may not be saved.',
+            buttons: ["Leave", "Stay"],
+            defaultId: 1,
+            cancelId: 0,
+        });
+
+        if (choice === 0) {
+            event.preventDefault();
+        }
+    });
+});
 
 /**
  * When a second instance of the application is executed, this passes the arguments
