@@ -20,9 +20,21 @@ If the JupyterLab version is not changing with the new JupyterLab App release th
 
 In order to change the JupyterLab version bundled with the App:
 
-1. Update all the dependencies in [package.json](package.json) (packages with `@jupyterlab` scope and also `@jupyter-widgets/jupyterlab-manager` for ipywidgets). Versions of `@jupyterlab` packages can be found in the commits for the release tag at https://github.com/jupyterlab/jupyterlab/releases
+1. Update all `@jupyterlab` package dependencies in [package.json](package.json) using
+    ```bash
+    yarn set_jupyterlab_version <new-jlab-version>
+    ```
+    `<new-jlab-version>` must match a released JupyterLab version such as `3.1.13`. This command will update dependencies with `@jupyterlab` scope.
 
-2. Update `jupyterlab` and `ipywidgets` python package versions in [env_installer/construct.yaml](env_installer/construct.yaml)
+2. Update `@jupyter-widgets/jupyterlab-manager` version in [package.json](package.json) for ipywidgets if a compatible newer version is available.
+
+3. Update `jupyterlab` and `ipywidgets` python package versions in [`env_installer/construct.yaml`](env_installer/construct.yaml)
+
+Note that after updating the bundled JupyterLab version, it is necessary to bump JupyterLab App version using `tbump` as described in the section below. Run `check_version_match` script before committing the changes to ensure version integrity.
+
+```bash
+yarn check_version_match
+```
 
 ## Relase Workflow
 
