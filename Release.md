@@ -38,7 +38,7 @@ yarn check_version_match
 
 ## Relase Workflow
 
-1. Create a new release on GitHub. Set the release `tag` to the value of target application version and prefix it with `v` (for example `v3.1.12-1` for JupyterLab App version `3.1.12-1`). Enter release title and release notes. Release needs to stay as `draft` or `pre-release` for GitHub Actions to be able to attach installers to the release.
+1. Create a new release on GitHub as `pre-release`. Set the release `tag` to the value of target application version and prefix it with `v` (for example `v3.1.12-1` for JupyterLab App version `3.1.12-1`). Enter release title and release notes. Release needs to stay as `pre-release` for GitHub Actions to be able to attach installers to the release.
 
 2. Bump application version using `tbump`. If same JupyterLab version is being bundled then only increment the build number after `-`. If JupyterLab version is incremented then reset the build number to 1.
 
@@ -56,6 +56,6 @@ yarn check_version_match
 
 3. Create a commit with the version changes and create a PR. The PR must be created from main repo and not from a fork. This is necessary for GitHub Actions to be able to attach installers to the release.
 
-4. GitHub Actions will automatically create installers for each platform (Linux, macOS, Windows) and upload them as release assets. Assets will be uploaded only if a release of type `draft` or `pre-release` with tag matching the JupyterLab App's version with a `v` prefix is found. For example, if the JupyterLab App version in the PR is `3.1.12-2`, the installers will be uploaded to a release that is flagged as `draft` or `pre-release` and has a tag `v3.1.12-2`. New commits to PR will overwrite the installer assets of the release.
+4. GitHub Actions will automatically create installers for each platform (Linux, macOS, Windows) and upload them as release assets. Assets will be uploaded only if a release of type `pre-release` with tag matching the JupyterLab App's version with a `v` prefix is found. For example, if the JupyterLab App version in the PR is `3.1.12-2`, the installers will be uploaded to a release that is flagged as `pre-release` and has a tag `v3.1.12-2`. New commits to PR will overwrite the installer assets of the release.
 
 5. Once all the changes are complete, and installers are uploaded to the release then publish the release.
