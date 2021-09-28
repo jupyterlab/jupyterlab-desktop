@@ -38,7 +38,7 @@ const cli = meow(
     }
 );
 
-const searchTextInFile = (filePath, text) => {
+function searchTextInFile(filePath, text) {
     try {
         const fileContent = fs.readFileSync(filePath, "utf8");
         return fileContent.includes(text);
@@ -47,7 +47,16 @@ const searchTextInFile = (filePath, text) => {
     }
 
     return false;
-};
+}
+
+// remove ~ or ^ prefix from semver version
+function makeVersionAbsolute(version) {
+    if (version.length > 0 && (version[0] === '^' || version[0] === '~')) {
+        return version.substring(1);
+    }
+
+    return version;
+}
 
 /*
 * Checks if JupyterLab extensions listed in package.json
@@ -238,7 +247,7 @@ if (cli.flags.setJupyterlabVersion !== "") {
 
                 for (const packageName in oldDependencies) {
                     if (packageName.startsWith('@jupyterlab') && packageName in newDependencies) {
-                        oldDependencies[packageName] = newDependencies[packageName];
+                        oldDependencies[packageName] = makeVersionAbsolute(newDependencies[packageName]);
                     }
                 }
 
