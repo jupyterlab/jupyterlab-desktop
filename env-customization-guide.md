@@ -34,10 +34,10 @@ Make sure you installed JupyterLab App following the steps outlined above in ord
 
 - Open a Notebook and run the command below in a cell for the package you want to install. You will see the log of the installation process as the cell output.
   ```bash
-  !pip install <package_name>
+  %pip install <package_name>
   ```
   For example: to install scikit-learn
   ```bash
-  !pip install scikit-learn
+  %pip install scikit-learn
   ```
 - In order to use the newly installed package you need to restart your active notebook's kernel or create a new notebook
