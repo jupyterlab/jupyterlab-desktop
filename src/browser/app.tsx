@@ -277,7 +277,7 @@ class Application extends React.Component<Application.IProps, Application.IState
             }
         };
 
-        asyncRemoteRenderer.onRemoteEvent(ISessions.openFileEvent, this._openFile);
+        asyncRemoteRenderer.onRemoteEvent(ISessions.openFileEvent, this._openFile.bind(this));
     }
 
     private _openFile(path: string) {
