@@ -70,6 +70,12 @@
       "target": [
         "nsis",
         "portable"
+      ],
+      "extraFiles": [
+        {
+          "from": "dist-resources/win/jlab.cmd",
+          "to": "jlab.cmd"
+        }
       ]
     },
     "rpm": {
@@ -89,7 +95,8 @@
       "license": "LICENSE",
       "language": "1033",
       "installerSidebar": "installerSidebar.bmp",
-      "include": "build/wininstall.nsh"
+      "include": "build/wininstall.nsh",
+      "warningsAsErrors": false
     },
     "mac": {
       "category": "public.app-category.productivity",
