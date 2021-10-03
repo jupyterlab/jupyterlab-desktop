@@ -52,7 +52,13 @@
         "deb",
         "rpm"
       ],
-      "category": "Science;Development;"
+      "category": "Science;Development;",
+      "extraResources": [
+        {
+          "from": "dist-resources/linux/jlab.sh",
+          "to": "app/jlab"
+        }
+      ]
     },
     "deb": {
       "fpm": [
