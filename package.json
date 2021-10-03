@@ -95,7 +95,13 @@
       "darkModeSupport": true,
       "hardenedRuntime": true,
       "gatekeeperAssess": false,
-      "artifactName": "${productName}.${ext}"
+      "artifactName": "${productName}.${ext}",
+      "extraResources": [
+        {
+          "from": "dist-resources/darwin/jlab.sh",
+          "to": "app/jlab"
+        }
+      ]
     },
     "pkg": {
       "scripts": "../build/pkg-scripts",

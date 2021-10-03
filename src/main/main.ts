@@ -6,6 +6,25 @@ const Bottle = require('bottlejs');
 import log from 'electron-log';
 import * as yargs from 'yargs';
 import * as path from 'path';
+import * as fs from 'fs';
+
+// handle opening file or directory with command-line arguments
+if (process.argv.length > 1) {
+    let openPath = process.argv[1];
+    let pathExists = fs.existsSync(openPath);
+    // if not absolute path, might be relative path
+    if (!pathExists) {
+        openPath = path.resolve(path.join(process.cwd(), process.argv[1]));
+        pathExists = fs.existsSync(openPath);
+    }
+    if (pathExists) {
+        if (fs.lstatSync(openPath).isDirectory()) {
+            process.env.JLAB_APP_HOME = openPath;
+        } else {
+            process.env.JLAB_APP_HOME = path.dirname(openPath);
+        }
+    }
+}
 
 const isDevMode = process.mainModule.filename.indexOf( 'app.asar' ) === -1;
 
