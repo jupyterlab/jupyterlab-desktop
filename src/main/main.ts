@@ -5,6 +5,7 @@ import {
 const Bottle = require('bottlejs');
 import log from 'electron-log';
 import * as yargs from 'yargs';
+import * as path from 'path';
 
 const isDevMode = process.mainModule.filename.indexOf( 'app.asar' ) === -1;
 
@@ -107,6 +108,10 @@ interface IService {
 const services = ['./app', './sessions', './server', './menu', './shortcuts', './utils', './registry']
 .map((service: string) => {
     return require(service).default;
+});
+
+app.on('open-file', (event: Electron.Event, _path: string) => {
+    process.env.JLAB_APP_HOME = path.dirname(_path);
 });
 
 /**
