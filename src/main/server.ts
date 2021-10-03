@@ -77,7 +77,7 @@ class JupyterServer {
                 PATH_ENV = `${envPath}:${process.env['PATH']}`;
             }
 
-            this._nbServer = execFile(this._info.environment.path, ['-m', 'jupyterlab', '--no-browser', '--ServerApp.password', '', '--ServerApp.disable_check_xsrf', 'True', '--ServerApp.allow_origin', '*'], {
+            this._nbServer = execFile(this._info.environment.path, ['-m', 'jupyterlab', '--no-browser', '--JupyterApp.config_file_name', '', '--ServerApp.password', '', '--ServerApp.disable_check_xsrf', 'True', '--ServerApp.allow_origin', '*'], {
                 cwd: home,
                 env: {
                     PATH: PATH_ENV
