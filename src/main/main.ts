@@ -5,6 +5,21 @@ import {
 const Bottle = require('bottlejs');
 import log from 'electron-log';
 import * as yargs from 'yargs';
+import * as path from 'path';
+import * as fs from 'fs';
+
+// handle opening file or directory with command-line arguments
+if (process.argv.length > 1) {
+    const openPath = path.resolve(process.argv[1]);
+
+    if (fs.existsSync(openPath)) {
+        if (fs.lstatSync(openPath).isDirectory()) {
+            process.env.JLAB_APP_HOME = openPath;
+        } else {
+            process.env.JLAB_APP_HOME = path.dirname(openPath);
+        }
+    }
+}
 
 const isDevMode = process.mainModule.filename.indexOf( 'app.asar' ) === -1;
 
@@ -107,6 +122,10 @@ interface IService {
 const services = ['./app', './sessions', './server', './menu', './shortcuts', './utils', './registry']
 .map((service: string) => {
     return require(service).default;
+});
+
+app.on('open-file', (event: Electron.Event, _path: string) => {
+    process.env.JLAB_APP_HOME = path.dirname(_path);
 });
 
 /**

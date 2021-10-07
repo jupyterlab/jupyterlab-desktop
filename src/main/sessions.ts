@@ -181,6 +181,10 @@ class JupyterLabSessions extends EventEmitter implements ISessions, IStatefulSer
         return true;
     }
 
+    get lastFocusedSession() : JupyterLabSession | null {
+        return this._lastFocusedSession;
+    }
+
     private _createSession(opts: JupyterLabSession.IOptions): Promise<void> {
         this._startingSession =  new Promise<void>( (resolve) => {
             opts.uiState = opts.uiState || this._uiState;
@@ -543,6 +547,8 @@ namespace JupyterLabSession {
     }
 }
 
+let sessions: JupyterLabSessions;
+
 /**
  * The "open-file" listener should be registered before
  * app ready for "double click" files to open in application
@@ -551,8 +557,9 @@ if (process && process.type !== 'renderer') {
     app.once('will-finish-launching', (e: Electron.Event) => {
         app.on('open-file', (event: Electron.Event, path: string) => {
             ipcMain.once('lab-ready', (event: Electron.Event) => {
-                // TODO: double check
-                asyncRemoteMain.emitRemoteEvent(ISessions.openFileEvent, path/*, event.sender*/);
+                if (sessions?.lastFocusedSession) {
+                    asyncRemoteMain.emitRemoteEvent(ISessions.openFileEvent, path, sessions.lastFocusedSession.browserWindow.webContents);
+                }
             });
         });
     });
@@ -562,7 +569,8 @@ let service: IService = {
     requirements: ['IApplication', 'IServerFactory', 'IAsyncRemoteMain'],
     provides: 'ISessions',
     activate: (app: IApplication, serverFactory: IServerFactory): ISessions => {
-        return new JupyterLabSessions(app, serverFactory);
+        sessions = new JupyterLabSessions(app, serverFactory);
+        return sessions;
     },
     autostart: true
 };

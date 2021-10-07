@@ -277,7 +277,7 @@ class Application extends React.Component<Application.IProps, Application.IState
             }
         };
 
-        asyncRemoteRenderer.onRemoteEvent(ISessions.openFileEvent, this._openFile);
+        asyncRemoteRenderer.onRemoteEvent(ISessions.openFileEvent, this._openFile.bind(this));
     }
 
     private _openFile(path: string) {
@@ -290,7 +290,7 @@ class Application extends React.Component<Application.IProps, Application.IState
     }
 
     private _setLabDir() {
-        this._labDir = remote.app.getPath('home');
+        this._labDir = remote.process.env.JLAB_APP_HOME || remote.app.getPath('home');
     }
 
     private _labDir: string;

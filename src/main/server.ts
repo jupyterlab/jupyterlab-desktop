@@ -58,7 +58,7 @@ class JupyterServer {
             let tokenRegExp = /token=\w+/g;
             let baseRegExp = /http:\/\/localhost:\d+\//g;
             const platform = process.platform;
-            const home = app.getPath('home');
+            const home = process.env.JLAB_APP_HOME || app.getPath('home');
             let envPath = path.join(path.dirname(app.getAppPath()), 'jlab_server');
             if (platform !== 'win32') {
                 envPath = path.join(envPath, 'bin');
@@ -77,7 +77,7 @@ class JupyterServer {
                 PATH_ENV = `${envPath}:${process.env['PATH']}`;
             }
 
-            this._nbServer = execFile(this._info.environment.path, ['-m', 'jupyterlab', '--no-browser', '--ServerApp.password', '', '--ServerApp.disable_check_xsrf', 'True', '--ServerApp.allow_origin', '*'], {
+            this._nbServer = execFile(this._info.environment.path, ['-m', 'jupyterlab', '--no-browser', '--JupyterApp.config_file_name', '', '--ServerApp.password', '', '--ServerApp.disable_check_xsrf', 'True', '--ServerApp.allow_origin', '*'], {
                 cwd: home,
                 env: {
                     PATH: PATH_ENV
