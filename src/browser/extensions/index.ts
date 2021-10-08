@@ -8,6 +8,7 @@ import log from 'electron-log';
 
 const extensions: any = {
     './electron-extension': require('./electron-extension'),
+    './desktop-extension': require('./desktop-extension'),
     // turn off menu customization for now
     // './utils-extension': require('./utils-extension'),
     '@jupyterlab/apputils-extension': require('@jupyterlab/apputils-extension'),
