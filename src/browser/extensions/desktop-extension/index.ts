@@ -30,7 +30,7 @@ const desktopExtension: JupyterFrontEndPlugin<void> = {
     requires: [ICommandPalette, IMainMenu],
     activate: (app: ElectronJupyterLab, palette: ICommandPalette, menu: IMainMenu) => {
         app.commands.addCommand('check-for-updates', {
-            label: 'Check for Updates...',
+            label: 'Check for Updates…',
             execute: () => {
                 asyncRemoteRenderer.runRemoteMethod(IAppRemoteInterface.checkForUpdates, void(0));
             }
