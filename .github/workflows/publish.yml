@@ -151,3 +151,13 @@ jobs:
           asset_name: JupyterLab-Setup-Windows.exe
           tag: v${{ steps.package-info.outputs.version}}
           overwrite: true
+
+      - name: Upload latest.yml Release asset
+        if: matrix.cfg.platform == 'win' && steps.release-exists.outputs.result == 'true'
+        uses: svenstaro/upload-release-action@v2
+        with:
+          repo_token: ${{ secrets.JLAB_APP_TOKEN }}
+          file: dist/latest.yml
+          asset_name: latest.yml
+          tag: v${{ steps.package-info.outputs.version}}
+          overwrite: true
