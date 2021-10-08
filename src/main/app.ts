@@ -2,7 +2,7 @@
 // Distributed under the terms of the Modified BSD License.
 
 import {
-    app
+    app, BrowserWindow, ipcMain, shell
 } from 'electron';
 
 import {
@@ -17,11 +17,12 @@ import {
     JSONObject, JSONValue
 } from '@lumino/coreutils';
 
-import {
-    JupyterLabSession
-} from './sessions';
-
 import log from 'electron-log';
+
+import { AsyncRemote, asyncRemoteMain } from '../asyncremote';
+import fetch from 'node-fetch';
+import * as yaml from 'js-yaml';
+import * as semver from 'semver';
 
 export
 interface IApplication {
@@ -87,7 +88,16 @@ interface IClosingService {
 }
 
 export
-class JupyterApplication implements IApplication {
+namespace IAppRemoteInterface {
+    export
+    let checkForUpdates: AsyncRemote.IMethod<void, void> = {
+        id: 'JupyterLabApp-check-for-updates'
+    };
+}
+
+export
+class JupyterApplication implements IApplication, IStatefulService {
+    readonly id = 'JupyterLabDesktop';
 
     /**
      * Construct the Jupyter application
@@ -106,8 +116,24 @@ class JupyterApplication implements IApplication {
                     res({});
                 });
         });
-    }
 
+        this._applicationState = {
+            checkForUpdatesAutomatically: true
+        };
+
+        this.registerStatefulService(this)
+            .then((state: JupyterApplication.IState) => {
+                if (state) {
+                    this._applicationState = state;
+                }
+
+                if (this._applicationState.checkForUpdatesAutomatically) {
+                    setTimeout(() => {
+                        this._checkForUpdates('on-new-version');
+                    }, 5000);
+                }
+            });
+    }
 
     registerStatefulService(service: IStatefulService): Promise<JSONValue> {
         this._services.push(service);
@@ -131,6 +157,14 @@ class JupyterApplication implements IApplication {
     saveState(service: IStatefulService, data: JSONValue): Promise<void> {
         this._updateState(service.id, data);
         return this._saveState();
+    }
+
+    getStateBeforeQuit(): Promise<JupyterApplication.IState> {
+        return Promise.resolve(this._applicationState);
+    }
+
+    verifyState(state: JupyterApplication.IState): boolean {
+        return true;
     }
 
     private _updateState(id: string, data: JSONValue): void {
@@ -215,6 +249,85 @@ class JupyterApplication implements IApplication {
                     this._quit();
                 });
         });
+
+        ipcMain.on('set-check-for-updates-automatically', (_event, autoUpdate) => {
+            this._applicationState.checkForUpdatesAutomatically = autoUpdate;
+        });
+
+        ipcMain.on('launch-installer-download-page', () => {
+            shell.openExternal('https://github.com/jupyterlab/jupyterlab_app/releases');
+        });
+
+        asyncRemoteMain.registerRemoteMethod(IAppRemoteInterface.checkForUpdates,
+            (): Promise<void> => {
+                this._checkForUpdates('always');
+                return Promise.resolve();
+            });
+    }
+
+    private _showUpdateDialog(type: 'updates-available' | 'error' | 'no-updates') {
+        let child = new BrowserWindow({
+            title: 'JupyterLab Update',
+            width: 400,
+            height: 150,
+            resizable: false,
+            webPreferences: {
+                enableRemoteModule: true,
+                nodeIntegration: true
+            }
+        });
+
+        const checkForUpdatesAutomatically = this._applicationState.checkForUpdatesAutomatically !== false;
+        const message =
+            type === 'error' ? 'Error occurred while checking for updates!' :
+            type === 'no-updates' ? 'There are no updates available.' :
+            `There is a new version available. Download the latest version from <a href="javascript:void(0)" onclick='handleReleasesLink(this);'>the Releases page</a>.`
+
+        const pageSource = `
+            <body style="background: rgba(238,238,238,1); font-size: 13px; font-family: Helvetica, Arial, sans-serif">
+            <div style="height: 100%; display: flex;flex-direction: column; justify-content: space-between;">
+                <div>
+                    ${message}                
+                </div>
+                <div>
+                    <label><input type='checkbox' ${checkForUpdatesAutomatically ? 'checked' : ''} onclick='handleAutoCheckForUpdates(this);'>Check for updates automatically</label>
+                </div>
+            </div>
+
+            <script>
+                const ipcRenderer = require('electron').ipcRenderer;
+
+                function handleAutoCheckForUpdates(el) {
+                    ipcRenderer.send('set-check-for-updates-automatically', el.checked);
+                }
+
+                function handleReleasesLink(el) {
+                    ipcRenderer.send('launch-installer-download-page');
+                }
+            </script>
+            </body>
+        `;
+        child.loadURL(`data:text/html;charset=utf-8,${pageSource}`);
+    }
+
+    private _checkForUpdates(showDialog: 'on-new-version' | 'always') {
+        fetch('https://github.com/jupyterlab/jupyterlab_app/releases/latest/download/latest.yml').then(async (response) => {
+            try {
+                const data = await response.text();
+                const latestReleaseData = yaml.load(data);
+                const latestVersion = (latestReleaseData as any).version;
+                const currentVersion = app.getVersion();
+                const newVersionAvailable = semver.compare(currentVersion, latestVersion) === -1;
+                if (showDialog === 'always' || newVersionAvailable) {
+                    this._showUpdateDialog(newVersionAvailable ? 'updates-available' : 'no-updates');
+                }
+            } catch (error) {
+                if (showDialog === 'always') {
+                    this._showUpdateDialog('error');
+                }
+                console.error('Failed to check for updates:', error);
+            }
+        });
     }
 
     private _quit(): void {
@@ -234,10 +347,11 @@ class JupyterApplication implements IApplication {
 
     private _appState: Promise<JSONObject>;
 
+    private _applicationState: JupyterApplication.IState;
+
     private _services: IStatefulService[] = [];
 
     private _closing: IClosingService[] = [];
-
 }
 
 export
@@ -248,7 +362,7 @@ namespace JupyterApplication {
 
     export
     interface IState extends JSONObject {
-        windows: JupyterLabSession.IState[];
+        checkForUpdatesAutomatically?: boolean;
     }
 }
 
