@@ -66,7 +66,7 @@ JupyterLab Desktop bundles JupyterLab front-end and a conda environment as Jupyt
     yarn create_env_installer:<platform>
     ```
 
-    Installer will be created in one of `env_installer/JupyterLabAppServer<version>-MacOSX-x86_64.sh`, `env_installer/JupyterLabAppServer-<version>-Linux-x86_64.sh`, `env_installer/JupyterLabAppServer-<version>-Windows-x86_64.exe` based on your platform
+    Installer will be created in one of `env_installer/JupyterLabDesktopAppServer<version>-MacOSX-x86_64.sh`, `env_installer/JupyterLabDesktopAppServer-<version>-Linux-x86_64.sh`, `env_installer/JupyterLabDesktopAppServer-<version>-Windows-x86_64.exe` based on your platform
 
 - Run the installer to install the JupyterLab Desktop Server. Make sure to set install location to `jlab_server` directory that is at the same level as `jupyterlab-desktop` project source code
 

@@ -91,7 +91,7 @@ export
 namespace IAppRemoteInterface {
     export
     let checkForUpdates: AsyncRemote.IMethod<void, void> = {
-        id: 'JupyterLabApp-check-for-updates'
+        id: 'JupyterLabDesktop-check-for-updates'
     };
 }
 

@@ -184,7 +184,7 @@ if (cli.flags.checkVersionMatch) {
         __dirname,
         `../electron-builder-scripts/${envInstallerScriptName}`
     );
-    let searchString = `JupyterLabAppServer-${appVersion}-`;
+    let searchString = `JupyterLabDesktopAppServer-${appVersion}-`;
     if (!searchTextInFile(envInstallScriptPath, searchString)) {
         console.error(
             `Script file ${envInstallScriptPath} doesn't contain correct App version ${appVersion}`

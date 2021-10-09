@@ -22,13 +22,13 @@ src = "package.json"
 search = '"version": "{current_version}"'
 [[file]]
 src = "electron-builder-scripts/linux_after_install.sh"
-search = 'JupyterLabAppServer-{current_version}-Linux'
+search = 'JupyterLabDesktopAppServer-{current_version}-Linux'
 [[file]]
 src = "electron-builder-scripts/postinstall"
-search = 'JupyterLabAppServer-{current_version}-MacOSX'
+search = 'JupyterLabDesktopAppServer-{current_version}-MacOSX'
 [[file]]
 src = "electron-builder-scripts/wininstall.nsh"
-search = 'JupyterLabAppServer-{current_version}-Windows'
+search = 'JupyterLabDesktopAppServer-{current_version}-Windows'
 [[file]]
 src = "env_installer/construct.yaml"
 search = 'version: {current_version}'
