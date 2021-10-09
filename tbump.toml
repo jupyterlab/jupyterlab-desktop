@@ -1,4 +1,4 @@
-# github_url = "https://github.com/jupyterlab/jupyterlab_app/"
+# github_url = "https://github.com/jupyterlab/jupyterlab-desktop/"
 
 [version]
 current = "3.1.13-1"

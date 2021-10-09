@@ -104,7 +104,7 @@ if (cli.flags.checkVersionMatch) {
     }
 
     const appVersion = pkgjsonFileData["version"];
-    console.log(`JupyterLab App version: ${appVersion}`);
+    console.log(`JupyterLab Desktop version: ${appVersion}`);
 
     // parse JupyterLab version bundled to App UI
     const yarnlockFilePath = path.resolve(__dirname, "../yarn.lock");

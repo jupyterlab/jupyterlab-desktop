@@ -1,7 +1,7 @@
 {
-  "name": "jupyterlab_app",
+  "name": "jupyterlab-desktop",
   "version": "3.1.13-1",
-  "description": "JupyterLab Desktop Application",
+  "description": "JupyterLab Desktop",
   "main": "./build/out/main/main.js",
   "scripts": {
     "start": "electron .",
@@ -133,9 +133,9 @@
     "url": "http://jupyter.org"
   },
   "bugs": {
-    "url": "https://github.com/jupyterlab/jupyterlab_app/issues"
+    "url": "https://github.com/jupyterlab/jupyterlab-desktop/issues"
   },
-  "homepage": "https://github.com/jupyterlab/jupyterlab_app#readme",
+  "homepage": "https://github.com/jupyterlab/jupyterlab-desktop#readme",
   "repository": "github:jupyterlab/jupyterlab",
   "license": "BSD-3-Clause",
   "devDependencies": {

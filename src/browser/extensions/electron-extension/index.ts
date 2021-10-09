@@ -73,7 +73,7 @@ class ElectronJupyterLab extends JupyterLab {
      * The constructor of JupyterLab in @jupyterlab/application initializes
      * the ServiceManager with the default options. The default options
      * include the baseUrl and token at the moment when the application starts
-     * without an option to override them. JupyterLab_app starts the server
+     * without an option to override them. jupyterlab-desktop starts the server
      * and sets the relevant config data at runtime, so the default settings
      * no longer work. Therefore overriding the default options is the only
      * solution at the moment.
