@@ -327,6 +327,11 @@ class JupyterApplication implements IApplication, IStatefulService {
                 }
                 console.error('Failed to check for updates:', error);
             }
+        }).catch((error) => {
+            if (showDialog === 'always') {
+                this._showUpdateDialog('error');
+            }
+            console.error('Failed to check for updates:', error);
         });
     }
 
