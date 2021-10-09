@@ -255,7 +255,7 @@ class JupyterApplication implements IApplication, IStatefulService {
         });
 
         ipcMain.on('launch-installer-download-page', () => {
-            shell.openExternal('https://github.com/jupyterlab/jupyterlab_app/releases');
+            shell.openExternal('https://github.com/jupyterlab/jupyterlab-desktop/releases');
         });
 
         asyncRemoteMain.registerRemoteMethod(IAppRemoteInterface.checkForUpdates,
@@ -311,7 +311,7 @@ class JupyterApplication implements IApplication, IStatefulService {
     }
 
     private _checkForUpdates(showDialog: 'on-new-version' | 'always') {
-        fetch('https://github.com/jupyterlab/jupyterlab_app/releases/latest/download/latest.yml').then(async (response) => {
+        fetch('https://github.com/jupyterlab/jupyterlab-desktop/releases/latest/download/latest.yml').then(async (response) => {
             try {
                 const data = await response.text();
                 const latestReleaseData = yaml.load(data);
@@ -343,7 +343,7 @@ class JupyterApplication implements IApplication, IStatefulService {
         });
     }
 
-    private _appStateDB = new ElectronStateDB({namespace: 'jupyterlab-application-data'});
+    private _appStateDB = new ElectronStateDB({namespace: 'jupyterlab-desktop-data'});
 
     private _appState: Promise<JSONObject>;
 

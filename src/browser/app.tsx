@@ -290,7 +290,7 @@ class Application extends React.Component<Application.IProps, Application.IState
     }
 
     private _setLabDir() {
-        this._labDir = remote.process.env.JLAB_APP_HOME || remote.app.getPath('home');
+        this._labDir = remote.process.env.JLAB_DESKTOP_HOME || remote.app.getPath('home');
     }
 
     private _labDir: string;

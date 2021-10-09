@@ -14,9 +14,9 @@ if (process.argv.length > 1) {
 
     if (fs.existsSync(openPath)) {
         if (fs.lstatSync(openPath).isDirectory()) {
-            process.env.JLAB_APP_HOME = openPath;
+            process.env.JLAB_DESKTOP_HOME = openPath;
         } else {
-            process.env.JLAB_APP_HOME = path.dirname(openPath);
+            process.env.JLAB_DESKTOP_HOME = path.dirname(openPath);
         }
     }
 }
@@ -125,7 +125,7 @@ const services = ['./app', './sessions', './server', './menu', './shortcuts', '.
 });
 
 app.on('open-file', (event: Electron.Event, _path: string) => {
-    process.env.JLAB_APP_HOME = path.dirname(_path);
+    process.env.JLAB_DESKTOP_HOME = path.dirname(_path);
 });
 
 /**

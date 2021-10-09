@@ -25,13 +25,13 @@ function walkSync(currentDirPath, callback) {
 function copyAssests() {
     process.stdout.write('Copying assets into build directory...');
     if (!fs.existsSync(srcDir)) {
-        console.error('jupyterlab_app build: could not find source directory.');
+        console.error('jupyterlab-desktop build: could not find source directory.');
         process.exit();
     }
 
     const dest = path.resolve(path.join(buildDir, 'out'));
     if (!fs.existsSync(dest)) {
-        console.error('jupyterlab_app build: could not find target directory.');
+        console.error('jupyterlab-desktop build: could not find target directory.');
         process.exit();
     }
     
