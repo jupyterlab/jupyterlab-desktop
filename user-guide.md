@@ -84,7 +84,7 @@ rm /usr/local/bin/jlab # remove command symlink
 
 On Windows, JupyterLab Desktop is installed in two parts, one for the python environment and another for the application itself. Go to `Windows Apps & Features` dialog using `Start Menu` -> `Settings` -> `Apps` and make sure to uninstall the components in the following order:
 
-- First uninstall JupyterLab Desktop python environment. Note that for JupyterLab Desktop version 3.1.13-1 and older, this component will be named `JupyterLabAppServer` but for newer versions it will be named `JupyterLabDesktopServer.`
+- First uninstall JupyterLab Desktop python environment. Note that for JupyterLab Desktop version 3.1.13-1 and older, this component will be named `JupyterLabAppServer` but for newer versions it will be named `JupyterLabDesktopAppServer`.
 ![Uninstall Python environment](media/uninstall-windows-python-environment.png)
 
 - Then uninstall JupyterLab Desktop application
