@@ -266,7 +266,7 @@ class JupyterApplication implements IApplication, IStatefulService {
     }
 
     private _showUpdateDialog(type: 'updates-available' | 'error' | 'no-updates') {
-        let child = new BrowserWindow({
+        const dialog = new BrowserWindow({
             title: 'JupyterLab Update',
             width: 400,
             height: 150,
@@ -276,6 +276,7 @@ class JupyterApplication implements IApplication, IStatefulService {
                 nodeIntegration: true
             }
         });
+        dialog.setMenuBarVisibility(false);
 
         const checkForUpdatesAutomatically = this._applicationState.checkForUpdatesAutomatically !== false;
         const message =
@@ -307,7 +308,7 @@ class JupyterApplication implements IApplication, IStatefulService {
             </script>
             </body>
         `;
-        child.loadURL(`data:text/html;charset=utf-8,${pageSource}`);
+        dialog.loadURL(`data:text/html;charset=utf-8,${pageSource}`);
     }
 
     private _checkForUpdates(showDialog: 'on-new-version' | 'always') {

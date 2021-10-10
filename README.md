@@ -7,12 +7,31 @@ A desktop application for [JupyterLab](https://github.com/jupyterlab/jupyterlab)
 ## Download
 ![GitHub release (latest by date)](https://img.shields.io/github/v/release/jupyterlab/jupyterlab-desktop)
 
-Before installing please read the [Python Environment Customization Guide](env-customization-guide.md) if you plan to customize the Python environment to add new packages.
+Before installing please read the [Python Environment Customization Guide](user-guide.md#Customizing-the-Bundled-Python-Environment) if you plan to customize the Python environment to add new packages.
 
 - [Debian, Ubuntu Linux Installer](https://github.com/jupyterlab/jupyterlab-desktop/releases/latest/download/JupyterLab-Setup-Debian.deb)
 - [Red Hat, Fedora, SUSE Linux Installer](https://github.com/jupyterlab/jupyterlab-desktop/releases/latest/download/JupyterLab-Setup-Fedora.rpm)
 - [macOS Installer](https://github.com/jupyterlab/jupyterlab-desktop/releases/latest/download/JupyterLab-Setup-macOS.pkg)
 - [Windows Installer](https://github.com/jupyterlab/jupyterlab-desktop/releases/latest/download/JupyterLab-Setup-Windows.exe)
+
+## Launching JupyterLab Desktop
+
+JupyterLab Desktop can be launched from the GUI of your operating system by clicking the application's icon or by using `jlab` command from the command line. Double clicking `.ipynb` files is also supported and it will launch JupyterLab Desktop and load the notebook file.
+
+JupyterLab Desktop sets File Browser's root directory based on the launch method.
+- If launched from the application icon on GUI or by using `jlab` command without any arguments, then user's home is set as the root directory.
+- If launched by double clicking `.ipynb` file or `jlab` command with a file path as the argument, then file's parent directory is set as the root directory.
+- If `jlab` command is used with a directory path as the argument then the directory in the argument is set as the root directory.
+
+### jlab command-line lanuch examples
+- Open directories using relative or absolute path
+  - `jlab .` launch in current directory
+  - `jlab ../notebooks` launch with relative path
+  - `jlab /Users/username/notebooks` launch with absolute path
+- Open notebooks and other files using relative or absolute path
+  - `jlab /Users/username/notebooks/test.ipynb` launch notebook with absolute path
+  - `jlab ../notebooks/test.ipynb` launch notebook with relative path
+  - `jlab ../test.py` launch python file with relative path
 
 ## Build dependencies
 
