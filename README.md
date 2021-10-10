@@ -7,7 +7,7 @@ A desktop application for [JupyterLab](https://github.com/jupyterlab/jupyterlab)
 ## Download
 ![GitHub release (latest by date)](https://img.shields.io/github/v/release/jupyterlab/jupyterlab-desktop)
 
-Before installing please read the [Python Environment Customization Guide](env-customization-guide.md) if you plan to customize the Python environment to add new packages.
+Before installing please read the [Python Environment Customization Guide](user-guide.md#Customizing-the-Bundled-Python-Environment) if you plan to customize the Python environment to add new packages.
 
 - [Debian, Ubuntu Linux Installer](https://github.com/jupyterlab/jupyterlab-desktop/releases/latest/download/JupyterLab-Setup-Debian.deb)
 - [Red Hat, Fedora, SUSE Linux Installer](https://github.com/jupyterlab/jupyterlab-desktop/releases/latest/download/JupyterLab-Setup-Fedora.rpm)
