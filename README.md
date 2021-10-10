@@ -14,6 +14,25 @@ Before installing please read the [Python Environment Customization Guide](env-c
 - [macOS Installer](https://github.com/jupyterlab/jupyterlab-desktop/releases/latest/download/JupyterLab-Setup-macOS.pkg)
 - [Windows Installer](https://github.com/jupyterlab/jupyterlab-desktop/releases/latest/download/JupyterLab-Setup-Windows.exe)
 
+## Launching JupyterLab Desktop
+
+JupyterLab Desktop can be launched from the GUI of your operating system by clicking the application's icon or by using `jlab` command from the command line. Double clicking `.ipynb` files is also supported and it will launch JupyterLab Desktop and load the notebook file.
+
+JupyterLab Desktop sets File Browser's root directory based on the launch method.
+- If launched from the application icon on GUI or by using `jlab` command without any arguments, then user's home is set as the root directory.
+- If launched by double clicking `.ipynb` file or `jlab` command with a file path as the argument, then file's parent directory is set as the root directory.
+- If `jlab` command is used with a directory path as the argument then the directory in the argument is set as the root directory.
+
+### jlab command-line lanuch examples
+- Open directories using relative or absolute path
+  - `jlab .` launch in current directory
+  - `jlab ../notebooks` launch with relative path
+  - `jlab /Users/username/notebooks` launch with absolute path
+- Open notebooks and other files using relative or absolute path
+  - `jlab /Users/username/notebooks/test.ipynb` launch notebook with absolute path
+  - `jlab ../notebooks/test.ipynb` launch notebook with relative path
+  - `jlab ../test.py` launch python file with relative path
+
 ## Build dependencies
 
 - [conda](https://docs.conda.io)
