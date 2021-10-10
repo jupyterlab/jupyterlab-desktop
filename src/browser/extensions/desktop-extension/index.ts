@@ -35,8 +35,18 @@ const desktopExtension: JupyterFrontEndPlugin<void> = {
                 asyncRemoteRenderer.runRemoteMethod(IAppRemoteInterface.checkForUpdates, void(0));
             }
         });
-    
-        menu.helpMenu.addGroup([{ command: 'check-for-updates' }], 20);
+
+        app.commands.addCommand('open-dev-tools', {
+            label: 'Open Developer Tools',
+            execute: () => {
+                asyncRemoteRenderer.runRemoteMethod(IAppRemoteInterface.openDevTools, void(0));
+            }
+        });
+
+        menu.helpMenu.addGroup([
+            { command: 'open-dev-tools' },
+            { command: 'check-for-updates' }
+        ], 20);
     },
     autoStart: true
 };
