@@ -1,4 +1,4 @@
-name: JupyterLabAppServer
+name: JupyterLabDesktopAppServer
 version: 3.1.18-1
 company: "Project Jupyter"
 

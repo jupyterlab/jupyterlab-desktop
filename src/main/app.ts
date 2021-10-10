@@ -91,7 +91,7 @@ export
 namespace IAppRemoteInterface {
     export
     let checkForUpdates: AsyncRemote.IMethod<void, void> = {
-        id: 'JupyterLabApp-check-for-updates'
+        id: 'JupyterLabDesktop-check-for-updates'
     };
 }
 
@@ -327,6 +327,11 @@ class JupyterApplication implements IApplication, IStatefulService {
                 }
                 console.error('Failed to check for updates:', error);
             }
+        }).catch((error) => {
+            if (showDialog === 'always') {
+                this._showUpdateDialog('error');
+            }
+            console.error('Failed to check for updates:', error);
         });
     }
 
