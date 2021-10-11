@@ -26,7 +26,7 @@ import {
 import { IAppRemoteInterface } from '../../../main/app';
 
 const desktopExtension: JupyterFrontEndPlugin<void> = {
-    id: 'jupyter.extensions.server-manager',
+    id: 'jupyterlab-desktop.extensions.desktop',
     requires: [ICommandPalette, IMainMenu],
     activate: (app: ElectronJupyterLab, palette: ICommandPalette, menu: IMainMenu) => {
         app.commands.addCommand('check-for-updates', {
