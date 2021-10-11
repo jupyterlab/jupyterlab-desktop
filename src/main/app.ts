@@ -93,6 +93,10 @@ namespace IAppRemoteInterface {
     let checkForUpdates: AsyncRemote.IMethod<void, void> = {
         id: 'JupyterLabDesktop-check-for-updates'
     };
+    export
+    let openDevTools: AsyncRemote.IMethod<void, void> = {
+        id: 'JupyterLabDesktop-open-dev-tools'
+    };
 }
 
 export
@@ -250,6 +254,10 @@ class JupyterApplication implements IApplication, IStatefulService {
                 });
         });
 
+        app.on('browser-window-focus', (_event: Event, window: BrowserWindow) => {
+            this._window = window;
+        });
+
         ipcMain.on('set-check-for-updates-automatically', (_event, autoUpdate) => {
             this._applicationState.checkForUpdatesAutomatically = autoUpdate;
         });
@@ -261,6 +269,12 @@ class JupyterApplication implements IApplication, IStatefulService {
         asyncRemoteMain.registerRemoteMethod(IAppRemoteInterface.checkForUpdates,
             (): Promise<void> => {
                 this._checkForUpdates('always');
+                return Promise.resolve();
+            });
+
+        asyncRemoteMain.registerRemoteMethod(IAppRemoteInterface.openDevTools,
+            (): Promise<void> => {
+                this._window.webContents.openDevTools();
                 return Promise.resolve();
             });
     }
@@ -358,6 +372,11 @@ class JupyterApplication implements IApplication, IStatefulService {
     private _services: IStatefulService[] = [];
 
     private _closing: IClosingService[] = [];
+
+    /**
+     * The most recently focused window
+     */
+    private _window: Electron.BrowserWindow;
 }
 
 export
