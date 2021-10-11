@@ -2,7 +2,7 @@
 
 ## Dependencies
 
-JupyterLab Desktop uses [tbump](https://github.com/dmerejkowsky/tbump) to bump JupyterLab and app versions. You can install using:
+JupyterLab Desktop uses [tbump](https://github.com/dmerejkowsky/tbump) to bump JupyterLab and the application versions. You can install using:
 ```bash
 pip install tbump
 ```
@@ -18,7 +18,7 @@ If the JupyterLab version is not changing with the new JupyterLab Desktop releas
 
 ## Updating the bundled JupyterLab
 
-In order to change the JupyterLab version bundled with the App:
+In order to change the JupyterLab version bundled with the application:
 
 1. Update all `@jupyterlab` package dependencies in [package.json](package.json) using
     ```bash

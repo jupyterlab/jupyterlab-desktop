@@ -383,7 +383,7 @@ export
 namespace JupyterApplication {
 
     export
-    const APP_STATE_NAMESPACE = 'jupyter-lab-app';
+    const APP_STATE_NAMESPACE = 'jupyterlab-desktop';
 
     export
     interface IState extends JSONObject {

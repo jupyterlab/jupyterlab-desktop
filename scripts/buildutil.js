@@ -94,7 +94,7 @@ function checkExtensionImports() {
 }
 
 if (cli.flags.checkVersionMatch) {
-    // parse App version
+    // parse application version
     const pkgjsonFileData = fs.existsSync(pkgjsonFilePath)
         ? fs.readJSONSync(pkgjsonFilePath)
         : undefined;
@@ -106,7 +106,7 @@ if (cli.flags.checkVersionMatch) {
     const appVersion = pkgjsonFileData["version"];
     console.log(`JupyterLab Desktop version: ${appVersion}`);
 
-    // parse JupyterLab version bundled to App UI
+    // parse JupyterLab version bundled to application UI
     const yarnlockFilePath = path.resolve(__dirname, "../yarn.lock");
     if (!fs.existsSync(yarnlockFilePath)) {
         console.error("yarn.lock not found!");
@@ -135,12 +135,12 @@ if (cli.flags.checkVersionMatch) {
         semver.patch(appVersion) !== semver.patch(jlabVersion)
     ) {
         console.error(
-            `App package version ${appVersion} doesn't match bundled JupyterLab version ${jlabVersion}`
+            `Application package version ${appVersion} doesn't match bundled JupyterLab version ${jlabVersion}`
         );
         process.exit(1);
     }
 
-    // check JupyterLab version bundled to App Server
+    // check JupyterLab version bundled to Application Server
     const constructorData = yaml.load(
         fs.readFileSync(
             path.resolve(__dirname, "../env_installer/construct.yaml"),
@@ -148,11 +148,11 @@ if (cli.flags.checkVersionMatch) {
         )
     );
     const appServerVersion = constructorData["version"];
-    console.log(`App Server version: ${appServerVersion}`);
+    console.log(`Application Server version: ${appServerVersion}`);
 
     if (appServerVersion !== appVersion) {
         console.error(
-            `App Server version ${appServerVersion} doesn't match App version ${appVersion}`
+            `Application Server version ${appServerVersion} doesn't match Application version ${appVersion}`
         );
         process.exit(1);
     }
@@ -164,11 +164,11 @@ if (cli.flags.checkVersionMatch) {
     }
     const specParts = jlabCondaPkg.split(" ");
     const appServerJLabVersion = specParts[1];
-    console.log(`App Server JupyterLab version: ${appServerJLabVersion}`);
+    console.log(`Application Server JupyterLab version: ${appServerJLabVersion}`);
 
     if (appServerJLabVersion !== jlabVersion) {
         console.error(
-            `App Server package version ${appServerJLabVersion} doesn't match bundled JupyterLab version ${jlabVersion}`
+            `Application Server package version ${appServerJLabVersion} doesn't match bundled JupyterLab version ${jlabVersion}`
         );
         process.exit(1);
     }
@@ -187,7 +187,7 @@ if (cli.flags.checkVersionMatch) {
     let searchString = `JupyterLabDesktopAppServer-${appVersion}-`;
     if (!searchTextInFile(envInstallScriptPath, searchString)) {
         console.error(
-            `Script file ${envInstallScriptPath} doesn't contain correct App version ${appVersion}`
+            `Script file ${envInstallScriptPath} doesn't contain correct Application version ${appVersion}`
         );
         process.exit(1);
     }
@@ -200,7 +200,7 @@ if (cli.flags.checkVersionMatch) {
         )
     ) {
         console.error(
-            `src/index.html doesn't contain correct App version ${appVersion}`
+            `src/index.html doesn't contain correct Application version ${appVersion}`
         );
         process.exit(1);
     }

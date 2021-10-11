@@ -1,14 +1,14 @@
 # Customizing the Bundled Python Environment
 
-JupyterLab Desktop is a self-contained standalone desktop application which bundles a Python environment. The bundled Python environment comes with several popular Python libraries to make the App ready to use in scientific computing and data science workflows. These packages are `numpy`, `scipy`, `pandas`, `ipywidgets` and `matplotlib`. In order to install additional packages into JupyterLab Desktop's Python environment, you need to follow certain steps during and after the installation as described below.
+JupyterLab Desktop is a self-contained standalone desktop application which bundles a Python environment. The bundled Python environment comes with several popular Python libraries to make the application ready to use in scientific computing and data science workflows. These packages are `numpy`, `scipy`, `pandas`, `ipywidgets` and `matplotlib`. In order to install additional packages into JupyterLab Desktop's Python environment, you need to follow certain steps during and after the installation as described below.
 
 ## Linux Instructions
 
 On Linux, JupyterLab Desktop is installed into `/opt/JupyterLab` and Python environment is created in `/opt/JupyterLab/resources/jlab_server`
 
-- Install the App by double clicking the installer file and wait for the installation to finish.
+- Install the application by double clicking the installer file and wait for the installation to finish.
 - Linux installs JupyterLab Desktop as the root user. That's why it is necessary to change the ownership to the current user to be able to customize JupyterLab Desktop's Python environment.
-- Before launching JupyterLab Desktop, open a Terminal and run the following command with your `username` to change App file system ownership.
+- Before launching JupyterLab Desktop, open a Terminal and run the following command with your `username` to change application file system ownership.
 ```bash
 sudo chown -R username:username /opt/JupyterLab
 ```
@@ -17,7 +17,7 @@ sudo chown -R username:username /opt/JupyterLab
 
 On macOS, JupyterLab Desktop should be installed into `~/Applications/JupyterLab` for current user in order to allow environment customizations. Python environment is created in `~/Applications/JupyterLab.app/Contents/Resources/jlab_server`.
 
-- Make sure you install the App for current user in order to allow changes to App's Python environment. It is not the default location of the installer, you can set it by following these steps
+- Make sure you install the application for current user in order to allow changes to the bundled Python environment. It is not the default location of the installer, you can set it by following these steps
 
 | Change Install Location  | Install for me only |
 | ------------- | ------------- |
@@ -72,11 +72,11 @@ Find the application installation `JupyterLab.app` in Finder (in ~/Applications 
 
 For versions 3.1.13-1 and older
 ```bash
-rm -rf ~/Library/Application\ Support/jupyterlab_app
+rm -rf ~/Library/Application\ Support/jupyterlab_app # remove application cache and session files
 ```
 For versions 3.1.18-1 and newer
 ```bash
-rm -rf ~/Library/Application\ Support/jupyterlab-desktop
+rm -rf ~/Library/Application\ Support/jupyterlab-desktop # remove application cache and session files
 rm /usr/local/bin/jlab # remove command symlink
 ```
 
