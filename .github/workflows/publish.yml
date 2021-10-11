@@ -52,11 +52,11 @@ jobs:
         run: |
           yarn check_version_match
 
-      - name: Create App Server Installer
+      - name: Create Application Server Installer
         run: |
           yarn create_env_installer:${{ matrix.cfg.platform }}
 
-      - name: Create App Installer
+      - name: Create Application Installer
         run: |
           yarn dist:${{ matrix.cfg.platform }}
 
