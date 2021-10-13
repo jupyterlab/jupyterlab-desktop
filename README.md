@@ -23,7 +23,7 @@ JupyterLab Desktop sets File Browser's root directory based on the launch method
 - If launched by double clicking `.ipynb` file or `jlab` command with a file path as the argument, then file's parent directory is set as the root directory.
 - If `jlab` command is used with a directory path as the argument then the directory in the argument is set as the root directory.
 
-### jlab command-line lanuch examples
+### jlab command-line launch examples
 - Open directories using relative or absolute path
   - `jlab .` launch in current directory
   - `jlab ../notebooks` launch with relative path
