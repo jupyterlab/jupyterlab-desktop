@@ -286,8 +286,9 @@ class JupyterApplication implements IApplication, IStatefulService {
             height: 150,
             resizable: false,
             webPreferences: {
+                nodeIntegration: true,
                 enableRemoteModule: true,
-                nodeIntegration: true
+                contextIsolation: false
             }
         });
         dialog.setMenuBarVisibility(false);
