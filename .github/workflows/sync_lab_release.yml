@@ -1,0 +1,71 @@
+name: Check for new JupyterLab releases
+
+on:
+  schedule:
+    - cron: 30 17 * * *
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  check_for_lab_updates:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Set up Python
+        uses: actions/setup-python@v1
+        with:
+          python-version: '3.9'
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install tbump
+
+      - name: Install Node
+        uses: actions/setup-node@v2
+        with:
+          node-version: '14.x'
+
+      - name: Install npm dependencies
+        run: |
+          npm install --global yarn
+          yarn install
+
+      - name: Check for new releases
+        shell: bash
+        run: |
+          set -eux
+          export LATEST=$(python scripts/get_latest_lab_version.py)
+          echo "latest=${LATEST}" >> $GITHUB_ENV
+          yarn set_jupyterlab_version ${LATEST}
+          if [[ ! -z "$(git status --porcelain package.json)" ]]; then
+            tbump --only-patch ${LATEST}-1 --non-interactive
+            yarn install
+          fi
+      - name: Create a PR if needed
+        shell: bash
+        env:
+          GITHUB_USER: ${{ secrets.GITHUB_USER }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -eux
+          # if resulted in any change:
+          export LATEST=${{ env.latest }}
+          if [[ ! -z "$(git status --porcelain package.json)" ]]; then
+            export BRANCH_NAME=update-to-v${LATEST}
+            # this will fail if the branch already exists which means we won't have duplicate PRs
+            git checkout -b "${BRANCH_NAME}"
+            git config user.name "JupyterLab Desktop Bot"
+            git config user.email 'jupyterlab-bot@users.noreply.github.com'
+
+            git commit . -m "Update to JupyterLab v${LATEST}"
+
+            git push --set-upstream origin "${BRANCH_NAME}"            
+            hub pull-request -m "Update to JupyterLab v${LATEST}" \
+                -m "New JupyterLab release [v${LATEST}](https://github.com/jupyterlab/jupyterlab/releases/tag/v${LATEST}) is available. Please review the lock file carefully.".
+          fi
+
