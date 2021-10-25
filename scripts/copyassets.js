@@ -51,6 +51,7 @@ function copyAssests() {
     // Copy install scripts
     if (platform === 'darwin') {
         fs.copySync(path.join(path.resolve('./'), 'electron-builder-scripts', 'postinstall'), path.join(buildDir, 'pkg-scripts', 'postinstall'));
+        fs.copySync(path.join(path.resolve('./'), 'dist-resources', 'darwin', 'entitlements.plist'), path.join(buildDir, 'entitlements.plist'));
     } else if (platform === 'win32') {
         fs.copySync(path.join(path.resolve('./'), 'electron-builder-scripts', 'wininstall.nsh'), path.join(buildDir, 'wininstall.nsh'));
     } else {
