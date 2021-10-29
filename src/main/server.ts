@@ -59,16 +59,26 @@ class JupyterServer {
             let baseRegExp = /http:\/\/localhost:\d+\//g;
             const platform = process.platform;
             const home = process.env.JLAB_DESKTOP_HOME || app.getPath('home');
-            let envPath = path.join(path.dirname(app.getAppPath()), 'jlab_server');
-            if (platform !== 'win32') {
-                envPath = path.join(envPath, 'bin');
-            }
-            const pythonPath = path.join(envPath, `python${platform === 'win32' ? '.exe' : ''}`);
+            const pythonPath = this._info.environment.path;
             if (!fs.existsSync(pythonPath)) {
                 dialog.showMessageBox({message: `Environment not found at: ${pythonPath}`, type: 'error' });
+                reject();
             }
 
-            this._info.environment.path = pythonPath;
+            let envPath = path.dirname(pythonPath);
+            if (platform !== 'win32') {
+                envPath = path.normalize(path.join(envPath, '../'));
+            }
+
+
+            // envPath = path.join(path.dirname(app.getAppPath()), 'jlab_server');
+            // if (platform !== 'win32') {
+            //     envPath = path.join(envPath, 'bin');
+            // }
+            // const pythonPath = path.join(envPath, `python${platform === 'win32' ? '.exe' : ''}`);
+            // if (!fs.existsSync(pythonPath)) {
+            //     dialog.showMessageBox({message: `Environment not found at: ${pythonPath}`, type: 'error' });
+            // }
 
             let PATH_ENV = '';
             if (platform === 'win32') {

@@ -24,6 +24,7 @@ import {
 
 import * as fs from 'fs';
 import log from 'electron-log';
+import { IApplication } from './app';
 
 let which = require('which');
 let WinRegistry = require('winreg');
@@ -46,8 +47,11 @@ export interface IRegistry {
 }
 
 export class Registry implements IRegistry {
+    _app: IApplication;
 
-    constructor() {
+    constructor(app: IApplication) {
+        this._app = app;
+
         this._requirements = [
             {
                 name: 'jupyter_core',
@@ -116,29 +120,23 @@ export class Registry implements IRegistry {
         if (platform !== 'win32') {
             envPath = join(envPath, 'bin');
         }
-        const pythonPath = join(envPath, `python${platform === 'win32' ? '.exe' : ''}`);
-        
-        return Promise.resolve({
-            path: pythonPath,
-            name: 'App bundled',
-            type: Registry.IEnvironmentType.PATH,
-            versions: {
-                'jupyter_core': '4.7.0',
-                'notebook': '6.0.0'
-            },
-            default: true,
+        const bundledPythonPath = join(envPath, `python${platform === 'win32' ? '.exe' : ''}`);
+
+        return new Promise((resolve, reject) => {
+            this._app.getPythonPath().then((path: string) => {
+                const pythonPath = path === '' ? bundledPythonPath : path;
+                resolve({
+                    path: pythonPath,
+                    name: 'App bundled',
+                    type: Registry.IEnvironmentType.PATH,
+                    versions: {
+                        'jupyter_core': '4.7.0',
+                        'notebook': '6.0.0'
+                    },
+                    default: true,
+                });
+            });
         });
-        // return new Promise((resolve, reject) => {
-        //     this._registryBuilt.then(() => {
-        //         if (this._default) {
-        //             resolve(this._default);
-        //         } else {
-        //             reject(new Error(`No default environment found!`));
-        //         }
-        //     }).catch(reason => {
-        //         reject(new Error(`Registry failed to build!`));
-        //     });
-        // });
     }
 
     getEnvironmentByPath(pathToMatch: string): Promise<Registry.IPythonEnvironment> {
@@ -865,10 +863,10 @@ namespace Registry {
 }
 
 let service: IService = {
-    requirements: [],
+    requirements: ['IApplication'],
     provides: 'IRegistry',
-    activate: (): IRegistry => {
-        return new Registry();
+    activate: (app: IApplication): IRegistry => {
+        return new Registry(app);
     },
     autostart: true
 };

@@ -271,13 +271,14 @@ class Application extends React.Component<Application.IProps, Application.IState
     }
 
     private _renderSplash(): JSX.Element {
-        return (
-            <div className='jpe-content'>
-                <SplashScreen  ref='splash' uiState={this.props.options.uiState} finished={() => {
-                    this.setState({renderSplash: this._renderEmpty}); }
-                } />
-            </div>
-        );
+        return null;
+        // return (
+        //     <div className='jpe-content'>
+        //         <SplashScreen  ref='splash' uiState={this.props.options.uiState} finished={() => {
+        //             this.setState({renderSplash: this._renderEmpty}); }
+        //         } />
+        //     </div>
+        // );
     }
 
     private _renderErrorScreen(): JSX.Element {

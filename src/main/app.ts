@@ -2,7 +2,7 @@
 // Distributed under the terms of the Modified BSD License.
 
 import {
-    app, BrowserWindow, ipcMain, shell
+    app, BrowserWindow, dialog, ipcMain, shell
 } from 'electron';
 
 import {
@@ -40,6 +40,8 @@ interface IApplication {
      * Force the application service to write data to the disk.
      */
     saveState: (service: IStatefulService, data: JSONValue) => Promise<void>;
+
+    getPythonPath(): Promise<string>;
 }
 
 /**
@@ -97,6 +99,18 @@ namespace IAppRemoteInterface {
     let openDevTools: AsyncRemote.IMethod<void, void> = {
         id: 'JupyterLabDesktop-open-dev-tools'
     };
+    export
+    let getCurrentPythonPath: AsyncRemote.IMethod<void, string> = {
+        id: 'JupyterLabDesktop-get-python-path'
+    };
+    export
+    let showPythonPathSelector: AsyncRemote.IMethod<void, void> = {
+        id: 'JupyterLabDesktop-select-python-path'
+    };
+    export
+    let pythonPathChangedEvent: AsyncRemote.IEvent<string> = {
+        id: 'JupyterLabDesktop-python-path-changed'
+    };
 }
 
 export
@@ -122,13 +136,17 @@ class JupyterApplication implements IApplication, IStatefulService {
         });
 
         this._applicationState = {
-            checkForUpdatesAutomatically: true
+            checkForUpdatesAutomatically: true,
+            pythonPath: '',
         };
 
         this.registerStatefulService(this)
             .then((state: JupyterApplication.IState) => {
                 if (state) {
                     this._applicationState = state;
+                    if (this._applicationState.pythonPath === undefined) {
+                        this._applicationState.pythonPath = '';
+                    }
                 }
 
                 if (this._applicationState.checkForUpdatesAutomatically) {
@@ -137,6 +155,14 @@ class JupyterApplication implements IApplication, IStatefulService {
                     }, 5000);
                 }
             });
+    }
+
+    getPythonPath(): Promise<string> {
+        return new Promise<string>((resolve, _reject) => {
+            this._appState.then((state: JSONObject) => {
+                resolve(this._applicationState.pythonPath);
+            });
+        });
     }
 
     registerStatefulService(service: IStatefulService): Promise<JSONValue> {
@@ -266,6 +292,24 @@ class JupyterApplication implements IApplication, IStatefulService {
             shell.openExternal('https://github.com/jupyterlab/jupyterlab-desktop/releases');
         });
 
+        ipcMain.on('select-python-path', (event) => {
+            dialog.showOpenDialog({
+                properties: ['openFile', 'showHiddenFiles', 'noResolveAliases'],
+                buttonLabel: 'Use Path'
+            }).then(({filePaths}) => {
+                if (filePaths) {
+                    event.sender.send('custom-python-path-selected', filePaths[0]);
+                }
+            });
+        });
+
+        ipcMain.on('set-python-path', (event, path) => {
+            this._applicationState.pythonPath = path;
+            app.relaunch();
+            app.quit();
+        });
+        
+
         asyncRemoteMain.registerRemoteMethod(IAppRemoteInterface.checkForUpdates,
             (): Promise<void> => {
                 this._checkForUpdates('always');
@@ -275,6 +319,18 @@ class JupyterApplication implements IApplication, IStatefulService {
         asyncRemoteMain.registerRemoteMethod(IAppRemoteInterface.openDevTools,
             (): Promise<void> => {
                 this._window.webContents.openDevTools();
+                return Promise.resolve();
+            });
+
+        asyncRemoteMain.registerRemoteMethod(IAppRemoteInterface.getCurrentPythonPath,
+            (): Promise<string> => {
+                return this.getPythonPath();
+            });
+
+        asyncRemoteMain.registerRemoteMethod(IAppRemoteInterface.showPythonPathSelector,
+            (): Promise<void> => {
+                // asyncRemoteMain.emitRemoteEvent(IAppRemoteInterface.pythonPathChangedEvent, 'new-path', this._window.webContents);
+                this._showPythonSelectorDialog();
                 return Promise.resolve();
             });
     }
@@ -320,6 +376,100 @@ class JupyterApplication implements IApplication, IStatefulService {
                 function handleReleasesLink(el) {
                     ipcRenderer.send('launch-installer-download-page');
                 }
+            </script>
+            </body>
+        `;
+        dialog.loadURL(`data:text/html;charset=utf-8,${pageSource}`);
+    }
+
+    private _showPythonSelectorDialog() {
+        const dialog = new BrowserWindow({
+            title: 'Set Python Environment',
+            width: 600,
+            height: 200,
+            resizable: false,
+            parent: this._window,
+            modal: true,
+            webPreferences: {
+                nodeIntegration: true,
+                enableRemoteModule: true,
+                contextIsolation: false
+            }
+        });
+        dialog.setMenuBarVisibility(false);
+
+        const bundledPythonPath = '';
+        const pythonPath = this._applicationState.pythonPath;
+        let useBundledPythonPath = false;
+        if (pythonPath === '' || pythonPath === bundledPythonPath) {
+            useBundledPythonPath = true;
+        }
+
+        const pageSource = `
+            <body style="background: rgba(238,238,238,1); font-size: 13px; font-family: Helvetica, Arial, sans-serif; padding: 20px;">
+            <style>.row {display: flex; margin-bottom: 10px; }</style>
+            <div style="height: 100%; display: flex;flex-direction: column; justify-content: space-between;">
+                <div class="row">
+                    <b>Set Python Environment</b>
+                </div>
+                <div>
+                    <div class="row">
+                        <input type="radio" id="bundled" name="env_type" value="bundled" ${useBundledPythonPath ? 'checked' : ''} onchange="handleEnvTypeChange(this);">
+                        <label for="bundled">Use bundled Python environment</label>
+                    </div>
+                    <div class="row">
+                        <input type="radio" id="custom" name="env_type" value="custom" ${!useBundledPythonPath ? 'checked' : ''} onchange="handleEnvTypeChange(this);">
+                        <label for="custom">Use custom Python environment</label>
+                    </div>
+
+                    <div class="row">
+                        <div style="flex-grow: 1;">
+                            <input type="text" id="python-path" value="${pythonPath}" readonly style="width: 100%;"></input>
+                        </div>
+                        <div>
+                            <button id='select-python-path' onclick='handleSelectPythonPath(this);'>Select Python path</button>
+                        </div>
+                    </div>
+                    <div class="row" style="justify-content: flex-end;">
+                        <button onclick='handleSave(this);' style='margin-right: 5px;'>Save and restart</button>
+                        <button onclick='handleCancel(this);'>Cancel</button>
+                    </div>
+                </div>
+            </div>
+
+            <script>
+                const ipcRenderer = require('electron').ipcRenderer;
+                let pythonPath = '';
+                const bundledRadio = document.getElementById('bundled');
+                const pythonPathInput = document.getElementById('python-path');
+                const selectPythonPathButton = document.getElementById('select-python-path');
+
+                function handleSelectPythonPath(el) {
+                    ipcRenderer.send('select-python-path');
+                }
+
+                function handleReleasesLink(el) {
+                    ipcRenderer.send('launch-installer-download-page');
+                }
+
+                function handleEnvTypeChange() {
+                    pythonPathInput.disabled = bundledRadio.checked;
+                    selectPythonPathButton.disabled = bundledRadio.checked;
+                }
+
+                function handleSave(el) {
+                    ipcRenderer.send('set-python-path', bundledRadio.checked ? '' : pythonPathInput.value);
+                }
+
+                function handleCancel(el) {
+                    window.close();
+                }
+
+                ipcRenderer.on('custom-python-path-selected', (event, path) => {
+                    pythonPathInput.value = path;
+                });
+
+                handleEnvTypeChange();
             </script>
             </body>
         `;
@@ -389,6 +539,7 @@ namespace JupyterApplication {
     export
     interface IState extends JSONObject {
         checkForUpdatesAutomatically?: boolean;
+        pythonPath?: string;
     }
 }
 
