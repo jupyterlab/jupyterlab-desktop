@@ -52,6 +52,26 @@ jobs:
         run: |
           yarn check_version_match
 
+      - name: Get package info
+        id: package-info
+        uses: codex-team/action-nodejs-package-info@v1
+
+      - name: 'Find Release with tag v${{ steps.package-info.outputs.version}}'
+        uses: actions/github-script@v4
+        id: release-exists
+        env:
+          APP_VERSION: ${{ steps.package-info.outputs.version}}
+        with:
+          script: |
+            const releases = await github.repos.listReleases({
+              owner: context.repo.owner,
+              repo: context.repo.repo
+            })
+            const tagName = `v${process.env.APP_VERSION}`
+            const releaseWithTag = releases.data.find(release => release.tag_name === tagName && (release.draft || release.prerelease))
+            return releaseWithTag ? 'true' : 'false'
+          result-encoding: string
+
       - name: Create Application Server Installer
         run: |
           yarn create_env_installer:${{ matrix.cfg.platform }}
@@ -62,7 +82,6 @@ jobs:
           APPLEIDPASS: ${{ secrets.APPLEIDPASS }}
           CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
           CSC_LINK: ${{ secrets.CSC_LINK }}
-          CSC_IDENTITY_AUTO_DISCOVERY: false
         run: |
           yarn dist:${{ matrix.cfg.platform }}
 
@@ -97,26 +116,6 @@ jobs:
           name: windows-installer
           path: |
             dist/JupyterLab-Setup.exe
-
-      - name: Get package info
-        id: package-info
-        uses: codex-team/action-nodejs-package-info@v1
-
-      - name: 'Find Release with tag v${{ steps.package-info.outputs.version}}'
-        uses: actions/github-script@v4
-        id: release-exists
-        env:
-          APP_VERSION: ${{ steps.package-info.outputs.version}}
-        with:
-          script: |
-            const releases = await github.repos.listReleases({
-              owner: context.repo.owner,
-              repo: context.repo.repo
-            })
-            const tagName = `v${process.env.APP_VERSION}`
-            const releaseWithTag = releases.data.find(release => release.tag_name === tagName && (release.draft || release.prerelease))
-            return releaseWithTag ? 'true' : 'false'
-          result-encoding: string
 
       - name: Upload Debian Installer as Release asset
         if: matrix.cfg.platform == 'linux' && steps.release-exists.outputs.result == 'true'
