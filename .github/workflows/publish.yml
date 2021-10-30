@@ -57,6 +57,11 @@ jobs:
           yarn create_env_installer:${{ matrix.cfg.platform }}
 
       - name: Create Application Installer
+        env:
+          APPLEID: ${{ secrets.APPLEID }}
+          APPLEIDPASS: ${{ secrets.APPLEIDPASS }}
+          CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
+          CSC_LINK: ${{ secrets.CSC_LINK }}
         run: |
           yarn dist:${{ matrix.cfg.platform }}
 
