@@ -274,6 +274,7 @@
     "@jupyterlab/vdom": "3.2.1",
     "@jupyterlab/vdom-extension": "3.2.1",
     "@jupyterlab/vega5-extension": "3.2.1",
+    "@types/js-yaml": "^4.0.3",
     "@types/node": "^14.14.31",
     "@types/node-fetch": "~2.5.12",
     "@types/react": "~17.0.2",
