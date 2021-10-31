@@ -251,8 +251,9 @@ if (cli.flags.setJupyterlabVersion !== "") {
                     }
                 }
 
-                // copy resolutions as is
+                // copy resolutions and singleton packages as-is
                 pkgjsonFileData.resolutions = newResolutions;
+                pkgjsonFileData.singletonPackages = newPkgData.singletonPackages;
 
                 fs.writeFileSync(pkgjsonFilePath, JSON.stringify(pkgjsonFileData, null, 2));
 
