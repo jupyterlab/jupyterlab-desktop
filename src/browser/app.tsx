@@ -173,7 +173,6 @@ class Application extends React.Component<Application.IProps, Application.IState
             PageConfig.setOption('baseUrl', `${this._server.url}`);
             // overwrite version and app name
             PageConfig.setOption('appVersion', version);
-            PageConfig.setOption('appName', 'JupyterLab Desktop');
 
             this._setupLab().then((lab) => {
                 this._lab = lab;
