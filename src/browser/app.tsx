@@ -200,11 +200,6 @@ class Application extends React.Component<Application.IProps, Application.IState
     }
 
     private _setupLab() {
-        let version : string = PageConfig.getOption('appVersion') || 'unknown';
-        if (version[0] === 'v') {
-            version = version.slice(1);
-        }
-
         return main().then(extensions => {
             const lab = new ElectronJupyterLab({
                 shell: new LabShell(),
@@ -229,27 +224,24 @@ class Application extends React.Component<Application.IProps, Application.IState
         PageConfig.setOption('baseUrl', server.url);
         PageConfig.setOption('token', server.token);
         PageConfig.setOption('appUrl', 'lab');
-        PageConfig.setOption('translationsApiUrl', 'lab/api/translations');
-        PageConfig.setOption('themesUrl', 'lab/api/themes');
-        PageConfig.setOption('fullMathjaxUrl', 'https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/MathJax.js');
-        PageConfig.setOption('mathjaxConfig', 'TeX-AMS_HTML-full,Safe&amp;delayStartupUntil=configured');
         
-        this._setupLab();
+        this._setupLab().then((lab) => {
+            this._lab = lab;
+            try {
+                this._lab.start({'ignorePlugins': this._ignorePlugins});
+            } catch (e) {
+                log.log(e);
+            }
 
-        try {
-            this._lab.start({'ignorePlugins': this._ignorePlugins});
-        } catch (e) {
-            log.log(e);
-        }
-
-        let rServer: Application.IRemoteServer = {...server, id: this._nextRemoteId++};
-        this.setState((prevState: ServerManager.State) => {
-            server.id = this._nextRemoteId++;
-            let remotes = this.state.remotes.concat(rServer);
-            this._saveState();
-            return({
-                renderState: this._renderEmpty,
-                remotes: remotes
+            let rServer: Application.IRemoteServer = {...server, id: this._nextRemoteId++};
+            this.setState((prevState: ServerManager.State) => {
+                server.id = this._nextRemoteId++;
+                let remotes = this.state.remotes.concat(rServer);
+                this._saveState();
+                return({
+                    renderState: this._renderEmpty,
+                    remotes: remotes
+                });
             });
         });
     }
