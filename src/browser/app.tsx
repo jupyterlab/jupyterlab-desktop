@@ -149,6 +149,11 @@ class Application extends React.Component<Application.IProps, Application.IState
             settings.baseUrl,
             'lab'
         );
+        // store hard-coded version
+        let version : string = PageConfig.getOption('appVersion') || 'unknown';
+        if (version[0] === 'v') {
+            version = version.slice(1);
+        }
 
         ServerConnection.makeRequest(requestUrl, {}, settings).then(async (response) => {
             const indexTemplateCode = await response.text();
@@ -166,6 +171,9 @@ class Application extends React.Component<Application.IProps, Application.IState
             }
             // overwrite the server URL to make use of absolute URL
             PageConfig.setOption('baseUrl', `${this._server.url}`);
+            // overwrite version and app name
+            PageConfig.setOption('appVersion', version);
+            PageConfig.setOption('appName', 'JupyterLab Desktop');
 
             this._setupLab().then((lab) => {
                 this._lab = lab;
