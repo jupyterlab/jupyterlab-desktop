@@ -82,8 +82,7 @@ function checkExtensionImports() {
     } catch (e) {
         console.error('Error loading "extensions/index.ts"', e);
     }
-
-    for (const extension in {...extensions, ...mimeExtensions}) {
+    for (const extension of [...extensions, ...mimeExtensions]) {
         if (!extensionsFileContent.includes(`require('${extension}')`)) {
             console.error(`${extension} is not imported in "extensions/index.ts"`);
             process.exit(1);
@@ -232,8 +231,9 @@ if (cli.flags.setJupyterlabVersion !== "") {
                     console.error(`Invalid package.json format for v${newVersion}!`);
                     process.exit(1);
                 }
-                
-                const newDependencies = {...newPkgData.devDependencies, ...newPkgData.resolutions};
+
+                const newResolutions = {...newPkgData.resolutions}
+                const newDependencies = {...newPkgData.devDependencies, ...newResolutions};
 
                 const pkgjsonFileData = fs.existsSync(pkgjsonFilePath)
                     ? fs.readJSONSync(pkgjsonFilePath)
@@ -251,6 +251,9 @@ if (cli.flags.setJupyterlabVersion !== "") {
                     }
                 }
 
+                // copy resolutions as is
+                pkgjsonFileData.resolutions = newResolutions;
+
                 fs.writeFileSync(pkgjsonFilePath, JSON.stringify(pkgjsonFileData, null, 2));
 
                 console.log(`JupyterLab dependencies updated to v${newVersion}`);
@@ -264,11 +267,11 @@ if (cli.flags.setJupyterlabVersion !== "") {
                 const mimeExtensions = pkgjsonFileData.jupyterlab.mimeExtensions;
                 const excludedExtensions = pkgjsonFileData.jupyterlab.excludedExtensions;
 
-                const extensionSet = {...extensions, ...excludedExtensions};
-                const mimeExtensionSet = {...mimeExtensions, ...excludedExtensions};
+                const extensionSet = new Set([...extensions, ...excludedExtensions]);
+                const mimeExtensionSet = new Set([...mimeExtensions, ...excludedExtensions]);
 
                 for (const extension in newPkgData.jupyterlab.extensions) {
-                    if (!(extension in extensionSet)) {
+                    if (!extensionSet.has(extension)) {
                         console.error(
                             `JupyterLab v${newVersion} ${extension} is not bundled into the application!`
                         );
@@ -277,7 +280,7 @@ if (cli.flags.setJupyterlabVersion !== "") {
                 }
 
                 for (const extension in newPkgData.jupyterlab.mimeExtensions) {
-                    if (!(extension in mimeExtensionSet)) {
+                    if (!mimeExtensionSet.has(extension)) {
                         console.error(
                             `JupyterLab v${newVersion} ${extension} is not bundled into the application!`
                         );

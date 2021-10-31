@@ -1,6 +1,11 @@
 // Copyright (c) Jupyter Development Team.
 // Distributed under the terms of the Modified BSD License.
 
+declare let __webpack_public_path__: string;
+
+// needs to be loaded first as it contains the core federated extensions
+import { main } from './extensions';
+
 import {
     JSONObject
 } from '@lumino/coreutils';
@@ -46,9 +51,10 @@ import {
 } from 'electron';
 
 import * as React from 'react';
-import extensions from './extensions';
 import log from 'electron-log';
 import { LabShell } from '@jupyterlab/application';
+import { URLExt } from '@jupyterlab/coreutils';
+import { ServerConnection } from '@jupyterlab/services';
 
 export
 class Application extends React.Component<Application.IProps, Application.IState> {
@@ -131,25 +137,58 @@ class Application extends React.Component<Application.IProps, Application.IState
             type: 'local',
         };
 
+        __webpack_public_path__ = data.url;
+
         PageConfig.setOption('token', this._server.token);
         PageConfig.setOption('baseUrl', `${this._server.url}`);
         PageConfig.setOption('appUrl', 'lab');
-        PageConfig.setOption('translationsApiUrl', 'lab/api/translations');
-        PageConfig.setOption('themesUrl', 'lab/api/themes');
-        PageConfig.setOption('fullMathjaxUrl', 'https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/MathJax.js');
-        PageConfig.setOption('mathjaxConfig', 'TeX-AMS_HTML-full,Safe&amp;delayStartupUntil=configured');
 
-        this._setupLab();
+        // get lab settings
+        const settings = ServerConnection.makeSettings();
+        const requestUrl = URLExt.join(
+            settings.baseUrl,
+            'lab'
+        );
 
-        try {
-            this._lab.start({'ignorePlugins': this._ignorePlugins});
-        } catch (e) {
-            log.log(e);
-        }
-        this._lab.restored.then( () => {
-            ipcRenderer.send('lab-ready');
-            (this.refs.splash as SplashScreen).fadeSplashScreen();
-        });
+        ServerConnection.makeRequest(requestUrl, {}, settings).then(async (response) => {
+            const indexTemplateCode = await response.text();
+
+            const parser = new DOMParser();
+            const template = parser.parseFromString(indexTemplateCode, 'text/html');
+            const configElement = template.getElementById('jupyter-config-data');
+            const upstreamConfig = JSON.parse(configElement.textContent || '{}');
+
+            for (let key in upstreamConfig) {
+                if (upstreamConfig.hasOwnProperty(key)) {
+                    const value = upstreamConfig[key];
+                    PageConfig.setOption(key, typeof value === 'string' ? value : JSON.stringify(value));
+                }
+            }
+            // overwrite the server URL to make use of absolute URL
+            PageConfig.setOption('baseUrl', `${this._server.url}`);
+
+            // ensure excluded extensions are disabled
+            const disabledExtensions = JSON.parse(PageConfig.getOption('disabledExtensions') || '[]');
+            // TODO: use excludedExtensions
+            disabledExtensions.push('@jupyterlab/extensionmanager-extension');
+            disabledExtensions.push('@jupyterlab/application-extension');
+            PageConfig.setOption('disabledExtensions', JSON.stringify(disabledExtensions));
+            // Desktop has its own quit button
+            PageConfig.setOption('quitButton', 'false');
+
+            this._setupLab().then((lab) => {
+                this._lab = lab;
+                try {
+                    this._lab.start({'ignorePlugins': this._ignorePlugins});
+                } catch (e) {
+                    log.log(e);
+                }
+                this._lab.restored.then( () => {
+                    ipcRenderer.send('lab-ready');
+                    (this.refs.splash as SplashScreen).fadeSplashScreen();
+                });
+            });
+        })
     }
 
     private _launchFromPath() {
@@ -175,21 +214,24 @@ class Application extends React.Component<Application.IProps, Application.IState
             version = version.slice(1);
         }
 
-        this._lab = new ElectronJupyterLab({
-            shell: new LabShell(),
-            mimeExtensions: extensions.mime,
-            disabled: extensions.disabled,
-            deferred: extensions.deferred,
-            platform: this.props.options.platform,
-            uiState: this.props.options.uiState
-        });
-        this._ignorePlugins.push(...extensions.ignored);
+        return main().then(extensions => {
+            const lab = new ElectronJupyterLab({
+                shell: new LabShell(),
+                mimeExtensions: extensions.mime,
+                disabled: extensions.disabled,
+                deferred: extensions.deferred,
+                platform: this.props.options.platform,
+                uiState: this.props.options.uiState
+            });
+            this._ignorePlugins.push(...extensions.ignored);
 
-        try {
-            this._lab.registerPluginModules(extensions.jupyterlab);
-        } catch (e) {
-            log.error(e);
-        }
+            try {
+                lab.registerPluginModules(extensions.jupyterlab);
+            } catch (e) {
+                log.error(e);
+            }
+            return lab;
+        });
     }
 
     private _connectionAdded(server: JupyterServer.IServer) {
