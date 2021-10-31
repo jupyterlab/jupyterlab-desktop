@@ -167,15 +167,6 @@ class Application extends React.Component<Application.IProps, Application.IState
             // overwrite the server URL to make use of absolute URL
             PageConfig.setOption('baseUrl', `${this._server.url}`);
 
-            // ensure excluded extensions are disabled
-            const disabledExtensions = JSON.parse(PageConfig.getOption('disabledExtensions') || '[]');
-            // TODO: use excludedExtensions
-            disabledExtensions.push('@jupyterlab/extensionmanager-extension');
-            disabledExtensions.push('@jupyterlab/application-extension');
-            PageConfig.setOption('disabledExtensions', JSON.stringify(disabledExtensions));
-            // Desktop has its own quit button
-            PageConfig.setOption('quitButton', 'false');
-
             this._setupLab().then((lab) => {
                 this._lab = lab;
                 try {
