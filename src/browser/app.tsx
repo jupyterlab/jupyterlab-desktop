@@ -140,7 +140,7 @@ class Application extends React.Component<Application.IProps, Application.IState
         __webpack_public_path__ = data.url;
 
         PageConfig.setOption('token', this._server.token);
-        PageConfig.setOption('baseUrl', `${this._server.url}`);
+        PageConfig.setOption('baseUrl', this._server.url);
         PageConfig.setOption('appUrl', 'lab');
 
         // get lab settings
@@ -170,9 +170,17 @@ class Application extends React.Component<Application.IProps, Application.IState
                 }
             }
             // overwrite the server URL to make use of absolute URL
-            PageConfig.setOption('baseUrl', `${this._server.url}`);
+            PageConfig.setOption('baseUrl', this._server.url);
             // overwrite version and app name
             PageConfig.setOption('appVersion', version);
+
+            // correctly set the base URL so that relative paths can be used
+            // (relative paths are used by upstream JupyterLab, e.g. for kernelspec
+            // logos see https://github.com/jupyterlab/jupyterlab-desktop/pull/316,
+            // and for other static assets like MathJax).
+            const base = document.createElement('base');
+            base.setAttribute('href', this._server.url);
+            document.body.appendChild(base);
 
             this._setupLab().then((lab) => {
                 this._lab = lab;
