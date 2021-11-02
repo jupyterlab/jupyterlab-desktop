@@ -1,6 +1,11 @@
 // Copyright (c) Jupyter Development Team.
 // Distributed under the terms of the Modified BSD License.
 
+declare let __webpack_public_path__: string;
+
+// needs to be loaded first as it contains the core federated extensions
+import { main } from './extensions';
+
 import {
     JSONObject
 } from '@lumino/coreutils';
@@ -46,9 +51,10 @@ import {
 } from 'electron';
 
 import * as React from 'react';
-import extensions from './extensions';
 import log from 'electron-log';
 import { LabShell } from '@jupyterlab/application';
+import { URLExt } from '@jupyterlab/coreutils';
+import { ServerConnection } from '@jupyterlab/services';
 
 export
 class Application extends React.Component<Application.IProps, Application.IState> {
@@ -131,25 +137,64 @@ class Application extends React.Component<Application.IProps, Application.IState
             type: 'local',
         };
 
+        __webpack_public_path__ = data.url;
+
         PageConfig.setOption('token', this._server.token);
-        PageConfig.setOption('baseUrl', `${this._server.url}`);
+        PageConfig.setOption('baseUrl', this._server.url);
         PageConfig.setOption('appUrl', 'lab');
-        PageConfig.setOption('translationsApiUrl', 'lab/api/translations');
-        PageConfig.setOption('themesUrl', 'lab/api/themes');
-        PageConfig.setOption('fullMathjaxUrl', 'https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/MathJax.js');
-        PageConfig.setOption('mathjaxConfig', 'TeX-AMS_HTML-full,Safe&amp;delayStartupUntil=configured');
 
-        this._setupLab();
-
-        try {
-            this._lab.start({'ignorePlugins': this._ignorePlugins});
-        } catch (e) {
-            log.log(e);
+        // get lab settings
+        const settings = ServerConnection.makeSettings();
+        const requestUrl = URLExt.join(
+            settings.baseUrl,
+            'lab'
+        );
+        // store hard-coded version
+        let version : string = PageConfig.getOption('appVersion') || 'unknown';
+        if (version[0] === 'v') {
+            version = version.slice(1);
         }
-        this._lab.restored.then( () => {
-            ipcRenderer.send('lab-ready');
-            (this.refs.splash as SplashScreen).fadeSplashScreen();
-        });
+
+        ServerConnection.makeRequest(requestUrl, {}, settings).then(async (response) => {
+            const indexTemplateCode = await response.text();
+
+            const parser = new DOMParser();
+            const template = parser.parseFromString(indexTemplateCode, 'text/html');
+            const configElement = template.getElementById('jupyter-config-data');
+            const upstreamConfig = JSON.parse(configElement.textContent || '{}');
+
+            for (let key in upstreamConfig) {
+                if (upstreamConfig.hasOwnProperty(key)) {
+                    const value = upstreamConfig[key];
+                    PageConfig.setOption(key, typeof value === 'string' ? value : JSON.stringify(value));
+                }
+            }
+            // overwrite the server URL to make use of absolute URL
+            PageConfig.setOption('baseUrl', this._server.url);
+            // overwrite version and app name
+            PageConfig.setOption('appVersion', version);
+
+            // correctly set the base URL so that relative paths can be used
+            // (relative paths are used by upstream JupyterLab, e.g. for kernelspec
+            // logos see https://github.com/jupyterlab/jupyterlab-desktop/pull/316,
+            // and for other static assets like MathJax).
+            const base = document.createElement('base');
+            base.setAttribute('href', this._server.url);
+            document.body.appendChild(base);
+
+            this._setupLab().then((lab) => {
+                this._lab = lab;
+                try {
+                    this._lab.start({'ignorePlugins': this._ignorePlugins});
+                } catch (e) {
+                    log.log(e);
+                }
+                this._lab.restored.then( () => {
+                    ipcRenderer.send('lab-ready');
+                    (this.refs.splash as SplashScreen).fadeSplashScreen();
+                });
+            });
+        })
     }
 
     private _launchFromPath() {
@@ -170,53 +215,48 @@ class Application extends React.Component<Application.IProps, Application.IState
     }
 
     private _setupLab() {
-        let version : string = PageConfig.getOption('appVersion') || 'unknown';
-        if (version[0] === 'v') {
-            version = version.slice(1);
-        }
+        return main().then(extensions => {
+            const lab = new ElectronJupyterLab({
+                shell: new LabShell(),
+                mimeExtensions: extensions.mime,
+                disabled: extensions.disabled,
+                deferred: extensions.deferred,
+                platform: this.props.options.platform,
+                uiState: this.props.options.uiState
+            });
+            this._ignorePlugins.push(...extensions.ignored);
 
-        this._lab = new ElectronJupyterLab({
-            shell: new LabShell(),
-            mimeExtensions: extensions.mime,
-            disabled: extensions.disabled,
-            deferred: extensions.deferred,
-            platform: this.props.options.platform,
-            uiState: this.props.options.uiState
+            try {
+                lab.registerPluginModules(extensions.jupyterlab);
+            } catch (e) {
+                log.error(e);
+            }
+            return lab;
         });
-        this._ignorePlugins.push(...extensions.ignored);
-
-        try {
-            this._lab.registerPluginModules(extensions.jupyterlab);
-        } catch (e) {
-            log.error(e);
-        }
     }
 
     private _connectionAdded(server: JupyterServer.IServer) {
         PageConfig.setOption('baseUrl', server.url);
         PageConfig.setOption('token', server.token);
         PageConfig.setOption('appUrl', 'lab');
-        PageConfig.setOption('translationsApiUrl', 'lab/api/translations');
-        PageConfig.setOption('themesUrl', 'lab/api/themes');
-        PageConfig.setOption('fullMathjaxUrl', 'https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/MathJax.js');
-        PageConfig.setOption('mathjaxConfig', 'TeX-AMS_HTML-full,Safe&amp;delayStartupUntil=configured');
         
-        this._setupLab();
+        this._setupLab().then((lab) => {
+            this._lab = lab;
+            try {
+                this._lab.start({'ignorePlugins': this._ignorePlugins});
+            } catch (e) {
+                log.log(e);
+            }
 
-        try {
-            this._lab.start({'ignorePlugins': this._ignorePlugins});
-        } catch (e) {
-            log.log(e);
-        }
-
-        let rServer: Application.IRemoteServer = {...server, id: this._nextRemoteId++};
-        this.setState((prevState: ServerManager.State) => {
-            server.id = this._nextRemoteId++;
-            let remotes = this.state.remotes.concat(rServer);
-            this._saveState();
-            return({
-                renderState: this._renderEmpty,
-                remotes: remotes
+            let rServer: Application.IRemoteServer = {...server, id: this._nextRemoteId++};
+            this.setState((prevState: ServerManager.State) => {
+                server.id = this._nextRemoteId++;
+                let remotes = this.state.remotes.concat(rServer);
+                this._saveState();
+                return({
+                    renderState: this._renderEmpty,
+                    remotes: remotes
+                });
             });
         });
     }

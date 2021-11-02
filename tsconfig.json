@@ -8,8 +8,8 @@
     "moduleResolution": "node",
     "esModuleInterop": true,
     "jsx": "react",
-    "target": "es6",
-    "lib": ["es6", "es2015.collection", "es2015.promise", "dom"],
+    "target": "es2020",
+    "lib": ["es2020", "dom"],
     "baseUrl": ".",
     "outDir": "./build/out",
     "sourceMap": true
