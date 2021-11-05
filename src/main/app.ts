@@ -20,6 +20,8 @@ import {
 import log from 'electron-log';
 
 import { AsyncRemote, asyncRemoteMain } from '../asyncremote';
+import { IPythonEnvironment } from './tokens';
+import { IRegistry } from './registry';
 import fetch from 'node-fetch';
 import * as yaml from 'js-yaml';
 import * as semver from 'semver';
@@ -41,7 +43,7 @@ interface IApplication {
      */
     saveState: (service: IStatefulService, data: JSONValue) => Promise<void>;
 
-    getPythonPath(): Promise<string>;
+    getPythonEnvironment(): Promise<IPythonEnvironment>;
 }
 
 /**
@@ -100,8 +102,8 @@ namespace IAppRemoteInterface {
         id: 'JupyterLabDesktop-open-dev-tools'
     };
     export
-    let getCurrentPythonPath: AsyncRemote.IMethod<void, string> = {
-        id: 'JupyterLabDesktop-get-python-path'
+    let getCurrentPythonEnvironment: AsyncRemote.IMethod<void, IPythonEnvironment> = {
+        id: 'JupyterLabDesktop-get-python-env'
     };
     export
     let showPythonPathSelector: AsyncRemote.IMethod<void, void> = {
@@ -116,11 +118,13 @@ namespace IAppRemoteInterface {
 export
 class JupyterApplication implements IApplication, IStatefulService {
     readonly id = 'JupyterLabDesktop';
+    private _registry: IRegistry;
 
     /**
      * Construct the Jupyter application
      */
-    constructor() {
+    constructor(registry: IRegistry) {
+        this._registry = registry;
         this._registerListeners();
 
         // Get application state from state db file.
@@ -147,6 +151,16 @@ class JupyterApplication implements IApplication, IStatefulService {
                     if (this._applicationState.pythonPath === undefined) {
                         this._applicationState.pythonPath = '';
                     }
+                    let pythonPath = this._applicationState.pythonPath;
+                    if (pythonPath === '') {
+                        pythonPath = this._registry.getBundledPythonPath();
+                    }
+                    if (this._registry.validatePythonEnvironmentAtPath(pythonPath)) {
+                        this._registry.setDefaultPythonPath(pythonPath);
+                        this._applicationState.pythonPath = pythonPath;
+                    } else {
+                        this._showPythonSelectorDialog();
+                    }
                 }
 
                 if (this._applicationState.checkForUpdatesAutomatically) {
@@ -157,10 +171,10 @@ class JupyterApplication implements IApplication, IStatefulService {
             });
     }
 
-    getPythonPath(): Promise<string> {
-        return new Promise<string>((resolve, _reject) => {
+    getPythonEnvironment(): Promise<IPythonEnvironment> {
+        return new Promise<IPythonEnvironment>((resolve, _reject) => {
             this._appState.then((state: JSONObject) => {
-                resolve(this._applicationState.pythonPath);
+                resolve(this._registry.getCurrentPythonEnvironment());
             });
         });
     }
@@ -303,6 +317,10 @@ class JupyterApplication implements IApplication, IStatefulService {
             });
         });
 
+        ipcMain.handle('validate-python-path', (event, path) => {
+            return this._registry.validatePythonEnvironmentAtPath(path);
+        });
+
         ipcMain.on('set-python-path', (event, path) => {
             this._applicationState.pythonPath = path;
             app.relaunch();
@@ -322,9 +340,9 @@ class JupyterApplication implements IApplication, IStatefulService {
                 return Promise.resolve();
             });
 
-        asyncRemoteMain.registerRemoteMethod(IAppRemoteInterface.getCurrentPythonPath,
-            (): Promise<string> => {
-                return this.getPythonPath();
+        asyncRemoteMain.registerRemoteMethod(IAppRemoteInterface.getCurrentPythonEnvironment,
+            (): Promise<IPythonEnvironment> => {
+                return this.getPythonEnvironment();
             });
 
         asyncRemoteMain.registerRemoteMethod(IAppRemoteInterface.showPythonPathSelector,
@@ -458,7 +476,14 @@ class JupyterApplication implements IApplication, IStatefulService {
                 }
 
                 function handleSave(el) {
-                    ipcRenderer.send('set-python-path', bundledRadio.checked ? '' : pythonPathInput.value);
+                    const useBundledEnv = bundledRadio.checked;
+                    if (!useBundledEnv) {
+                        ipcRenderer.invoke('validate-python-path', pythonPathInput.value).then((valid) => {
+                            ipcRenderer.send('set-python-path', pythonPathInput.value);
+                        });
+                    } else {
+                        ipcRenderer.send('set-python-path', '');
+                    }
                 }
 
                 function handleCancel(el) {
@@ -544,10 +569,10 @@ namespace JupyterApplication {
 }
 
 let service: IService = {
-    requirements: [],
+    requirements: ['IRegistry'],
     provides: 'IApplication',
-    activate: (): IApplication => {
-        return new JupyterApplication();
+    activate: (registry: IRegistry): IApplication => {
+        return new JupyterApplication(registry);
     }
 };
 export default service;

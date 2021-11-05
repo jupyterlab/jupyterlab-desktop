@@ -7,7 +7,7 @@ import {
 } from './main';
 
 import {
-    IRegistry, Registry
+    IRegistry
 } from './registry';
 
 import {
@@ -30,6 +30,7 @@ import log from 'electron-log';
 
 import * as path from 'path';
 import * as fs from 'fs';
+import { IPythonEnvironment } from './tokens';
 
 export
 class JupyterServer {
@@ -186,14 +187,14 @@ namespace JupyterServer {
 
     export
     interface IOptions {
-        environment: Registry.IPythonEnvironment;
+        environment: IPythonEnvironment;
     }
 
     export
     interface IInfo {
         url: string;
         token: string;
-        environment: Registry.IPythonEnvironment;
+        environment: IPythonEnvironment;
     }
 }
 
@@ -290,7 +291,7 @@ class JupyterServerFactory implements IServerFactory, IClosingService {
 
         asyncRemoteMain.registerRemoteMethod(IServerFactory.requestServerStartPath, (data: any, caller) => {
             return this._registry.getUserJupyterPath()
-                .then((environment: Registry.IPythonEnvironment) => {
+                .then((environment: IPythonEnvironment) => {
                     asyncRemoteMain.emitRemoteEvent(IServerFactory.pathSelectedEvent, undefined, caller);
                     return this.createServer({ environment });
                 })
@@ -322,7 +323,7 @@ class JupyterServerFactory implements IServerFactory, IClosingService {
      */
     createFreeServer(opts: JupyterServer.IOptions): JupyterServerFactory.IFactoryItem {
         let item: JupyterServerFactory.IFactoryItem;
-        let env: Promise<Registry.IPythonEnvironment>;
+        let env: Promise<IPythonEnvironment>;
 
         if (!opts.environment) {
             env = this._registry.getDefaultEnvironment();
@@ -353,7 +354,7 @@ class JupyterServerFactory implements IServerFactory, IClosingService {
      */
     createServer(opts: JupyterServer.IOptions, forceNewServer?: boolean): Promise<JupyterServerFactory.IFactoryItem> {
         let server: JupyterServerFactory.IFactoryItem;
-        let env: Promise<Registry.IPythonEnvironment>;
+        let env: Promise<IPythonEnvironment>;
 
         if (!opts.environment) {
             env = this._registry.getDefaultEnvironment();

@@ -48,6 +48,9 @@ function copyAssests() {
     const htmlPath = path.join('browser', 'index.html');
     fs.copySync(path.join(srcDir, htmlPath), path.join(dest, htmlPath));
 
+    const envInfoPath = path.join('main', 'env_info.py');
+    fs.copySync(path.join(srcDir, envInfoPath), path.join(dest, envInfoPath));
+
     // Copy install scripts
     if (platform === 'darwin') {
         fs.copySync(path.join(path.resolve('./'), 'electron-builder-scripts', 'postinstall'), path.join(buildDir, 'pkg-scripts', 'postinstall'));
