@@ -1,5 +1,5 @@
 import {
-    execFile, execFileSync
+    execFile, ExecFileOptions, execFileSync
 } from 'child_process';
 
 import {
@@ -61,8 +61,8 @@ export class Registry implements IRegistry {
         this._requirements = [
             {
                 name: 'jupyterlab',
-                moduleName: 'jupyter',
-                commands: ['lab', '--version'],
+                moduleName: 'jupyterlab',
+                commands: ['--version'],
                 versionRange: new semver.Range('>=3.1.0')
             }
         ];
@@ -263,9 +263,10 @@ export class Registry implements IRegistry {
     }
 
     getEnvironmentInfo(pythonPath: string): IPythonEnvironment {
-        const pythonVersionOutput = this._runCommandSync(pythonPath, ['--version']);
+        const runOptions = { env: { 'PATH': this._getPathEnvForPythonPath(pythonPath)}};
+        const pythonVersionOutput = this._runCommandSync(pythonPath, ['--version'], runOptions);
         const pythonVersion = this._extractVersionFromExecOutputSync(pythonVersionOutput);
-        const jlabVersionOutput = this._runCommandSync(pythonPath, ['-m', 'jupyterlab', '--version']);
+        const jlabVersionOutput = this._runCommandSync(pythonPath, ['-m', 'jupyterlab', '--version'], runOptions);
         const jlabVersion = this._extractVersionFromExecOutputSync(jlabVersionOutput);
         const env_info_out = this._runCommandSync(pythonPath, ['-c', env_info_py]);
         const envInfo = JSON.parse(env_info_out.trim());
@@ -668,9 +669,28 @@ export class Registry implements IRegistry {
     }
 
     private _runPythonModuleCommandSync(pythonPath: string, moduleName: string, commands: string[]): string {
-        let totalCommands = ['-m', moduleName].concat(commands);
+        const totalCommands = ['-m', moduleName].concat(commands);
+        const runOptions = { env: { 'PATH': this._getPathEnvForPythonPath(pythonPath)}};
 
-        return this._runCommandSync(pythonPath, totalCommands);;
+        return this._runCommandSync(pythonPath, totalCommands, runOptions);
+    }
+
+    private _getPathEnvForPythonPath(pythonPath: string) {
+        const platform = process.platform;
+
+        let envPath = path.dirname(pythonPath);
+        if (platform !== 'win32') {
+            envPath = path.normalize(path.join(envPath, '../'));
+        }
+
+        let path_env = '';
+        if (platform === 'win32') {
+            path_env = `${envPath};${envPath}\\Library\\mingw-w64\\bin;${envPath}\\Library\\usr\\bin;${envPath}\\Library\\bin;${envPath}\\Scripts;${envPath}\\bin;${process.env['PATH']}`;
+        } else {
+            path_env = `${envPath}:${process.env['PATH']}`;
+        }
+        
+        return path_env;
     }
 
     private _runCommand(executablePath: string, commands: string[]): Promise<string> {
@@ -722,9 +742,9 @@ export class Registry implements IRegistry {
         });
     }
 
-    private _runCommandSync(executablePath: string, commands: string[]): string {
+    private _runCommandSync(executablePath: string, commands: string[], options?: ExecFileOptions): string {
         try {
-            return execFileSync(executablePath, commands).toString();
+            return execFileSync(executablePath, commands, options).toString();
         } catch(error) {
             return 'EXEC:ERROR';
         }
