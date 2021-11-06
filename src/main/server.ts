@@ -28,15 +28,15 @@ import {
 
 import log from 'electron-log';
 
-import * as path from 'path';
 import * as fs from 'fs';
 import { IPythonEnvironment } from './tokens';
 
 export
 class JupyterServer {
 
-    constructor(options: JupyterServer.IOptions) {
+    constructor(options: JupyterServer.IOptions, registry: IRegistry) {
         this._info.environment = options.environment;
+        this._registry = registry;
     }
 
     get info(): JupyterServer.IInfo {
@@ -58,7 +58,6 @@ class JupyterServer {
             let urlRegExp = /http:\/\/localhost:\d+\/\S*/g;
             let tokenRegExp = /token=\w+/g;
             let baseRegExp = /http:\/\/localhost:\d+\//g;
-            const platform = process.platform;
             const home = process.env.JLAB_DESKTOP_HOME || app.getPath('home');
             const pythonPath = this._info.environment.path;
             if (!fs.existsSync(pythonPath)) {
@@ -66,32 +65,10 @@ class JupyterServer {
                 reject();
             }
 
-            let envPath = path.dirname(pythonPath);
-            if (platform !== 'win32') {
-                envPath = path.normalize(path.join(envPath, '../'));
-            }
-
-
-            // envPath = path.join(path.dirname(app.getAppPath()), 'jlab_server');
-            // if (platform !== 'win32') {
-            //     envPath = path.join(envPath, 'bin');
-            // }
-            // const pythonPath = path.join(envPath, `python${platform === 'win32' ? '.exe' : ''}`);
-            // if (!fs.existsSync(pythonPath)) {
-            //     dialog.showMessageBox({message: `Environment not found at: ${pythonPath}`, type: 'error' });
-            // }
-
-            let PATH_ENV = '';
-            if (platform === 'win32') {
-                PATH_ENV = `${envPath};${envPath}\\Library\\mingw-w64\\bin;${envPath}\\Library\\usr\\bin;${envPath}\\Library\\bin;${envPath}\\Scripts;${envPath}\\bin;${process.env['PATH']}`;
-            } else {
-                PATH_ENV = `${envPath}:${process.env['PATH']}`;
-            }
-
             this._nbServer = execFile(this._info.environment.path, ['-m', 'jupyterlab', '--no-browser', '--JupyterApp.config_file_name', '', '--ServerApp.password', '', '--ServerApp.disable_check_xsrf', 'True', '--ServerApp.allow_origin', '*'], {
                 cwd: home,
                 env: {
-                    PATH: PATH_ENV
+                    PATH: this._registry.getAdditionalPathIncludesForPythonPath(this._info.environment.path)
                 }
             });
 
@@ -180,6 +157,8 @@ class JupyterServer {
     private _startServer: Promise<JupyterServer.IInfo> = null;
 
     private _info: JupyterServer.IInfo = { url: null, token: null, environment: null };
+
+    private _registry: IRegistry;
 }
 
 export
@@ -445,7 +424,7 @@ class JupyterServerFactory implements IServerFactory, IClosingService {
     private _createServer(opts: JupyterServer.IOptions): JupyterServerFactory.IFactoryItem {
         let item: JupyterServerFactory.IFactoryItem = {
             factoryId: this._nextId++,
-            server: new JupyterServer(opts),
+            server: new JupyterServer(opts, this._registry),
             closing: null,
             used: false
         };

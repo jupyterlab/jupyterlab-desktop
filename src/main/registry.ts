@@ -54,6 +54,8 @@ export interface IRegistry {
     setDefaultPythonPath: (path: string) => void;
 
     getCurrentPythonEnvironment: () => IPythonEnvironment;
+
+    getAdditionalPathIncludesForPythonPath: (pythonPath: string) => string;
 }
 
 export class Registry implements IRegistry {
@@ -263,7 +265,7 @@ export class Registry implements IRegistry {
     }
 
     getEnvironmentInfo(pythonPath: string): IPythonEnvironment {
-        const runOptions = { env: { 'PATH': this._getPathEnvForPythonPath(pythonPath)}};
+        const runOptions = { env: { 'PATH': this.getAdditionalPathIncludesForPythonPath(pythonPath)}};
         const pythonVersionOutput = this._runCommandSync(pythonPath, ['--version'], runOptions);
         const pythonVersion = this._extractVersionFromExecOutputSync(pythonVersionOutput);
         const jlabVersionOutput = this._runCommandSync(pythonPath, ['-m', 'jupyterlab', '--version'], runOptions);
@@ -670,12 +672,12 @@ export class Registry implements IRegistry {
 
     private _runPythonModuleCommandSync(pythonPath: string, moduleName: string, commands: string[]): string {
         const totalCommands = ['-m', moduleName].concat(commands);
-        const runOptions = { env: { 'PATH': this._getPathEnvForPythonPath(pythonPath)}};
+        const runOptions = { env: { 'PATH': this.getAdditionalPathIncludesForPythonPath(pythonPath)}};
 
         return this._runCommandSync(pythonPath, totalCommands, runOptions);
     }
 
-    private _getPathEnvForPythonPath(pythonPath: string) {
+    getAdditionalPathIncludesForPythonPath(pythonPath: string): string {
         const platform = process.platform;
 
         let envPath = path.dirname(pythonPath);
