@@ -109,10 +109,6 @@ namespace IAppRemoteInterface {
     let showPythonPathSelector: AsyncRemote.IMethod<void, void> = {
         id: 'JupyterLabDesktop-select-python-path'
     };
-    export
-    let pythonPathChangedEvent: AsyncRemote.IEvent<string> = {
-        id: 'JupyterLabDesktop-python-path-changed'
-    };
 }
 
 export
@@ -355,7 +351,6 @@ class JupyterApplication implements IApplication, IStatefulService {
 
         asyncRemoteMain.registerRemoteMethod(IAppRemoteInterface.showPythonPathSelector,
             (): Promise<void> => {
-                // asyncRemoteMain.emitRemoteEvent(IAppRemoteInterface.pythonPathChangedEvent, 'new-path', this._window.webContents);
                 this._showPythonSelectorDialog('change');
                 return Promise.resolve();
             });

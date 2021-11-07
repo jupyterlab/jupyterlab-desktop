@@ -59,7 +59,7 @@ const desktopExtension: JupyterFrontEndPlugin<void> = {
       
         const statusItem = new EnvironmentStatus({ name: 'env', description: '', onClick: changeEnvironment });
 
-        statusBar.registerStatusItem('jupyterlab-desktop-environment', {
+        statusBar.registerStatusItem('jupyterlab-desktop-py-env-status', {
             item: statusItem,
             align: 'left'
         });
