@@ -1923,6 +1923,10 @@
   version "2.0.2"
   resolved "https://registry.yarnpkg.com/@types/dom4/-/dom4-2.0.2.tgz#6495303f049689ce936ed328a3e5ede9c51408ee"
 
+"@types/ejs@^3.1.0":
+  version "3.1.0"
+  resolved "https://registry.yarnpkg.com/@types/ejs/-/ejs-3.1.0.tgz#ab8109208106b5e764e5a6c92b2ba1c625b73020"
+
 "@types/eslint-scope@^3.7.0":
   version "3.7.1"
   resolved "https://registry.yarnpkg.com/@types/eslint-scope/-/eslint-scope-3.7.1.tgz#8dc390a7b4f9dd9f1284629efce982e41612116e"
@@ -1968,13 +1972,7 @@
   version "7.0.9"
   resolved "https://registry.yarnpkg.com/@types/json-schema/-/json-schema-7.0.9.tgz#97edc9037ea0c38585320b28964dde3b39e4660d"
 
-"@types/lodash.curry@^4.1.6":
-  version "4.1.6"
-  resolved "https://registry.yarnpkg.com/@types/lodash.curry/-/lodash.curry-4.1.6.tgz#f26c490c80c92d7cbaa2300d542e89781d44b1ff"
-  dependencies:
-    "@types/lodash" "*"
-
-"@types/lodash@*", "@types/lodash@^4.14.134":
+"@types/lodash@^4.14.134", "@types/lodash@^4.14.176":
   version "4.14.176"
   resolved "https://registry.yarnpkg.com/@types/lodash/-/lodash-4.14.176.tgz#641150fc1cda36fbfa329de603bbb175d7ee20c0"
 
@@ -2012,7 +2010,7 @@
     "@types/node" "*"
     xmlbuilder ">=11.0.1"
 
-"@types/prop-types@*", "@types/prop-types@^15.7.3":
+"@types/prop-types@*", "@types/prop-types@^15.7.4":
   version "15.7.4"
   resolved "https://registry.yarnpkg.com/@types/prop-types/-/prop-types-15.7.4.tgz#fcf7205c25dff795ee79af1e30da2c9790808f11"
 
@@ -2621,7 +2619,7 @@ color-string@^1.6.0:
     color-name "^1.0.0"
     simple-swizzle "^0.2.2"
 
-color@^3.1.2:
+color@^3.2.1:
   version "3.2.1"
   resolved "https://registry.yarnpkg.com/color/-/color-3.2.1.tgz#3544dc198caf4490c3ecc9a790b54fe9ff45e164"
   dependencies:
@@ -2760,7 +2758,7 @@ csstype@2.6.9:
   version "2.6.9"
   resolved "https://registry.yarnpkg.com/csstype/-/csstype-2.6.9.tgz#05141d0cd557a56b8891394c1911c40c8a98d098"
 
-csstype@^3.0.2, csstype@~3.0.3:
+csstype@^3.0.2, csstype@^3.0.9, csstype@~3.0.3:
   version "3.0.9"
   resolved "https://registry.yarnpkg.com/csstype/-/csstype-3.0.9.tgz#6410af31b26bd0520933d02cbc64fce9ce3fbf0b"
 
@@ -4613,15 +4611,15 @@ rc@^1.2.8:
     minimist "^1.2.0"
     strip-json-comments "~2.0.1"
 
-react-base16-styling@^0.8.0:
-  version "0.8.0"
-  resolved "https://registry.yarnpkg.com/react-base16-styling/-/react-base16-styling-0.8.0.tgz#6251b814b4e09efab3284ae1ecdd490f2c4111eb"
+react-base16-styling@^0.8.1:
+  version "0.8.1"
+  resolved "https://registry.yarnpkg.com/react-base16-styling/-/react-base16-styling-0.8.1.tgz#fa397b831a1c1050cb13cf29e3729e4780483b14"
   dependencies:
     "@types/base16" "^1.0.2"
-    "@types/lodash.curry" "^4.1.6"
+    "@types/lodash" "^4.14.176"
     base16 "^1.0.0"
-    color "^3.1.2"
-    csstype "^3.0.2"
+    color "^3.2.1"
+    csstype "^3.0.9"
     lodash.curry "^4.1.1"
 
 react-dom@^17.0.1:
@@ -4646,12 +4644,12 @@ react-is@^16.8.1:
   resolved "https://registry.yarnpkg.com/react-is/-/react-is-16.13.1.tgz#789729a4dc36de2999dc156dd6c1d9c18cea56a4"
 
 react-json-tree@^0.15.0:
-  version "0.15.0"
-  resolved "https://registry.yarnpkg.com/react-json-tree/-/react-json-tree-0.15.0.tgz#16a5bbed761f711d1656de6c62818d40ddb09442"
+  version "0.15.1"
+  resolved "https://registry.yarnpkg.com/react-json-tree/-/react-json-tree-0.15.1.tgz#1682c3b59feaf192d4ff26cbb99d38f36d904a12"
   dependencies:
-    "@types/prop-types" "^15.7.3"
+    "@types/prop-types" "^15.7.4"
     prop-types "^15.7.2"
-    react-base16-styling "^0.8.0"
+    react-base16-styling "^0.8.1"
 
 react-lifecycles-compat@^3.0.4:
   version "3.0.4"
