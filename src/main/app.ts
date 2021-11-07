@@ -25,6 +25,7 @@ import { IRegistry } from './registry';
 import fetch from 'node-fetch';
 import * as yaml from 'js-yaml';
 import * as semver from 'semver';
+import * as ejs from 'ejs';
 
 export
 interface IApplication {
@@ -374,16 +375,16 @@ class JupyterApplication implements IApplication, IStatefulService {
         const message =
             type === 'error' ? 'Error occurred while checking for updates!' :
             type === 'no-updates' ? 'There are no updates available.' :
-            `There is a new version available. Download the latest version from <a href="javascript:void(0)" onclick='handleReleasesLink(this);'>the Releases page</a>.`
+            `There is a new version available. Download the latest version from <a href="javascript:void(0)" onclick='handleReleasesLink(this);'>the Releases page</a>.`;
 
-        const pageSource = `
+        const template = `
             <body style="background: rgba(238,238,238,1); font-size: 13px; font-family: Helvetica, Arial, sans-serif">
             <div style="height: 100%; display: flex;flex-direction: column; justify-content: space-between;">
                 <div>
-                    ${message}                
+                <%= message %>
                 </div>
                 <div>
-                    <label><input type='checkbox' ${checkForUpdatesAutomatically ? 'checked' : ''} onclick='handleAutoCheckForUpdates(this);'>Check for updates automatically</label>
+                    <label><input type='checkbox' <%= checkForUpdatesAutomatically ? 'checked' : '' %> onclick='handleAutoCheckForUpdates(this);'>Check for updates automatically</label>
                 </div>
             </div>
 
@@ -400,6 +401,7 @@ class JupyterApplication implements IApplication, IStatefulService {
             </script>
             </body>
         `;
+        const pageSource = ejs.render(template, {message, checkForUpdatesAutomatically});
         dialog.loadURL(`data:text/html;charset=utf-8,${pageSource}`);
     }
 
@@ -434,7 +436,7 @@ class JupyterApplication implements IApplication, IStatefulService {
             `Select the Python executable in the conda or virtualenv environment you would like to use for JupyterLab Desktop. Python packages in the environment selected need to meet the following requirements: ${reqList}.` :
             `Failed to find a compatible Python environment at the configured path "${configuredPath}". Environment Python package requirements are: ${reqList}.`;
 
-        const pageSource = `
+        const template = `
             <body style="background: rgba(238,238,238,1); font-size: 13px; font-family: Helvetica, Arial, sans-serif; padding: 20px;">
             <style>.row {display: flex; margin-bottom: 10px; }</style>
             <div style="height: 100%; display: flex;flex-direction: column; justify-content: space-between;">
@@ -442,21 +444,21 @@ class JupyterApplication implements IApplication, IStatefulService {
                     <b>Set Python Environment</b>
                 </div>
                 <div class="row">
-                    ${message}
+                    <%= message %>
                 </div>
                 <div>
                     <div class="row">
-                        <input type="radio" id="bundled" name="env_type" value="bundled" ${useBundledPythonPath ? 'checked' : ''} onchange="handleEnvTypeChange(this);">
+                        <input type="radio" id="bundled" name="env_type" value="bundled" <%= useBundledPythonPath ? 'checked' : '' %> onchange="handleEnvTypeChange(this);">
                         <label for="bundled">Use the bundled Python environment</label>
                     </div>
                     <div class="row">
-                        <input type="radio" id="custom" name="env_type" value="custom" ${!useBundledPythonPath ? 'checked' : ''} onchange="handleEnvTypeChange(this);">
+                        <input type="radio" id="custom" name="env_type" value="custom" <%= !useBundledPythonPath ? 'checked' : '' %> onchange="handleEnvTypeChange(this);">
                         <label for="custom">Use a custom Python environment</label>
                     </div>
 
                     <div class="row">
                         <div style="flex-grow: 1;">
-                            <input type="text" id="python-path" value="${pythonPath}" readonly style="width: 100%;"></input>
+                            <input type="text" id="python-path" value="<%= pythonPath %>" readonly style="width: 100%;"></input>
                         </div>
                         <div>
                             <button id='select-python-path' onclick='handleSelectPythonPath(this);'>Select Python path</button>
@@ -516,6 +518,7 @@ class JupyterApplication implements IApplication, IStatefulService {
             </script>
             </body>
         `;
+        const pageSource = ejs.render(template, {message, useBundledPythonPath, pythonPath});
         dialog.loadURL(`data:text/html;charset=utf-8,${pageSource}`);
     }
 
