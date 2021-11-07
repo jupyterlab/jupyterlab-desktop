@@ -159,7 +159,7 @@ class JupyterApplication implements IApplication, IStatefulService {
                         this._registry.setDefaultPythonPath(pythonPath);
                         this._applicationState.pythonPath = pythonPath;
                     } else {
-                        this._showPythonSelectorDialog();
+                        this._showPythonSelectorDialog('invalid-setting');
                     }
                 }
 
@@ -311,7 +311,7 @@ class JupyterApplication implements IApplication, IStatefulService {
                 properties: ['openFile', 'showHiddenFiles', 'noResolveAliases'],
                 buttonLabel: 'Use Path'
             }).then(({filePaths}) => {
-                if (filePaths) {
+                if (filePaths.length > 0) {
                     event.sender.send('custom-python-path-selected', filePaths[0]);
                 }
             });
@@ -348,7 +348,7 @@ class JupyterApplication implements IApplication, IStatefulService {
         asyncRemoteMain.registerRemoteMethod(IAppRemoteInterface.showPythonPathSelector,
             (): Promise<void> => {
                 // asyncRemoteMain.emitRemoteEvent(IAppRemoteInterface.pythonPathChangedEvent, 'new-path', this._window.webContents);
-                this._showPythonSelectorDialog();
+                this._showPythonSelectorDialog('change');
                 return Promise.resolve();
             });
     }
@@ -400,7 +400,7 @@ class JupyterApplication implements IApplication, IStatefulService {
         dialog.loadURL(`data:text/html;charset=utf-8,${pageSource}`);
     }
 
-    private _showPythonSelectorDialog() {
+    private _showPythonSelectorDialog(reason: 'change' | 'invalid-setting' = 'change') {
         const dialog = new BrowserWindow({
             title: 'Set Python Environment',
             width: 600,
