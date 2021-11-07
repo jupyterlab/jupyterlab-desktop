@@ -71,7 +71,7 @@ class Application extends React.Component<Application.IProps, Application.IState
         this._launchFromPath = this._launchFromPath.bind(this);
 
         if (this.props.options.serverState === 'local') {
-            this.state = {renderSplash: null, renderState: this._renderEmpty, remotes: []};
+            this.state = {renderSplash: this._renderEmpty, renderState: this._renderEmpty, remotes: []};
             asyncRemoteRenderer.runRemoteMethod(IServerFactory.requestServerStart, undefined)
                 .then((data) => {
                     this._serverReady(data);
@@ -191,7 +191,9 @@ class Application extends React.Component<Application.IProps, Application.IState
                 }
                 this._lab.restored.then( () => {
                     ipcRenderer.send('lab-ready');
-                    (this.refs.splash as SplashScreen).fadeSplashScreen();
+                    if (this.refs.splash) {
+                        (this.refs.splash as SplashScreen).fadeSplashScreen();
+                    }
                 });
             });
         })
