@@ -434,7 +434,7 @@ class JupyterApplication implements IApplication, IStatefulService {
 
         const message = reason === 'change' ?
             `Select the Python executable in the conda or virtualenv environment you would like to use for JupyterLab Desktop. Python packages in the environment selected need to meet the following requirements: ${reqList}.` :
-            `Failed to find a compatible Python environment at the configured path "${configuredPath}". Environment Python package requirements are: ${reqList}.`;
+            ejs.render(`Failed to find a compatible Python environment at the configured path "<%= configuredPath %>". Environment Python package requirements are: ${reqList}.`, {configuredPath});
 
         const template = `
             <body style="background: rgba(238,238,238,1); font-size: 13px; font-family: Helvetica, Arial, sans-serif; padding: 20px;">
@@ -444,7 +444,7 @@ class JupyterApplication implements IApplication, IStatefulService {
                     <b>Set Python Environment</b>
                 </div>
                 <div class="row">
-                    <%= message %>
+                    ${message}
                 </div>
                 <div>
                     <div class="row">
@@ -518,7 +518,7 @@ class JupyterApplication implements IApplication, IStatefulService {
             </script>
             </body>
         `;
-        const pageSource = ejs.render(template, {message, useBundledPythonPath, pythonPath});
+        const pageSource = ejs.render(template, {useBundledPythonPath, pythonPath});
         dialog.loadURL(`data:text/html;charset=utf-8,${pageSource}`);
     }
 
