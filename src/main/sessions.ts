@@ -329,14 +329,18 @@ class JupyterLabSessions extends EventEmitter implements ISessions, IStatefulSer
     private _isFile(path: string): Promise<void> {
         return new Promise( (resolve, reject) => {
             fs.lstat(path, (err: any, stats: fs.Stats) => {
-                if (stats === null || stats === undefined) {
+                try {
+                    if (stats === null || stats === undefined) {
+                        reject();
+                    } else if (err) {
+                        reject();
+                    } else if (stats.isFile()) {
+                        resolve();
+                    }
                     reject();
-                } else if (err) {
+                } catch(error: any) {
                     reject();
-                } else if (stats.isFile()) {
-                    resolve();
                 }
-                reject();
             });
         });
     }

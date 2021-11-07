@@ -148,16 +148,18 @@ class JupyterApplication implements IApplication, IStatefulService {
                     if (this._applicationState.pythonPath === undefined) {
                         this._applicationState.pythonPath = '';
                     }
-                    let pythonPath = this._applicationState.pythonPath;
-                    if (pythonPath === '') {
-                        pythonPath = this._registry.getBundledPythonPath();
-                    }
-                    if (this._registry.validatePythonEnvironmentAtPath(pythonPath)) {
-                        this._registry.setDefaultPythonPath(pythonPath);
-                        this._applicationState.pythonPath = pythonPath;
-                    } else {
-                        this._showPythonSelectorDialog('invalid-setting');
-                    }
+                }
+
+                let pythonPath = this._applicationState.pythonPath;
+                if (pythonPath === '') {
+                    pythonPath = this._registry.getBundledPythonPath();
+                }
+
+                if (this._registry.validatePythonEnvironmentAtPath(pythonPath)) {
+                    this._registry.setDefaultPythonPath(pythonPath);
+                    this._applicationState.pythonPath = pythonPath;
+                } else {
+                    this._showPythonSelectorDialog('invalid-setting');
                 }
 
                 if (this._applicationState.checkForUpdatesAutomatically) {
@@ -182,7 +184,7 @@ class JupyterApplication implements IApplication, IStatefulService {
         return new Promise<JSONValue>((res, rej) => {
             this._appState
                 .then((state: JSONObject) => {
-                    if (state[service.id] && service.verifyState(state[service.id])) {
+                    if (state && state[service.id] && service.verifyState(state[service.id])) {
                         res(state[service.id]);
                     }
                     res(null);
