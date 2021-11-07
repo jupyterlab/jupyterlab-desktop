@@ -321,6 +321,14 @@ class JupyterApplication implements IApplication, IStatefulService {
             return this._registry.validatePythonEnvironmentAtPath(path);
         });
 
+        ipcMain.on('show-invalid-python-path-message', (event, path) => {
+            const requirements = this._registry.getRequirements();
+            const reqVersions = requirements.map((req) => `${req.name} ${req.versionRange.format()}`);
+            const reqList = reqVersions.join(', ');
+            const message = `Failed to find a compatible Python environment at the configured path "${path}". Environment Python package requirements are: ${reqList}.`
+            dialog.showMessageBox({message, type: 'error' });
+        }); 
+
         ipcMain.on('set-python-path', (event, path) => {
             this._applicationState.pythonPath = path;
             app.relaunch();
@@ -490,7 +498,11 @@ class JupyterApplication implements IApplication, IStatefulService {
                     const useBundledEnv = bundledRadio.checked;
                     if (!useBundledEnv) {
                         ipcRenderer.invoke('validate-python-path', pythonPathInput.value).then((valid) => {
-                            ipcRenderer.send('set-python-path', pythonPathInput.value);
+                            if (valid) {
+                                ipcRenderer.send('set-python-path', pythonPathInput.value);
+                            } else {
+                                ipcRenderer.send('show-invalid-python-path-message', pythonPathInput.value);
+                            }
                         });
                     } else {
                         ipcRenderer.send('set-python-path', '');
