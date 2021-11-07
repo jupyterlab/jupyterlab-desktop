@@ -71,7 +71,7 @@ class Application extends React.Component<Application.IProps, Application.IState
         this._launchFromPath = this._launchFromPath.bind(this);
 
         if (this.props.options.serverState === 'local') {
-            this.state = {renderSplash: this._renderSplash, renderState: this._renderEmpty, remotes: []};
+            this.state = {renderSplash: null, renderState: this._renderEmpty, remotes: []};
             asyncRemoteRenderer.runRemoteMethod(IServerFactory.requestServerStart, undefined)
                 .then((data) => {
                     this._serverReady(data);
@@ -271,14 +271,13 @@ class Application extends React.Component<Application.IProps, Application.IState
     }
 
     private _renderSplash(): JSX.Element {
-        return null;
-        // return (
-        //     <div className='jpe-content'>
-        //         <SplashScreen  ref='splash' uiState={this.props.options.uiState} finished={() => {
-        //             this.setState({renderSplash: this._renderEmpty}); }
-        //         } />
-        //     </div>
-        // );
+        return (
+            <div className='jpe-content'>
+                <SplashScreen  ref='splash' uiState={this.props.options.uiState} finished={() => {
+                    this.setState({renderSplash: this._renderEmpty}); }
+                } />
+            </div>
+        );
     }
 
     private _renderErrorScreen(): JSX.Element {
