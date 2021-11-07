@@ -56,6 +56,8 @@ export interface IRegistry {
     getCurrentPythonEnvironment: () => IPythonEnvironment;
 
     getAdditionalPathIncludesForPythonPath: (pythonPath: string) => string;
+
+    getRequirements: () => Registry.IRequirement[];
 }
 
 export class Registry implements IRegistry {
@@ -300,6 +302,28 @@ export class Registry implements IRegistry {
         const bundledPythonPath = join(envPath, `python${platform === 'win32' ? '.exe' : ''}`);
 
         return bundledPythonPath;
+    }
+
+    getAdditionalPathIncludesForPythonPath(pythonPath: string): string {
+        const platform = process.platform;
+
+        let envPath = path.dirname(pythonPath);
+        if (platform !== 'win32') {
+            envPath = path.normalize(path.join(envPath, '../'));
+        }
+
+        let path_env = '';
+        if (platform === 'win32') {
+            path_env = `${envPath};${envPath}\\Library\\mingw-w64\\bin;${envPath}\\Library\\usr\\bin;${envPath}\\Library\\bin;${envPath}\\Scripts;${envPath}\\bin;${process.env['PATH']}`;
+        } else {
+            path_env = `${envPath}:${process.env['PATH']}`;
+        }
+        
+        return path_env;
+    }
+
+    getRequirements(): Registry.IRequirement[] {
+        return this._requirements;
     }
 
     private _buildEnvironmentFromPath(pythonPath: string, requirements: Registry.IRequirement[]): Promise<IPythonEnvironment> {
@@ -675,24 +699,6 @@ export class Registry implements IRegistry {
         const runOptions = { env: { 'PATH': this.getAdditionalPathIncludesForPythonPath(pythonPath)}};
 
         return this._runCommandSync(pythonPath, totalCommands, runOptions);
-    }
-
-    getAdditionalPathIncludesForPythonPath(pythonPath: string): string {
-        const platform = process.platform;
-
-        let envPath = path.dirname(pythonPath);
-        if (platform !== 'win32') {
-            envPath = path.normalize(path.join(envPath, '../'));
-        }
-
-        let path_env = '';
-        if (platform === 'win32') {
-            path_env = `${envPath};${envPath}\\Library\\mingw-w64\\bin;${envPath}\\Library\\usr\\bin;${envPath}\\Library\\bin;${envPath}\\Scripts;${envPath}\\bin;${process.env['PATH']}`;
-        } else {
-            path_env = `${envPath}:${process.env['PATH']}`;
-        }
-        
-        return path_env;
     }
 
     private _runCommand(executablePath: string, commands: string[]): Promise<string> {

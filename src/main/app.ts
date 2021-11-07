@@ -404,7 +404,7 @@ class JupyterApplication implements IApplication, IStatefulService {
         const dialog = new BrowserWindow({
             title: 'Set Python Environment',
             width: 600,
-            height: 200,
+            height: 250,
             resizable: false,
             parent: this._window,
             modal: true,
@@ -416,12 +416,20 @@ class JupyterApplication implements IApplication, IStatefulService {
         });
         dialog.setMenuBarVisibility(false);
 
-        const bundledPythonPath = '';
+        const bundledPythonPath = this._registry.getBundledPythonPath();
         const pythonPath = this._applicationState.pythonPath;
         let useBundledPythonPath = false;
         if (pythonPath === '' || pythonPath === bundledPythonPath) {
             useBundledPythonPath = true;
         }
+        const configuredPath = pythonPath === '' ? bundledPythonPath : pythonPath;
+        const requirements = this._registry.getRequirements();
+        const reqVersions = requirements.map((req) => `${req.name} ${req.versionRange.format()}`);
+        const reqList = reqVersions.join(', ');
+
+        const message = reason === 'change' ?
+            `Select the Python executable in the conda or virtualenv environment you would like to use for JupyterLab Desktop. Python packages in the environment selected need to meet the following requirements: ${reqList}.` :
+            `Failed to find a compatible Python environment at the configured path "${configuredPath}". Environment Python package requirements are: ${reqList}.`;
 
         const pageSource = `
             <body style="background: rgba(238,238,238,1); font-size: 13px; font-family: Helvetica, Arial, sans-serif; padding: 20px;">
@@ -430,14 +438,17 @@ class JupyterApplication implements IApplication, IStatefulService {
                 <div class="row">
                     <b>Set Python Environment</b>
                 </div>
+                <div class="row">
+                    ${message}
+                </div>
                 <div>
                     <div class="row">
                         <input type="radio" id="bundled" name="env_type" value="bundled" ${useBundledPythonPath ? 'checked' : ''} onchange="handleEnvTypeChange(this);">
-                        <label for="bundled">Use bundled Python environment</label>
+                        <label for="bundled">Use the bundled Python environment</label>
                     </div>
                     <div class="row">
                         <input type="radio" id="custom" name="env_type" value="custom" ${!useBundledPythonPath ? 'checked' : ''} onchange="handleEnvTypeChange(this);">
-                        <label for="custom">Use custom Python environment</label>
+                        <label for="custom">Use a custom Python environment</label>
                     </div>
 
                     <div class="row">
