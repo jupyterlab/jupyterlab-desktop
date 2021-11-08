@@ -483,11 +483,6 @@ class JupyterApplication implements IApplication, IStatefulService {
                 function handleSelectPythonPath(el) {
                     ipcRenderer.send('select-python-path');
                 }
-
-                function handleReleasesLink(el) {
-                    ipcRenderer.send('launch-installer-download-page');
-                }
-
                 function handleEnvTypeChange() {
                     pythonPathInput.disabled = bundledRadio.checked;
                     selectPythonPathButton.disabled = bundledRadio.checked;
