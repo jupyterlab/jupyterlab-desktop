@@ -26,6 +26,7 @@ import fetch from 'node-fetch';
 import * as yaml from 'js-yaml';
 import * as semver from 'semver';
 import * as ejs from 'ejs';
+import * as path from 'path';
 
 export
 interface IApplication {
@@ -306,9 +307,12 @@ class JupyterApplication implements IApplication, IStatefulService {
         });
 
         ipcMain.on('select-python-path', (event) => {
+            const currentEnv = this._registry.getCurrentPythonEnvironment();
+
             dialog.showOpenDialog({
                 properties: ['openFile', 'showHiddenFiles', 'noResolveAliases'],
-                buttonLabel: 'Use Path'
+                buttonLabel: 'Use Path',
+                defaultPath: currentEnv ? path.dirname(currentEnv.path) : undefined
             }).then(({filePaths}) => {
                 if (filePaths.length > 0) {
                     event.sender.send('custom-python-path-selected', filePaths[0]);
