@@ -415,7 +415,7 @@ class JupyterApplication implements IApplication, IStatefulService {
         const dialog = new BrowserWindow({
             title: 'Set Python Environment',
             width: 600,
-            height: 250,
+            height: 280,
             resizable: false,
             parent: this._window,
             modal: true,
@@ -439,7 +439,7 @@ class JupyterApplication implements IApplication, IStatefulService {
         const reqList = reqVersions.join(', ');
 
         const message = reason === 'change' ?
-            `Select the Python executable in the conda or virtualenv environment you would like to use for JupyterLab Desktop. Python packages in the environment selected need to meet the following requirements: ${reqList}.` :
+            `Select the Python executable in the conda or virtualenv environment you would like to use for JupyterLab Desktop. Python packages in the environment selected need to meet the following requirements: ${reqList}. Prebuilt extensions installed in the selected environment will also be available in JupyterLab Desktop.` :
             ejs.render(`Failed to find a compatible Python environment at the configured path "<%= configuredPath %>". Environment Python package requirements are: ${reqList}.`, {configuredPath});
 
         const template = `
