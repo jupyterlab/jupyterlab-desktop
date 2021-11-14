@@ -29,6 +29,8 @@ import {
     IService
 } from './main';
 
+import { IRegistry } from './registry';
+
 import {
     EventEmitter
 } from 'events';
@@ -85,9 +87,10 @@ class JupyterLabSessions extends EventEmitter implements ISessions, IStatefulSer
 
     readonly id = 'JupyterLabSessions';
 
-    constructor(app: IApplication, serverFactory: IServerFactory) {
+    constructor(app: IApplication, serverFactory: IServerFactory, registry: IRegistry) {
         super();
         this._serverFactory = serverFactory;
+        this._registry = registry;
 
         // check if UI state was set by user
         for (let arg of process.argv) {
@@ -108,8 +111,10 @@ class JupyterLabSessions extends EventEmitter implements ISessions, IStatefulSer
         app.registerStatefulService(this)
             .then((state: JupyterLabSession.IState) => {
                 this._lastWindowState = state;
-                this.createSession()
-                .then( () => {this._startingSession = null; });
+                if (this._registry.getCurrentPythonEnvironment()) {
+                    this.createSession()
+                    .then( () => {this._startingSession = null; });
+                }
             })
             .catch(() => {
                 this.createSession()
@@ -324,14 +329,18 @@ class JupyterLabSessions extends EventEmitter implements ISessions, IStatefulSer
     private _isFile(path: string): Promise<void> {
         return new Promise( (resolve, reject) => {
             fs.lstat(path, (err: any, stats: fs.Stats) => {
-                if (stats === null || stats === undefined) {
+                try {
+                    if (stats === null || stats === undefined) {
+                        reject();
+                    } else if (err) {
+                        reject();
+                    } else if (stats.isFile()) {
+                        resolve();
+                    }
                     reject();
-                } else if (err) {
+                } catch(error: any) {
                     reject();
-                } else if (stats.isFile()) {
-                    resolve();
                 }
-                reject();
             });
         });
     }
@@ -345,6 +354,8 @@ class JupyterLabSessions extends EventEmitter implements ISessions, IStatefulSer
     private _lastWindowState: JupyterLabSession.IState;
 
     private _serverFactory: IServerFactory;
+
+    private _registry: IRegistry;
 
     private _uiState: JupyterLabSession.UIState;
 }
@@ -567,10 +578,10 @@ if (process && process.type !== 'renderer') {
 }
 
 let service: IService = {
-    requirements: ['IApplication', 'IServerFactory', 'IAsyncRemoteMain'],
+    requirements: ['IApplication', 'IServerFactory', 'IRegistry'],
     provides: 'ISessions',
-    activate: (app: IApplication, serverFactory: IServerFactory): ISessions => {
-        sessions = new JupyterLabSessions(app, serverFactory);
+    activate: (app: IApplication, serverFactory: IServerFactory, registry: IRegistry): ISessions => {
+        sessions = new JupyterLabSessions(app, serverFactory, registry);
         return sessions;
     },
     autostart: true

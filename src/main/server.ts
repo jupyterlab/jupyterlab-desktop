@@ -7,7 +7,7 @@ import {
 } from './main';
 
 import {
-    IRegistry, Registry
+    IRegistry
 } from './registry';
 
 import {
@@ -28,14 +28,15 @@ import {
 
 import log from 'electron-log';
 
-import * as path from 'path';
 import * as fs from 'fs';
+import { IPythonEnvironment } from './tokens';
 
 export
 class JupyterServer {
 
-    constructor(options: JupyterServer.IOptions) {
+    constructor(options: JupyterServer.IOptions, registry: IRegistry) {
         this._info.environment = options.environment;
+        this._registry = registry;
     }
 
     get info(): JupyterServer.IInfo {
@@ -57,30 +58,17 @@ class JupyterServer {
             let urlRegExp = /http:\/\/localhost:\d+\/\S*/g;
             let tokenRegExp = /token=\w+/g;
             let baseRegExp = /http:\/\/localhost:\d+\//g;
-            const platform = process.platform;
             const home = process.env.JLAB_DESKTOP_HOME || app.getPath('home');
-            let envPath = path.join(path.dirname(app.getAppPath()), 'jlab_server');
-            if (platform !== 'win32') {
-                envPath = path.join(envPath, 'bin');
-            }
-            const pythonPath = path.join(envPath, `python${platform === 'win32' ? '.exe' : ''}`);
+            const pythonPath = this._info.environment.path;
             if (!fs.existsSync(pythonPath)) {
                 dialog.showMessageBox({message: `Environment not found at: ${pythonPath}`, type: 'error' });
-            }
-
-            this._info.environment.path = pythonPath;
-
-            let PATH_ENV = '';
-            if (platform === 'win32') {
-                PATH_ENV = `${envPath};${envPath}\\Library\\mingw-w64\\bin;${envPath}\\Library\\usr\\bin;${envPath}\\Library\\bin;${envPath}\\Scripts;${envPath}\\bin;${process.env['PATH']}`;
-            } else {
-                PATH_ENV = `${envPath}:${process.env['PATH']}`;
+                reject();
             }
 
             this._nbServer = execFile(this._info.environment.path, ['-m', 'jupyterlab', '--no-browser', '--JupyterApp.config_file_name', '', '--ServerApp.password', '', '--ServerApp.disable_check_xsrf', 'True', '--ServerApp.allow_origin', '*'], {
                 cwd: home,
                 env: {
-                    PATH: PATH_ENV
+                    PATH: this._registry.getAdditionalPathIncludesForPythonPath(this._info.environment.path)
                 }
             });
 
@@ -169,6 +157,8 @@ class JupyterServer {
     private _startServer: Promise<JupyterServer.IInfo> = null;
 
     private _info: JupyterServer.IInfo = { url: null, token: null, environment: null };
+
+    private _registry: IRegistry;
 }
 
 export
@@ -176,14 +166,14 @@ namespace JupyterServer {
 
     export
     interface IOptions {
-        environment: Registry.IPythonEnvironment;
+        environment: IPythonEnvironment;
     }
 
     export
     interface IInfo {
         url: string;
         token: string;
-        environment: Registry.IPythonEnvironment;
+        environment: IPythonEnvironment;
     }
 }
 
@@ -280,7 +270,7 @@ class JupyterServerFactory implements IServerFactory, IClosingService {
 
         asyncRemoteMain.registerRemoteMethod(IServerFactory.requestServerStartPath, (data: any, caller) => {
             return this._registry.getUserJupyterPath()
-                .then((environment: Registry.IPythonEnvironment) => {
+                .then((environment: IPythonEnvironment) => {
                     asyncRemoteMain.emitRemoteEvent(IServerFactory.pathSelectedEvent, undefined, caller);
                     return this.createServer({ environment });
                 })
@@ -312,7 +302,7 @@ class JupyterServerFactory implements IServerFactory, IClosingService {
      */
     createFreeServer(opts: JupyterServer.IOptions): JupyterServerFactory.IFactoryItem {
         let item: JupyterServerFactory.IFactoryItem;
-        let env: Promise<Registry.IPythonEnvironment>;
+        let env: Promise<IPythonEnvironment>;
 
         if (!opts.environment) {
             env = this._registry.getDefaultEnvironment();
@@ -343,7 +333,7 @@ class JupyterServerFactory implements IServerFactory, IClosingService {
      */
     createServer(opts: JupyterServer.IOptions, forceNewServer?: boolean): Promise<JupyterServerFactory.IFactoryItem> {
         let server: JupyterServerFactory.IFactoryItem;
-        let env: Promise<Registry.IPythonEnvironment>;
+        let env: Promise<IPythonEnvironment>;
 
         if (!opts.environment) {
             env = this._registry.getDefaultEnvironment();
@@ -434,7 +424,7 @@ class JupyterServerFactory implements IServerFactory, IClosingService {
     private _createServer(opts: JupyterServer.IOptions): JupyterServerFactory.IFactoryItem {
         let item: JupyterServerFactory.IFactoryItem = {
             factoryId: this._nextId++,
-            server: new JupyterServer(opts),
+            server: new JupyterServer(opts, this._registry),
             closing: null,
             used: false
         };
