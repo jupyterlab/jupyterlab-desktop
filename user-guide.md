@@ -1,3 +1,48 @@
+# Changing the Python Environment used by JupyterLab Desktop
+
+JupyterLab Desktop comes with a bundled Python environment which has the essential Python packages for scientific computing and data science workflows. For more advanced use cases and specific needs, you can set the Python environment used by JupyterLab Desktop to another `conda`, `venv`, or `pyenv` virtual environment available on your computer. This feature also enables you to reuse the same Python environment, that has your custom package installations, when you upgrade to a newer version of JupyterLab Desktop. You can change the Python environment by following the steps below.
+
+- Active Python environment info is shown on the status bar. If you hover on it you will see the details of the environment such as its path and certain package versions.
+
+<img src="media/python-env-status.png" alt="Python environment status" height=100 />
+
+- Click on the status item to launch Python environment selector dialog.
+
+<img src="media/python-env-select.png" alt="Select Python environment" height=300 />
+
+- Choose `Use a custom Python environment` option and then click `Select Python path` button.
+
+- Select the Python executable (`python.exe` on Windows and `python` on macOS & Linux) of the custom environment you would like to use. Python executable can be found at the root directory of the virtual environment on Windows and in then `bin` directory of the environment on macOS & Linux.
+
+- Click `Save and restart` to apply the changes. Newly selected environment will be checked for compatibility before applying the changes and you will be notified of any incompatibility issues.
+
+Python environment selection is saved in application settings and restored at application launch time. During launch, compatibility of the Python environment is checked and if found incompatible, Python environment selector dialog is shown to allow switching back to the bundled environment or using another compatible environment.
+
+Application settings are stored in JSON format in the following locations. You can check the `pythonPath` setting in this file for troubleshooting. Setting it to empty string will cause JupyterLab Desktop to reset to the bundled Python environment.
+- Windows: `%APPDATA%\jupyterlab-desktop\jupyterlab-desktop-data`
+- macOS: `~/Library/Application\ Support/jupyterlab-desktop/jupyterlab-desktop-data`
+- Linux: `~/.config/jupyterlab-desktop/jupyterlab-desktop-data`
+
+## How to create a Custom Python Environment
+### Using conda
+```bash
+conda create -n custom_venv
+conda activate custom_venv
+conda install -c conda-forge jupyterlab==3.2.3
+# install custom packages
+conda install -c conda-forge scikit-learn
+```
+
+### Using venv
+```bash
+python3 -m venv custom_venv
+source custom_venv/bin/activate
+pip install --upgrade pip
+pip install jupyterlab==3.2.3
+# install custom packages
+pip install scikit-learn
+```
+
 # Customizing the Bundled Python Environment
 
 JupyterLab Desktop is a self-contained standalone desktop application which bundles a Python environment. The bundled Python environment comes with several popular Python libraries to make the application ready to use in scientific computing and data science workflows. These packages are `numpy`, `scipy`, `pandas`, `ipywidgets` and `matplotlib`. In order to install additional packages into JupyterLab Desktop's Python environment, you need to follow certain steps during and after the installation as described below.
@@ -85,7 +130,9 @@ rm /usr/local/bin/jlab # remove command symlink
 On Windows, JupyterLab Desktop is installed in two parts, one for the python environment and another for the application itself. Go to `Windows Apps & Features` dialog using `Start Menu` -> `Settings` -> `Apps` and make sure to uninstall the components in the following order:
 
 - First uninstall JupyterLab Desktop python environment. Note that for JupyterLab Desktop version 3.1.13-1 and older, this component will be named `JupyterLabAppServer` but for newer versions it will be named `JupyterLabDesktopAppServer`.
-![Uninstall Python environment](media/uninstall-windows-python-environment.png)
+
+<img src="media/uninstall-windows-python-environment.png" alt="Uninstall Python environment" height=200 />
 
 - Then uninstall JupyterLab Desktop application
-![Uninstall Python environment](media/uninstall-windows-application.png)
+
+<img src="media/uninstall-windows-application.png" alt="Uninstall the application" height=200 />
