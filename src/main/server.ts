@@ -74,9 +74,10 @@ class JupyterServer {
             this._nbServer = execFile(this._info.environment.path, [
                 '-m', 'jupyterlab',
                 '--no-browser',
+                // do not use any config file
                 '--JupyterApp.config_file_name', '',
+                // use our token rather than any pre-configured password
                 '--ServerApp.password', '',
-                '--ServerApp.disable_check_xsrf', 'True',
                 '--ServerApp.allow_origin', '*'
             ], {
                 cwd: home,
