@@ -26,6 +26,10 @@ import {
     ArrayExt
 } from '@lumino/algorithm';
 
+import {
+    randomBytes
+} from 'crypto';
+
 import log from 'electron-log';
 
 import * as fs from 'fs';
@@ -44,7 +48,7 @@ class JupyterServer {
     }
 
     /**
-     * Start a local Jupyer server. This method can be
+     * Start a local Jupyter server. This method can be
      * called multiple times without initiating multiple starts.
      *
      * @return a promise that is resolved when the server has started.
@@ -53,55 +57,71 @@ class JupyterServer {
         if (this._startServer) {
             return this._startServer;
         }
+        let started = false;
 
         this._startServer = new Promise<JupyterServer.IInfo>((resolve, reject) => {
-            let urlRegExp = /http:\/\/localhost:\d+\/\S*/g;
-            let tokenRegExp = /token=\w+/g;
-            let baseRegExp = /http:\/\/localhost:\d+\//g;
+            let urlRegExp = /https?:\/\/localhost:\d+\/\S*/g;
+            let baseRegExp = /https?:\/\/localhost:\d+\//g;
+            let serverVersionPattern = /Jupyter Server (?<version>.*) is running at/g;
             const home = process.env.JLAB_DESKTOP_HOME || app.getPath('home');
             const pythonPath = this._info.environment.path;
             if (!fs.existsSync(pythonPath)) {
                 dialog.showMessageBox({message: `Environment not found at: ${pythonPath}`, type: 'error' });
                 reject();
             }
+            this._info.token = randomBytes(24).toString('hex');
 
-            this._nbServer = execFile(this._info.environment.path, ['-m', 'jupyterlab', '--no-browser', '--JupyterApp.config_file_name', '', '--ServerApp.password', '', '--ServerApp.disable_check_xsrf', 'True', '--ServerApp.allow_origin', '*'], {
+            this._nbServer = execFile(this._info.environment.path, [
+                '-m', 'jupyterlab',
+                '--no-browser',
+                '--JupyterApp.config_file_name', '',
+                '--ServerApp.password', '',
+                '--ServerApp.disable_check_xsrf', 'True',
+                '--ServerApp.allow_origin', '*'
+            ], {
                 cwd: home,
                 env: {
-                    PATH: this._registry.getAdditionalPathIncludesForPythonPath(this._info.environment.path)
+                    PATH: this._registry.getAdditionalPathIncludesForPythonPath(this._info.environment.path),
+                    JUPYTER_TOKEN: this._info.token
                 }
             });
 
             this._nbServer.on('exit', () => {
-                this._serverStartFailed();
-                reject(new Error('Could not find Jupyter in PATH'));
+                if (started) {
+                    dialog.showMessageBox({message: 'Jupyter Server process terminated', type: 'error' });
+                } else {
+                    this._serverStartFailed();
+                    reject(new Error('Jupyter Server process terminated before the initialization completed'));
+                }
             });
 
             this._nbServer.on('error', (err: Error) => {
-                this._serverStartFailed();
-                reject(new Error('Could not find Jupyter in PATH'));
+                if (started) {
+                    dialog.showMessageBox({message: `Jupyter Server process errored: ${err.message}`, type: 'error' });
+                } else {
+                    this._serverStartFailed();
+                    reject(err);
+                }
             });
 
-            this._nbServer.stderr.on('data', (serverBuff: string) => {
-                let urlMatch = serverBuff.toString().match(urlRegExp);
-                if (!urlMatch) {
-                    return;
+            this._nbServer.stderr.on('data', (serverBuff: string | Buffer) => {
+                const line = serverBuff.toString();
+                let urlMatch = line.match(urlRegExp);
+                let versionMatch = serverVersionPattern.exec(line);
+
+                if (versionMatch) {
+                    this._info.version = versionMatch.groups.version;
                 }
+                if (urlMatch) {
+                    let url = urlMatch[0].toString();
 
-                let url = urlMatch[0].toString();
-                let token = (url.match(tokenRegExp));
+                    this._info.url = (url.match(baseRegExp))[0];
 
-                if (!token) {
+                    started = true;
                     this._cleanupListeners();
-                    reject(new Error('Update Jupyter notebook to version 4.3.0 or greater'));
-                    return;
+                    return resolve(this._info);
                 }
-
-                this._info.token = token[0].replace('token=', '');
-                this._info.url = (url.match(baseRegExp))[0];
-
-                this._cleanupListeners();
-                resolve(this._info);
+                console.log('Jupyter Server initialization message:', serverBuff);
             });
         });
 
@@ -156,7 +176,7 @@ class JupyterServer {
 
     private _startServer: Promise<JupyterServer.IInfo> = null;
 
-    private _info: JupyterServer.IInfo = { url: null, token: null, environment: null };
+    private _info: JupyterServer.IInfo = { url: null, token: null, environment: null, version: null };
 
     private _registry: IRegistry;
 }
@@ -174,6 +194,7 @@ namespace JupyterServer {
         url: string;
         token: string;
         environment: IPythonEnvironment;
+        version?: string;
     }
 }
 
@@ -222,7 +243,7 @@ namespace IServerFactory {
         readonly factoryId: number;
         url: string;
         token: string;
-        err?: any;
+        error?: Error;
     }
 
     export
@@ -478,7 +499,7 @@ class JupyterServerFactory implements IServerFactory, IClosingService {
             factoryId: -1,
             url: null,
             token: null,
-            err: e.message || 'Server creation error'
+            error: e
         };
     }
 

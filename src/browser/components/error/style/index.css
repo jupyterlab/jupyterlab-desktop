@@ -14,12 +14,16 @@
 
 .jpe-ServerError-content {
     margin: auto;
-    width: 600px;
+    width: 650px;
     height: 300px;
     text-align: center;
     display: flex;
     flex-direction: column;
     justify-content: center;
+}
+
+.jpe-ServerError-error {
+    margin: 10px 0;
 }
 
 .jpe-ServerError-icon {
@@ -40,10 +44,15 @@
     cursor: default;
 }
 
-.jpe-ServerError-subhead {
+.jpe-ServerError-description {
     margin-bottom: 16px;
     line-height: 1.36;
     cursor: default;
+    text-align: left;
+}
+
+.jpe-ServerError-description p {
+    margin-bottom: 8px;
 }
 
 .jpe-ServerError-btn-container {

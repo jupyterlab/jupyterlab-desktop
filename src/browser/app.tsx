@@ -1,6 +1,8 @@
 // Copyright (c) Jupyter Development Team.
 // Distributed under the terms of the Modified BSD License.
 
+import {IAppRemoteInterface} from "../main/app";
+
 declare let __webpack_public_path__: string;
 
 // needs to be loaded first as it contains the core federated extensions
@@ -69,6 +71,7 @@ class Application extends React.Component<Application.IProps, Application.IState
         this._renderErrorScreen = this._renderErrorScreen.bind(this);
         this._connectionAdded = this._connectionAdded.bind(this);
         this._launchFromPath = this._launchFromPath.bind(this);
+        this._changeEnvironment = this._changeEnvironment.bind(this)
 
         if (this.props.options.serverState === 'local') {
             this.state = {renderSplash: this._renderEmpty, renderState: this._renderEmpty, remotes: []};
@@ -117,9 +120,9 @@ class Application extends React.Component<Application.IProps, Application.IState
     }
 
     private _serverReady(data: IServerFactory.IServerStarted): void {
-        if (data.err) {
-            log.error(data.err);
-            this.setState({renderState: this._renderErrorScreen});
+        if (data.error) {
+            log.error(data.error);
+            this.setState({renderState: () => this._renderErrorScreen(data.error)});
             (this.refs.splash as SplashScreen).fadeSplashScreen();
             return;
         }
@@ -212,6 +215,10 @@ class Application extends React.Component<Application.IProps, Application.IState
         asyncRemoteRenderer.onRemoteEvent(IServerFactory.pathSelectedEvent, pathSelected);
     }
 
+    private _changeEnvironment() {
+        asyncRemoteRenderer.runRemoteMethod(IAppRemoteInterface.showPythonPathSelector, void(0)).catch(console.error);
+    }
+
     private _saveState() {
         this._serverState.save(Application.SERVER_STATE_ID, {remotes: this.state.remotes});
     }
@@ -282,11 +289,11 @@ class Application extends React.Component<Application.IProps, Application.IState
         );
     }
 
-    private _renderErrorScreen(): JSX.Element {
+    private _renderErrorScreen(error: Error): JSX.Element {
         return (
             <div className='jpe-content'>
                 <TitleBar uiState={this.props.options.uiState} />
-                <ServerError launchFromPath={this._launchFromPath}/>
+                <ServerError launchFromPath={this._launchFromPath} changeEnvironment={this._changeEnvironment} error={error} />
             </div>
         );
     }

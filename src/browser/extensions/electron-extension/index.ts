@@ -22,7 +22,7 @@ import {
 } from '../../../main/sessions';
 
 import {
-  ServiceManager, ServerConnection
+  ServerConnection
 } from '@jupyterlab/services';
 
 import {
@@ -155,10 +155,6 @@ class ElectronJupyterLab extends JupyterLab {
     };
   }
 
-  /**
-   * The service manager used by the application.
-   */
-  readonly serviceManager: ServiceManager;
 
   private _electronInfo: ElectronJupyterLab.IInfo;
 }
