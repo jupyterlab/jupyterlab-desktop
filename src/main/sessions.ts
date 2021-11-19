@@ -38,6 +38,7 @@ import {
 import * as url from 'url';
 import * as fs from 'fs';
 import * as path from 'path';
+import { URL } from "url";
 
 export
 interface ISessions extends EventEmitter {
@@ -50,6 +51,9 @@ interface ISessions extends EventEmitter {
 
 export
 namespace ISessions {
+    export const navigatedToHash: AsyncRemote.IEvent<string> = {
+        id: 'navigated-to-hash',
+    };
 
     export
     let createSession: AsyncRemote.IMethod<JupyterLabSession.IOptions, void> = {
@@ -129,7 +133,7 @@ class JupyterLabSessions extends EventEmitter implements ISessions, IStatefulSer
     /**
      * Checks whether or not an application window is in focus
      * Note: There exists an "isFocused" method on BrowserWindow
-     * objects, but it isn't a reliable indiciator of focus.
+     * objects, but it isn't a reliable indicator of focus.
      */
     isAppFocused(): boolean {
         let visible = false;
@@ -275,7 +279,6 @@ class JupyterLabSessions extends EventEmitter implements ISessions, IStatefulSer
 
     /**
      * Returns a promise that is resolved when a local session is created and ready
-     * @param options server options
      */
     private _activateLocalSession(): Promise<void> {
         if (this._startingSession) {
@@ -441,6 +444,18 @@ class JupyterLabSession {
             win.loadURL(url);
 
             event.newGuest = win;
+        });
+
+        // Prevent reloading app from the server when jumping to an anchor
+        this._window.webContents.on('will-navigate', (event: Event, navigationUrl) => {
+            const parsedUrl = new URL(navigationUrl);
+            let currentURL = new URL(this._window.webContents.getURL());
+
+            // TODO: also check origin once we do have server URL here,
+            //  but it requires cleaning up the remote jupyter servers code first
+            if (parsedUrl.hash !== currentURL.hash) {
+                asyncRemoteMain.emitRemoteEvent(ISessions.navigatedToHash, parsedUrl.hash, this._window.webContents);
+            }
         });
     }
 
