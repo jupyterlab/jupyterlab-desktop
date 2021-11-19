@@ -9,7 +9,6 @@ export
 namespace ServerError {
     export
     interface Props {
-        launchFromPath: () => void;
         changeEnvironment: () => void;
         error: Error
     }
@@ -25,7 +24,7 @@ function ServerError(props: ServerError.Props) {
                 <span className='jpe-ServerError-description'>
                     <p>
                     Jupyter Server, which is a prerequisite for JupyterLab Desktop, did not initialize properly.<br/>
-                    This might be because of an issue with the selected environment. You can change environment or try setting path to the server using buttons below.<br/>
+                    This might be because of an issue with the selected environment. You can change environment to try a different server using buttons below.<br/>
                     </p>
                     <p>
                     If this does not seem right, please report this issue in the JupyterLab Desktop repository, providing the error details presented below:
@@ -33,7 +32,6 @@ function ServerError(props: ServerError.Props) {
                 </span>
                 <pre className='jpe-ServerError-error'>{props.error.name}: {props.error.message}</pre>
                 <div className='jpe-ServerError-btn-container'>
-                    <button className='jpe-ServerError-btn' onClick={props.launchFromPath}>CHOOSE PATH</button>
                     <button className='jpe-ServerError-btn' onClick={props.changeEnvironment}>CHANGE ENVIRONMENT</button>
                     <button className='jpe-ServerError-btn' onClick={() => {
                         shell.openExternal('https://github.com/jupyterlab/jupyterlab-desktop/issues').catch(console.error);

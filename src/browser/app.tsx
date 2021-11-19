@@ -293,7 +293,7 @@ class Application extends React.Component<Application.IProps, Application.IState
         return (
             <div className='jpe-content'>
                 <TitleBar uiState={this.props.options.uiState} />
-                <ServerError launchFromPath={this._launchFromPath} changeEnvironment={this._changeEnvironment} error={error} />
+                <ServerError changeEnvironment={this._changeEnvironment} error={error} />
             </div>
         );
     }
