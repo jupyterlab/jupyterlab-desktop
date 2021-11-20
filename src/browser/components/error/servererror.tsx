@@ -9,7 +9,8 @@ export
 namespace ServerError {
     export
     interface Props {
-        launchFromPath: () => void;
+        changeEnvironment: () => void;
+        error: Error
     }
 }
 
@@ -18,14 +19,23 @@ function ServerError(props: ServerError.Props) {
     return (
         <div className='jpe-ServerError-body'>
             <div className='jpe-ServerError-content'>
-                <div className='jpe-ServerError-icon'></div>
-                <h1 className='jpe-ServerError-header'>Jupyter Server Not Found</h1>
-                <p className='jpe-ServerError-subhead'>We were unable to launch a Jupyter server, which is a prerequisite for JupyterLab Desktop. If Jupyter is installed as a python module, but the python executable is not in your PATH, specify the executable location below. Otherwise, try installing or updating Jupyter. The Jupyter notebook version must be 6.0.0 or greater.</p>
+                <div className='jpe-ServerError-icon'/>
+                <h1 className='jpe-ServerError-header'>Jupyter Server Initialization Failed</h1>
+                <span className='jpe-ServerError-description'>
+                    <p>
+                    Jupyter Server, which is a prerequisite for JupyterLab Desktop, did not initialize properly.<br/>
+                    This might be because of an issue with the selected environment. You can change environment to try a different server using buttons below.<br/>
+                    </p>
+                    <p>
+                    If this does not seem right, please report this issue in the JupyterLab Desktop repository, providing the error details presented below:
+                    </p>
+                </span>
+                <pre className='jpe-ServerError-error'>{props.error.name}: {props.error.message}</pre>
                 <div className='jpe-ServerError-btn-container'>
-                    <button className='jpe-ServerError-btn' onClick={props.launchFromPath}>CHOOSE PATH</button>
+                    <button className='jpe-ServerError-btn' onClick={props.changeEnvironment}>CHANGE ENVIRONMENT</button>
                     <button className='jpe-ServerError-btn' onClick={() => {
-                        shell.openExternal('https://www.jupyter.org/install.html');
-                    }}>INSTALL JUPYTER</button>
+                        shell.openExternal('https://github.com/jupyterlab/jupyterlab-desktop/issues').catch(console.error);
+                    }}>REPORT ISSUE</button>
                 </div>
             </div>
         </div>

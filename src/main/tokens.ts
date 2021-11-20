@@ -39,7 +39,7 @@ export const EnvironmentTypeName = {
 };
 
 /**
- * The respresentation of the python environment
+ * The representation of the python environment
  */
  export interface IPythonEnvironment {
   /**
@@ -47,7 +47,7 @@ export const EnvironmentTypeName = {
    */
   path: string;
   /**
-   * Arbitrary name used for display, not garuanteed to be unique
+   * Arbitrary name used for display, not guaranteed to be unique
    */
   name: string;
   /**

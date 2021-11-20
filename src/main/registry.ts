@@ -124,7 +124,7 @@ export class Registry implements IRegistry {
     /**
      * Retrieve the default environment from the registry, once it has been resolved
      *
-     * @returns a promise containin the default environment
+     * @returns a promise containing the default environment
      */
     getDefaultEnvironment(): Promise<IPythonEnvironment> {
         return new Promise((resolve, reject) => {
@@ -135,7 +135,7 @@ export class Registry implements IRegistry {
                     reject(new Error(`No default environment found!`));
                 }
             }).catch(reason => {
-                reject(new Error(`Registry failed to build!`));
+                reject(new Error(`Default environment could not be obtained: ${reason}`));
             });
         });
     }
@@ -151,7 +151,7 @@ export class Registry implements IRegistry {
                     reject(new Error(`No environment found with path matching "${pathToMatch}"`));
                 }
             }).catch(reason => {
-                reject(new Error(`Registry failed to build!`));
+                reject(new Error(`Registry failed to build: ${reason}`));
             });
         });
     }
@@ -191,7 +191,7 @@ export class Registry implements IRegistry {
                     }).catch(reject);
                 }
             }).catch(reason => {
-                reject(new Error(`Registry failed to build!`));
+                reject(new Error(`Default environment could not be set: ${reason}`));
             });
         });
     }
@@ -209,7 +209,7 @@ export class Registry implements IRegistry {
                     reject(new Error(`No environment list found!`));
                 }
             }).catch(reason => {
-                reject(new Error(`Registry failed to build!`));
+                reject(new Error(`Environment list could not be obtained: ${reason}`));
             });
         });
     }
@@ -337,16 +337,23 @@ export class Registry implements IRegistry {
 
         let updatedEnv = this._updatePythonEnvironmentsWithRequirementVersions([newEnvironment], requirements);
 
-        return updatedEnv.then(newEnvs => {
+        return (updatedEnv
+            .catch((error: Error) => {
+                return Promise.reject(new Error(`Python check failed: ${error}`));
+            })
+            .then(newEnvs => {
             let filteredEnvs = this._filterPythonEnvironmentsByRequirements(newEnvs, requirements);
             if (filteredEnvs.length === 0) {
-                return Promise.reject(new Error('Python path does not satisfiy requirement!'));
+                const requirementsDescription = requirements.map(
+                    requirement => `${requirement.name} (${requirement.moduleName}) ${requirement.versionRange.range}`
+                ).join(', ');
+                return Promise.reject(new Error(
+                    `Required packages could not be found in the selected Python path:\n${pythonPath}\n\nThe requirements are: ${requirementsDescription}`
+                ));
             } else {
                 return Promise.resolve(filteredEnvs[0]);
             }
-        }, err => {
-            return Promise.reject(new Error('Python check failed!'));
-        });
+        }));
     }
 
     
@@ -613,7 +620,7 @@ export class Registry implements IRegistry {
                     resolve(version);
                 }
             }).catch(reason => {
-                reject(new Error(`Command output failed!`));
+                reject(new Error(`Command output failed: ${reason}`));
             });
         });
     }
