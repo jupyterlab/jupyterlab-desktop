@@ -450,13 +450,8 @@ class JupyterLabSession {
         // Prevent reloading app from the server when jumping to an anchor
         this._window.webContents.on('will-navigate', (event: Event, navigationUrl) => {
             const parsedUrl = new URL(navigationUrl);
-            let currentURL = new URL(this._window.webContents.getURL());
 
-            // TODO: also check origin once we do have server URL here,
-            //  but it requires cleaning up the remote jupyter servers code first
-            if (parsedUrl.hash !== currentURL.hash) {
-                asyncRemoteMain.emitRemoteEvent(ISessions.navigatedToHash, parsedUrl.hash, this._window.webContents);
-            }
+            asyncRemoteMain.emitRemoteEvent(ISessions.navigatedToHash, parsedUrl.hash, this._window.webContents);
         });
     }
 

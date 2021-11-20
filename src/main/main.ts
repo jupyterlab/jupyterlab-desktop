@@ -3,7 +3,6 @@ import {
 } from 'electron';
 
 const Bottle = require('bottlejs');
-const URL = require('url').URL;
 import log from 'electron-log';
 import * as yargs from 'yargs';
 import * as path from 'path';
@@ -151,15 +150,10 @@ app.on('ready', () => {
 });
 
 app.on("web-contents-created", (_event: any, webContents: WebContents) => {
-    // Prevent navigation to external websites (which is basically all websites)
+    // Prevent navigation
     webContents.on('will-navigate', (event: Event, navigationUrl) => {
-        const parsedUrl = new URL(navigationUrl);
-        let currentURL = new URL(webContents.getURL());
-
-        if (parsedUrl.origin !== currentURL.origin) {
-            console.warn(`Navigation to ${parsedUrl.href} is not allowed`);
-            event.preventDefault();
-        }
+        console.warn(`Navigation is not allowed; attempted navigation to: ${navigationUrl}`);
+        event.preventDefault();
     });
 
     // handle page's beforeunload prompt natively
