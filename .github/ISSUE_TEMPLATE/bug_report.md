@@ -51,7 +51,7 @@ You may want to sanitize the paths in the output.
 </pre>
 </details>
 
-<details><summary>Browser Output</summary>
+<details><summary>Browser Output (required for interface issues after loading)</summary>
 <!--Go to `Help` menu -> `Open Developer Console` to access the JavaScript console-->
 <!--If you do not see such a menu entry, please try Ctrl + Shift + I, after focusing on JupyterLab file browser-->
 <pre>
@@ -60,3 +60,14 @@ Paste the output from the DevTools JavaScript console here, if applicable.
 </pre>
 </details>
 
+<details><summary>Logs (required for issues with loading, server and startup)</summary>
+<!--Start application from command line as `jlab --verbose 4`, wait until it settles-->
+<!--Copy-paste the logs from the following location:-->
+<!--on Linux: ~/.config/jupyterlab-desktop/logs/main.log-->
+<!--on macOS: ~/Library/Logs/jupyterlab-desktop/main.log-->
+<!--on Windows: %USERPROFILE%\AppData\Roaming\jupyterlab-desktop\logs\main.log-->
+<pre>
+Paste the logs from the mian.log file here.
+
+</pre>
+</details>
