@@ -71,14 +71,17 @@ class JupyterServer {
             }
             this._info.token = randomBytes(24).toString('hex');
 
+            // note: traitlets<5.0 require fully specified arguments to
+            // be followed by equals sign without a space; this can be
+            // removed once jupyter_server requires traitlets>5.0
             this._nbServer = execFile(this._info.environment.path, [
                 '-m', 'jupyterlab',
                 '--no-browser',
                 // do not use any config file
-                '--JupyterApp.config_file_name', '',
+                '--JupyterApp.config_file_name=""',
                 // use our token rather than any pre-configured password
-                '--ServerApp.password', '',
-                '--ServerApp.allow_origin', '*'
+                '--ServerApp.password=""',
+                '--ServerApp.allow_origin="*"'
             ], {
                 cwd: home,
                 env: {
