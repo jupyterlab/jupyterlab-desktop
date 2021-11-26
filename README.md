@@ -42,7 +42,7 @@ By default JupyterLab Desktop will only load and write to Jupyter configuration 
 
 ignoring any other Jupyter configuration which may be present in standard Jupyter paths as defined by `jupyter --paths`.
 This includes `jupyter-server` settings, `jupyterlab` settings and workspaces, and any other configuration which would
-normally be shared between Jupyter installation.
+normally be shared between Jupyter installations.
 This is necessary to prevent a clash between the Desktop and any previous Jupyter installation.
 
 You can change the configuration path by specifying `JLAB_DESKTOP_CONFIG_DIR` environment variable.
