@@ -21,7 +21,7 @@ Python environment selection is saved in application settings and restored at ap
 Application settings are stored in JSON format in the following locations. You can check the `pythonPath` setting in this file for troubleshooting. Setting it to empty string will cause JupyterLab Desktop to reset to the bundled Python environment.
 - Windows: `%APPDATA%\jupyterlab-desktop\jupyterlab-desktop-data`
 - macOS: `~/Library/Application\ Support/jupyterlab-desktop/jupyterlab-desktop-data`
-- Linux: `~/.config/jupyterlab-desktop/jupyterlab-desktop-data`
+- Linux: `$XDG_CONFIG_HOME/jupyterlab-desktop/jupyterlab-desktop-data` or `~/.config/jupyterlab-desktop/jupyterlab-desktop-data`
 
 ## How to create a Custom Python Environment
 ### Using conda
@@ -136,3 +136,26 @@ On Windows, JupyterLab Desktop is installed in two parts, one for the python env
 - Then uninstall JupyterLab Desktop application
 
 <img src="media/uninstall-windows-application.png" alt="Uninstall the application" height=200 />
+
+# Configuration
+
+## Copying configuration from previous installation
+
+Starting with version v3.2.4-2 the configuration (`jupyter-server` settings, `jupyterlab` settings and workspaces, etc)
+is no longer shared between JupyterLab Desktop and other installations of Jupyter(Lab) to avoid workspace leakage,
+user confusion, and errors such as reported by users who had a pre-existing configuration clashing with a newer
+version of Jupyter shipped with JupyterLab Desktop.
+
+You can keep your previous JupyterLab settings by copying them over to the new [configuration path](https://github.com/jupyterlab/jupyterlab-desktop#configuration-files):
+
+1. Run `jupyter --paths` to determine where your `config` is stored.
+2. Find directory called `lab` in one of these paths.
+3. If there is a `user-settings` directory in `lab`, you can copy the `lab` directory over to the [configuration path](https://github.com/jupyterlab/jupyterlab-desktop#configuration-files) of JupyterLab Desktop to keep your old JupyterLab settings. If there is `workspaces` directory you can decide if you want to keep or remove it.
+
+For example, on Linux it could (depending on installation) require the following:
+
+```
+cp -r ~/.jupyter/lab/ ~/.config/jupyterlab-desktop
+```
+
+**Warning**: If you copy over settings from an older major version of JupyterLab (e.g. 2.x) those might cause an error on startup.
