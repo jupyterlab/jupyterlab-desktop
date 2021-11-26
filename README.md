@@ -47,6 +47,8 @@ This is necessary to prevent a clash between the Desktop and any previous Jupyte
 
 You can change the configuration path by specifying `JLAB_DESKTOP_CONFIG_DIR` environment variable.
 
+For instructions on how to copy the settings from previous JupyterLab installation please see the [user guide](user-guide.md#Copying-configuration-from-previous-installation).
+
 ## Build dependencies
 
 - [conda](https://docs.conda.io)
