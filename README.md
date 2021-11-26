@@ -33,6 +33,20 @@ JupyterLab Desktop sets File Browser's root directory based on the launch method
   - `jlab ../notebooks/test.ipynb` launch notebook with relative path
   - `jlab ../test.py` launch python file with relative path
 
+### Configuration files
+
+By default JupyterLab Desktop will only load and write to Jupyter configuration located in:
+- `%APPDATA%\jupyterlab-desktop` on Windows
+- `$XDG_CONFIG_HOME/jupyterlab-desktop` or `~/.config/jupyterlab-desktop` on Linux
+- `~/Library/Application Support/jupyterlab-desktop` on macOS
+
+ignoring any other Jupyter configuration which may be present in standard Jupyter paths as defined by `jupyter --paths`.
+This includes `jupyter-server` settings, `jupyterlab` settings and workspaces, and any other configuration which would
+normally be shared between Jupyter installation.
+This is necessary to prevent a clash between the Desktop and any previous Jupyter installation.
+
+You can change the configuration path by specifying `JLAB_DESKTOP_CONFIG_DIR` environment variable.
+
 ## Build dependencies
 
 - [conda](https://docs.conda.io)
