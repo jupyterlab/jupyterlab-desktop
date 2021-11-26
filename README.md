@@ -38,7 +38,7 @@ JupyterLab Desktop sets File Browser's root directory based on the launch method
 By default JupyterLab Desktop will only load and write to Jupyter configuration located in:
 - `%APPDATA%\jupyterlab-desktop` on Windows
 - `$XDG_CONFIG_HOME/jupyterlab-desktop` or `~/.config/jupyterlab-desktop` on Linux
-- `~/Library/Application Support/jupyterlab-desktop` on macOS
+- `~/Library/Application\ Support/jupyterlab-desktop` on macOS
 
 ignoring any other Jupyter configuration which may be present in standard Jupyter paths as defined by `jupyter --paths`.
 This includes `jupyter-server` settings, `jupyterlab` settings and workspaces, and any other configuration which would

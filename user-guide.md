@@ -21,7 +21,7 @@ Python environment selection is saved in application settings and restored at ap
 Application settings are stored in JSON format in the following locations. You can check the `pythonPath` setting in this file for troubleshooting. Setting it to empty string will cause JupyterLab Desktop to reset to the bundled Python environment.
 - Windows: `%APPDATA%\jupyterlab-desktop\jupyterlab-desktop-data`
 - macOS: `~/Library/Application\ Support/jupyterlab-desktop/jupyterlab-desktop-data`
-- Linux: `~/.config/jupyterlab-desktop/jupyterlab-desktop-data`
+- Linux: `$XDG_CONFIG_HOME/jupyterlab-desktop/jupyterlab-desktop-data` or `~/.config/jupyterlab-desktop/jupyterlab-desktop-data`
 
 ## How to create a Custom Python Environment
 ### Using conda
