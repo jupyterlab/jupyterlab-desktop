@@ -387,7 +387,7 @@ class JupyterApplication implements IApplication, IStatefulService {
             <body style="background: rgba(238,238,238,1); font-size: 13px; font-family: Helvetica, Arial, sans-serif">
             <div style="height: 100%; display: flex;flex-direction: column; justify-content: space-between;">
                 <div>
-                <%= message %>
+                <%- message %>
                 </div>
                 <div>
                     <label><input type='checkbox' <%= checkForUpdatesAutomatically ? 'checked' : '' %> onclick='handleAutoCheckForUpdates(this);'>Check for updates automatically</label>
