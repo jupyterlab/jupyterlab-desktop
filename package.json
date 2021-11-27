@@ -1,6 +1,6 @@
 {
   "name": "jupyterlab-desktop",
-  "version": "3.2.4-2",
+  "version": "3.2.4-3",
   "description": "JupyterLab Desktop",
   "main": "./build/out/main/main.js",
   "scripts": {
