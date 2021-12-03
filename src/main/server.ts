@@ -81,7 +81,9 @@ class JupyterServer {
                 '--JupyterApp.config_file_name=""',
                 // use our token rather than any pre-configured password
                 '--ServerApp.password=""',
-                '--ServerApp.allow_origin="*"'
+                '--ServerApp.allow_origin="*"',
+                // enable hidden files (let user decide whether to display them)
+                '--ContentsManager.allow_hidden=True'
             ], {
                 cwd: home,
                 env: {
