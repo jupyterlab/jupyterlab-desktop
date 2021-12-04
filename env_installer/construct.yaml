@@ -22,6 +22,7 @@ specs:
   - conda
   - ipywidgets 7.6.5
   - jupyterlab 3.2.4
+  - ipympl >= 0.8.2
   - matplotlib-base
   - numpy
   - pandas
