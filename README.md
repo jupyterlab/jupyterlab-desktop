@@ -4,6 +4,8 @@ A desktop application for [JupyterLab](https://github.com/jupyterlab/jupyterlab)
 
 ![JupyterLab Desktop](media/jupyterlab-desktop.png)
 
+JupyterLab Desktop currently supports user-friendly [prebuilt](https://jupyterlab.readthedocs.io/en/stable/extension/extension_dev.html#overview-of-extensions) extensions. Source extensions which require rebuilding are not supported.
+
 ## Download
 ![GitHub release (latest by date)](https://img.shields.io/github/v/release/jupyterlab/jupyterlab-desktop)
 
