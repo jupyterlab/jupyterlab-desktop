@@ -3,8 +3,6 @@
 
 import * as React from 'react';
 
-let shell: Electron.Shell = (window as any).require('electron').remote.shell;
-
 export
 namespace ServerError {
     export
@@ -34,7 +32,7 @@ function ServerError(props: ServerError.Props) {
                 <div className='jpe-ServerError-btn-container'>
                     <button className='jpe-ServerError-btn' onClick={props.changeEnvironment}>CHANGE ENVIRONMENT</button>
                     <button className='jpe-ServerError-btn' onClick={() => {
-                        shell.openExternal('https://github.com/jupyterlab/jupyterlab-desktop/issues').catch(console.error);
+                        window.open('https://github.com/jupyterlab/jupyterlab-desktop/issues', '_blank', 'nodeIntegration=no');
                     }}>REPORT ISSUE</button>
                 </div>
             </div>

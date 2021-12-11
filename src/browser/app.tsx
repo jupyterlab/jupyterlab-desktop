@@ -33,7 +33,7 @@ import {
 } from '../main/sessions';
 
 import {
-    SplashScreen, ServerManager, TitleBar, ServerError
+    SplashScreen, ServerManager, ServerError
 } from './components';
 
 import {
@@ -49,7 +49,7 @@ import {
 } from '../main/sessions';
 
 import {
-    remote, ipcRenderer
+    ipcRenderer
 } from 'electron';
 
 import * as React from 'react';
@@ -273,7 +273,6 @@ class Application extends React.Component<Application.IProps, Application.IState
     private _renderServerManager(): JSX.Element {
         return (
             <div className='jpe-content'>
-                <TitleBar uiState={this.props.options.uiState} />
                 <ServerManager serverAdded={this._connectionAdded} />;
             </div>
         );
@@ -292,7 +291,6 @@ class Application extends React.Component<Application.IProps, Application.IState
     private _renderErrorScreen(error: Error): JSX.Element {
         return (
             <div className='jpe-content'>
-                <TitleBar uiState={this.props.options.uiState} />
                 <ServerError changeEnvironment={this._changeEnvironment} error={error} />
             </div>
         );
@@ -339,7 +337,10 @@ class Application extends React.Component<Application.IProps, Application.IState
     }
 
     private _setLabDir() {
-        this._labDir = remote.process.env.JLAB_DESKTOP_HOME || remote.app.getPath('home');
+        asyncRemoteRenderer.runRemoteMethod(IAppRemoteInterface.getCurrentRootPath, undefined)
+            .then((path: string) => {
+                this._labDir = path;
+            });
     }
 
     private _labDir: string;
