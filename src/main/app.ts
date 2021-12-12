@@ -108,6 +108,10 @@ namespace IAppRemoteInterface {
         id: 'JupyterLabDesktop-get-python-env'
     };
     export
+    let getCurrentRootPath: AsyncRemote.IMethod<void, string> = {
+        id: 'JupyterLabDesktop-get-current-path'
+    };
+    export
     let showPythonPathSelector: AsyncRemote.IMethod<void, void> = {
         id: 'JupyterLabDesktop-select-python-path'
     };
@@ -356,6 +360,11 @@ class JupyterApplication implements IApplication, IStatefulService {
                 return this.getPythonEnvironment();
             });
 
+        asyncRemoteMain.registerRemoteMethod(IAppRemoteInterface.getCurrentRootPath,
+            async (): Promise<string> => {
+                return process.env.JLAB_DESKTOP_HOME || app.getPath('home');
+            });
+
         asyncRemoteMain.registerRemoteMethod(IAppRemoteInterface.showPythonPathSelector,
             (): Promise<void> => {
                 this._showPythonSelectorDialog('change');
@@ -371,7 +380,6 @@ class JupyterApplication implements IApplication, IStatefulService {
             resizable: false,
             webPreferences: {
                 nodeIntegration: true,
-                enableRemoteModule: true,
                 contextIsolation: false
             }
         });
@@ -421,7 +429,6 @@ class JupyterApplication implements IApplication, IStatefulService {
             modal: true,
             webPreferences: {
                 nodeIntegration: true,
-                enableRemoteModule: true,
                 contextIsolation: false
             }
         });

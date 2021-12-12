@@ -401,7 +401,6 @@ class JupyterLabSession {
             title: 'JupyterLab',
             webPreferences: {
                 nodeIntegration: true,
-                enableRemoteModule: true,
                 contextIsolation: false
             }
         });

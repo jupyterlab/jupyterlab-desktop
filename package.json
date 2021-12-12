@@ -139,10 +139,10 @@
   "repository": "github:jupyterlab/jupyterlab",
   "license": "BSD-3-Clause",
   "devDependencies": {
-    "@yarnpkg/lockfile": "~1.1.0",
     "@types/ejs": "^3.1.0",
+    "@yarnpkg/lockfile": "~1.1.0",
     "css-loader": "~5.1.1",
-    "electron": "^13.0.0",
+    "electron": "^14.0.0",
     "electron-builder": "^22.11.11",
     "file-loader": "~6.2.0",
     "fs-extra": "~9.1.0",
@@ -252,6 +252,7 @@
     "@jupyterlab/vdom": "3.2.5",
     "@jupyterlab/vdom-extension": "3.2.5",
     "@jupyterlab/vega5-extension": "3.2.5",
+    "@types/js-yaml": "^4.0.3",
     "@types/node": "^14.14.31",
     "@types/node-fetch": "~2.5.12",
     "@types/react": "~17.0.2",
@@ -262,15 +263,14 @@
     "ejs": "^3.1.6",
     "electron-log": "^4.3.2",
     "fix-path": "^3.0.0",
+    "js-yaml": "^4.1.0",
     "node-fetch": "~2.6.1",
     "react": "^17.0.1",
     "react-dom": "^17.0.1",
     "semver": "^7.3.4",
     "which": "^2.0.2",
     "winreg": "^1.2.4",
-    "yargs": "^16.2.0",
-    "js-yaml": "^4.1.0",
-    "@types/js-yaml": "^4.0.3"
+    "yargs": "^16.2.0"
   },
   "resolutions": {
     "@jupyterlab/application": "~3.2.5",

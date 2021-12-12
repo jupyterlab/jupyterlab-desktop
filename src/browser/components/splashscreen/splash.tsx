@@ -2,10 +2,6 @@
 // Distributed under the terms of the Modified BSD License.
 
 import {
-    TitleBar
-} from '../titlebar';
-
-import {
     JupyterLabSession
 } from '../../../main/sessions';
 
@@ -53,7 +49,6 @@ class SplashScreen extends React.Component<SplashScreen.Props, SplashScreen.Stat
 
         return (
             <div className="jpe-SplashScreen-body" style={style} onAnimationEnd={fadeAnim}>
-                <TitleBar uiState={this.props.uiState} />
                 <div className="jpe-SplashScreen-content">
                     <div className="jpe-SplashScreen-main-logo"></div>
                     <Moon name={'moon1'} orbitComplete={orbitComplete}/>

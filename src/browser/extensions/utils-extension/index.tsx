@@ -56,10 +56,6 @@ import {
 } from '@jupyterlab/apputils';
 
 import {
-    TitleBar
-} from '../../components';
-
-import {
     asyncRemoteRenderer
 } from '../../../asyncremote';
 
@@ -165,7 +161,8 @@ function createServerManager(app: ElectronJupyterLab, palette: ICommandPalette,
 function buildTitleBar(app: ElectronJupyterLab): Widget {
     let titleBar = new Widget();
     ReactDOM.render(
-        <TitleBar uiState={app.info.uiState} />,
+        // <TitleBar uiState={app.info.uiState} />,
+        <div />,
         titleBar.node
     );
     return titleBar;
