@@ -2,6 +2,7 @@
 
 "$2/JupyterLab.app/Contents/Resources/env_installer/JupyterLabDesktopAppServer-3.2.5-1-MacOSX-x86_64.sh" -b -p "$2/JupyterLab.app/Contents/Resources/jlab_server"
 
+mkdir -p /usr/local/bin
 ln -s "$2/JupyterLab.app/Contents/Resources/app/jlab" /usr/local/bin/jlab
 chmod 755 "$2/JupyterLab.app/Contents/Resources/app/jlab"
 
