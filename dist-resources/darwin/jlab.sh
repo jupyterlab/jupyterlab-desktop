@@ -1,6 +1,20 @@
 #!/usr/bin/env bash
 
+real_path() (
+  cd "$(dirname "$1")"
+  LINK=$(readlink "$(basename "$1")")
+  while [ "$LINK" ]; do
+    cd "$(dirname "$LINK")"
+    LINK=$(readlink "$(basename "$1")")
+  done
+  REALPATH="$PWD/$(basename "$1")"
+  echo "$REALPATH"
+)
+
 # calculate application path from this script's path
-JLAB_PATH=$(python3 -c "import sys; from os import path; self_path=path.realpath(sys.argv[1]); print(path.normpath(path.join(self_path, '../../../MacOS/JupyterLab')));" "${BASH_SOURCE[0]}");
+SELF_DIR=$(dirname $(real_path $0))
+APP_CONTENTS_DIR=$(dirname $(dirname $SELF_DIR))
+JLAB_PATH="$APP_CONTENTS_DIR"/MacOS/JupyterLab
+
 $JLAB_PATH "$@"
 exit $?
