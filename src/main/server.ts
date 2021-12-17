@@ -87,6 +87,7 @@ class JupyterServer {
             ], {
                 cwd: home,
                 env: {
+                    ...process.env,
                     PATH: this._registry.getAdditionalPathIncludesForPythonPath(this._info.environment.path),
                     JUPYTER_TOKEN: this._info.token,
                     JUPYTER_CONFIG_DIR: process.env.JLAB_DESKTOP_CONFIG_DIR || app.getPath('userData')
