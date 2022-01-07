@@ -31,14 +31,16 @@ import {
 
 import { IRegistry } from './registry';
 
+import { appConfig } from './utils';
+
 import {
     EventEmitter
 } from 'events';
 
-import * as url from 'url';
 import * as fs from 'fs';
-import * as path from 'path';
 import { URL } from "url";
+import * as path from 'path';
+import { request as httpRequest, IncomingMessage } from 'http';
 
 export
 interface ISessions extends EventEmitter {
@@ -420,12 +422,116 @@ class JupyterLabSession {
             this._window.show();
         });
 
-        this._window.loadURL(url.format({
-            pathname: path.join(__dirname, '../browser/index.html'),
-            protocol: 'file:',
-            slashes: true,
-            search: encodeURIComponent(JSON.stringify(this.info))
-        }));
+        this._window.loadURL(`http://localhost:${appConfig.jlabPort}/desktop-app-assets/index.html?${encodeURIComponent(JSON.stringify(this.info))}`);
+
+        const cookies: Map<string, string> = new Map();
+
+        const getCookieDetails = (cookie: string): Electron.CookiesSetDetails => {
+            const parts = cookie.split(';');
+            const nameVal = parts[0].split('=');
+            const name = nameVal[0].trim();
+            const value = nameVal[1].trim();
+
+            cookies.set(name, cookie);
+
+            const cookieObj: Electron.CookiesSetDetails = {
+                url: `http://localhost:${appConfig.jlabPort}`,
+                name: name,
+                value: value
+            };
+
+            for (let i = 1; i < parts.length; ++i) {
+                const nameVal = parts[i].split('=');
+                const name = nameVal[0].trim();
+
+                switch (name) {
+                    case 'expires':
+                        {
+                        const value = nameVal[1].trim();
+                        cookieObj.expirationDate = Date.parse(value);
+                        }
+                        break;
+                    case 'Path':
+                        {
+                        const value = nameVal[1].trim();
+                        cookieObj.path = value;
+                        }
+                        break;
+                    case 'HttpOnly':
+                        cookieObj.httpOnly = true;
+                        break;
+                }
+            }
+
+            return cookieObj;
+        };
+
+        this._window.webContents.session.protocol.interceptBufferProtocol("http", (req, callback) => {
+            const assetsPrefix = `http://localhost:${appConfig.jlabPort}/desktop-app-assets`;
+            const staticAssetsDir = path.normalize(path.join(__dirname, '../../'));
+    
+            if (req.url.startsWith(assetsPrefix)) {
+                let assetPath = req.url.substring(assetsPrefix.length + 1);
+                const qMark = assetPath.indexOf('?');
+                if (qMark !== -1) {
+                    assetPath = assetPath.substring(0, qMark);
+                }
+                const assetFilePath = path.join(staticAssetsDir, assetPath);
+                const assetContent = fs.readFileSync(assetFilePath);
+                callback(assetContent);
+            } else {
+                const headers: any = {...req.headers, 'Referer': req.referrer, 'Authorization': `token ${appConfig.token}` };
+                const request = httpRequest(req.url, {headers: headers, method: req.method });
+                request.on('response', (res: IncomingMessage) => {
+                    if ('set-cookie' in res.headers) {
+                        for (let cookie of res.headers['set-cookie']) {
+                            this._window.webContents.session.cookies.set(getCookieDetails(cookie));
+                        }
+                    }
+    
+                    const chunks: Buffer[] = [];
+    
+                    res.on('data', (chunk: any) => {
+                        chunks.push(Buffer.from(chunk));
+                    })
+    
+                    res.on('end', async () => {
+                        const file = Buffer.concat(chunks);
+                        callback({
+                            statusCode: res.statusCode,
+                            headers: res.headers,
+                            method: res.method,
+                            url: res.url,
+                            data: file,
+                        });
+                    })
+                })
+    
+                if (req.uploadData) {
+                    req.uploadData.forEach(part => {
+                        if (part.bytes) {
+                            request.write(part.bytes);
+                        } else if (part.file) {
+                            request.write(fs.readFileSync(part.file));
+                        }
+                    })
+                }
+    
+                request.end();
+            }
+        });
+
+        const filter = {
+            urls: ['ws://*/*', 'wss://*/*']
+        };
+
+        this._window.webContents.session.webRequest.onBeforeSendHeaders(filter, (details, callback) => {
+            const requestHeaders: Record<string, string> = {...details.requestHeaders};
+            if (cookies.size > 0) {
+                requestHeaders['Cookie'] = Array.from(cookies.values()).join('; ');
+            }
+            callback({cancel: false, requestHeaders})
+        });
 
         this._window.on('focus', () => {
             this._sessionManager.setFocusedSession(this);

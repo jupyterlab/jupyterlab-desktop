@@ -7,6 +7,48 @@ import log from 'electron-log';
 import * as yargs from 'yargs';
 import * as path from 'path';
 import * as fs from 'fs';
+import { randomBytes } from 'crypto';
+import { createServer } from 'net';
+
+import { appConfig } from './utils';
+
+async function getFreePort(startPort: number): Promise<number> {
+    return new Promise<number>((resolve) => {
+        let nextPort = startPort;
+
+        const getPort = () => {
+            let port = nextPort++;
+
+            const server = createServer((socket) => {
+                socket.write('Echo server\r\n');
+                socket.pipe(socket);
+            });
+            
+            server.on('error', function (e) {
+                getPort();
+            });
+            server.on('listening', function (e: any) {
+                server.close();
+                
+                resolve(port);
+            });
+        
+            server.listen(port, '127.0.0.1');
+        };
+
+        getPort();
+    });
+};
+
+async function setAppConfig(): Promise<void> {
+    return new Promise<void>((resolve) => {
+        getFreePort(8888).then((port) => {
+            appConfig.jlabPort = port;
+            appConfig.token = randomBytes(24).toString('hex');
+            resolve();
+        });
+    });
+}
 
 // handle opening file or directory with command-line arguments
 if (process.argv.length > 1) {
@@ -126,7 +168,7 @@ app.on('open-file', (event: Electron.Event, _path: string) => {
  * ready.
  */
 app.on('ready', () => {
-    handOverArguments()
+    Promise.all([setAppConfig(), handOverArguments()])
     .then( () => {
         let serviceManager = new Bottle();
         let autostarts: string[] = [];

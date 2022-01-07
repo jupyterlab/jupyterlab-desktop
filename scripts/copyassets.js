@@ -46,7 +46,7 @@ function copyAssests() {
 
     // Copy html into build directory
     const htmlPath = path.join('browser', 'index.html');
-    fs.copySync(path.join(srcDir, htmlPath), path.join(dest, htmlPath));
+    fs.copySync(path.join(srcDir, htmlPath), path.join(dest, '../index.html'));
 
     const envInfoPath = path.join('main', 'env_info.py');
     fs.copySync(path.join(srcDir, envInfoPath), path.join(dest, envInfoPath));

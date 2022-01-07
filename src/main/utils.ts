@@ -30,6 +30,18 @@ import * as fs from 'fs';
 import log from 'electron-log';
 
 export
+interface IAppConfiguration {
+    jlabPort: number;
+    token: string;
+};
+
+export
+const appConfig: IAppConfiguration = {
+    jlabPort: 8888,
+    token: 'jlab-token'
+};
+
+export
 interface ISaveOptions {
     id: string;
     raw: string;
