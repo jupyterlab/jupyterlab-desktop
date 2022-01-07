@@ -422,17 +422,17 @@ class JupyterLabSession {
             this._window.show();
         });
 
-        this._window.loadURL(`http://localhost:${appConfig.jlabPort}/desktop-app-assets/index.html?${encodeURIComponent(JSON.stringify(this.info))}`);
+        const DESKTOP_APP_ASSETS_PATH = 'desktop-app-assets';
+
+        this._window.loadURL(`http://localhost:${appConfig.jlabPort}/${DESKTOP_APP_ASSETS_PATH}/index.html?${encodeURIComponent(JSON.stringify(this.info))}`);
 
         const cookies: Map<string, string> = new Map();
 
-        const getCookieDetails = (cookie: string): Electron.CookiesSetDetails => {
+        const parseCookie = (cookie: string): Electron.CookiesSetDetails => {
             const parts = cookie.split(';');
             const nameVal = parts[0].split('=');
             const name = nameVal[0].trim();
             const value = nameVal[1].trim();
-
-            cookies.set(name, cookie);
 
             const cookieObj: Electron.CookiesSetDetails = {
                 url: `http://localhost:${appConfig.jlabPort}`,
@@ -447,14 +447,14 @@ class JupyterLabSession {
                 switch (name) {
                     case 'expires':
                         {
-                        const value = nameVal[1].trim();
-                        cookieObj.expirationDate = Date.parse(value);
+                            const value = nameVal[1].trim();
+                            cookieObj.expirationDate = Date.parse(value);
                         }
                         break;
                     case 'Path':
                         {
-                        const value = nameVal[1].trim();
-                        cookieObj.path = value;
+                            const value = nameVal[1].trim();
+                            cookieObj.path = value;
                         }
                         break;
                     case 'HttpOnly':
@@ -467,16 +467,16 @@ class JupyterLabSession {
         };
 
         this._window.webContents.session.protocol.interceptBufferProtocol("http", (req, callback) => {
-            const assetsPrefix = `http://localhost:${appConfig.jlabPort}/desktop-app-assets`;
-            const staticAssetsDir = path.normalize(path.join(__dirname, '../../'));
+            const desktopAppAssetsPrefix = `http://localhost:${appConfig.jlabPort}/${DESKTOP_APP_ASSETS_PATH}`;
+            const appAssetsDir = path.normalize(path.join(__dirname, '../../'));
     
-            if (req.url.startsWith(assetsPrefix)) {
-                let assetPath = req.url.substring(assetsPrefix.length + 1);
+            if (req.url.startsWith(desktopAppAssetsPrefix)) {
+                let assetPath = req.url.substring(desktopAppAssetsPrefix.length + 1);
                 const qMark = assetPath.indexOf('?');
                 if (qMark !== -1) {
                     assetPath = assetPath.substring(0, qMark);
                 }
-                const assetFilePath = path.join(staticAssetsDir, assetPath);
+                const assetFilePath = path.join(appAssetsDir, assetPath);
                 const assetContent = fs.readFileSync(assetFilePath);
                 callback(assetContent);
             } else {
@@ -485,7 +485,9 @@ class JupyterLabSession {
                 request.on('response', (res: IncomingMessage) => {
                     if ('set-cookie' in res.headers) {
                         for (let cookie of res.headers['set-cookie']) {
-                            this._window.webContents.session.cookies.set(getCookieDetails(cookie));
+                            const cookieObject = parseCookie(cookie);
+                            cookies.set(cookieObject.name, cookie);
+                            this._window.webContents.session.cookies.set(cookieObject);
                         }
                     }
     
