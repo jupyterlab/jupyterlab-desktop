@@ -475,9 +475,12 @@ class JupyterLabSession {
             if (qMark !== -1) {
                 assetPath = assetPath.substring(0, qMark);
             }
-            const assetFilePath = path.join(appAssetsDir, assetPath);
-            const assetContent = fs.readFileSync(assetFilePath);
-            callback(assetContent);
+            const assetFilePath = path.normalize(path.join(appAssetsDir, assetPath));
+
+            if (assetFilePath.indexOf(appAssetsDir) === 0) {
+                const assetContent = fs.readFileSync(assetFilePath);
+                callback(assetContent);
+            }
         };
 
         const handleRemoteAssetRequest = (req: Electron.ProtocolRequest, callback: (response: (Buffer) | (Electron.ProtocolResponse)) => void) => {
