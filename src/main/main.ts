@@ -8,17 +8,14 @@ import * as yargs from 'yargs';
 import * as path from 'path';
 import * as fs from 'fs';
 import { randomBytes } from 'crypto';
-import { createServer } from 'net';
+import { AddressInfo, createServer } from 'net';
 
 import { appConfig } from './utils';
 
-async function getFreePort(startPort: number): Promise<number> {
+async function getFreePort(): Promise<number> {
     return new Promise<number>((resolve) => {
-        let nextPort = startPort;
 
         const getPort = () => {
-            let port = nextPort++;
-
             const server = createServer((socket) => {
                 socket.write('Echo server\r\n');
                 socket.pipe(socket);
@@ -28,12 +25,13 @@ async function getFreePort(startPort: number): Promise<number> {
                 getPort();
             });
             server.on('listening', function (e: any) {
+                const port = (server.address() as AddressInfo).port;
                 server.close();
                 
                 resolve(port);
             });
         
-            server.listen(port, '127.0.0.1');
+            server.listen(0, '127.0.0.1');
         };
 
         getPort();
@@ -42,7 +40,7 @@ async function getFreePort(startPort: number): Promise<number> {
 
 async function setAppConfig(): Promise<void> {
     return new Promise<void>((resolve) => {
-        getFreePort(8888).then((port) => {
+        getFreePort().then((port) => {
             appConfig.jlabPort = port;
             appConfig.token = randomBytes(24).toString('hex');
             resolve();
