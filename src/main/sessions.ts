@@ -466,60 +466,68 @@ class JupyterLabSession {
             return cookieObj;
         };
 
-        this._window.webContents.session.protocol.interceptBufferProtocol("http", (req, callback) => {
-            const desktopAppAssetsPrefix = `http://localhost:${appConfig.jlabPort}/${DESKTOP_APP_ASSETS_PATH}`;
-            const appAssetsDir = path.normalize(path.join(__dirname, '../../'));
-    
-            if (req.url.startsWith(desktopAppAssetsPrefix)) {
-                let assetPath = req.url.substring(desktopAppAssetsPrefix.length + 1);
-                const qMark = assetPath.indexOf('?');
-                if (qMark !== -1) {
-                    assetPath = assetPath.substring(0, qMark);
-                }
-                const assetFilePath = path.join(appAssetsDir, assetPath);
-                const assetContent = fs.readFileSync(assetFilePath);
-                callback(assetContent);
-            } else {
-                const headers: any = {...req.headers, 'Referer': req.referrer, 'Authorization': `token ${appConfig.token}` };
-                const request = httpRequest(req.url, {headers: headers, method: req.method });
-                request.on('response', (res: IncomingMessage) => {
-                    if ('set-cookie' in res.headers) {
-                        for (let cookie of res.headers['set-cookie']) {
-                            const cookieObject = parseCookie(cookie);
-                            cookies.set(cookieObject.name, cookie);
-                            this._window.webContents.session.cookies.set(cookieObject);
-                        }
+        const desktopAppAssetsPrefix = `http://localhost:${appConfig.jlabPort}/${DESKTOP_APP_ASSETS_PATH}`;
+        const appAssetsDir = path.normalize(path.join(__dirname, '../../'));
+
+        const handleDesktopAppAssetRequest = (req: Electron.ProtocolRequest, callback: (response: (Buffer) | (Electron.ProtocolResponse)) => void) => {
+            let assetPath = req.url.substring(desktopAppAssetsPrefix.length + 1);
+            const qMark = assetPath.indexOf('?');
+            if (qMark !== -1) {
+                assetPath = assetPath.substring(0, qMark);
+            }
+            const assetFilePath = path.join(appAssetsDir, assetPath);
+            const assetContent = fs.readFileSync(assetFilePath);
+            callback(assetContent);
+        };
+
+        const handleRemoteAssetRequest = (req: Electron.ProtocolRequest, callback: (response: (Buffer) | (Electron.ProtocolResponse)) => void) => {
+            const headers: any = {...req.headers, 'Referer': req.referrer, 'Authorization': `token ${appConfig.token}` };
+            const request = httpRequest(req.url, {headers: headers, method: req.method });
+            request.on('response', (res: IncomingMessage) => {
+                if ('set-cookie' in res.headers) {
+                    for (let cookie of res.headers['set-cookie']) {
+                        const cookieObject = parseCookie(cookie);
+                        cookies.set(cookieObject.name, cookie);
+                        this._window.webContents.session.cookies.set(cookieObject);
                     }
-    
-                    const chunks: Buffer[] = [];
-    
-                    res.on('data', (chunk: any) => {
-                        chunks.push(Buffer.from(chunk));
-                    })
-    
-                    res.on('end', async () => {
-                        const file = Buffer.concat(chunks);
-                        callback({
-                            statusCode: res.statusCode,
-                            headers: res.headers,
-                            method: res.method,
-                            url: res.url,
-                            data: file,
-                        });
-                    })
-                })
-    
-                if (req.uploadData) {
-                    req.uploadData.forEach(part => {
-                        if (part.bytes) {
-                            request.write(part.bytes);
-                        } else if (part.file) {
-                            request.write(fs.readFileSync(part.file));
-                        }
-                    })
                 }
-    
-                request.end();
+
+                const chunks: Buffer[] = [];
+
+                res.on('data', (chunk: any) => {
+                    chunks.push(Buffer.from(chunk));
+                })
+
+                res.on('end', async () => {
+                    const file = Buffer.concat(chunks);
+                    callback({
+                        statusCode: res.statusCode,
+                        headers: res.headers,
+                        method: res.method,
+                        url: res.url,
+                        data: file,
+                    });
+                })
+            })
+
+            if (req.uploadData) {
+                req.uploadData.forEach(part => {
+                    if (part.bytes) {
+                        request.write(part.bytes);
+                    } else if (part.file) {
+                        request.write(fs.readFileSync(part.file));
+                    }
+                })
+            }
+
+            request.end();
+        };
+
+        this._window.webContents.session.protocol.interceptBufferProtocol("http", (req, callback) => {
+            if (req.url.startsWith(desktopAppAssetsPrefix)) {
+                handleDesktopAppAssetRequest(req, callback);
+            } else {
+                handleRemoteAssetRequest(req, callback);
             }
         });
 
