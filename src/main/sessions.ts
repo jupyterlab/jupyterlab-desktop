@@ -428,42 +428,17 @@ class JupyterLabSession {
 
         const cookies: Map<string, string> = new Map();
 
-        const parseCookie = (cookie: string): Electron.CookiesSetDetails => {
+        const parseCookieName = (cookie: string): string | undefined => {
             const parts = cookie.split(';');
-            const nameVal = parts[0].split('=');
-            const name = nameVal[0].trim();
-            const value = nameVal[1].trim();
-
-            const cookieObj: Electron.CookiesSetDetails = {
-                url: `http://localhost:${appConfig.jlabPort}`,
-                name: name,
-                value: value
-            };
-
-            for (let i = 1; i < parts.length; ++i) {
-                const nameVal = parts[i].split('=');
-                const name = nameVal[0].trim();
-
-                switch (name) {
-                    case 'expires':
-                        {
-                            const value = nameVal[1].trim();
-                            cookieObj.expirationDate = Date.parse(value);
-                        }
-                        break;
-                    case 'Path':
-                        {
-                            const value = nameVal[1].trim();
-                            cookieObj.path = value;
-                        }
-                        break;
-                    case 'HttpOnly':
-                        cookieObj.httpOnly = true;
-                        break;
-                }
+            if (parts.length < 1) {
+                return undefined;
             }
-
-            return cookieObj;
+            const firstPart = parts[0];
+            const eqLoc = firstPart.indexOf('=');
+            if (eqLoc === -1) {
+                return undefined;
+            }
+            return firstPart.substring(0, eqLoc).trim();
         };
 
         const desktopAppAssetsPrefix = `http://localhost:${appConfig.jlabPort}/${DESKTOP_APP_ASSETS_PATH}`;
@@ -489,9 +464,10 @@ class JupyterLabSession {
             request.on('response', (res: IncomingMessage) => {
                 if ('set-cookie' in res.headers) {
                     for (let cookie of res.headers['set-cookie']) {
-                        const cookieObject = parseCookie(cookie);
-                        cookies.set(cookieObject.name, cookie);
-                        this._window.webContents.session.cookies.set(cookieObject);
+                        const cookieName = parseCookieName(cookie);
+                        if (cookieName) {
+                            cookies.set(cookieName, cookie);
+                        }
                     }
                 }
 
