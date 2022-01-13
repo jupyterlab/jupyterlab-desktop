@@ -441,7 +441,8 @@ class JupyterLabSession {
             return firstPart.substring(0, eqLoc).trim();
         };
 
-        const desktopAppAssetsPrefix = `http://localhost:${appConfig.jlabPort}/${DESKTOP_APP_ASSETS_PATH}`;
+        const jlabBaseUrl = `http://localhost:${appConfig.jlabPort}/`;
+        const desktopAppAssetsPrefix = `${jlabBaseUrl}${DESKTOP_APP_ASSETS_PATH}`;
         const appAssetsDir = path.normalize(path.join(__dirname, '../../'));
 
         const handleDesktopAppAssetRequest = (req: Electron.ProtocolRequest, callback: (response: (Buffer) | (Electron.ProtocolResponse)) => void) => {
@@ -462,7 +463,7 @@ class JupyterLabSession {
             const headers: any = {...req.headers, 'Referer': req.referrer, 'Authorization': `token ${appConfig.token}` };
             const request = httpRequest(req.url, {headers: headers, method: req.method });
             request.on('response', (res: IncomingMessage) => {
-                if ('set-cookie' in res.headers) {
+                if (req.url.startsWith(jlabBaseUrl) && ('set-cookie' in res.headers)) {
                     for (let cookie of res.headers['set-cookie']) {
                         const cookieName = parseCookieName(cookie);
                         if (cookieName) {
@@ -511,7 +512,7 @@ class JupyterLabSession {
         });
 
         const filter = {
-            urls: ['ws://*/*', 'wss://*/*']
+            urls: [`ws://localhost:${appConfig.jlabPort}/*`]
         };
 
         this._window.webContents.session.webRequest.onBeforeSendHeaders(filter, (details, callback) => {
