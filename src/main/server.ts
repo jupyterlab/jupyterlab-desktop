@@ -26,14 +26,11 @@ import {
     ArrayExt
 } from '@lumino/algorithm';
 
-import {
-    randomBytes
-} from 'crypto';
-
 import log from 'electron-log';
 
 import * as fs from 'fs';
 import { IPythonEnvironment } from './tokens';
+import { appConfig } from './utils';
 
 export
 class JupyterServer {
@@ -61,7 +58,6 @@ class JupyterServer {
 
         this._startServer = new Promise<JupyterServer.IInfo>((resolve, reject) => {
             let urlRegExp = /https?:\/\/localhost:\d+\/\S*/g;
-            let baseRegExp = /https?:\/\/localhost:\d+\//g;
             let serverVersionPattern = /Jupyter Server (?<version>.*) is running at/g;
             const home = process.env.JLAB_DESKTOP_HOME || app.getPath('home');
             const pythonPath = this._info.environment.path;
@@ -69,7 +65,8 @@ class JupyterServer {
                 dialog.showMessageBox({message: `Environment not found at: ${pythonPath}`, type: 'error' });
                 reject();
             }
-            this._info.token = randomBytes(24).toString('hex');
+            this._info.url = `http://localhost:${appConfig.jlabPort}`;
+            this._info.token = appConfig.token;
 
             // note: traitlets<5.0 require fully specified arguments to
             // be followed by equals sign without a space; this can be
@@ -79,6 +76,7 @@ class JupyterServer {
                 '--no-browser',
                 // do not use any config file
                 '--JupyterApp.config_file_name=""',
+                `--ServerApp.port=${appConfig.jlabPort}`,
                 // use our token rather than any pre-configured password
                 '--ServerApp.password=""',
                 '--ServerApp.allow_origin="*"',
@@ -89,7 +87,7 @@ class JupyterServer {
                 env: {
                     ...process.env,
                     PATH: this._registry.getAdditionalPathIncludesForPythonPath(this._info.environment.path),
-                    JUPYTER_TOKEN: this._info.token,
+                    JUPYTER_TOKEN: appConfig.token,
                     JUPYTER_CONFIG_DIR: process.env.JLAB_DESKTOP_CONFIG_DIR || app.getPath('userData')
                 }
             });
@@ -121,10 +119,6 @@ class JupyterServer {
                     this._info.version = versionMatch.groups.version;
                 }
                 if (urlMatch) {
-                    let url = urlMatch[0].toString();
-
-                    this._info.url = (url.match(baseRegExp))[0];
-
                     started = true;
                     this._cleanupListeners();
                     return resolve(this._info);

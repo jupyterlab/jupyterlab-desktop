@@ -31,14 +31,16 @@ import {
 
 import { IRegistry } from './registry';
 
+import { appConfig } from './utils';
+
 import {
     EventEmitter
 } from 'events';
 
-import * as url from 'url';
 import * as fs from 'fs';
-import * as path from 'path';
 import { URL } from "url";
+import * as path from 'path';
+import { request as httpRequest, IncomingMessage } from 'http';
 
 export
 interface ISessions extends EventEmitter {
@@ -420,12 +422,106 @@ class JupyterLabSession {
             this._window.show();
         });
 
-        this._window.loadURL(url.format({
-            pathname: path.join(__dirname, '../browser/index.html'),
-            protocol: 'file:',
-            slashes: true,
-            search: encodeURIComponent(JSON.stringify(this.info))
-        }));
+        const DESKTOP_APP_ASSETS_PATH = 'desktop-app-assets';
+
+        this._window.loadURL(`http://localhost:${appConfig.jlabPort}/${DESKTOP_APP_ASSETS_PATH}/index.html?${encodeURIComponent(JSON.stringify(this.info))}`);
+
+        const cookies: Map<string, string> = new Map();
+
+        const parseCookieName = (cookie: string): string | undefined => {
+            const parts = cookie.split(';');
+            if (parts.length < 1) {
+                return undefined;
+            }
+            const firstPart = parts[0];
+            const eqLoc = firstPart.indexOf('=');
+            if (eqLoc === -1) {
+                return undefined;
+            }
+            return firstPart.substring(0, eqLoc).trim();
+        };
+
+        const jlabBaseUrl = `http://localhost:${appConfig.jlabPort}/`;
+        const desktopAppAssetsPrefix = `${jlabBaseUrl}${DESKTOP_APP_ASSETS_PATH}`;
+        const appAssetsDir = path.normalize(path.join(__dirname, '../../'));
+
+        const handleDesktopAppAssetRequest = (req: Electron.ProtocolRequest, callback: (response: (Buffer) | (Electron.ProtocolResponse)) => void) => {
+            let assetPath = req.url.substring(desktopAppAssetsPrefix.length + 1);
+            const qMark = assetPath.indexOf('?');
+            if (qMark !== -1) {
+                assetPath = assetPath.substring(0, qMark);
+            }
+            const assetFilePath = path.normalize(path.join(appAssetsDir, assetPath));
+
+            if (assetFilePath.indexOf(appAssetsDir) === 0) {
+                const assetContent = fs.readFileSync(assetFilePath);
+                callback(assetContent);
+            }
+        };
+
+        const handleRemoteAssetRequest = (req: Electron.ProtocolRequest, callback: (response: (Buffer) | (Electron.ProtocolResponse)) => void) => {
+            const headers: any = {...req.headers, 'Referer': req.referrer, 'Authorization': `token ${appConfig.token}` };
+            const request = httpRequest(req.url, {headers: headers, method: req.method });
+            request.on('response', (res: IncomingMessage) => {
+                if (req.url.startsWith(jlabBaseUrl) && ('set-cookie' in res.headers)) {
+                    for (let cookie of res.headers['set-cookie']) {
+                        const cookieName = parseCookieName(cookie);
+                        if (cookieName) {
+                            cookies.set(cookieName, cookie);
+                        }
+                    }
+                }
+
+                const chunks: Buffer[] = [];
+
+                res.on('data', (chunk: any) => {
+                    chunks.push(Buffer.from(chunk));
+                })
+
+                res.on('end', async () => {
+                    const file = Buffer.concat(chunks);
+                    callback({
+                        statusCode: res.statusCode,
+                        headers: res.headers,
+                        method: res.method,
+                        url: res.url,
+                        data: file,
+                    });
+                })
+            })
+
+            if (req.uploadData) {
+                req.uploadData.forEach(part => {
+                    if (part.bytes) {
+                        request.write(part.bytes);
+                    } else if (part.file) {
+                        request.write(fs.readFileSync(part.file));
+                    }
+                })
+            }
+
+            request.end();
+        };
+
+        this._window.webContents.session.protocol.interceptBufferProtocol("http", (req, callback) => {
+            if (req.url.startsWith(desktopAppAssetsPrefix)) {
+                handleDesktopAppAssetRequest(req, callback);
+            } else {
+                handleRemoteAssetRequest(req, callback);
+            }
+        });
+
+        const filter = {
+            urls: [`ws://localhost:${appConfig.jlabPort}/*`]
+        };
+
+        this._window.webContents.session.webRequest.onBeforeSendHeaders(filter, (details, callback) => {
+            const requestHeaders: Record<string, string> = {...details.requestHeaders};
+            if (cookies.size > 0) {
+                requestHeaders['Cookie'] = Array.from(cookies.values()).join('; ');
+            }
+            callback({cancel: false, requestHeaders})
+        });
 
         this._window.on('focus', () => {
             this._sessionManager.setFocusedSession(this);
