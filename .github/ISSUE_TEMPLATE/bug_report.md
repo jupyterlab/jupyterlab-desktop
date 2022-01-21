@@ -67,7 +67,7 @@ Paste the output from the DevTools JavaScript console here, if applicable.
 <!--on macOS: ~/Library/Logs/jupyterlab-desktop/main.log-->
 <!--on Windows: %USERPROFILE%\AppData\Roaming\jupyterlab-desktop\logs\main.log-->
 <pre>
-Paste the logs from the mian.log file here.
+Paste the logs from the `main.log` file here (optionally also from `renderer.log`).
 
 </pre>
 </details>
