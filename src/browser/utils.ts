@@ -35,3 +35,11 @@ namespace Browser {
         return 28 / webFrame.getZoomFactor();
     }
 }
+
+// atob with support for whitespace in data
+export
+function atobWhiteSpace(data: string): string {
+    // remove whitespace
+    data = data.replace(/\s/g, "");
+    return window.atob(data);
+}

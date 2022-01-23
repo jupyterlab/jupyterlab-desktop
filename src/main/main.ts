@@ -192,8 +192,11 @@ app.on('ready', () => {
 app.on("web-contents-created", (_event: any, webContents: WebContents) => {
     // Prevent navigation
     webContents.on('will-navigate', (event: Event, navigationUrl) => {
-        console.warn(`Navigation is not allowed; attempted navigation to: ${navigationUrl}`);
-        event.preventDefault();
+        const jlabBaseUrl = `http://localhost:${appConfig.jlabPort}/`;
+        if (!navigationUrl.startsWith(jlabBaseUrl)) {
+            console.warn(`Navigation is not allowed; attempted navigation to: ${navigationUrl}`);
+            event.preventDefault();
+        }
     });
 
     // handle page's beforeunload prompt natively
