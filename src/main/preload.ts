@@ -1,4 +1,6 @@
-// atob implementation below is modified from node.js source and copyright below is for that
+// atob implementation below is modified from node.js source 
+// (https://github.com/nodejs/node/blob/master/lib/buffer.js)
+// and copyright below is for it
 
 // Copyright Joyent, Inc. and other Node contributors.
 //
