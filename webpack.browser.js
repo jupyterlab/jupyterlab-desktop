@@ -164,9 +164,6 @@ module.exports = {
       },
       name: 'CORE_FEDERATION',
       shared: createShared(data)
-    }),
-    new webpack.ProvidePlugin({
-      'atob': [path.resolve(path.join(__dirname, 'build/out/browser/utils.js')), 'atobWhiteSpace']
     })
   ],
   devtool: 'source-map'

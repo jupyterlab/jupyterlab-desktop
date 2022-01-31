@@ -190,10 +190,10 @@ app.on('ready', () => {
 });
 
 app.on("web-contents-created", (_event: any, webContents: WebContents) => {
-    // Prevent navigation
+    // Prevent navigation to local links
     webContents.on('will-navigate', (event: Event, navigationUrl) => {
         const jlabBaseUrl = `http://localhost:${appConfig.jlabPort}/`;
-        if (!navigationUrl.startsWith(jlabBaseUrl)) {
+        if (navigationUrl.startsWith(jlabBaseUrl) && navigationUrl.indexOf('#') !== -1) {
             console.warn(`Navigation is not allowed; attempted navigation to: ${navigationUrl}`);
             event.preventDefault();
         }
