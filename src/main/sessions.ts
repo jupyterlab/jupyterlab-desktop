@@ -403,7 +403,8 @@ class JupyterLabSession {
             title: 'JupyterLab',
             webPreferences: {
                 nodeIntegration: true,
-                contextIsolation: false
+                contextIsolation: false,
+                preload: path.join(__dirname, './preload.js'),
             }
         });
 
