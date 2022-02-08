@@ -404,7 +404,8 @@ class JupyterLabSession {
             webPreferences: {
                 nodeIntegration: true,
                 contextIsolation: false,
-                preload: path.join(__dirname, './preload.js'),
+                // disable native window open to prevent exposing node.js scripts in popups
+                nativeWindowOpen: false
             }
         });
 
