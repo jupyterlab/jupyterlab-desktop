@@ -1,5 +1,5 @@
 import {
-    ChildProcess, execFile
+    ChildProcess, exec, execFile
 } from 'child_process';
 
 import {
@@ -29,8 +29,56 @@ import {
 import log from 'electron-log';
 
 import * as fs from 'fs';
+import * as os from 'os';
+import * as  path from 'path';
 import { IPythonEnvironment } from './tokens';
 import { appConfig } from './utils';
+
+function createTempFile(fileName = 'temp', data = '', encoding: BufferEncoding = 'utf8') {
+    const tempDirPath = path.join(os.tmpdir(), 'jlab_desktop');
+    const tmpDir = fs.mkdtempSync(tempDirPath);
+    const tmpFilePath = path.join(tmpDir, fileName);
+
+    fs.writeFileSync(tmpFilePath, data, {encoding});
+
+    return tmpFilePath;
+}
+
+function createLaunchScript(environment: IPythonEnvironment): string {
+    const platform = process.platform;
+    const isWin = platform === 'win32';
+    const pythonPath = environment.path;
+    let envPath = path.dirname(pythonPath);
+    if (!isWin) {
+        envPath = path.normalize(path.join(envPath, '../'));
+    }
+
+    // note: traitlets<5.0 require fully specified arguments to
+    // be followed by equals sign without a space; this can be
+    // removed once jupyter_server requires traitlets>5.0
+    const launchCmd = `python -m jupyterlab --no-browser --JupyterApp.config_file_name="" --ServerApp.port=${appConfig.jlabPort} --ServerApp.password="" --ServerApp.allow_origin="*" --ContentsManager.allow_hidden=True`;
+
+    let script: string;
+
+    if (isWin) {
+        script = `
+            CALL ${envPath}\\condabin\\activate
+            START ${launchCmd}`;
+    } else {
+        script = `
+            ${envPath}/bin/activate
+            ${launchCmd}`;
+    }
+
+    const ext = isWin ? 'bat' : 'sh';
+    const scriptPath = createTempFile(`launch.${ext}`, script);
+
+    if (!isWin) {
+        fs.chmodSync(scriptPath, 0o755);
+    }
+
+    return scriptPath;
+}
 
 export
 class JupyterServer {
@@ -68,21 +116,9 @@ class JupyterServer {
             this._info.url = `http://localhost:${appConfig.jlabPort}`;
             this._info.token = appConfig.token;
 
-            // note: traitlets<5.0 require fully specified arguments to
-            // be followed by equals sign without a space; this can be
-            // removed once jupyter_server requires traitlets>5.0
-            this._nbServer = execFile(this._info.environment.path, [
-                '-m', 'jupyterlab',
-                '--no-browser',
-                // do not use any config file
-                '--JupyterApp.config_file_name=""',
-                `--ServerApp.port=${appConfig.jlabPort}`,
-                // use our token rather than any pre-configured password
-                '--ServerApp.password=""',
-                '--ServerApp.allow_origin="*"',
-                // enable hidden files (let user decide whether to display them)
-                '--ContentsManager.allow_hidden=True'
-            ], {
+            const launchScriptPath = createLaunchScript(this._info.environment); 
+
+            this._nbServer = exec(launchScriptPath, {
                 cwd: home,
                 env: {
                     ...process.env,
@@ -121,6 +157,7 @@ class JupyterServer {
                 if (urlMatch) {
                     started = true;
                     this._cleanupListeners();
+                    fs.unlinkSync(launchScriptPath);
                     return resolve(this._info);
                 }
                 console.log('Jupyter Server initialization message:', serverBuff);
