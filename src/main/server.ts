@@ -62,8 +62,7 @@ function createLaunchScript(environment: IPythonEnvironment): string {
 
     if (isWin) {
         script = `
-            CALL ${envPath}\\condabin\\activate
-            CALL ${launchCmd}`;
+            CALL ${envPath}\\condabin\\activate && ${launchCmd}`;
     } else {
         script = `
             ${envPath}/bin/activate
