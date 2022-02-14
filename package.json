@@ -68,8 +68,7 @@
     },
     "win": {
       "target": [
-        "nsis",
-        "portable"
+        "nsis"
       ],
       "extraFiles": [
         {

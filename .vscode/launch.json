@@ -21,7 +21,7 @@
         "cwd": "${workspaceFolder}",
         "runtimeExecutable": "${workspaceFolder}/node_modules/.bin/electron",
         "windows": {
-          "runtimeExecutable": "${workspaceFolder}/node_modules/.bin/electron.cmd"
+          "runtimeExecutable": "${workspaceFolder}\\node_modules\\.bin\\electron.cmd"
         },
         "args" : ["."],
         "outputCapture": "std"

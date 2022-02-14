@@ -277,7 +277,7 @@ export class Registry implements IRegistry {
         const envName = `${envInfo.type}: ${envInfo.name}`;
 
         return {
-            type: IEnvironmentType.PATH,
+            type: envInfo.type === 'conda' ? IEnvironmentType.CondaEnv : IEnvironmentType.VirtualEnv,
             name: envName,
             path: pythonPath,
             versions: { 'python': pythonVersion, 'jupyterlab': jlabVersion },
