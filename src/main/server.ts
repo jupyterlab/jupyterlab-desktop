@@ -163,6 +163,7 @@ class JupyterServer {
 
         this._startServer = new Promise<JupyterServer.IInfo>((resolve, reject) => {
             const home = process.env.JLAB_DESKTOP_HOME || app.getPath('home');
+            const isWin = process.platform === 'win32';
             const pythonPath = this._info.environment.path;
             if (!fs.existsSync(pythonPath)) {
                 dialog.showMessageBox({message: `Environment not found at: ${pythonPath}`, type: 'error' });
@@ -175,7 +176,7 @@ class JupyterServer {
 
             this._nbServer = execFile(launchScriptPath, {
                 cwd: home,
-                shell: true,
+                shell: isWin ? 'cmd.exe' : '/bin/bash',
                 env: {
                     ...process.env,
                     JUPYTER_TOKEN: appConfig.token,
