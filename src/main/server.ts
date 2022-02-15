@@ -86,7 +86,7 @@ function createLaunchScript(environment: IPythonEnvironment): string {
         }
     } else {
         script = `
-            ${envPath}/bin/activate
+            source ${envPath}/bin/activate
             ${launchCmd}`;
     }
 
@@ -175,7 +175,7 @@ class JupyterServer {
 
             this._nbServer = execFile(launchScriptPath, {
                 cwd: home,
-                shell: "cmd.exe",
+                shell: true,
                 env: {
                     ...process.env,
                     JUPYTER_TOKEN: appConfig.token,
