@@ -403,7 +403,9 @@ class JupyterLabSession {
             title: 'JupyterLab',
             webPreferences: {
                 nodeIntegration: true,
-                contextIsolation: false
+                contextIsolation: false,
+                // disable native window open to prevent exposing node.js scripts in popups
+                nativeWindowOpen: false
             }
         });
 

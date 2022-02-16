@@ -149,7 +149,7 @@
     "@types/yargs": "^16.0.0",
     "@yarnpkg/lockfile": "~1.1.0",
     "css-loader": "~5.1.1",
-    "electron": "^14.0.0",
+    "electron": "^15.0.0",
     "electron-builder": "^22.11.11",
     "file-loader": "~6.2.0",
     "fs-extra": "~9.1.0",

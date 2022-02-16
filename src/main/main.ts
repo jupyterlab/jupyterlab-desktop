@@ -190,10 +190,13 @@ app.on('ready', () => {
 });
 
 app.on("web-contents-created", (_event: any, webContents: WebContents) => {
-    // Prevent navigation
+    // Prevent navigation to local links on the same page and external links
     webContents.on('will-navigate', (event: Event, navigationUrl) => {
-        console.warn(`Navigation is not allowed; attempted navigation to: ${navigationUrl}`);
-        event.preventDefault();
+        const jlabBaseUrl = `http://localhost:${appConfig.jlabPort}/`;
+        if (!(navigationUrl.startsWith(jlabBaseUrl) && navigationUrl.indexOf('#') === -1)) {
+            console.warn(`Navigation is not allowed; attempted navigation to: ${navigationUrl}`);
+            event.preventDefault();
+        }
     });
 
     // handle page's beforeunload prompt natively
