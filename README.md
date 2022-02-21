@@ -138,3 +138,4 @@ JupyterLab Desktop bundles JupyterLab front-end and a conda environment as Jupyt
 ## Release Instructions
 
 For instructions on updating bundled JupyterLab packages and cutting a new release, please follow [Release.md](Release.md) document.
+
