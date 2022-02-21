@@ -3,6 +3,7 @@ build
 dist
 lib
 node_modules
+.npmrc
 .cache
 .vscode/*
 !.vscode/launch.json
