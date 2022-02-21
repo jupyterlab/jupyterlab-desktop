@@ -29,15 +29,120 @@ import {
 import log from 'electron-log';
 
 import * as fs from 'fs';
-import { IPythonEnvironment } from './tokens';
+import * as os from 'os';
+import * as path from 'path';
+import * as http from 'http';
+import { IEnvironmentType, IPythonEnvironment } from './tokens';
 import { appConfig } from './utils';
+
+const SERVER_LAUNCH_TIMEOUT = 30000; // milliseconds
+
+function createTempFile(fileName = 'temp', data = '', encoding: BufferEncoding = 'utf8') {
+    const tempDirPath = path.join(os.tmpdir(), 'jlab_desktop');
+    const tmpDir = fs.mkdtempSync(tempDirPath);
+    const tmpFilePath = path.join(tmpDir, fileName);
+
+    fs.writeFileSync(tmpFilePath, data, {encoding});
+
+    return tmpFilePath;
+}
+
+function createLaunchScript(environment: IPythonEnvironment): string {
+    const platform = process.platform;
+    const isWin = platform === 'win32';
+    const pythonPath = environment.path;
+    let envPath = path.dirname(pythonPath);
+    if (!isWin) {
+        envPath = path.normalize(path.join(envPath, '../'));
+    }
+
+    // note: traitlets<5.0 require fully specified arguments to
+    // be followed by equals sign without a space; this can be
+    // removed once jupyter_server requires traitlets>5.0
+    const launchCmd = [
+        'python', '-m', 'jupyterlab',
+        '--no-browser',
+        // do not use any config file
+        '--JupyterApp.config_file_name=""',
+        `--ServerApp.port=${appConfig.jlabPort}`,
+        // use our token rather than any pre-configured password
+        '--ServerApp.password=""',
+        '--ServerApp.allow_origin="*"',
+        // enable hidden files (let user decide whether to display them)
+        '--ContentsManager.allow_hidden=True'
+    ].join(' ');
+
+    let script: string;
+
+    if (isWin) {
+        if (environment.type === IEnvironmentType.CondaEnv) {
+            script = `
+                CALL ${envPath}\\condabin\\activate.bat
+                CALL ${launchCmd}`;
+        } else {
+            script = `
+                CALL ${envPath}\\activate.bat
+                CALL ${launchCmd}`;
+        }
+    } else {
+        script = `
+            source ${envPath}/bin/activate
+            ${launchCmd}`;
+    }
+
+    const ext = isWin ? 'bat' : 'sh';
+    const scriptPath = createTempFile(`launch.${ext}`, script);
+
+    if (!isWin) {
+        fs.chmodSync(scriptPath, 0o755);
+    }
+
+    return scriptPath;
+}
+
+async function waitForDuration(duration: number): Promise<boolean> {
+    return new Promise(resolve => {
+        setTimeout(() => {
+            resolve(false);
+        }, duration);
+    });
+}
+
+async function checkIfUrlExists(url: URL): Promise<boolean> {
+    return new Promise<boolean>((resolve) => {
+        const req = http.request(url, function(r) {
+            resolve(r.statusCode >= 200 && r.statusCode < 400);
+        });
+        req.on('error', function(err) {
+            resolve(false);
+        });
+        req.end();
+    });
+}
+
+async function waitUntilServerIsUp(port: number): Promise<boolean> {
+    const url = new URL(`http://localhost:${port}`);
+    return new Promise<boolean>(async (resolve) => {
+        async function checkUrl() {
+            const exists = await checkIfUrlExists(url);
+            if (exists) {
+                return resolve(true);
+            } else {
+                setTimeout(async () => {
+                    await checkUrl();
+                }, 500);
+            }
+        }
+
+        await checkUrl();
+    });
+}
 
 export
 class JupyterServer {
 
-    constructor(options: JupyterServer.IOptions, registry: IRegistry) {
+    constructor(options: JupyterServer.IOptions) {
         this._info.environment = options.environment;
-        this._registry = registry;
     }
 
     get info(): JupyterServer.IInfo {
@@ -57,9 +162,8 @@ class JupyterServer {
         let started = false;
 
         this._startServer = new Promise<JupyterServer.IInfo>((resolve, reject) => {
-            let urlRegExp = /https?:\/\/localhost:\d+\/\S*/g;
-            let serverVersionPattern = /Jupyter Server (?<version>.*) is running at/g;
             const home = process.env.JLAB_DESKTOP_HOME || app.getPath('home');
+            const isWin = process.platform === 'win32';
             const pythonPath = this._info.environment.path;
             if (!fs.existsSync(pythonPath)) {
                 dialog.showMessageBox({message: `Environment not found at: ${pythonPath}`, type: 'error' });
@@ -67,28 +171,30 @@ class JupyterServer {
             }
             this._info.url = `http://localhost:${appConfig.jlabPort}`;
             this._info.token = appConfig.token;
+            
+            const launchScriptPath = createLaunchScript(this._info.environment); 
 
-            // note: traitlets<5.0 require fully specified arguments to
-            // be followed by equals sign without a space; this can be
-            // removed once jupyter_server requires traitlets>5.0
-            this._nbServer = execFile(this._info.environment.path, [
-                '-m', 'jupyterlab',
-                '--no-browser',
-                // do not use any config file
-                '--JupyterApp.config_file_name=""',
-                `--ServerApp.port=${appConfig.jlabPort}`,
-                // use our token rather than any pre-configured password
-                '--ServerApp.password=""',
-                '--ServerApp.allow_origin="*"',
-                // enable hidden files (let user decide whether to display them)
-                '--ContentsManager.allow_hidden=True'
-            ], {
+            this._nbServer = execFile(launchScriptPath, {
                 cwd: home,
+                shell: isWin ? 'cmd.exe' : '/bin/bash',
                 env: {
                     ...process.env,
-                    PATH: this._registry.getAdditionalPathIncludesForPythonPath(this._info.environment.path),
                     JUPYTER_TOKEN: appConfig.token,
                     JUPYTER_CONFIG_DIR: process.env.JLAB_DESKTOP_CONFIG_DIR || app.getPath('userData')
+                }
+            });
+            
+            Promise.race([
+                waitUntilServerIsUp(appConfig.jlabPort),
+                waitForDuration(SERVER_LAUNCH_TIMEOUT)
+            ])
+            .then((up: boolean) => {
+                this._cleanupListeners();
+                if (up) {
+                    fs.unlinkSync(launchScriptPath);
+                    resolve(this._info);
+                } else {
+                    reject(new Error('Failed to launch Jupyter Server'));
                 }
             });
 
@@ -108,22 +214,6 @@ class JupyterServer {
                     this._serverStartFailed();
                     reject(err);
                 }
-            });
-
-            this._nbServer.stderr.on('data', (serverBuff: string | Buffer) => {
-                const line = serverBuff.toString();
-                let urlMatch = line.match(urlRegExp);
-                let versionMatch = serverVersionPattern.exec(line);
-
-                if (versionMatch) {
-                    this._info.version = versionMatch.groups.version;
-                }
-                if (urlMatch) {
-                    started = true;
-                    this._cleanupListeners();
-                    return resolve(this._info);
-                }
-                console.log('Jupyter Server initialization message:', serverBuff);
             });
         });
 
@@ -179,8 +269,6 @@ class JupyterServer {
     private _startServer: Promise<JupyterServer.IInfo> = null;
 
     private _info: JupyterServer.IInfo = { url: null, token: null, environment: null, version: null };
-
-    private _registry: IRegistry;
 }
 
 export
@@ -447,7 +535,7 @@ class JupyterServerFactory implements IServerFactory, IClosingService {
     private _createServer(opts: JupyterServer.IOptions): JupyterServerFactory.IFactoryItem {
         let item: JupyterServerFactory.IFactoryItem = {
             factoryId: this._nextId++,
-            server: new JupyterServer(opts, this._registry),
+            server: new JupyterServer(opts),
             closing: null,
             used: false
         };

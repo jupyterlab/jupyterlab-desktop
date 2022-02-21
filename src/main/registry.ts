@@ -277,7 +277,7 @@ export class Registry implements IRegistry {
         const envName = `${envInfo.type}: ${envInfo.name}`;
 
         return {
-            type: IEnvironmentType.PATH,
+            type: envInfo.type === 'conda' ? IEnvironmentType.CondaEnv : IEnvironmentType.VirtualEnv,
             name: envName,
             path: pythonPath,
             versions: { 'python': pythonVersion, 'jupyterlab': jlabVersion },
@@ -316,7 +316,7 @@ export class Registry implements IRegistry {
         if (platform === 'win32') {
             path_env = `${envPath};${envPath}\\Library\\mingw-w64\\bin;${envPath}\\Library\\usr\\bin;${envPath}\\Library\\bin;${envPath}\\Scripts;${envPath}\\bin;${process.env['PATH']}`;
         } else {
-            path_env = `${envPath}:${process.env['PATH']}`;
+            path_env = `${envPath}:${envPath}/bin:${process.env['PATH']}`;
         }
         
         return path_env;
