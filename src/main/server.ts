@@ -36,6 +36,7 @@ import { IEnvironmentType, IPythonEnvironment } from './tokens';
 import { appConfig } from './utils';
 
 const SERVER_LAUNCH_TIMEOUT = 30000; // milliseconds
+const SERVER_RESTART_LIMIT = 3; // max server restarts
 
 function createTempFile(fileName = 'temp', data = '', encoding: BufferEncoding = 'utf8') {
     const tempDirPath = path.join(os.tmpdir(), 'jlab_desktop');
@@ -189,8 +190,8 @@ class JupyterServer {
                 waitForDuration(SERVER_LAUNCH_TIMEOUT)
             ])
             .then((up: boolean) => {
-                this._cleanupListeners();
                 if (up) {
+                    started = true;
                     fs.unlinkSync(launchScriptPath);
                     resolve(this._info);
                 } else {
@@ -200,7 +201,22 @@ class JupyterServer {
 
             this._nbServer.on('exit', () => {
                 if (started) {
-                    dialog.showMessageBox({message: 'Jupyter Server process terminated', type: 'error' });
+                    /* On Windows, JupyterLab server sometimes crashes randomly during websocket
+                    connection. As a result of this, users experience kernel connections failures.
+                    This crash only happens when server is launched from electron app. Since we
+                    haven't been able to detect the exact cause of these crashes we are restarting the
+                    server at the same port. After the restart, users are able to launch new kernels
+                    for the notebook.
+                    */
+                    this._cleanupListeners();
+                    
+                    if (!this._stopping && this._restartCount < SERVER_RESTART_LIMIT) {
+                        started = false;
+                        this._startServer = null;
+                        this.start();
+                        this._restartCount++;
+                    }
+
                 } else {
                     this._serverStartFailed();
                     reject(new Error('Jupyter Server process terminated before the initialization completed'));
@@ -231,6 +247,8 @@ class JupyterServer {
             return this._stopServer;
         }
 
+        this._stopping = true;
+
         this._stopServer = new Promise<void>((res, rej) => {
             if (this._nbServer !== undefined) {
                 if (process.platform === 'win32') {
@@ -239,9 +257,11 @@ class JupyterServer {
                     });
                 } else {
                     this._nbServer.kill();
+                    this._stopping = false;
                     res();
                 }
             } else {
+                this._stopping = false;
                 res();
             }
         });
@@ -269,6 +289,9 @@ class JupyterServer {
     private _startServer: Promise<JupyterServer.IInfo> = null;
 
     private _info: JupyterServer.IInfo = { url: null, token: null, environment: null, version: null };
+
+    private _stopping: boolean = false;
+    private _restartCount: number = 0;
 }
 
 export
