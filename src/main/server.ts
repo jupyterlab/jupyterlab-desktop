@@ -61,7 +61,8 @@ function createLaunchScript(environment: IPythonEnvironment): string {
     // be followed by equals sign without a space; this can be
     // removed once jupyter_server requires traitlets>5.0
     const launchCmd = [
-        'python', '-m', 'jupyterlab',
+        // use the python path of the environment
+        `${pythonPath}`, '-m', 'jupyterlab',
         '--no-browser',
         // do not use any config file
         '--JupyterApp.config_file_name=""',
@@ -86,6 +87,7 @@ function createLaunchScript(environment: IPythonEnvironment): string {
                 CALL ${launchCmd}`;
         }
     } else {
+        // note: this will not work with newer versions of Anaconda
         script = `
             source ${envPath}/bin/activate
             ${launchCmd}`;
