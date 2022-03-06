@@ -45,7 +45,8 @@
       "!env_installer/JupyterLab*.*"
     ],
     "extraResources": [
-      "env_installer/JupyterLabDesktopAppServer-*[.sh,.exe]"
+      "env_installer/JupyterLabDesktopAppServer-*[.sh,.exe]",
+      "build/schemas"
     ],
     "linux": {
       "target": [

@@ -33,7 +33,7 @@ import * as os from 'os';
 import * as path from 'path';
 import * as http from 'http';
 import { IEnvironmentType, IPythonEnvironment } from './tokens';
-import { appConfig } from './utils';
+import { appConfig, isDevMode } from './utils';
 
 const SERVER_LAUNCH_TIMEOUT = 30000; // milliseconds
 const SERVER_RESTART_LIMIT = 3; // max server restarts
@@ -48,7 +48,7 @@ function createTempFile(fileName = 'temp', data = '', encoding: BufferEncoding =
     return tmpFilePath;
 }
 
-function createLaunchScript(environment: IPythonEnvironment, appPath: string): string {
+function createLaunchScript(environment: IPythonEnvironment, schemasDir: string): string {
     const platform = process.platform;
     const isWin = platform === 'win32';
     const pythonPath = environment.path;
@@ -56,7 +56,6 @@ function createLaunchScript(environment: IPythonEnvironment, appPath: string): s
     if (!isWin) {
         envPath = path.normalize(path.join(envPath, '../'));
     }
-    const schemasDir = path.normalize(path.join(appPath, 'build/schemas'));
 
     // note: traitlets<5.0 require fully specified arguments to
     // be followed by equals sign without a space; this can be
@@ -174,10 +173,16 @@ class JupyterServer {
             }
             this._info.url = `http://localhost:${appConfig.jlabPort}`;
             this._info.token = appConfig.token;
-            
+
+            let appDir = app.getAppPath();
+            if (!isDevMode()) {
+                appDir = path.dirname(appDir);
+            }
+
+            const schemasDir = path.normalize(path.join(appDir, './build/schemas'));
             const launchScriptPath = createLaunchScript(
                 this._info.environment,
-                app.getAppPath()
+                schemasDir
             );
 
             this._nbServer = execFile(launchScriptPath, {
