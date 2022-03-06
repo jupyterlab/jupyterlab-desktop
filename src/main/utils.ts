@@ -318,6 +318,10 @@ namespace Private {
     }
 }
 
+export function isDevMode(): boolean {
+    return require.main.filename.indexOf('app.asar') === -1;
+}
+
 let service: IService = {
     requirements: ['IApplication'],
     provides: 'IElectronDataConnector',

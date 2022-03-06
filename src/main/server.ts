@@ -33,7 +33,7 @@ import * as os from 'os';
 import * as path from 'path';
 import * as http from 'http';
 import { IEnvironmentType, IPythonEnvironment } from './tokens';
-import { appConfig } from './utils';
+import { appConfig, isDevMode } from './utils';
 
 const SERVER_LAUNCH_TIMEOUT = 30000; // milliseconds
 const SERVER_RESTART_LIMIT = 3; // max server restarts
@@ -48,7 +48,7 @@ function createTempFile(fileName = 'temp', data = '', encoding: BufferEncoding =
     return tmpFilePath;
 }
 
-function createLaunchScript(environment: IPythonEnvironment): string {
+function createLaunchScript(environment: IPythonEnvironment, schemasDir: string): string {
     const platform = process.platform;
     const isWin = platform === 'win32';
     const pythonPath = environment.path;
@@ -63,6 +63,7 @@ function createLaunchScript(environment: IPythonEnvironment): string {
     const launchCmd = [
         'python', '-m', 'jupyterlab',
         '--no-browser',
+        `--LabServerApp.schemas_dir="${schemasDir}"`,
         // do not use any config file
         '--JupyterApp.config_file_name=""',
         `--ServerApp.port=${appConfig.jlabPort}`,
@@ -172,8 +173,17 @@ class JupyterServer {
             }
             this._info.url = `http://localhost:${appConfig.jlabPort}`;
             this._info.token = appConfig.token;
-            
-            const launchScriptPath = createLaunchScript(this._info.environment); 
+
+            let appDir = app.getAppPath();
+            if (!isDevMode()) {
+                appDir = path.dirname(appDir);
+            }
+
+            const schemasDir = path.normalize(path.join(appDir, './build/schemas'));
+            const launchScriptPath = createLaunchScript(
+                this._info.environment,
+                schemasDir
+            );
 
             this._nbServer = execFile(launchScriptPath, {
                 cwd: home,

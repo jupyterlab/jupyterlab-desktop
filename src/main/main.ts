@@ -10,7 +10,7 @@ import * as fs from 'fs';
 import { randomBytes } from 'crypto';
 import { AddressInfo, createServer } from 'net';
 
-import { appConfig } from './utils';
+import { appConfig, isDevMode } from './utils';
 
 async function getFreePort(): Promise<number> {
     return new Promise<number>((resolve) => {
@@ -61,8 +61,6 @@ if (process.argv.length > 1) {
     }
 }
 
-const isDevMode = process.mainModule.filename.indexOf( 'app.asar' ) === -1;
-
 /**
  *  * On Mac OSX the PATH env variable a packaged app gets does not
  * contain all the information that is usually set in .bashrc, .bash_profile, etc.
@@ -83,7 +81,7 @@ let argv = yargs.option('v', {
  * using this package.
  */
 let adjustedVerbose = parseInt(argv.verbose as unknown as string) - 2;
-if (isDevMode) {
+if (isDevMode()) {
     if (adjustedVerbose === 0) {
         log.transports.console.level = 'info';
     } else if (adjustedVerbose === 1) {
