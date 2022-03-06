@@ -48,7 +48,7 @@ function createTempFile(fileName = 'temp', data = '', encoding: BufferEncoding =
     return tmpFilePath;
 }
 
-function createLaunchScript(environment: IPythonEnvironment): string {
+function createLaunchScript(environment: IPythonEnvironment, appPath: string): string {
     const platform = process.platform;
     const isWin = platform === 'win32';
     const pythonPath = environment.path;
@@ -56,6 +56,7 @@ function createLaunchScript(environment: IPythonEnvironment): string {
     if (!isWin) {
         envPath = path.normalize(path.join(envPath, '../'));
     }
+    const schemasDir = path.normalize(path.join(appPath, 'build/schemas'));
 
     // note: traitlets<5.0 require fully specified arguments to
     // be followed by equals sign without a space; this can be
@@ -63,6 +64,7 @@ function createLaunchScript(environment: IPythonEnvironment): string {
     const launchCmd = [
         'python', '-m', 'jupyterlab',
         '--no-browser',
+        `--LabServerApp.schemas_dir="${schemasDir}"`,
         // do not use any config file
         '--JupyterApp.config_file_name=""',
         `--ServerApp.port=${appConfig.jlabPort}`,
@@ -173,7 +175,10 @@ class JupyterServer {
             this._info.url = `http://localhost:${appConfig.jlabPort}`;
             this._info.token = appConfig.token;
             
-            const launchScriptPath = createLaunchScript(this._info.environment); 
+            const launchScriptPath = createLaunchScript(
+                this._info.environment,
+                app.getAppPath()
+            );
 
             this._nbServer = execFile(launchScriptPath, {
                 cwd: home,
