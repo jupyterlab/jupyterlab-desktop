@@ -35,7 +35,7 @@
     "prettier": "prettier --write \"**/*{.ts,.tsx,.js,.jsx,.css,.json,.md}\"",
     "prettier:check": "prettier --check \"**/*{.ts,.tsx,.js,.jsx,.css,.json,.md}\"",
     "stylelint": "yarn stylelint:check --fix",
-    "stylelint:check": "stylelint --cache \"{packages/*,galata}/style/**/*.css\" \"{examples/*,docs/**}/*.css\""
+    "stylelint:check": "stylelint \"**/*.css\""
   },
   "build": {
     "productName": "JupyterLab",

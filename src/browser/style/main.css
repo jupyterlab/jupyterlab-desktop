@@ -156,56 +156,56 @@ table {
 }
 
 @font-face {
-  font-family: 'Roboto';
+  font-family: Roboto;
   src: url('./fonts/Roboto/Roboto-Regular.ttf') format('truetype');
   font-weight: normal;
   font-style: normal;
 }
 
 @font-face {
-  font-family: 'Roboto';
+  font-family: Roboto;
   src: url('./fonts/Roboto/Roboto-Italic.ttf') format('truetype');
   font-weight: normal;
   font-style: italic;
 }
 
 @font-face {
-  font-family: 'Roboto';
+  font-family: Roboto;
   src: url('./fonts/Roboto/Roboto-Bold.ttf') format('truetype');
   font-weight: bold;
   font-style: normal;
 }
 
 @font-face {
-  font-family: 'Roboto';
+  font-family: Roboto;
   src: url('./fonts/Roboto/Roboto-BoldItalic.ttf') format('truetype');
   font-weight: bold;
   font-style: italic;
 }
 
 @font-face {
-  font-family: 'SourceCodePro';
+  font-family: SourceCodePro;
   src: url('./fonts/SourceCodePro/SourceCodePro-Regular.ttf') format('truetype');
   font-weight: normal;
   font-style: normal;
 }
 
 @font-face {
-  font-family: 'SourceCodePro';
+  font-family: SourceCodePro;
   src: url('./fonts/SourceCodePro/SourceCodePro-It.ttf') format('truetype');
   font-weight: normal;
   font-style: italic;
 }
 
 @font-face {
-  font-family: 'SourceCodePro';
+  font-family: SourceCodePro;
   src: url('./fonts/SourceCodePro/SourceCodePro-Bold.ttf') format('truetype');
   font-weight: bold;
   font-style: normal;
 }
 
 @font-face {
-  font-family: 'SourceCodePro';
+  font-family: SourceCodePro;
   src: url('./fonts/SourceCodePro/SourceCodePro-BoldIt.ttf') format('truetype');
   font-weight: bold;
   font-style: italic;

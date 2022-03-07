@@ -33,8 +33,7 @@
 }
 
 .jpe-SplashScreen-orbit {
-  animation-iteration-count: 1;
-  animation: orbit 3.5s ease -1s infinite;
+  animation: orbit 3.5s ease -1s 1;
   position: absolute;
   top: 50%;
   left: 50%;
