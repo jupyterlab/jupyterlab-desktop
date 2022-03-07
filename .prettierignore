@@ -3,6 +3,7 @@
 **/lib
 **/package.json
 **/static
+**/dist
 **/.ipynb_checkpoints
 tests/**/coverage
 
