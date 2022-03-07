@@ -6,23 +6,23 @@ import { JupyterLabSession } from '../../../main/sessions';
 import * as React from 'react';
 
 export namespace SplashScreen {
-  export interface Props {
+  export interface IProps {
     finished: () => void;
     uiState: JupyterLabSession.UIState;
   }
 
-  export interface State {
+  export interface IState {
     fadeSplash: boolean;
   }
 }
 
 export class SplashScreen extends React.Component<
-  SplashScreen.Props,
-  SplashScreen.State
+  SplashScreen.IProps,
+  SplashScreen.IState
 > {
   private fadeSplash: boolean = false;
 
-  constructor(props: SplashScreen.Props) {
+  constructor(props: SplashScreen.IProps) {
     super(props);
     this.state = { fadeSplash: false };
     this.finishIteration = this.finishIteration.bind(this);
@@ -36,7 +36,7 @@ export class SplashScreen extends React.Component<
     this.fadeSplash = true;
   }
 
-  render() {
+  render(): JSX.Element | null {
     const style = {
       animation: this.state.fadeSplash ? 'fade .4s linear 0s forwards' : ''
     };
@@ -61,13 +61,13 @@ export class SplashScreen extends React.Component<
 }
 
 namespace Moon {
-  export interface Props {
+  export interface IProps {
     name: string;
     orbitComplete?: () => void;
   }
 }
 
-function Moon(props: Moon.Props) {
+function Moon(props: Moon.IProps) {
   return (
     <div
       id={props.name}

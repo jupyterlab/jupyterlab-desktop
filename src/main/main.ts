@@ -129,7 +129,7 @@ export interface IService {
   /**
    * The required services.
    */
-  requirements: String[];
+  requirements: string[];
 
   /**
    * The service name that is required by other services.

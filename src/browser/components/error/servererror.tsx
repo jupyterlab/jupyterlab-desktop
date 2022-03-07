@@ -4,13 +4,13 @@
 import * as React from 'react';
 
 export namespace ServerError {
-  export interface Props {
+  export interface IProps {
     changeEnvironment: () => void;
     error: Error;
   }
 }
 
-export function ServerError(props: ServerError.Props) {
+export function ServerError(props: ServerError.IProps): JSX.Element {
   return (
     <div className="jpe-ServerError-body">
       <div className="jpe-ServerError-content">

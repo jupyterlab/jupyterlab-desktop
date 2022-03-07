@@ -20,7 +20,7 @@ import { IServerFactory } from '../main/server';
 
 import { ISessions } from '../main/sessions';
 
-import { SplashScreen, ServerManager, ServerError } from './components';
+import { ServerError, ServerManager, SplashScreen } from './components';
 
 import { ElectronJupyterLab } from './extensions/electron-extension';
 
@@ -100,7 +100,7 @@ export class Application extends React.Component<
       });
   }
 
-  render() {
+  render(): JSX.Element | null {
     let splash = this.state.renderSplash();
     let content = this.state.renderState();
 
@@ -116,7 +116,7 @@ export class Application extends React.Component<
     if (data.error) {
       log.error(data.error);
       this.setState({ renderState: () => this._renderErrorScreen(data.error) });
-      (this.refs.splash as SplashScreen).fadeSplashScreen();
+      (this._splash as SplashScreen).fadeSplashScreen();
       return;
     }
     this._registerFileHandler();
@@ -133,6 +133,7 @@ export class Application extends React.Component<
       type: 'local'
     };
 
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     __webpack_public_path__ = data.url;
 
     PageConfig.setOption('token', this._server.token);
@@ -188,8 +189,8 @@ export class Application extends React.Component<
           }
           this._lab.restored.then(() => {
             ipcRenderer.send('lab-ready');
-            if (this.refs.splash) {
-              (this.refs.splash as SplashScreen).fadeSplashScreen();
+            if (this._splash) {
+              (this._splash as SplashScreen).fadeSplashScreen();
             }
           });
         });
@@ -270,7 +271,7 @@ export class Application extends React.Component<
         ...server,
         id: this._nextRemoteId++
       };
-      this.setState((prevState: ServerManager.State) => {
+      this.setState((prevState: ServerManager.IState) => {
         server.id = this._nextRemoteId++;
         let remotes = this.state.remotes.concat(rServer);
         this._saveState();
@@ -294,7 +295,9 @@ export class Application extends React.Component<
     return (
       <div className="jpe-content">
         <SplashScreen
-          ref="splash"
+          ref={c => {
+            this._splash = c;
+          }}
           uiState={this.props.options.uiState}
           finished={() => {
             this.setState({ renderSplash: this._renderEmpty });
@@ -379,6 +382,8 @@ export class Application extends React.Component<
   private _serverState: StateDB;
 
   // private _labReady: Promise<void>;
+
+  private _splash: SplashScreen;
 }
 
 export namespace Application {

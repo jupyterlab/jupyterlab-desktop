@@ -1,9 +1,7 @@
 var rpt = require('read-package-tree');
-var data = require('../package.json');
 var path = require('path');
 var fs = require('fs-extra');
 var glob = require('glob');
-var path = require('path');
 
 var seen = {};
 
@@ -32,8 +30,8 @@ function extractNode(data) {
   // Handle schemas.
   var schemaDir = jlab['schemaDir'];
   if (schemaDir) {
-    var from = path.join(data.realpath, schemaDir);
-    var to = path.join(schemaDest, data.package.name);
+    const from = path.join(data.realpath, schemaDir);
+    const to = path.join(schemaDest, data.package.name);
     fs.copySync(from, to);
   }
 
@@ -41,8 +39,8 @@ function extractNode(data) {
   var themeDir = jlab['themeDir'];
   if (themeDir) {
     var themeName = data.package.name;
-    var from = path.join(data.realpath, themeDir);
-    var to = path.join(themesDest, themeName);
+    const from = path.join(data.realpath, themeDir);
+    const to = path.join(themesDest, themeName);
     fs.copySync(from, to);
 
     /**

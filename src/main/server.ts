@@ -119,7 +119,7 @@ async function checkIfUrlExists(url: URL): Promise<boolean> {
 
 async function waitUntilServerIsUp(port: number): Promise<boolean> {
   const url = new URL(`http://localhost:${port}`);
-  return new Promise<boolean>(async resolve => {
+  return new Promise<boolean>(resolve => {
     async function checkUrl() {
       const exists = await checkIfUrlExists(url);
       if (exists) {
@@ -131,7 +131,7 @@ async function waitUntilServerIsUp(port: number): Promise<boolean> {
       }
     }
 
-    await checkUrl();
+    checkUrl();
   });
 }
 

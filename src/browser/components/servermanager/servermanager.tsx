@@ -13,10 +13,10 @@ import log from 'electron-log';
  * @param props ServerManager properties
  */
 export class ServerManager extends React.Component<
-  ServerManager.Props,
-  ServerManager.State
+  ServerManager.IProps,
+  ServerManager.IState
 > {
-  constructor(props: ServerManager.Props) {
+  constructor(props: ServerManager.IProps) {
     super(props);
     this.serverAdded = this.serverAdded.bind(this);
     this.addFormCancel = this.addFormCancel.bind(this);
@@ -30,7 +30,7 @@ export class ServerManager extends React.Component<
     this.props.serverAdded(server);
   }
 
-  render() {
+  render(): JSX.Element | null {
     return (
       <div className="jpe-ServerManager-body">
         <div className="jpe-ServerManager-content">
@@ -52,19 +52,19 @@ export namespace ServerManager {
   /**
    * ServerManager component properties.
    */
-  export interface Props {
+  export interface IProps {
     serverAdded: (server: JupyterServer.IServer) => void;
   }
 
   /**
    * ServerManager component state.
    */
-  export interface State {}
+  export interface IState {}
 
   /**
    * ServerManager header component.
    */
-  export function Header() {
+  export function Header(): JSX.Element {
     return (
       <div className="jpe-ServerManager-header">
         <div className="jpe-ServerManager-header-logo"></div>
@@ -76,7 +76,7 @@ export namespace ServerManager {
   /**
    * ServerManager footer component.
    */
-  export function Footer(props: Footer.Props) {
+  export function Footer(props: Footer.IProps): JSX.Element {
     return (
       <div className="jpe-ServerManager-footer">
         <button
@@ -100,16 +100,16 @@ export namespace ServerManager {
     /**
      * Footer component properties.
      */
-    export interface Props {
+    export interface IProps {
       manageClicked: () => void;
     }
   }
 
   export class AddConnctionForm extends React.Component<
-    AddConnctionForm.Props,
-    AddConnctionForm.State
+    AddConnctionForm.IProps,
+    AddConnctionForm.IState
   > {
-    constructor(props: AddConnctionForm.Props) {
+    constructor(props: AddConnctionForm.IProps) {
       super(props);
       this.state = { url: null, name: null, token: null };
 
@@ -117,7 +117,7 @@ export namespace ServerManager {
       this.handleSubmit = this.handleSubmit.bind(this);
     }
 
-    handleSubmit(event: any) {
+    handleSubmit(event: React.FormEvent<HTMLFormElement>): void {
       event.preventDefault();
       if (!this.state.url || !this.state.name || !this.state.token) {
         return;
@@ -132,7 +132,7 @@ export namespace ServerManager {
       });
     }
 
-    handleInputChange(event: any) {
+    handleInputChange(event: React.ChangeEvent<HTMLInputElement>): void {
       const value = event.target.value;
       const name = event.target.name;
 
@@ -141,7 +141,7 @@ export namespace ServerManager {
       } as any);
     }
 
-    render() {
+    render(): JSX.Element {
       return (
         <div className="jpe-ServerManager-Add-container">
           <form
@@ -205,12 +205,12 @@ export namespace ServerManager {
   }
 
   export namespace AddConnctionForm {
-    export interface Props {
+    export interface IProps {
       submit: (server: JupyterServer.IServer) => void;
       cancel: () => void;
     }
 
-    export interface State {
+    export interface IState {
       url: string;
       name: string;
       token: string;

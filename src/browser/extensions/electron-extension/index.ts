@@ -2,9 +2,9 @@
 // Distributed under the terms of the Modified BSD License.
 
 import {
-  JupyterLab,
+  JupyterFrontEnd,
   JupyterFrontEndPlugin,
-  JupyterFrontEnd
+  JupyterLab
 } from '@jupyterlab/application';
 
 import { PageConfig } from '@jupyterlab/coreutils';

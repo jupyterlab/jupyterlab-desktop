@@ -14,15 +14,15 @@ import { INativeMenu } from '../../../main/menu';
 import { asyncRemoteRenderer } from '../../../asyncremote';
 
 import {
-  IMainMenu,
-  FileMenu,
   EditMenu,
-  ViewMenu,
+  FileMenu,
   HelpMenu,
+  IMainMenu,
   KernelMenu,
   RunMenu,
   SettingsMenu,
-  TabsMenu
+  TabsMenu,
+  ViewMenu
 } from '@jupyterlab/mainmenu';
 
 /**

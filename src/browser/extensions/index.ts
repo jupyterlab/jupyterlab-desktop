@@ -144,18 +144,24 @@ async function loadComponent(url: any, scope: any) {
 
   // From https://webpack.js.org/concepts/module-federation/#dynamic-remote-containers
   // eslint-disable-next-line no-undef
+  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
   // @ts-ignore
+  // eslint-disable-next-line no-undef
   await __webpack_init_sharing__('default');
+  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
   // @ts-ignore
   const container = window._JUPYTERLAB[scope];
   // Initialize the container, it may provide shared modules and may need ours
   // eslint-disable-next-line no-undef
+  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
   // @ts-ignore
+  // eslint-disable-next-line no-undef
   await container.init(__webpack_share_scopes__.default);
 }
 
 async function createModule(scope: any, module: any) {
   try {
+    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
     // @ts-ignore
     const factory = await window._JUPYTERLAB[scope].get(module);
     return factory();
@@ -167,6 +173,7 @@ async function createModule(scope: any, module: any) {
   }
 }
 
+// eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
 export async function main() {
   const jupyterlab = loadExtensions(extensions);
   const mime = loadExtensions(mimeExtensions);
@@ -197,6 +204,7 @@ export async function main() {
     })
   );
 
+  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
   // @ts-ignore
   allFederatedExtensions.forEach(p => {
     if (p.status === 'rejected') {
@@ -250,6 +258,7 @@ export async function main() {
   // Load all federated component styles and log errors for any that do not
   (await Promise.allSettled(federatedStylePromises))
     .filter(({ status }) => status === 'rejected')
+    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
     // @ts-ignore
     .forEach(({ reason }) => {
       console.error(reason);

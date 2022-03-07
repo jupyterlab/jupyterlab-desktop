@@ -2,7 +2,7 @@ import { execFile, ExecFileOptions, execFileSync } from 'child_process';
 
 import { IService } from './main';
 
-import { join, basename, normalize, dirname } from 'path';
+import { basename, dirname, join, normalize } from 'path';
 
 import * as path from 'path';
 
@@ -20,7 +20,7 @@ import {
   IVersionContainer
 } from './tokens';
 
-const env_info_py = fs
+const envInfoPyCode = fs
   .readFileSync(path.join(__dirname, 'env_info.py'))
   .toString();
 
@@ -337,8 +337,8 @@ export class Registry implements IRegistry {
     const jlabVersion = this._extractVersionFromExecOutputSync(
       jlabVersionOutput
     );
-    const env_info_out = this._runCommandSync(pythonPath, ['-c', env_info_py]);
-    const envInfo = JSON.parse(env_info_out.trim());
+    const envInfoOut = this._runCommandSync(pythonPath, ['-c', envInfoPyCode]);
+    const envInfo = JSON.parse(envInfoOut.trim());
     const envName = `${envInfo.type}: ${envInfo.name}`;
 
     return {
@@ -383,14 +383,14 @@ export class Registry implements IRegistry {
       envPath = path.normalize(path.join(envPath, '../'));
     }
 
-    let path_env = '';
+    let pathEnv = '';
     if (platform === 'win32') {
-      path_env = `${envPath};${envPath}\\Library\\mingw-w64\\bin;${envPath}\\Library\\usr\\bin;${envPath}\\Library\\bin;${envPath}\\Scripts;${envPath}\\bin;${process.env['PATH']}`;
+      pathEnv = `${envPath};${envPath}\\Library\\mingw-w64\\bin;${envPath}\\Library\\usr\\bin;${envPath}\\Library\\bin;${envPath}\\Scripts;${envPath}\\bin;${process.env['PATH']}`;
     } else {
-      path_env = `${envPath}:${envPath}/bin:${process.env['PATH']}`;
+      pathEnv = `${envPath}:${envPath}/bin:${process.env['PATH']}`;
     }
 
-    return path_env;
+    return pathEnv;
   }
 
   getRequirements(): Registry.IRequirement[] {

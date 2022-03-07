@@ -1,6 +1,5 @@
 const path = require('path');
 const fs = require('fs-extra');
-const os = require('os');
 const watch = require('node-watch');
 
 const platform = process.platform;

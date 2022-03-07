@@ -68,7 +68,7 @@ export class EnvironmentStatus extends VDomRenderer<EnvironmentStatus.Model> {
   /**
    * Render the environment status item.
    */
-  render() {
+  render(): JSX.Element | null {
     if (this.model === null) {
       return null;
     } else {
@@ -97,7 +97,7 @@ export namespace EnvironmentStatus {
       this._description = '';
     }
 
-    get name() {
+    get name(): string {
       return this._name;
     }
 

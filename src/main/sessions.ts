@@ -2,12 +2,12 @@
 // Distributed under the terms of the Modified BSD License.
 
 import {
-  BrowserWindow,
-  ipcMain,
   app,
+  BrowserWindow,
+  clipboard,
+  ipcMain,
   Menu,
-  MenuItemConstructorOptions,
-  clipboard
+  MenuItemConstructorOptions
 } from 'electron';
 
 import { JSONObject } from '@lumino/coreutils';
@@ -162,7 +162,7 @@ export class JupyterLabSessions
     return Promise.resolve(this._lastWindowState);
   }
 
-  setFocusedSession(session: JupyterLabSession) {
+  setFocusedSession(session: JupyterLabSession): void {
     this._lastFocusedSession = session;
   }
 

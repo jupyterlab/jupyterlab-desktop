@@ -46,7 +46,7 @@ class KeyboardShortcutManager implements IShortcutManager {
 
     app.on(
       'browser-window-focus',
-      (event: Event, window: Electron.BrowserWindow) => {
+      (event: Electron.Event, window: Electron.BrowserWindow) => {
         if (!this._active) {
           this.enableShortcuts(window);
         }
@@ -55,7 +55,7 @@ class KeyboardShortcutManager implements IShortcutManager {
 
     app.on(
       'browser-window-blur',
-      (event: Event, window: Electron.BrowserWindow) => {
+      (event: Electron.Event, window: Electron.BrowserWindow) => {
         if (!this._sessions.isAppFocused()) {
           this.disableShortcuts();
         }

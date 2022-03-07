@@ -3,11 +3,13 @@ module.exports = {
     browser: true,
     es6: true,
     commonjs: true,
-    node: true,
-    'jest/globals': true
+    node: true
   },
   globals: {
-    JSX: 'readonly'
+    JSX: 'readonly',
+    NodeJS: true,
+    BufferEncoding: true,
+    Electron: true
   },
   root: true,
   extends: [
@@ -15,11 +17,10 @@ module.exports = {
     'plugin:@typescript-eslint/eslint-recommended',
     'plugin:@typescript-eslint/recommended',
     'prettier/@typescript-eslint',
-    'plugin:react/recommended',
-    'plugin:jest/recommended'
+    'plugin:react/recommended'
   ],
   parser: '@typescript-eslint/parser',
-  plugins: ['@typescript-eslint', 'jest'],
+  plugins: ['@typescript-eslint'],
   rules: {
     '@typescript-eslint/naming-convention': [
       'error',
@@ -46,8 +47,6 @@ module.exports = {
     '@typescript-eslint/no-empty-interface': 'off',
     '@typescript-eslint/triple-slash-reference': 'warn',
     '@typescript-eslint/no-inferrable-types': 'off',
-    'jest/no-conditional-expect': 'warn',
-    'jest/valid-title': 'warn',
     camelcase: [
       'warn',
       {

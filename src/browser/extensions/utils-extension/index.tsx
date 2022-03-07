@@ -5,8 +5,8 @@
 
 import {
   ICommandPalette,
-  IThemeManager,
-  ISplashScreen
+  ISplashScreen,
+  IThemeManager
 } from '@jupyterlab/apputils';
 
 import { IMainMenu, MainMenu } from '@jupyterlab/mainmenu';
@@ -17,7 +17,7 @@ import { JSONObject } from '@lumino/coreutils';
 
 import { Application } from '../../app';
 
-import { StateDB, DataConnector } from '@jupyterlab/statedb';
+import { DataConnector, StateDB } from '@jupyterlab/statedb';
 
 import { ISettingRegistry, SettingRegistry } from '@jupyterlab/settingregistry';
 
@@ -227,7 +227,9 @@ mainMenuExtension
     /**
      * A service providing an native menu bar.
      */
+    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
     // @ts-ignore
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const nativeMainMenuPlugin: JupyterFrontEndPlugin<IMainMenu> = {
       id: '@jupyterlab/mainmenu-extension:plugin',
       requires: [ICommandPalette, IRouter],
@@ -289,7 +291,9 @@ class SettingsConnector extends DataConnector<
 /**
  * The default setting registry provider.
  */
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const settingPlugin: JupyterFrontEndPlugin<ISettingRegistry> = {
   id: '@jupyterlab/apputils-extension:settings',
   activate: (): ISettingRegistry => {
@@ -302,6 +306,7 @@ const settingPlugin: JupyterFrontEndPlugin<ISettingRegistry> = {
 /**
  * The native theme manager provider.
  */
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore
 const themesPlugin: JupyterFrontEndPlugin<IThemeManager> = {
   id: '@jupyterlab/apputils-extension:themes',
