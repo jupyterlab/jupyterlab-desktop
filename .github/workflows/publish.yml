@@ -52,6 +52,10 @@ jobs:
         run: |
           yarn check_version_match
 
+      - name: Check Lint & Prettier
+        run: |
+          yarn lint:check
+
       - name: Create Application Server Installer
         run: |
           yarn create_env_installer:${{ matrix.cfg.platform }}
