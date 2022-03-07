@@ -3,6 +3,7 @@
 ## Dependencies
 
 JupyterLab Desktop uses [tbump](https://github.com/dmerejkowsky/tbump) to bump JupyterLab and the application versions. You can install using:
+
 ```bash
 pip install tbump
 ```
@@ -15,21 +16,23 @@ JupyterLab version, that JupyterLab Desktop bundles, is determined by `@jupyterl
 
 If the JupyterLab version is not changing with the new JupyterLab Desktop release then only increment the build number after `-` (for example `3.1.12-2` to `3.1.12-3`). However, if JupyterLab version is changing with the new JupyterLab Desktop release then reset the build number after `-` to 1 (for example `3.1.12-3` to `3.1.13-1`).
 
-
 ## Updating the bundled JupyterLab
 
 In order to change the JupyterLab version bundled with the application:
 
 1. Update all `@jupyterlab` package dependencies in [package.json](package.json) using
-    ```bash
-    yarn set_jupyterlab_version <new-jlab-version>
-    ```
-    `<new-jlab-version>` must match a released JupyterLab version such as `3.1.13`. This command will update dependencies with `@jupyterlab` scope.
+
+   ```bash
+   yarn set_jupyterlab_version <new-jlab-version>
+   ```
+
+   `<new-jlab-version>` must match a released JupyterLab version such as `3.1.13`. This command will update dependencies with `@jupyterlab` scope.
 
 2. Bump the application version using `tbump` to `new-jlab-version-1`
-    ```bash
-    tbump --only-patch <new-jlab-version>-1
-    ```
+
+   ```bash
+   tbump --only-patch <new-jlab-version>-1
+   ```
 
 3. Update `@jupyter-widgets/jupyterlab-manager` version in [package.json](package.json) for ipywidgets if a compatible newer version is available.
 
@@ -47,17 +50,19 @@ yarn check_version_match
 
 2. Bump application version using `tbump`. If same JupyterLab version is being bundled then only increment the build number after `-`. If JupyterLab version is incremented then reset the build number to 1.
 
-    Example: same JupyterLab version (`3.1.12`), bump from `3.1.12-2` to `3.1.12-3`
-    ```bash
-    tbump --only-patch 3.1.12-3
-    ```
+   Example: same JupyterLab version (`3.1.12`), bump from `3.1.12-2` to `3.1.12-3`
 
-    Example: changing JupyterLab version (to `3.1.13`), bump from `3.1.12-3` to `3.1.13-1`
-    ```bash
-    tbump --only-patch 3.1.13-1
-    ```
+   ```bash
+   tbump --only-patch 3.1.12-3
+   ```
 
-    tbump will list changes to be applied, confirm the changes to proceed with apply.
+   Example: changing JupyterLab version (to `3.1.13`), bump from `3.1.12-3` to `3.1.13-1`
+
+   ```bash
+   tbump --only-patch 3.1.13-1
+   ```
+
+   tbump will list changes to be applied, confirm the changes to proceed with apply.
 
 3. Make sure that application is building, installing and running properly by following the [distribution build instructions](README.md##building-for-distribution) locally
 

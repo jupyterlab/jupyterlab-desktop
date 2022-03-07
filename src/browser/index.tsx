@@ -5,16 +5,12 @@ import '@fortawesome/fontawesome-free/css/fontawesome.min.css';
 import './style/style.js';
 import './style/main.css';
 
-import {
-    Application
-} from './app';
+import { Application } from './app';
 
 import * as React from 'react';
 import * as ReactDOM from 'react-dom';
 
-import {
-    JupyterLabSession
-} from '../main/sessions';
+import { JupyterLabSession } from '../main/sessions';
 
 import log from 'electron-log';
 
@@ -35,16 +31,17 @@ console.debug = log.debug;
  * working directory of the node application. Here we are overriding it
  * to maintain the behavior JupyterLab expects.
  */
-process.cwd = () => {return '/'; };
+process.cwd = () => {
+  return '/';
+};
 
-
-function main() : void {
-    let optionsStr = decodeURIComponent((global as any).location.search);
-    let options: JupyterLabSession.IInfo = JSON.parse(optionsStr.slice(1));
-    ReactDOM.render(
-        <Application options={options} />,
-        document.getElementById('root')
-    );
+function main(): void {
+  let optionsStr = decodeURIComponent((global as any).location.search);
+  let options: JupyterLabSession.IInfo = JSON.parse(optionsStr.slice(1));
+  ReactDOM.render(
+    <Application options={options} />,
+    document.getElementById('root')
+  );
 }
 
 window.onload = main;

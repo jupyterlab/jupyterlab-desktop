@@ -1,24 +1,18 @@
 // Copyright (c) Jupyter Development Team.
 // Distributed under the terms of the Modified BSD License.
 
-export
-namespace AsyncRemote {
+export namespace AsyncRemote {
+  export interface IMethod<T, U> {
+    id: string;
 
-    export
-    interface IMethod<T, U> {
+    _argType?: T;
 
-        id: string;
+    _retType?: U;
+  }
 
-        _argType?: T;
+  export interface IEvent<U> {
+    id: string;
 
-        _retType?: U;
-    }
-
-    export
-    interface IEvent<U> {
-
-        id: string;
-
-        _dataType?: U;
-    }
+    _dataType?: U;
+  }
 }

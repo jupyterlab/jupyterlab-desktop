@@ -2,8 +2,8 @@ var rpt = require('read-package-tree');
 var data = require('../package.json');
 var path = require('path');
 var fs = require('fs-extra');
-var glob = require('glob')
-var path = require('path')
+var glob = require('glob');
+var path = require('path');
 
 var seen = {};
 
@@ -15,9 +15,8 @@ var themesDest = path.resolve('./build/themes');
 fs.removeSync(themesDest);
 fs.ensureDirSync(themesDest);
 
-
 function extractNode(data) {
-  data.children.forEach(function(child) {
+  data.children.forEach(function (child) {
     extractNode(child);
   });
 
@@ -25,7 +24,7 @@ function extractNode(data) {
     return;
   }
   seen[data.package.name] = true;
-  var jlab = data.package.jupyterlab
+  var jlab = data.package.jupyterlab;
   if (!jlab) {
     return;
   }
@@ -49,7 +48,7 @@ function extractNode(data) {
     /**
      * Change relative paths. This is done at runtime by jupyterlab_launcher.
      * A similar solution needs to be used when themes are dynamically loaded.
-     * 
+     *
      * See https://github.com/jupyterlab/jupyterlab_launcher/blob/v0.10.3/jupyterlab_launcher/themes_handler.py
      */
     glob.sync(path.join(to, '**/*.css')).forEach(file => {
@@ -58,17 +57,18 @@ function extractNode(data) {
           return console.log(err);
         }
 
-        var result = data.replace(/url\('([^/].*)'\)|url\("([^/].*)"\)/gi, "url('../../themes/" + themeName + "/$1')");
+        var result = data.replace(
+          /url\('([^/].*)'\)|url\("([^/].*)"\)/gi,
+          "url('../../themes/" + themeName + "/$1')"
+        );
         fs.writeFile(file, result, 'utf8', function (err) {
-           if (err) return console.log(err);
+          if (err) return console.log(err);
         });
       });
-      
-    })
+    });
   }
 }
 
-
 rpt('.', function (er, data) {
   extractNode(data);
-})
+});

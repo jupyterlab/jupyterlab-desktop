@@ -14,7 +14,5 @@
     "outDir": "./build/out",
     "sourceMap": true
   },
- "include": [
-   "./src/**/*.*"
- ]
+  "include": ["./src/**/*.*"]
 }

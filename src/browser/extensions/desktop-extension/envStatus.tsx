@@ -4,9 +4,7 @@
 import { VDomModel, VDomRenderer } from '@jupyterlab/apputils';
 import React from 'react';
 import { GroupItem, interactiveItem, TextItem } from '@jupyterlab/statusbar';
-import {
- pythonIcon
-} from '@jupyterlab/ui-components';
+import { pythonIcon } from '@jupyterlab/ui-components';
 
 /**
  * A pure functional component for rendering environment status.
@@ -15,7 +13,11 @@ function EnvironmentStatusComponent(
   props: EnvironmentStatusComponent.IProps
 ): React.ReactElement<EnvironmentStatusComponent.IProps> {
   return (
-    <GroupItem onClick={props.handleClick} spacing={2} title={props.description}>
+    <GroupItem
+      onClick={props.handleClick}
+      spacing={2}
+      title={props.description}
+    >
       <pythonIcon.react title={''} top={'2px'} stylesheet={'statusBar'} />
       <TextItem source={props.name} />
     </GroupItem>

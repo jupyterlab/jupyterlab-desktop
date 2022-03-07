@@ -19,12 +19,15 @@ JupyterLab Desktop comes with a bundled Python environment which has the essenti
 Python environment selection is saved in application settings and restored at application launch time. During launch, compatibility of the Python environment is checked and if found incompatible, Python environment selector dialog is shown to allow switching back to the bundled environment or using another compatible environment.
 
 Application settings are stored in JSON format in the following locations. You can check the `pythonPath` setting in this file for troubleshooting. Setting it to empty string will cause JupyterLab Desktop to reset to the bundled Python environment.
+
 - Windows: `%APPDATA%\jupyterlab-desktop\jupyterlab-desktop-data`
 - macOS: `~/Library/Application\ Support/jupyterlab-desktop/jupyterlab-desktop-data`
 - Linux: `$XDG_CONFIG_HOME/jupyterlab-desktop/jupyterlab-desktop-data` or `~/.config/jupyterlab-desktop/jupyterlab-desktop-data`
 
 ## How to create a Custom Python Environment
+
 ### Using conda
+
 ```bash
 conda create -n custom_venv
 conda activate custom_venv
@@ -34,6 +37,7 @@ conda install -c conda-forge scikit-learn
 ```
 
 ### Using venv
+
 ```bash
 python3 -m venv custom_venv
 source custom_venv/bin/activate
@@ -54,6 +58,7 @@ On Linux, JupyterLab Desktop is installed into `/opt/JupyterLab` and Python envi
 - Install the application by double clicking the installer file and wait for the installation to finish.
 - Linux installs JupyterLab Desktop as the root user. That's why it is necessary to change the ownership to the current user to be able to customize JupyterLab Desktop's Python environment.
 - Before launching JupyterLab Desktop, open a Terminal and run the following command with your `username` to change application file system ownership.
+
 ```bash
 sudo chown -R username:username /opt/JupyterLab
 ```
@@ -64,10 +69,9 @@ On macOS, JupyterLab Desktop should be installed into `~/Applications/JupyterLab
 
 - Make sure you install the application for current user in order to allow changes to the bundled Python environment. It is not the default location of the installer, you can set it by following these steps
 
-| Change Install Location  | Install for me only |
-| ------------- | ------------- |
+| Change Install Location                                    | Install for me only                                            |
+| ---------------------------------------------------------- | -------------------------------------------------------------- |
 | ![Choose Install Location](media/mac-install-location.png) | ![Choose Current User](media/mac-install-for-current-user.png) |
-
 
 ## Windows Instructions
 
@@ -90,41 +94,51 @@ Make sure you installed JupyterLab Desktop following the steps outlined above in
 # Uninstalling JupyterLab Desktop
 
 ## Debian, Ubuntu Linux
+
 For versions 3.1.18-1 and newer
+
 ```bash
 sudo apt-get purge jupyterlab-desktop # remove application
 rm /usr/bin/jlab # remove command symlink
 ```
+
 For versions 3.1.13-1 and older
+
 ```bash
 sudo apt-get purge jupyterlab-app
 ```
 
-
 ## Red Hat, Fedora, SUSE Linux
+
 For versions 3.1.18-1 and newer
+
 ```bash
 sudo rpm -e jupyterlab-desktop # remove application
 rm /usr/bin/jlab # remove command symlink
 ```
+
 For versions 3.1.13-1 and older
+
 ```bash
 sudo rpm -e jupyterlab_app
 ```
 
 ## macOS
+
 Find the application installation `JupyterLab.app` in Finder (in ~/Applications or /Applications) and move to Trash by using `CMD + Delete`. Clean other application generated files using:
 
 For versions 3.1.18-1 and newer
+
 ```bash
 rm -rf ~/Library/Application\ Support/jupyterlab-desktop # remove application cache and session files
 rm /usr/local/bin/jlab # remove command symlink
 ```
+
 For versions 3.1.13-1 and older
+
 ```bash
 rm -rf ~/Library/Application\ Support/jupyterlab_app # remove application cache and session files
 ```
-
 
 ## Windows
 
