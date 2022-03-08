@@ -1,30 +1,111 @@
 #root {
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
 }
 
 #jp-top-panel {
-    -webkit-app-region: drag;
+  -webkit-app-region: drag;
 }
 #jp-menu-panel {
-    -webkit-app-region: no-drag;
+  -webkit-app-region: no-drag;
 }
 
 /* Resetting CSS styles */
 :root {
-    --jp-code-font-family: 'SourceCodePro' !important;
-    --jp-ui-font-family: 'Roboto' !important;
-    --jp-cell-prompt-font-family: 'Roboto' !important;
+  --jp-code-font-family: 'SourceCodePro' !important;
+  --jp-ui-font-family: 'Roboto' !important;
+  --jp-cell-prompt-font-family: 'Roboto' !important;
 }
 
-.CodeMirror, .jp-OutputArea-output pre {
-    font-family: var(--jp-code-font-family) !important;
+.CodeMirror,
+.jp-OutputArea-output pre {
+  font-family: var(--jp-code-font-family) !important;
 }
 
-html, body, div, span, applet, object, iframe, h1, h2, h3, h4, h5, h6, p, blockquote, pre, a, abbr, acronym, address, big, cite, code, del, dfn, em, img, ins, kbd, q, s, samp, small, strike, strong, sub, sup, tt, var, b, u, i, center, dl, dt, dd, ol, ul, li, fieldset, form, label, legend, table, caption, tbody, tfoot, thead, tr, th, td, article, aside, canvas, details, embed, figure, figcaption, footer, header, hgroup, menu, nav, output, ruby, section, summary, time, mark, audio, video {
+html,
+body,
+div,
+span,
+applet,
+object,
+iframe,
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+p,
+blockquote,
+pre,
+a,
+abbr,
+acronym,
+address,
+big,
+cite,
+code,
+del,
+dfn,
+em,
+img,
+ins,
+kbd,
+q,
+s,
+samp,
+small,
+strike,
+strong,
+sub,
+sup,
+tt,
+var,
+b,
+u,
+i,
+center,
+dl,
+dt,
+dd,
+ol,
+ul,
+li,
+fieldset,
+form,
+label,
+legend,
+table,
+caption,
+tbody,
+tfoot,
+thead,
+tr,
+th,
+td,
+article,
+aside,
+canvas,
+details,
+embed,
+figure,
+figcaption,
+footer,
+header,
+hgroup,
+menu,
+nav,
+output,
+ruby,
+section,
+summary,
+time,
+mark,
+audio,
+video {
   border: 0;
   font-size: 100%;
   vertical-align: baseline;
@@ -32,14 +113,38 @@ html, body, div, span, applet, object, iframe, h1, h2, h3, h4, h5, h6, p, blockq
   padding: 0;
 }
 
-article, aside, details, figcaption, figure, footer, header, hgroup, menu, nav, section {
+article,
+aside,
+details,
+figcaption,
+figure,
+footer,
+header,
+hgroup,
+menu,
+nav,
+section {
   display: block;
 }
- 
-ol, ul { list-style: none; }
-blockquote, q { quotes: none; }
-blockquote:before, blockquote:after, q:before, q:after { content: none; }
-table { border-collapse: collapse; border-spacing: 0; }
+
+ol,
+ul {
+  list-style: none;
+}
+blockquote,
+q {
+  quotes: none;
+}
+blockquote:before,
+blockquote:after,
+q:before,
+q:after {
+  content: none;
+}
+table {
+  border-collapse: collapse;
+  border-spacing: 0;
+}
 
 .jpe-JupyterIcon {
   background-image: url('./img/icon.svg');
@@ -51,57 +156,57 @@ table { border-collapse: collapse; border-spacing: 0; }
 }
 
 @font-face {
-    font-family: 'Roboto';
-    src: url('./fonts/Roboto/Roboto-Regular.ttf') format('truetype');
-    font-weight: normal;
-    font-style: normal;
+  font-family: Roboto;
+  src: url('./fonts/Roboto/Roboto-Regular.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
 }
 
 @font-face {
-    font-family: 'Roboto';
-    src: url('./fonts/Roboto/Roboto-Italic.ttf') format('truetype');
-    font-weight: normal;
-    font-style: italic;
+  font-family: Roboto;
+  src: url('./fonts/Roboto/Roboto-Italic.ttf') format('truetype');
+  font-weight: normal;
+  font-style: italic;
 }
 
 @font-face {
-    font-family: 'Roboto';
-    src: url('./fonts/Roboto/Roboto-Bold.ttf') format('truetype');
-    font-weight: bold;
-    font-style: normal;
+  font-family: Roboto;
+  src: url('./fonts/Roboto/Roboto-Bold.ttf') format('truetype');
+  font-weight: bold;
+  font-style: normal;
 }
 
 @font-face {
-    font-family: 'Roboto';
-    src: url('./fonts/Roboto/Roboto-BoldItalic.ttf') format('truetype');
-    font-weight: bold;
-    font-style: italic;
+  font-family: Roboto;
+  src: url('./fonts/Roboto/Roboto-BoldItalic.ttf') format('truetype');
+  font-weight: bold;
+  font-style: italic;
 }
 
 @font-face {
-    font-family: 'SourceCodePro';
-    src: url('./fonts/SourceCodePro/SourceCodePro-Regular.ttf') format('truetype');
-    font-weight: normal;
-    font-style: normal;
+  font-family: SourceCodePro;
+  src: url('./fonts/SourceCodePro/SourceCodePro-Regular.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
 }
 
 @font-face {
-    font-family: 'SourceCodePro';
-    src: url('./fonts/SourceCodePro/SourceCodePro-It.ttf') format('truetype');
-    font-weight: normal;
-    font-style: italic;
+  font-family: SourceCodePro;
+  src: url('./fonts/SourceCodePro/SourceCodePro-It.ttf') format('truetype');
+  font-weight: normal;
+  font-style: italic;
 }
 
 @font-face {
-    font-family: 'SourceCodePro';
-    src: url('./fonts/SourceCodePro/SourceCodePro-Bold.ttf') format('truetype');
-    font-weight: bold;
-    font-style: normal;
+  font-family: SourceCodePro;
+  src: url('./fonts/SourceCodePro/SourceCodePro-Bold.ttf') format('truetype');
+  font-weight: bold;
+  font-style: normal;
 }
 
 @font-face {
-    font-family: 'SourceCodePro';
-    src: url('./fonts/SourceCodePro/SourceCodePro-BoldIt.ttf') format('truetype');
-    font-weight: bold;
-    font-style: italic;
+  font-family: SourceCodePro;
+  src: url('./fonts/SourceCodePro/SourceCodePro-BoldIt.ttf') format('truetype');
+  font-weight: bold;
+  font-style: italic;
 }

@@ -1,0 +1,11 @@
+**/build
+**/node_modules
+**/lib
+**/package.json
+**/static
+**/dist
+**/.ipynb_checkpoints
+
+# ms IDE stuff
+.history/
+.vscode/

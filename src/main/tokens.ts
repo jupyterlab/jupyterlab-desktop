@@ -1,14 +1,14 @@
 /**
  * Dictionary that contains all requirement names mapped to version number strings
  */
- export interface IVersionContainer {
+export interface IVersionContainer {
   [name: string]: string;
 }
 
 /**
  * Different types of environments
  */
- export enum IEnvironmentType {
+export enum IEnvironmentType {
   /**
    * This is the catch-all type value, any environments that are randomly found or
    * entered will have this type
@@ -35,13 +35,13 @@ export const EnvironmentTypeName = {
   [IEnvironmentType.CondaRoot]: 'conda',
   [IEnvironmentType.CondaEnv]: 'conda',
   [IEnvironmentType.WindowsReg]: 'win',
-  [IEnvironmentType.VirtualEnv]: 'venv',
+  [IEnvironmentType.VirtualEnv]: 'venv'
 };
 
 /**
  * The representation of the python environment
  */
- export interface IPythonEnvironment {
+export interface IPythonEnvironment {
   /**
    * The file path of the python executable
    */

@@ -5,6 +5,7 @@ lib
 node_modules
 .npmrc
 .cache
+.eslintcache
 .vscode/*
 !.vscode/launch.json
 *.py[co]

@@ -1,4 +1,4 @@
-// atob implementation below is modified from node.js source 
+// atob implementation below is modified from node.js source
 // (https://github.com/nodejs/node/blob/master/lib/buffer.js)
 // and copyright below is for it
 
@@ -30,16 +30,16 @@
   contextIsolation is turned on.
 */
 window.atob = (input): string => {
-    const kBase64Digits =
-        'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=';
+  const kBase64Digits =
+    'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=';
 
-    // remove whitespace
-    input = `${input}`.replace(/\s/g, "");
-    for (let n = 0; n < input.length; n++) {
-        if (!kBase64Digits.includes(input[n])) {
-            throw new DOMException('Invalid character', 'InvalidCharacterError');
-        }
+  // remove whitespace
+  input = `${input}`.replace(/\s/g, '');
+  for (let n = 0; n < input.length; n++) {
+    if (!kBase64Digits.includes(input[n])) {
+      throw new DOMException('Invalid character', 'InvalidCharacterError');
     }
+  }
 
-    return Buffer.from(input, 'base64').toString('latin1');
-}
+  return Buffer.from(input, 'base64').toString('latin1');
+};

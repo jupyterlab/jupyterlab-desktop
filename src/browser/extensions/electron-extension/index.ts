@@ -2,44 +2,28 @@
 // Distributed under the terms of the Modified BSD License.
 
 import {
-  JupyterLab, JupyterFrontEndPlugin, JupyterFrontEnd
+  JupyterFrontEnd,
+  JupyterFrontEndPlugin,
+  JupyterLab
 } from '@jupyterlab/application';
 
-import {
-  PageConfig
-} from '@jupyterlab/coreutils';
+import { PageConfig } from '@jupyterlab/coreutils';
 
-import {
-  ICommandPalette
-} from '@jupyterlab/apputils';
+import { ICommandPalette } from '@jupyterlab/apputils';
 
-import {
-  Browser
-} from '../../utils';
+import { Browser } from '../../utils';
 
-import {
-  JupyterLabSession
-} from '../../../main/sessions';
+import { JupyterLabSession } from '../../../main/sessions';
 
-import {
-  ServerConnection
-} from '@jupyterlab/services';
+import { ServerConnection } from '@jupyterlab/services';
 
-import {
-  each
-} from '@lumino/algorithm';
+import { each } from '@lumino/algorithm';
 
-import {
-  Widget
-} from '@lumino/widgets';
+import { Widget } from '@lumino/widgets';
 
-import {
-    asyncRemoteRenderer
-} from '../../../asyncremote';
+import { asyncRemoteRenderer } from '../../../asyncremote';
 
-import {
-    IShortcutManager
-} from '../../../main/shortcuts';
+import { IShortcutManager } from '../../../main/shortcuts';
 
 import plugins from '@jupyterlab/application-extension';
 
@@ -47,26 +31,19 @@ import plugins from '@jupyterlab/application-extension';
  * The command IDs used by the application plugin.
  */
 namespace CommandIDs {
-  export
-  const activateNextTab: string = 'main-jupyterlab:activate-next-tab';
+  export const activateNextTab: string = 'main-jupyterlab:activate-next-tab';
 
-  export
-  const activatePreviousTab: string = 'main-jupyterlab:activate-previous-tab';
+  export const activatePreviousTab: string =
+    'main-jupyterlab:activate-previous-tab';
 
-  export
-  const closeAll: string = 'main-jupyterlab:close-all';
+  export const closeAll: string = 'main-jupyterlab:close-all';
 
-  export
-  const setMode: string = 'main-jupyterlab:set-mode';
+  export const setMode: string = 'main-jupyterlab:set-mode';
 
-  export
-  const toggleMode: string = 'main-jupyterlab:toggle-mode';
+  export const toggleMode: string = 'main-jupyterlab:toggle-mode';
 }
 
-
-export
-class ElectronJupyterLab extends JupyterLab {
-
+export class ElectronJupyterLab extends JupyterLab {
   constructor(options: ElectronJupyterLab.IOptions) {
     /**
      * WORKAROUND
@@ -81,7 +58,9 @@ class ElectronJupyterLab extends JupyterLab {
      * @jupyterlab/application 0.15.4
      */
     const oldMakeSettings = ServerConnection.makeSettings;
-    ServerConnection.makeSettings = function(options?: Partial<ServerConnection.ISettings>) {
+    ServerConnection.makeSettings = function (
+      options?: Partial<ServerConnection.ISettings>
+    ) {
       options = {
         ...options,
         ...{
@@ -113,10 +92,12 @@ class ElectronJupyterLab extends JupyterLab {
 
     if (options.uiState === 'mac') {
       // Resize the top panel based on zoom factor
-      topPanel.node.style.minHeight = topPanel.node.style.height = String(Browser.getTopPanelSize()) + 'px';
+      topPanel.node.style.minHeight = topPanel.node.style.height =
+        String(Browser.getTopPanelSize()) + 'px';
       // Resize the top panel on zoom events
       asyncRemoteRenderer.onRemoteEvent(IShortcutManager.zoomEvent, () => {
-        topPanel.node.style.minHeight = topPanel.node.style.height = String(Browser.getTopPanelSize()) + 'px';
+        topPanel.node.style.minHeight = topPanel.node.style.height =
+          String(Browser.getTopPanelSize()) + 'px';
         this.shell.fit();
       });
     }
@@ -155,21 +136,16 @@ class ElectronJupyterLab extends JupyterLab {
     };
   }
 
-
   private _electronInfo: ElectronJupyterLab.IInfo;
 }
 
-export
-namespace ElectronJupyterLab {
-
-  export
-  interface IOptions extends JupyterLab.IOptions {
+export namespace ElectronJupyterLab {
+  export interface IOptions extends JupyterLab.IOptions {
     uiState?: JupyterLabSession.UIState;
     platform: NodeJS.Platform;
   }
 
-  export
-  interface IInfo extends JupyterLab.IInfo {
+  export interface IInfo extends JupyterLab.IInfo {
     uiState?: string;
     platform: string;
   }
@@ -177,11 +153,13 @@ namespace ElectronJupyterLab {
   /**
    * The default application info.
    */
-  export
-  const defaultInfo: IInfo = { ...{
-    uiState: PageConfig.getOption('uistate') || 'windows',
-    platform: PageConfig.getOption('platform')
-  }, ...JupyterLab.defaultInfo };
+  export const defaultInfo: IInfo = {
+    ...{
+      uiState: PageConfig.getOption('uistate') || 'windows',
+      platform: PageConfig.getOption('platform')
+    },
+    ...JupyterLab.defaultInfo
+  };
 }
 
 /**
@@ -204,21 +182,27 @@ function addCommands(app: JupyterLab, palette: ICommandPalette): void {
   let command = CommandIDs.activateNextTab;
   app.commands.addCommand(command, {
     label: 'Activate Next Tab',
-    execute: () => { app.shell.activateNextTab(); }
+    execute: () => {
+      app.shell.activateNextTab();
+    }
   });
   palette.addItem({ command, category });
 
   command = CommandIDs.activatePreviousTab;
   app.commands.addCommand(command, {
     label: 'Activate Previous Tab',
-    execute: () => { app.shell.activatePreviousTab(); }
+    execute: () => {
+      app.shell.activatePreviousTab();
+    }
   });
   palette.addItem({ command, category });
 
   command = CommandIDs.closeAll;
   app.commands.addCommand(command, {
     label: 'Close All Widgets',
-    execute: () => { app.shell.closeAll(); }
+    execute: () => {
+      app.shell.closeAll();
+    }
   });
   palette.addItem({ command, category });
 
@@ -242,22 +226,23 @@ function addCommands(app: JupyterLab, palette: ICommandPalette): void {
   app.commands.addCommand(command, {
     label: 'Toggle Single-Document Mode',
     execute: () => {
-      const args = app.shell.mode === 'multiple-document' ?
-        { mode: 'single-document' } : { mode: 'multiple-document' };
+      const args =
+        app.shell.mode === 'multiple-document'
+          ? { mode: 'single-document' }
+          : { mode: 'multiple-document' };
       return app.commands.execute(CommandIDs.setMode, args);
     }
   });
   palette.addItem({ command, category });
 }
 
-
 /**
  * Override default jupyterlab plugins
  */
 let nPlugins = plugins.map((p: JupyterFrontEndPlugin<any>) => {
-    if (p.id === 'jupyter.extensions.main') {
-      return mainPlugin;
-    }
-    return p;
+  if (p.id === 'jupyter.extensions.main') {
+    return mainPlugin;
+  }
+  return p;
 });
 export default nPlugins;
