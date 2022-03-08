@@ -51,6 +51,7 @@ export class Application extends React.Component<
     this._connectionAdded = this._connectionAdded.bind(this);
     this._launchFromPath = this._launchFromPath.bind(this);
     this._changeEnvironment = this._changeEnvironment.bind(this);
+    this._splash = React.createRef<SplashScreen>();
 
     if (this.props.options.serverState === 'local') {
       this.state = {
@@ -116,7 +117,9 @@ export class Application extends React.Component<
     if (data.error) {
       log.error(data.error);
       this.setState({ renderState: () => this._renderErrorScreen(data.error) });
-      (this._splash as SplashScreen).fadeSplashScreen();
+      if (this._splash.current) {
+        this._splash.current.fadeSplashScreen();
+      }
       return;
     }
     this._registerFileHandler();
@@ -189,8 +192,8 @@ export class Application extends React.Component<
           }
           this._lab.restored.then(() => {
             ipcRenderer.send('lab-ready');
-            if (this._splash) {
-              (this._splash as SplashScreen).fadeSplashScreen();
+            if (this._splash.current) {
+              this._splash.current.fadeSplashScreen();
             }
           });
         });
@@ -295,9 +298,7 @@ export class Application extends React.Component<
     return (
       <div className="jpe-content">
         <SplashScreen
-          ref={c => {
-            this._splash = c;
-          }}
+          ref={this._splash}
           uiState={this.props.options.uiState}
           finished={() => {
             this.setState({ renderSplash: this._renderEmpty });
@@ -383,7 +384,7 @@ export class Application extends React.Component<
 
   // private _labReady: Promise<void>;
 
-  private _splash: SplashScreen;
+  private _splash: React.RefObject<SplashScreen>;
 }
 
 export namespace Application {
