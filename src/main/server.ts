@@ -19,7 +19,7 @@ import * as os from 'os';
 import * as path from 'path';
 import * as http from 'http';
 import { IEnvironmentType, IPythonEnvironment } from './tokens';
-import { appConfig, isDevMode } from './utils';
+import { appConfig, getSchemasDir } from './utils';
 
 const SERVER_LAUNCH_TIMEOUT = 30000; // milliseconds
 const SERVER_RESTART_LIMIT = 3; // max server restarts
@@ -170,15 +170,9 @@ export class JupyterServer {
       this._info.url = `http://localhost:${appConfig.jlabPort}`;
       this._info.token = appConfig.token;
 
-      let appDir = app.getAppPath();
-      if (!isDevMode()) {
-        appDir = path.dirname(appDir);
-      }
-
-      const schemasDir = path.normalize(path.join(appDir, './build/schemas'));
       const launchScriptPath = createLaunchScript(
         this._info.environment,
-        schemasDir
+        getSchemasDir()
       );
 
       this._nbServer = execFile(launchScriptPath, {
