@@ -16,6 +16,7 @@ import { IService } from './main';
 import * as path from 'path';
 import * as fs from 'fs';
 import log from 'electron-log';
+import { app } from 'electron';
 
 export interface IAppConfiguration {
   jlabPort: number;
@@ -56,7 +57,7 @@ export namespace IElectronDataConnector {
  */
 export class JupyterLabDataConnector
   implements IStatefulService, IElectronDataConnector {
-  SCHEMAS_PATH: string = path.join(__dirname, '../../schemas/');
+  SCHEMAS_PATH: string = getSchemasDir();
   id: string = 'JupyterLabSettings';
 
   constructor(app: IApplication) {
@@ -355,6 +356,15 @@ namespace Private {
 
 export function isDevMode(): boolean {
   return require.main.filename.indexOf('app.asar') === -1;
+}
+
+export function getSchemasDir(): string {
+  let appDir = app.getAppPath();
+  if (!isDevMode()) {
+    appDir = path.dirname(appDir);
+  }
+
+  return path.normalize(path.join(appDir, './build/schemas'));
 }
 
 let service: IService = {
