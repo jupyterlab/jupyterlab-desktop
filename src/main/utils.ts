@@ -358,13 +358,17 @@ export function isDevMode(): boolean {
   return require.main.filename.indexOf('app.asar') === -1;
 }
 
-export function getSchemasDir(): string {
+export function getAppDir(): string {
   let appDir = app.getAppPath();
   if (!isDevMode()) {
     appDir = path.dirname(appDir);
   }
 
-  return path.normalize(path.join(appDir, './build/schemas'));
+  return appDir;
+}
+
+export function getSchemasDir(): string {
+  return path.normalize(path.join(getAppDir(), './build/schemas'));
 }
 
 let service: IService = {

@@ -1,4 +1,5 @@
 node_modules
+jlab_server
 **/build
 **/lib
 **/node_modules

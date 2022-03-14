@@ -2,7 +2,7 @@ import { execFile, ExecFileOptions, execFileSync } from 'child_process';
 
 import { IService } from './main';
 
-import { basename, dirname, join, normalize } from 'path';
+import { basename, join, normalize } from 'path';
 
 import * as path from 'path';
 
@@ -19,6 +19,7 @@ import {
   IPythonEnvironment,
   IVersionContainer
 } from './tokens';
+import { getAppDir } from './utils';
 
 const envInfoPyCode = fs
   .readFileSync(path.join(__dirname, 'env_info.py'))
@@ -363,7 +364,7 @@ export class Registry implements IRegistry {
 
   getBundledPythonPath(): string {
     const platform = process.platform;
-    let envPath = join(dirname(app.getAppPath()), 'jlab_server');
+    let envPath = join(getAppDir(), 'jlab_server');
     if (platform !== 'win32') {
       envPath = join(envPath, 'bin');
     }

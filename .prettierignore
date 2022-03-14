@@ -1,5 +1,6 @@
 **/build
 **/node_modules
+**/jlab_server
 **/lib
 **/package.json
 **/static
