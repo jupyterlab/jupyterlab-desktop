@@ -30,7 +30,7 @@ export enum IEnvironmentType {
   VirtualEnv = 'venv'
 }
 
-export const EnvironmentTypeName = {
+export const EnvironmentTypeName: { [key in IEnvironmentType]: string } = {
   [IEnvironmentType.PATH]: 'system',
   [IEnvironmentType.CondaRoot]: 'conda',
   [IEnvironmentType.CondaEnv]: 'conda',

@@ -17,6 +17,7 @@ import * as path from 'path';
 import * as fs from 'fs';
 import log from 'electron-log';
 import { app } from 'electron';
+import { IPythonEnvironment } from './tokens';
 
 export interface IAppConfiguration {
   jlabPort: number;
@@ -365,6 +366,17 @@ export function getSchemasDir(): string {
   }
 
   return path.normalize(path.join(appDir, './build/schemas'));
+}
+
+export function getEnvironmentPath(environment: IPythonEnvironment): string {
+  const isWin = process.platform === 'win32';
+  const pythonPath = environment.path;
+  let envPath = path.dirname(pythonPath);
+  if (!isWin) {
+    envPath = path.normalize(path.join(envPath, '../'));
+  }
+
+  return envPath;
 }
 
 let service: IService = {
