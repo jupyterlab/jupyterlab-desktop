@@ -512,12 +512,17 @@ export class Registry implements IRegistry {
       Registry.COMMON_CONDA_LOCATIONS
     );
 
-    const bundledEnvPath = join(dirname(app.getAppPath()), 'jlab_server');
     let allCondas = [
-      Promise.resolve([bundledEnvPath]),
       pathCondas,
       commonCondas
     ];
+
+    // add bundled conda env to the list of base conda envs
+    const bundledEnvPath = path.join(dirname(app.getAppPath()), 'jlab_server');
+    if (fs.existsSync(path.join(bundledEnvPath, 'condabin'))) {
+      allCondas.unshift(Promise.resolve([bundledEnvPath]));
+    }
+
     if (process.platform === 'win32') {
       allCondas.push(this._getWindowsRegistryCondas());
     }
