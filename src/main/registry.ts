@@ -512,10 +512,7 @@ export class Registry implements IRegistry {
       Registry.COMMON_CONDA_LOCATIONS
     );
 
-    let allCondas = [
-      pathCondas,
-      commonCondas
-    ];
+    let allCondas = [pathCondas, commonCondas];
 
     // add bundled conda env to the list of base conda envs
     const bundledEnvPath = path.join(dirname(app.getAppPath()), 'jlab_server');
