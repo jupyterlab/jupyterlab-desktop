@@ -15,6 +15,7 @@ import { ArrayExt } from '@lumino/algorithm';
 import * as fs from 'fs';
 import log from 'electron-log';
 import {
+  EnvironmentTypeName,
   IEnvironmentType,
   IPythonEnvironment,
   IVersionContainer
@@ -38,6 +39,8 @@ export interface IRegistry {
 
   getEnvironmentList: () => Promise<IPythonEnvironment[]>;
 
+  getCondaEnvironments(): Promise<IPythonEnvironment[]>;
+
   addEnvironment: (path: string) => Promise<IPythonEnvironment>;
 
   getUserJupyterPath: () => Promise<IPythonEnvironment>;
@@ -45,6 +48,8 @@ export interface IRegistry {
   getBundledPythonPath: () => string;
 
   validatePythonEnvironmentAtPath: (path: string) => boolean;
+
+  validateCondaBaseEnvironmentAtPath: (envPath: string) => boolean;
 
   setDefaultPythonPath: (path: string) => void;
 
@@ -130,6 +135,7 @@ export class Registry implements IRegistry {
           this._setDefaultEnvironment(undefined);
         });
     } else {
+      this._condaEnvironments = this._loadCondaEnvironments();
       this._registryBuilt = Promise.resolve();
     }
   }
@@ -257,6 +263,14 @@ export class Registry implements IRegistry {
   }
 
   /**
+   * Retrieve the list of conda environments, once they have been resolved
+   * @returns a promise that resolves to a list of conda environments
+   */
+  getCondaEnvironments(): Promise<IPythonEnvironment[]> {
+    return this._condaEnvironments;
+  }
+
+  /**
    * Create a new environment from a python executable, without waiting for the
    * entire registry to be resolved first.
    * @param path The location of the python executable to create an environment from
@@ -317,6 +331,16 @@ export class Registry implements IRegistry {
     return true;
   }
 
+  validateCondaBaseEnvironmentAtPath(envPath: string): boolean {
+    const isWin = process.platform === 'win32';
+    const condaBinPath = path.join(
+      envPath,
+      'condabin',
+      isWin ? 'conda.bat' : 'conda'
+    );
+    return fs.existsSync(condaBinPath) && fs.lstatSync(condaBinPath).isFile();
+  }
+
   getEnvironmentInfo(pythonPath: string): IPythonEnvironment {
     const runOptions = {
       env: { PATH: this.getAdditionalPathIncludesForPythonPath(pythonPath) }
@@ -339,13 +363,16 @@ export class Registry implements IRegistry {
     );
     const envInfoOut = this._runCommandSync(pythonPath, ['-c', envInfoPyCode]);
     const envInfo = JSON.parse(envInfoOut.trim());
-    const envName = `${envInfo.type}: ${envInfo.name}`;
+    const envType =
+      envInfo.type === 'conda-root'
+        ? IEnvironmentType.CondaRoot
+        : envInfo.type === 'conda-env'
+        ? IEnvironmentType.CondaEnv
+        : IEnvironmentType.VirtualEnv;
+    const envName = `${EnvironmentTypeName[envType]}: ${envInfo.name}`;
 
     return {
-      type:
-        envInfo.type === 'conda'
-          ? IEnvironmentType.CondaEnv
-          : IEnvironmentType.VirtualEnv,
+      type: envType,
       name: envName,
       path: pythonPath,
       versions: { python: pythonVersion, jupyterlab: jlabVersion },
@@ -486,6 +513,13 @@ export class Registry implements IRegistry {
     );
 
     let allCondas = [pathCondas, commonCondas];
+
+    // add bundled conda env to the list of base conda envs
+    const bundledEnvPath = path.join(dirname(app.getAppPath()), 'jlab_server');
+    if (fs.existsSync(path.join(bundledEnvPath, 'condabin'))) {
+      allCondas.unshift(Promise.resolve([bundledEnvPath]));
+    }
+
     if (process.platform === 'win32') {
       allCondas.push(this._getWindowsRegistryCondas());
     }
@@ -1100,6 +1134,8 @@ export class Registry implements IRegistry {
   }
 
   private _environments: IPythonEnvironment[] = [];
+
+  private _condaEnvironments: Promise<IPythonEnvironment[]>;
 
   private _default: IPythonEnvironment;
 

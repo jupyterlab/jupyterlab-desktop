@@ -36,6 +36,10 @@ export interface IApplication {
   saveState: (service: IStatefulService, data: JSONValue) => Promise<void>;
 
   getPythonEnvironment(): Promise<IPythonEnvironment>;
+
+  setCondaRootPath(condaRootPath: string): void;
+
+  getCondaRootPath(): Promise<string>;
 }
 
 /**
@@ -127,7 +131,8 @@ export class JupyterApplication implements IApplication, IStatefulService {
 
     this._applicationState = {
       checkForUpdatesAutomatically: true,
-      pythonPath: ''
+      pythonPath: '',
+      condaRootPath: ''
     };
 
     this.registerStatefulService(this).then(
@@ -164,6 +169,18 @@ export class JupyterApplication implements IApplication, IStatefulService {
     return new Promise<IPythonEnvironment>((resolve, _reject) => {
       this._appState.then((state: JSONObject) => {
         resolve(this._registry.getCurrentPythonEnvironment());
+      });
+    });
+  }
+
+  setCondaRootPath(condaRootPath: string): void {
+    this._applicationState.condaRootPath = condaRootPath;
+  }
+
+  getCondaRootPath(): Promise<string> {
+    return new Promise<string>((resolve, _reject) => {
+      this._appState.then((state: JSONObject) => {
+        resolve(this._applicationState.condaRootPath);
       });
     });
   }
@@ -630,6 +647,7 @@ export namespace JupyterApplication {
   export interface IState extends JSONObject {
     checkForUpdatesAutomatically?: boolean;
     pythonPath?: string;
+    condaRootPath?: string;
   }
 }
 

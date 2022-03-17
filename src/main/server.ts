@@ -19,7 +19,7 @@ import * as os from 'os';
 import * as path from 'path';
 import * as http from 'http';
 import { IEnvironmentType, IPythonEnvironment } from './tokens';
-import { appConfig, getSchemasDir } from './utils';
+import { appConfig, getEnvironmentPath, getSchemasDir } from './utils';
 
 const SERVER_LAUNCH_TIMEOUT = 30000; // milliseconds
 const SERVER_RESTART_LIMIT = 3; // max server restarts
@@ -40,15 +40,11 @@ function createTempFile(
 
 function createLaunchScript(
   environment: IPythonEnvironment,
+  baseCondaPath: string,
   schemasDir: string
 ): string {
-  const platform = process.platform;
-  const isWin = platform === 'win32';
-  const pythonPath = environment.path;
-  let envPath = path.dirname(pythonPath);
-  if (!isWin) {
-    envPath = path.normalize(path.join(envPath, '../'));
-  }
+  const isWin = process.platform === 'win32';
+  const envPath = getEnvironmentPath(environment);
 
   // note: traitlets<5.0 require fully specified arguments to
   // be followed by equals sign without a space; this can be
@@ -70,21 +66,32 @@ function createLaunchScript(
   ].join(' ');
 
   let script: string;
+  const isConda =
+    environment.type === IEnvironmentType.CondaRoot ||
+    environment.type === IEnvironmentType.CondaEnv;
 
   if (isWin) {
-    if (environment.type === IEnvironmentType.CondaEnv) {
+    if (isConda) {
       script = `
-                CALL ${envPath}\\condabin\\activate.bat
-                CALL ${launchCmd}`;
+        CALL ${baseCondaPath}\\condabin\\activate.bat
+        CALL conda activate ${envPath}
+        CALL ${launchCmd}`;
     } else {
       script = `
-                CALL ${envPath}\\activate.bat
-                CALL ${launchCmd}`;
+        CALL ${envPath}\\activate.bat
+        CALL ${launchCmd}`;
     }
   } else {
-    script = `
-            source ${envPath}/bin/activate
-            ${launchCmd}`;
+    if (isConda) {
+      script = `
+        source ${baseCondaPath}/bin/activate
+        conda activate ${envPath}
+        ${launchCmd}`;
+    } else {
+      script = `
+        source ${envPath}/bin/activate
+        ${launchCmd}`;
+    }
   }
 
   const ext = isWin ? 'bat' : 'sh';
@@ -136,8 +143,14 @@ async function waitUntilServerIsUp(port: number): Promise<boolean> {
 }
 
 export class JupyterServer {
-  constructor(options: JupyterServer.IOptions) {
+  constructor(
+    options: JupyterServer.IOptions,
+    app: IApplication,
+    registry: IRegistry
+  ) {
     this._info.environment = options.environment;
+    this._app = app;
+    this._registry = registry;
   }
 
   get info(): JupyterServer.IInfo {
@@ -156,88 +169,152 @@ export class JupyterServer {
     }
     let started = false;
 
-    this._startServer = new Promise<JupyterServer.IInfo>((resolve, reject) => {
-      const home = process.env.JLAB_DESKTOP_HOME || app.getPath('home');
-      const isWin = process.platform === 'win32';
-      const pythonPath = this._info.environment.path;
-      if (!fs.existsSync(pythonPath)) {
-        dialog.showMessageBox({
-          message: `Environment not found at: ${pythonPath}`,
-          type: 'error'
+    this._startServer = new Promise<JupyterServer.IInfo>(
+      // eslint-disable-next-line no-async-promise-executor
+      async (resolve, reject) => {
+        const home = process.env.JLAB_DESKTOP_HOME || app.getPath('home');
+        const isWin = process.platform === 'win32';
+        const pythonPath = this._info.environment.path;
+        if (!fs.existsSync(pythonPath)) {
+          dialog.showMessageBox({
+            message: `Environment not found at: ${pythonPath}`,
+            type: 'error'
+          });
+          reject();
+        }
+        this._info.url = `http://localhost:${appConfig.jlabPort}`;
+        this._info.token = appConfig.token;
+
+        let baseCondaPath: string = '';
+        if (this._info.environment.type === IEnvironmentType.CondaRoot) {
+          baseCondaPath = getEnvironmentPath(this._info.environment);
+        } else if (this._info.environment.type === IEnvironmentType.CondaEnv) {
+          const baseCondaPathSet = await this._app.getCondaRootPath();
+          if (baseCondaPathSet && fs.existsSync(baseCondaPathSet)) {
+            baseCondaPath = baseCondaPathSet;
+          } else {
+            const environments = await this._registry.getCondaEnvironments();
+            for (const environment of environments) {
+              if (environment.type === IEnvironmentType.CondaRoot) {
+                baseCondaPath = getEnvironmentPath(environment);
+                this._app.setCondaRootPath(baseCondaPath);
+                break;
+              }
+            }
+          }
+
+          if (baseCondaPath === '') {
+            const choice = dialog.showMessageBoxSync({
+              message: 'Select conda base environment',
+              detail:
+                'Base conda environment not found. Please select a root conda environment to activate the custom environment.',
+              type: 'error',
+              buttons: ['OK', 'Cancel'],
+              defaultId: 0,
+              cancelId: 0
+            });
+            if (choice == 1) {
+              reject(new Error('Failed to activate conda environment'));
+              return;
+            }
+
+            const filePaths = dialog.showOpenDialogSync({
+              properties: [
+                'openDirectory',
+                'showHiddenFiles',
+                'noResolveAliases'
+              ],
+              buttonLabel: 'Use Conda Root'
+            });
+
+            if (filePaths && filePaths.length > 0) {
+              baseCondaPath = filePaths[0];
+              if (
+                !this._registry.validateCondaBaseEnvironmentAtPath(
+                  baseCondaPath
+                )
+              ) {
+                reject(new Error('Invalid base conda environment'));
+                return;
+              }
+              this._app.setCondaRootPath(baseCondaPath);
+            } else {
+              reject(new Error('Failed to activate conda environment'));
+              return;
+            }
+          }
+        }
+
+        const launchScriptPath = createLaunchScript(
+          this._info.environment,
+          baseCondaPath,
+          getSchemasDir()
+        );
+
+        this._nbServer = execFile(launchScriptPath, {
+          cwd: home,
+          shell: isWin ? 'cmd.exe' : '/bin/bash',
+          env: {
+            ...process.env,
+            JUPYTER_TOKEN: appConfig.token,
+            JUPYTER_CONFIG_DIR:
+              process.env.JLAB_DESKTOP_CONFIG_DIR || app.getPath('userData')
+          }
         });
-        reject();
-      }
-      this._info.url = `http://localhost:${appConfig.jlabPort}`;
-      this._info.token = appConfig.token;
 
-      const launchScriptPath = createLaunchScript(
-        this._info.environment,
-        getSchemasDir()
-      );
+        Promise.race([
+          waitUntilServerIsUp(appConfig.jlabPort),
+          waitForDuration(SERVER_LAUNCH_TIMEOUT)
+        ]).then((up: boolean) => {
+          if (up) {
+            started = true;
+            fs.unlinkSync(launchScriptPath);
+            resolve(this._info);
+          } else {
+            reject(new Error('Failed to launch Jupyter Server'));
+          }
+        });
 
-      this._nbServer = execFile(launchScriptPath, {
-        cwd: home,
-        shell: isWin ? 'cmd.exe' : '/bin/bash',
-        env: {
-          ...process.env,
-          JUPYTER_TOKEN: appConfig.token,
-          JUPYTER_CONFIG_DIR:
-            process.env.JLAB_DESKTOP_CONFIG_DIR || app.getPath('userData')
-        }
-      });
-
-      Promise.race([
-        waitUntilServerIsUp(appConfig.jlabPort),
-        waitForDuration(SERVER_LAUNCH_TIMEOUT)
-      ]).then((up: boolean) => {
-        if (up) {
-          started = true;
-          fs.unlinkSync(launchScriptPath);
-          resolve(this._info);
-        } else {
-          reject(new Error('Failed to launch Jupyter Server'));
-        }
-      });
-
-      this._nbServer.on('exit', () => {
-        if (started) {
-          /* On Windows, JupyterLab server sometimes crashes randomly during websocket
+        this._nbServer.on('exit', () => {
+          if (started) {
+            /* On Windows, JupyterLab server sometimes crashes randomly during websocket
                     connection. As a result of this, users experience kernel connections failures.
                     This crash only happens when server is launched from electron app. Since we
                     haven't been able to detect the exact cause of these crashes we are restarting the
                     server at the same port. After the restart, users are able to launch new kernels
                     for the notebook.
                     */
-          this._cleanupListeners();
+            this._cleanupListeners();
 
-          if (!this._stopping && this._restartCount < SERVER_RESTART_LIMIT) {
-            started = false;
-            this._startServer = null;
-            this.start();
-            this._restartCount++;
+            if (!this._stopping && this._restartCount < SERVER_RESTART_LIMIT) {
+              started = false;
+              this._startServer = null;
+              this.start();
+              this._restartCount++;
+            }
+          } else {
+            this._serverStartFailed();
+            reject(
+              new Error(
+                'Jupyter Server process terminated before the initialization completed'
+              )
+            );
           }
-        } else {
-          this._serverStartFailed();
-          reject(
-            new Error(
-              'Jupyter Server process terminated before the initialization completed'
-            )
-          );
-        }
-      });
+        });
 
-      this._nbServer.on('error', (err: Error) => {
-        if (started) {
-          dialog.showMessageBox({
-            message: `Jupyter Server process errored: ${err.message}`,
-            type: 'error'
-          });
-        } else {
-          this._serverStartFailed();
-          reject(err);
-        }
-      });
-    });
+        this._nbServer.on('error', (err: Error) => {
+          if (started) {
+            dialog.showMessageBox({
+              message: `Jupyter Server process errored: ${err.message}`,
+              type: 'error'
+            });
+          } else {
+            this._serverStartFailed();
+            reject(err);
+          }
+        });
+      }
+    );
 
     return this._startServer;
   }
@@ -305,6 +382,8 @@ export class JupyterServer {
     version: null
   };
 
+  private _app: IApplication;
+  private _registry: IRegistry;
   private _stopping: boolean = false;
   private _restartCount: number = 0;
 }
@@ -395,6 +474,7 @@ export namespace IServerFactory {
 
 export class JupyterServerFactory implements IServerFactory, IClosingService {
   constructor(app: IApplication, registry: IRegistry) {
+    this._app = app;
     this._registry = registry;
     app.registerClosingService(this);
 
@@ -593,7 +673,7 @@ export class JupyterServerFactory implements IServerFactory, IClosingService {
   ): JupyterServerFactory.IFactoryItem {
     let item: JupyterServerFactory.IFactoryItem = {
       factoryId: this._nextId++,
-      server: new JupyterServer(opts),
+      server: new JupyterServer(opts, this._app, this._registry),
       closing: null,
       used: false
     };
@@ -668,6 +748,8 @@ export class JupyterServerFactory implements IServerFactory, IClosingService {
   private _servers: JupyterServerFactory.IFactoryItem[] = [];
 
   private _nextId: number = 1;
+
+  private _app: IApplication;
 
   private _registry: IRegistry;
 }
