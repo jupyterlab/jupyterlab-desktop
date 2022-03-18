@@ -45,8 +45,7 @@ jobs:
       - name: Install dependencies
         run: |
           npm install --global yarn
-          # dmg-builder < 23 requires python 2
-          conda install -c conda-forge constructor python=2.7
+          conda install -c conda-forge constructor
           yarn install
 
       - name: Check JupyterLab version match
