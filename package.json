@@ -42,6 +42,7 @@
     "stylelint:check": "stylelint \"**/*.css\""
   },
   "build": {
+    "appId": "org.jupyter.jupyterlab-desktop",
     "productName": "JupyterLab",
     "artifactName": "${productName}.${ext}",
     "directories": {
@@ -58,6 +59,7 @@
       "env_installer/JupyterLabDesktopAppServer-*[.sh,.exe]",
       "build/schemas"
     ],
+    "afterSign": "scripts/notarize.js",
     "linux": {
       "target": [
         "deb",
@@ -114,7 +116,8 @@
         "dmg"
       ],
       "icon": "dist-resources/icon.icns",
-      "identity": "identity",
+      "entitlements": "build/entitlements.plist",
+      "entitlementsInherit": "build/entitlements.plist",
       "darkModeSupport": true,
       "hardenedRuntime": true,
       "gatekeeperAssess": false,
@@ -124,6 +127,25 @@
           "from": "dist-resources/darwin/jlab.sh",
           "to": "app/jlab"
         }
+      ],
+      "binaries": [
+        "./dist/mac/JupyterLab.app/Contents/MacOS/JupyterLab",
+        "./dist/mac/JupyterLab.app/Contents/Frameworks/JupyterLab Helper (GPU).app/Contents/MacOS/JupyterLab Helper (GPU)",
+        "./dist/mac/JupyterLab.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Electron Framework",
+        "./dist/mac/JupyterLab.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Libraries/libEGL.dylib",
+        "./dist/mac/JupyterLab.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Libraries/libswiftshader_libEGL.dylib",
+        "./dist/mac/JupyterLab.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Libraries/libvk_swiftshader.dylib",
+        "./dist/mac/JupyterLab.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Libraries/libGLESv2.dylib",
+        "./dist/mac/JupyterLab.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Libraries/libswiftshader_libGLESv2.dylib",
+        "./dist/mac/JupyterLab.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Libraries/libffmpeg.dylib",
+        "./dist/mac/JupyterLab.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Helpers/chrome_crashpad_handler",
+        "./dist/mac/JupyterLab.app/Contents/Frameworks/ReactiveObjC.framework/Versions/A/ReactiveObjC",
+        "./dist/mac/JupyterLab.app/Contents/Frameworks/Squirrel.framework/Versions/A/Squirrel",
+        "./dist/mac/JupyterLab.app/Contents/Frameworks/Squirrel.framework/Versions/A/Resources/ShipIt",
+        "./dist/mac/JupyterLab.app/Contents/Frameworks/JupyterLab Helper (Renderer).app/Contents/MacOS/JupyterLab Helper (Renderer)",
+        "./dist/mac/JupyterLab.app/Contents/Frameworks/Mantle.framework/Versions/A/Mantle",
+        "./dist/mac/JupyterLab.app/Contents/Frameworks/JupyterLab Helper (Plugin).app/Contents/MacOS/JupyterLab Helper (Plugin)",
+        "./dist/mac/JupyterLab.app/Contents/Frameworks/JupyterLab Helper.app/Contents/MacOS/JupyterLab Helper"
       ]
     },
     "dmg": {
@@ -166,6 +188,7 @@
     "css-loader": "~5.1.1",
     "electron": "^15.0.0",
     "electron-builder": "^23.0.2",
+    "electron-notarize": "^1.1.1",
     "eslint": "~7.14.0",
     "eslint-config-prettier": "~6.15.0",
     "eslint-plugin-prettier": "~3.1.4",
