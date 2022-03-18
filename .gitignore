@@ -21,7 +21,6 @@ __pycache__
 *.swp
 *.map
 .idea/
-
 *.log
 
 env_installer/
