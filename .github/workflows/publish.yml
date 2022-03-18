@@ -45,7 +45,8 @@ jobs:
       - name: Install dependencies
         run: |
           npm install --global yarn
-          conda install -c conda-forge constructor
+          # dmg-builder < 23 requires python 2
+          conda install -c conda-forge constructor python=2
           yarn install
 
       - name: Check JupyterLab version match
@@ -86,7 +87,7 @@ jobs:
         with:
           name: mac-installer
           path: |
-            dist/JupyterLab.pkg
+            dist/JupyterLab.dmg
 
       - name: Upload Windows Installer
         if: matrix.cfg.platform == 'win'
@@ -141,8 +142,8 @@ jobs:
         uses: svenstaro/upload-release-action@v2
         with:
           repo_token: ${{ secrets.JLAB_APP_TOKEN }}
-          file: dist/JupyterLab.pkg
-          asset_name: JupyterLab-Setup-macOS.pkg
+          file: dist/JupyterLab.dmg
+          asset_name: JupyterLab-Setup-macOS.dmg
           tag: v${{ steps.package-info.outputs.version}}
           overwrite: true
 
