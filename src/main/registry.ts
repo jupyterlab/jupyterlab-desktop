@@ -516,7 +516,7 @@ export class Registry implements IRegistry {
     let allCondas = [pathCondas, commonCondas];
 
     // add bundled conda env to the list of base conda envs
-    const bundledEnvPath = path.join(dirname(app.getAppPath()), 'jlab_server');
+    const bundledEnvPath = path.join(getAppDir(), 'jlab_server');
     if (fs.existsSync(path.join(bundledEnvPath, 'condabin'))) {
       allCondas.unshift(Promise.resolve([bundledEnvPath]));
     }
