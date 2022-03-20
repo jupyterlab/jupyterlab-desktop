@@ -32,5 +32,6 @@ specs:
 
 default_prefix: "%APPDATA%\\jupyterlab-desktop\\jlab_server"
 default_prefix_all_users: "%APPDATA%\\jupyterlab-desktop\\jlab_server"
+check_path_length: True
 
-register_python_default: false
+register_python_default: False
