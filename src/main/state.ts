@@ -1,8 +1,6 @@
 // Copyright (c) Jupyter Development Team.
 // Distributed under the terms of the Modified BSD License.
 
-import { app } from 'electron';
-
 import { JSONObject } from '@lumino/coreutils';
 
 import { IStateDB } from '@jupyterlab/statedb';
@@ -15,6 +13,7 @@ type IStateItem = {
 
 import * as fs from 'fs';
 import log from 'electron-log';
+import { getUserDataDir } from './utils';
 
 /**
  * Read and write electron application data asynchronously.
@@ -23,7 +22,7 @@ export class ElectronStateDB implements IStateDB {
   /**
    * The path to the platform-specific application data directory.
    */
-  readonly path: string = app.getPath('userData');
+  readonly path: string = getUserDataDir();
 
   /**
    * The namespace prefix for all state database entries.

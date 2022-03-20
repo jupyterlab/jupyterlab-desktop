@@ -103,7 +103,6 @@
       "oneClick": "false",
       "artifactName": "${productName}-Setup.${ext}",
       "perMachine": true,
-      "deleteAppDataOnUninstall": true,
       "license": "LICENSE",
       "language": "1033",
       "installerSidebar": "installerSidebar.bmp",

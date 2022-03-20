@@ -368,6 +368,12 @@ export function getAppDir(): string {
   return appDir;
 }
 
+export function getUserDataDir(): string {
+  return process.platform === 'darwin'
+    ? path.normalize(path.join(app.getPath('home'), 'Library', app.getName()))
+    : app.getPath('userData');
+}
+
 export function getSchemasDir(): string {
   return path.normalize(path.join(getAppDir(), './build/schemas'));
 }

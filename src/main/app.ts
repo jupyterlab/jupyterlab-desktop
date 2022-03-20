@@ -19,7 +19,7 @@ import * as yaml from 'js-yaml';
 import * as semver from 'semver';
 import * as ejs from 'ejs';
 import * as path from 'path';
-import { getAppDir } from './utils';
+import { getAppDir, getUserDataDir } from './utils';
 import { execFile } from 'child_process';
 
 export interface IApplication {
@@ -357,7 +357,8 @@ export class JupyterApplication implements IApplication, IStatefulService {
         : platform === 'darwin'
         ? `${appDir}/env_installer/JupyterLabDesktopAppServer-${appVersion}-MacOSX-x86_64.sh`
         : `${appDir}/env_installer/JupyterLabDesktopAppServer-${appVersion}-Linux-x86_64.sh`;
-      const installPath = path.join(appDir, 'jlab_server');
+      const userDataDir = getUserDataDir();
+      const installPath = path.join(userDataDir, 'jlab_server');
 
       const installerProc = execFile(installerPath, ['-b', '-p', installPath], {
         shell: isWin ? 'cmd.exe' : '/bin/bash',
