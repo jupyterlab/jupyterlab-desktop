@@ -30,7 +30,7 @@ specs:
   - python 3.8*
   - scipy
 
-default_prefix: "%HOMEDRIVE%\\JupyterLab\\resources\\jlab_server"
-default_prefix_all_users: "%HOMEDRIVE%\\JupyterLab\\resources\\jlab_server"
+default_prefix: "%APPDATA%\\jupyterlab-desktop\\jlab_server"
+default_prefix_all_users: "%APPDATA%\\jupyterlab-desktop\\jlab_server"
 
 register_python_default: false

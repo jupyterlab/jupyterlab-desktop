@@ -14,8 +14,8 @@ jobs:
     strategy:
       matrix:
         cfg:
-        - { platform: linux, platform_name: Linux,  os: ubuntu-latest }
-        - { platform: mac, platform_name: macOS, os: macos-latest }
+        # - { platform: linux, platform_name: Linux,  os: ubuntu-latest }
+        # - { platform: mac, platform_name: macOS, os: macos-latest }
         - { platform: win, platform_name: Windows, os: windows-latest }
 
     name: '${{ matrix.cfg.platform_name }} installer'
