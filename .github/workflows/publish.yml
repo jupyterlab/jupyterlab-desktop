@@ -87,7 +87,7 @@ jobs:
           CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
           CSC_LINK: ${{ secrets.CSC_LINK }}
         run: |
-          yarn dist:${{ matrix.cfg.platform }} ${{ steps.release-exists.outputs.result == 'true' && '' || '-c.mac.identity=null' }}
+          yarn dist:${{ matrix.cfg.platform }} ${{ steps.release-exists.outputs.result == 'true' && '' || '-c.mac.identity=null -c.afterSign=null' }}
 
       - name: Upload Debian Installer
         if: matrix.cfg.platform == 'linux'
