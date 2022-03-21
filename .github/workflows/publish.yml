@@ -15,8 +15,8 @@ jobs:
       matrix:
         cfg:
         # - { platform: linux, platform_name: Linux,  os: ubuntu-latest }
-        # - { platform: mac, platform_name: macOS, os: macos-latest }
-        - { platform: win, platform_name: Windows, os: windows-latest }
+        - { platform: mac, platform_name: macOS, os: macos-latest }
+        # - { platform: win, platform_name: Windows, os: windows-latest }
 
     name: '${{ matrix.cfg.platform_name }} installer'
     runs-on: ${{ matrix.cfg.os }}
@@ -87,7 +87,7 @@ jobs:
           CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
           CSC_LINK: ${{ secrets.CSC_LINK }}
         run: |
-          yarn dist:${{ matrix.cfg.platform }}
+          yarn dist:${{ matrix.cfg.platform }} ${{ steps.release-exists.outputs.result == 'true' && '' || '-c.mac.identity=null' }}
 
       - name: Upload Debian Installer
         if: matrix.cfg.platform == 'linux'
