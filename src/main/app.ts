@@ -19,6 +19,7 @@ import * as yaml from 'js-yaml';
 import * as semver from 'semver';
 import * as ejs from 'ejs';
 import * as path from 'path';
+import * as fs from 'fs';
 import { getAppDir, getUserDataDir } from './utils';
 import { execFile } from 'child_process';
 
@@ -359,6 +360,24 @@ export class JupyterApplication implements IApplication, IStatefulService {
         : `${appDir}/env_installer/JupyterLabDesktopAppServer-${appVersion}-Linux-x86_64.sh`;
       const userDataDir = getUserDataDir();
       const installPath = path.join(userDataDir, 'jlab_server');
+
+      if (fs.existsSync(installPath)) {
+        const choice = dialog.showMessageBoxSync({
+          type: 'warning',
+          message: 'Do you want to overwrite?',
+          detail: `Install path (${installPath}) is not empty. Would you like to overwrite it?`,
+          buttons: ['Overwrite', 'Cancel'],
+          defaultId: 1,
+          cancelId: 0
+        });
+
+        if (choice === 0) {
+          fs.rmdirSync(installPath, { recursive: true });
+        } else {
+          event.sender.send('install-bundled-python-env-result', 'CANCELLED');
+          return;
+        }
+      }
 
       const installerProc = execFile(installerPath, ['-b', '-p', installPath], {
         shell: isWin ? 'cmd.exe' : '/bin/bash',
