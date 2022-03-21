@@ -82,12 +82,13 @@ jobs:
 
       - name: Create Application Installer
         env:
+          CSC_IDENTITY_AUTO_DISCOVERY: ${{ steps.release-exists.outputs.result }} # disable code signing if not release asset
           APPLEID: ${{ secrets.APPLEID }}
           APPLEIDPASS: ${{ secrets.APPLEIDPASS }}
           CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
           CSC_LINK: ${{ secrets.CSC_LINK }}
         run: |
-          yarn dist:${{ matrix.cfg.platform }} ${{ steps.release-exists.outputs.result == 'true' && '' || '-c.mac.identity=null -c.afterSign=null' }}
+          yarn dist:${{ matrix.cfg.platform }}
 
       - name: Upload Debian Installer
         if: matrix.cfg.platform == 'linux'
