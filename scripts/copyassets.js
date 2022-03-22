@@ -53,10 +53,6 @@ function copyAssests() {
   // Copy install scripts
   if (platform === 'darwin') {
     fs.copySync(
-      path.join(path.resolve('./'), 'electron-builder-scripts', 'postinstall'),
-      path.join(buildDir, 'pkg-scripts', 'postinstall')
-    );
-    fs.copySync(
       path.join(
         path.resolve('./'),
         'dist-resources',
@@ -82,14 +78,6 @@ function copyAssests() {
         'linux_after_install.sh'
       ),
       path.join(buildDir, 'linux_after_install.sh')
-    );
-    fs.copySync(
-      path.join(
-        path.resolve('./'),
-        'electron-builder-scripts',
-        'linux_before_remove.sh'
-      ),
-      path.join(buildDir, 'linux_before_remove.sh')
     );
   }
 

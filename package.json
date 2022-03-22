@@ -75,8 +75,7 @@
     },
     "deb": {
       "fpm": [
-        "--after-install=build/linux_after_install.sh",
-        "--before-remove=build/linux_before_remove.sh"
+        "--after-install=build/linux_after_install.sh"
       ]
     },
     "win": {
@@ -95,8 +94,7 @@
         "libXScrnSaver"
       ],
       "fpm": [
-        "--after-install=build/linux_after_install.sh",
-        "--before-remove=build/linux_before_remove.sh"
+        "--after-install=build/linux_after_install.sh"
       ]
     },
     "nsis": {

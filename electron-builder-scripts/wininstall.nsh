@@ -336,7 +336,6 @@ FunctionEnd
 !macroend
 
 !macro customInstall
-;	ExecWait "$INSTDIR\resources\env_installer\JupyterLabDesktopAppServer-3.3.2-1-Windows-x86_64.exe"
 	${EnvVarUpdate} $0 "PATH" "A" "HKLM" "$INSTDIR"
 !macroend
 

@@ -178,25 +178,7 @@ if (cli.flags.checkVersionMatch) {
   }
 
   // check JupyterLab versions in scripts
-  const envInstallerScriptName =
-    platform === 'darwin'
-      ? 'postinstall'
-      : platform === 'win32'
-      ? 'wininstall.nsh'
-      : 'linux_after_install.sh';
-  const envInstallScriptPath = path.resolve(
-    __dirname,
-    `../electron-builder-scripts/${envInstallerScriptName}`
-  );
-  let searchString = `JupyterLabDesktopAppServer-${appVersion}-`;
-  if (!searchTextInFile(envInstallScriptPath, searchString)) {
-    console.error(
-      `Script file ${envInstallScriptPath} doesn't contain correct Application version ${appVersion}`
-    );
-    process.exit(1);
-  }
-
-  searchString = `"appVersion": "${appVersion}",`;
+  let searchString = `"appVersion": "${appVersion}",`;
   if (
     !searchTextInFile(
       path.resolve(__dirname, `../src/browser/index.html`),
