@@ -40,7 +40,7 @@ https://jupyterlab.readthedocs.io/en/latest/getting_started/issue.html
 
 - Operating System and version: <!-- e.g. Linux Ubuntu 21.04 -->
 - JupyterLab-Desktop version: <!-- e.g. 3.1.7-2 -->
-- Installer: <!-- .exe, .deb, .pkg, .rpm, .snap, .flatpak -->
+- Installer: <!-- .exe, .deb, .dmg, .pkg, .rpm, .snap, .flatpak -->
 
 <!--The more content you provide, the more we can help!-->
 

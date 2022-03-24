@@ -147,16 +147,6 @@
     },
     "dmg": {
       "sign": false
-    },
-    "pkg": {
-      "scripts": "../build/pkg-scripts",
-      "installLocation": "/Applications",
-      "allowAnywhere": true,
-      "allowCurrentUserHome": true,
-      "allowRootDirectory": true,
-      "isVersionChecked": true,
-      "isRelocatable": false,
-      "overwriteAction": "upgrade"
     }
   },
   "author": {
