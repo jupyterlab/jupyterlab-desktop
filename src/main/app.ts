@@ -22,6 +22,7 @@ import * as path from 'path';
 import * as fs from 'fs';
 import { getAppDir, getUserDataDir } from './utils';
 import { execFile } from 'child_process';
+import { loadingAnimation } from '../assets/svg';
 
 export interface IApplication {
   /**
@@ -560,8 +561,13 @@ export class JupyterApplication implements IApplication, IStatefulService {
           );
 
     const template = `
+            <html>
             <body style="background: rgba(238,238,238,1); font-size: 13px; font-family: Helvetica, Arial, sans-serif; padding: 20px;">
-            <style>.row {display: flex; margin-bottom: 10px; }</style>
+            <style>
+              .row {display: flex; margin-bottom: 10px;}
+              .progress-message {margin-right: 5px; line-height: 24px; visibility: hidden;}
+              .progress-animation {margin-right: 5px; visibility: hidden;}
+            </style>
             <div style="height: 100%; display: flex;flex-direction: column; justify-content: space-between;">
                 <div class="row">
                     <b>Set Python Environment</b>
@@ -595,8 +601,10 @@ export class JupyterApplication implements IApplication, IStatefulService {
                         </div>
                     </div>
                     <div class="row" style="justify-content: flex-end;">
-                        <button id="apply" onclick='handleApply(this);' style='margin-right: 5px;'>Apply and restart</button>
-                        <button onclick='handleCancel(this);'>Cancel</button>
+                      <div id="progress-message" class="progress-message"></div>  
+                      <div id="progress-animation" class="progress-animation">${loadingAnimation}</div>
+                      <button id="apply" onclick='handleApply(this);' style='margin-right: 5px;'>Apply and restart</button>
+                      <button id="cancel" onclick='handleCancel(this);'>Cancel</button>
                     </div>
                 </div>
             </div>
@@ -609,6 +617,9 @@ export class JupyterApplication implements IApplication, IStatefulService {
                 const pythonPathInput = document.getElementById('python-path');
                 const selectPythonPathButton = document.getElementById('select-python-path');
                 const applyButton = document.getElementById('apply');
+                const cancelButton = document.getElementById('cancel');
+                const progressMessage = document.getElementById('progress-message');
+                const progressAnimation = document.getElementById('progress-animation');
 
                 function handleSelectPythonPath(el) {
                     ipcRenderer.send('select-python-path');
@@ -619,10 +630,18 @@ export class JupyterApplication implements IApplication, IStatefulService {
                     selectPythonPathButton.disabled = installNewOrUseBundled;
                 }
 
+                function showProgress(message, animate) {
+                  progressMessage.innerText = message;
+                  progressMessage.style.visibility = message !== '' ? 'visible' : 'hidden';
+                  progressAnimation.style.visibility = animate ? 'visible' : 'hidden';
+                }
+
                 function handleApply(el) {
                     if (installNewRadio && installNewRadio.checked) {
                       ipcRenderer.send('install-bundled-python-env');
+                      showProgress('Installing environment', true);
                       applyButton.disabled = true;
+                      cancelButton.disabled = true;
                     } else if (bundledRadio && bundledRadio.checked) {
                       ipcRenderer.send('set-python-path', '');
                     } else {
@@ -644,9 +663,21 @@ export class JupyterApplication implements IApplication, IStatefulService {
                     pythonPathInput.value = path;
                 });
 
+                ipcRenderer.on('install-bundled-python-env-result', (event, result) => {
+                  const message = result === 'CANCELLED' ?
+                    'Installation cancelled!' :
+                    result === 'FAILURE' ?
+                      'Failed to install the environment!' : '';
+                  showProgress(message, false);
+                  const disableButtons = result === 'SUCCESS';
+                  applyButton.disabled = disableButtons;
+                  cancelButton.disabled = disableButtons;
+                });
+
                 handleEnvTypeChange();
             </script>
             </body>
+            </html>
         `;
     const pageSource = ejs.render(template, {
       reason,
