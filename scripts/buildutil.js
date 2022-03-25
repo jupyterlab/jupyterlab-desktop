@@ -5,7 +5,6 @@ const semver = require('semver');
 const lockfile = require('@yarnpkg/lockfile');
 const yaml = require('js-yaml');
 
-const platform = process.platform;
 const pkgjsonFilePath = path.resolve(__dirname, '../package.json');
 
 const cli = meow(

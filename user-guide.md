@@ -125,7 +125,7 @@ rm -rf ~/Library/Application\ Support/jupyterlab-desktop
 
 On Windows, JupyterLab Desktop is installed in two parts, one for the python environment and another for the application itself. Go to `Windows Apps & Features` dialog using `Start Menu` -> `Settings` -> `Apps` and make sure to uninstall the components in the following order:
 
-- First uninstall JupyterLab Desktop python environment. Note that for JupyterLab Desktop version 3.1.18-1 and newer, this component will be named `JupyterLabDesktopAppServer` but for older versions it will be named `JupyterLabAppServer`.
+- First uninstall JupyterLab Desktop python environment
 
 <img src="media/uninstall-windows-python-environment.png" alt="Uninstall Python environment" height=200 />
 
@@ -133,7 +133,7 @@ On Windows, JupyterLab Desktop is installed in two parts, one for the python env
 
 <img src="media/uninstall-windows-application.png" alt="Uninstall the application" height=200 />
 
-In order to remove application cache and bundled Python environment delete `C:\Users\<username>\AppData\Roaming\jupyterlab-desktop` directory.
+In order to remove application cache, delete `C:\Users\<username>\AppData\Roaming\jupyterlab-desktop` directory.
 
 # Configuration
 
