@@ -182,7 +182,7 @@ function setupJLabCommand() {
 
   try {
     const cmd = `ln -s ${targetPath} ${symlinkPath}`;
-  
+
     execSync(cmd, { shell: '/bin/bash' });
     fs.chmodSync(symlinkPath, 0o755);
   } catch (error) {
