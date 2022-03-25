@@ -394,13 +394,13 @@ export class JupyterApplication implements IApplication, IStatefulService {
           app.quit();
         } else {
           event.sender.send('install-bundled-python-env-result', 'FAILURE');
-          console.log(`Installer Exit: ${exitCode}`);
+          log.error(new Error(`Installer Exit: ${exitCode}`));
         }
       });
 
       installerProc.on('error', (err: Error) => {
         event.sender.send('install-bundled-python-env-result', 'FAILURE');
-        console.log(`Installer Error: ${err}`);
+        log.error(err);
       });
     });
 
