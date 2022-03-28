@@ -84,9 +84,7 @@ jobs:
         run: |
           echo "APPLEID=${{ secrets.APPLEID }}" >> $GITHUB_ENV
           echo "APPLEIDPASS=${{ secrets.APPLEIDPASS }}" >> $GITHUB_ENV
-          echo 'CSC_KEY_PASSWORD<<EOF3' >> $GITHUB_ENV
-          echo ${{ secrets.CSC_KEY_PASSWORD }} >> $GITHUB_ENV
-          echo 'EOF3\n' >> $GITHUB_ENV
+          echo "CSC_KEY_PASSWORD=${{ secrets.CSC_KEY_PASSWORD }}" >> $GITHUB_ENV
           echo 'CSC_LINK<<EOF4' >> $GITHUB_ENV
           echo ${{ secrets.CSC_LINK }} >> $GITHUB_ENV
           echo 'EOF4\n' >> $GITHUB_ENV
