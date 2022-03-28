@@ -83,10 +83,10 @@ jobs:
       - name: Create Application Installer
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: ${{ steps.release-exists.outputs.result }} # disable code signing if not release asset
-          APPLEID: ${{ secrets.APPLEID }}
-          APPLEIDPASS: ${{ secrets.APPLEIDPASS }}
-          CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
-          CSC_LINK: ${{ secrets.CSC_LINK }}
+          APPLEID: ${{ steps.release-exists.outputs.result && secrets.APPLEID || '' }}
+          APPLEIDPASS: ${{ steps.release-exists.outputs.result && secrets.APPLEIDPASS || '' }}
+          CSC_KEY_PASSWORD: ${{ steps.release-exists.outputs.result && secrets.CSC_KEY_PASSWORD || '' }}
+          CSC_LINK: ${{ steps.release-exists.outputs.result && secrets.CSC_LINK || '' }}
         run: |
           yarn dist:${{ matrix.cfg.platform }}
 
