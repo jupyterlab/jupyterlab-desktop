@@ -80,13 +80,17 @@ jobs:
         run: |
           yarn create_env_installer:${{ matrix.cfg.platform }}
 
+      - name: Sets Environment variables for release
+        run: |
+          echo "APPLEID=${{ secrets.APPLEID }}" >> $GITHUB_ENV
+          echo "APPLEIDPASS=${{ secrets.APPLEIDPASS }}" >> $GITHUB_ENV
+          echo "CSC_KEY_PASSWORD=${{ secrets.CSC_KEY_PASSWORD }}" >> $GITHUB_ENV
+          echo "CSC_LINK=${{ secrets.CSC_LINK }}" >> $GITHUB_ENV
+        if: steps.release-exists.outputs.result == 'true'
+
       - name: Create Application Installer
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: ${{ steps.release-exists.outputs.result }} # disable code signing if not release asset
-          APPLEID: ${{ secrets.APPLEID }}
-          APPLEIDPASS: ${{ secrets.APPLEIDPASS }}
-          CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
-          CSC_LINK: ${{ secrets.CSC_LINK }}
         run: |
           yarn dist:${{ matrix.cfg.platform }}
 
