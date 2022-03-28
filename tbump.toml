@@ -21,12 +21,6 @@ tag_template = "v{new_version}"
 src = "package.json"
 search = '"version": "{current_version}"'
 [[file]]
-src = "electron-builder-scripts/linux_after_install.sh"
-search = 'JupyterLabDesktopAppServer-{current_version}-Linux'
-[[file]]
-src = "electron-builder-scripts/postinstall"
-search = 'JupyterLabDesktopAppServer-{current_version}-MacOSX'
-[[file]]
 src = "electron-builder-scripts/wininstall.nsh"
 search = 'JupyterLabDesktopAppServer-{current_version}-Windows'
 [[file]]

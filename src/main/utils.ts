@@ -359,13 +359,23 @@ export function isDevMode(): boolean {
   return require.main.filename.indexOf('app.asar') === -1;
 }
 
-export function getSchemasDir(): string {
+export function getAppDir(): string {
   let appDir = app.getAppPath();
   if (!isDevMode()) {
     appDir = path.dirname(appDir);
   }
 
-  return path.normalize(path.join(appDir, './build/schemas'));
+  return appDir;
+}
+
+export function getUserDataDir(): string {
+  return process.platform === 'darwin'
+    ? path.normalize(path.join(app.getPath('home'), 'Library', app.getName()))
+    : app.getPath('userData');
+}
+
+export function getSchemasDir(): string {
+  return path.normalize(path.join(getAppDir(), './build/schemas'));
 }
 
 export function getEnvironmentPath(environment: IPythonEnvironment): string {

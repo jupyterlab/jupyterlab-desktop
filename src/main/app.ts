@@ -19,6 +19,10 @@ import * as yaml from 'js-yaml';
 import * as semver from 'semver';
 import * as ejs from 'ejs';
 import * as path from 'path';
+import * as fs from 'fs';
+import { getAppDir, getUserDataDir } from './utils';
+import { execFile } from 'child_process';
+import { loadingAnimation } from '../assets/svg';
 
 export interface IApplication {
   /**
@@ -144,16 +148,21 @@ export class JupyterApplication implements IApplication, IStatefulService {
           }
         }
 
+        const bundledPythonPath = this._registry.getBundledPythonPath();
         let pythonPath = this._applicationState.pythonPath;
         if (pythonPath === '') {
-          pythonPath = this._registry.getBundledPythonPath();
+          pythonPath = bundledPythonPath;
         }
+
+        const useBundledPythonPath = pythonPath === bundledPythonPath;
 
         if (this._registry.validatePythonEnvironmentAtPath(pythonPath)) {
           this._registry.setDefaultPythonPath(pythonPath);
           this._applicationState.pythonPath = pythonPath;
         } else {
-          this._showPythonSelectorDialog('invalid-setting');
+          this._showPythonSelectorDialog(
+            useBundledPythonPath ? 'invalid-bundled-env' : 'invalid-env'
+          );
         }
 
         if (this._applicationState.checkForUpdatesAutomatically) {
@@ -340,6 +349,61 @@ export class JupyterApplication implements IApplication, IStatefulService {
         });
     });
 
+    ipcMain.on('install-bundled-python-env', event => {
+      const platform = process.platform;
+      const isWin = platform === 'win32';
+      const appDir = getAppDir();
+      const appVersion = app.getVersion();
+      const installerPath = isWin
+        ? `${appDir}\\env_installer\\JupyterLabDesktopAppServer-${appVersion}-Windows-x86_64.exe`
+        : platform === 'darwin'
+        ? `${appDir}/env_installer/JupyterLabDesktopAppServer-${appVersion}-MacOSX-x86_64.sh`
+        : `${appDir}/env_installer/JupyterLabDesktopAppServer-${appVersion}-Linux-x86_64.sh`;
+      const userDataDir = getUserDataDir();
+      const installPath = path.join(userDataDir, 'jlab_server');
+
+      if (fs.existsSync(installPath)) {
+        const choice = dialog.showMessageBoxSync({
+          type: 'warning',
+          message: 'Do you want to overwrite?',
+          detail: `Install path (${installPath}) is not empty. Would you like to overwrite it?`,
+          buttons: ['Overwrite', 'Cancel'],
+          defaultId: 1,
+          cancelId: 0
+        });
+
+        if (choice === 0) {
+          fs.rmdirSync(installPath, { recursive: true });
+        } else {
+          event.sender.send('install-bundled-python-env-result', 'CANCELLED');
+          return;
+        }
+      }
+
+      const installerProc = execFile(installerPath, ['-b', '-p', installPath], {
+        shell: isWin ? 'cmd.exe' : '/bin/bash',
+        env: {
+          ...process.env
+        }
+      });
+
+      installerProc.on('exit', (exitCode: number) => {
+        if (exitCode === 0) {
+          event.sender.send('install-bundled-python-env-result', 'SUCCESS');
+          app.relaunch();
+          app.quit();
+        } else {
+          event.sender.send('install-bundled-python-env-result', 'FAILURE');
+          log.error(new Error(`Installer Exit: ${exitCode}`));
+        }
+      });
+
+      installerProc.on('error', (err: Error) => {
+        event.sender.send('install-bundled-python-env-result', 'FAILURE');
+        log.error(err);
+      });
+    });
+
     ipcMain.handle('validate-python-path', (event, path) => {
       return this._registry.validatePythonEnvironmentAtPath(path);
     });
@@ -455,7 +519,7 @@ export class JupyterApplication implements IApplication, IStatefulService {
   }
 
   private _showPythonSelectorDialog(
-    reason: 'change' | 'invalid-setting' = 'change'
+    reason: 'change' | 'invalid-bundled-env' | 'invalid-env' = 'change'
   ) {
     const dialog = new BrowserWindow({
       title: 'Set Python Environment',
@@ -473,9 +537,13 @@ export class JupyterApplication implements IApplication, IStatefulService {
 
     const bundledPythonPath = this._registry.getBundledPythonPath();
     const pythonPath = this._applicationState.pythonPath;
-    let useBundledPythonPath = false;
-    if (pythonPath === '' || pythonPath === bundledPythonPath) {
-      useBundledPythonPath = true;
+    let checkBundledPythonPath = false;
+    if (
+      reason === 'invalid-bundled-env' ||
+      pythonPath === '' ||
+      pythonPath === bundledPythonPath
+    ) {
+      checkBundledPythonPath = true;
     }
     const configuredPath = pythonPath === '' ? bundledPythonPath : pythonPath;
     const requirements = this._registry.getRequirements();
@@ -493,8 +561,13 @@ export class JupyterApplication implements IApplication, IStatefulService {
           );
 
     const template = `
+            <html>
             <body style="background: rgba(238,238,238,1); font-size: 13px; font-family: Helvetica, Arial, sans-serif; padding: 20px;">
-            <style>.row {display: flex; margin-bottom: 10px; }</style>
+            <style>
+              .row {display: flex; margin-bottom: 10px;}
+              .progress-message {margin-right: 5px; line-height: 24px; visibility: hidden;}
+              .progress-animation {margin-right: 5px; visibility: hidden;}
+            </style>
             <div style="height: 100%; display: flex;flex-direction: column; justify-content: space-between;">
                 <div class="row">
                     <b>Set Python Environment</b>
@@ -503,12 +576,19 @@ export class JupyterApplication implements IApplication, IStatefulService {
                     ${message}
                 </div>
                 <div>
+                    <% if (reason === 'invalid-bundled-env') { %>
+                      <div class="row">
+                          <input type="radio" id="install-new" name="env_type" value="install-new" checked %> onchange="handleEnvTypeChange(this);">
+                          <label for="install-new">Install Python environment using the bundled installer</label>
+                      </div>
+                    <% } else { %>
+                      <div class="row">
+                          <input type="radio" id="bundled" name="env_type" value="bundled" <%= checkBundledPythonPath ? 'checked' : '' %> onchange="handleEnvTypeChange(this);">
+                          <label for="bundled">Use the bundled Python environment</label>
+                      </div>
+                    <% } %>
                     <div class="row">
-                        <input type="radio" id="bundled" name="env_type" value="bundled" <%= useBundledPythonPath ? 'checked' : '' %> onchange="handleEnvTypeChange(this);">
-                        <label for="bundled">Use the bundled Python environment</label>
-                    </div>
-                    <div class="row">
-                        <input type="radio" id="custom" name="env_type" value="custom" <%= !useBundledPythonPath ? 'checked' : '' %> onchange="handleEnvTypeChange(this);">
+                        <input type="radio" id="custom" name="env_type" value="custom" <%= !checkBundledPythonPath ? 'checked' : '' %> onchange="handleEnvTypeChange(this);">
                         <label for="custom">Use a custom Python environment</label>
                     </div>
 
@@ -521,8 +601,10 @@ export class JupyterApplication implements IApplication, IStatefulService {
                         </div>
                     </div>
                     <div class="row" style="justify-content: flex-end;">
-                        <button onclick='handleSave(this);' style='margin-right: 5px;'>Save and restart</button>
-                        <button onclick='handleCancel(this);'>Cancel</button>
+                      <div id="progress-message" class="progress-message"></div>  
+                      <div id="progress-animation" class="progress-animation">${loadingAnimation}</div>
+                      <button id="apply" onclick='handleApply(this);' style='margin-right: 5px;'>Apply and restart</button>
+                      <button id="cancel" onclick='handleCancel(this);'>Cancel</button>
                     </div>
                 </div>
             </div>
@@ -530,31 +612,47 @@ export class JupyterApplication implements IApplication, IStatefulService {
             <script>
                 const ipcRenderer = require('electron').ipcRenderer;
                 let pythonPath = '';
+                const installNewRadio = document.getElementById('install-new');
                 const bundledRadio = document.getElementById('bundled');
                 const pythonPathInput = document.getElementById('python-path');
                 const selectPythonPathButton = document.getElementById('select-python-path');
+                const applyButton = document.getElementById('apply');
+                const cancelButton = document.getElementById('cancel');
+                const progressMessage = document.getElementById('progress-message');
+                const progressAnimation = document.getElementById('progress-animation');
 
                 function handleSelectPythonPath(el) {
                     ipcRenderer.send('select-python-path');
                 }
                 function handleEnvTypeChange() {
-                    pythonPathInput.disabled = bundledRadio.checked;
-                    selectPythonPathButton.disabled = bundledRadio.checked;
+                    const installNewOrUseBundled = (installNewRadio && installNewRadio.checked) || (bundledRadio && bundledRadio.checked);
+                    pythonPathInput.disabled = installNewOrUseBundled;
+                    selectPythonPathButton.disabled = installNewOrUseBundled;
                 }
 
-                function handleSave(el) {
-                    const useBundledEnv = bundledRadio.checked;
-                    if (!useBundledEnv) {
-                        ipcRenderer.invoke('validate-python-path', pythonPathInput.value).then((valid) => {
-                            if (valid) {
-                                ipcRenderer.send('set-python-path', pythonPathInput.value);
-                            } else {
-                                ipcRenderer.send('show-invalid-python-path-message', pythonPathInput.value);
-                            }
-                        });
+                function showProgress(message, animate) {
+                  progressMessage.innerText = message;
+                  progressMessage.style.visibility = message !== '' ? 'visible' : 'hidden';
+                  progressAnimation.style.visibility = animate ? 'visible' : 'hidden';
+                }
+
+                function handleApply(el) {
+                    if (installNewRadio && installNewRadio.checked) {
+                      ipcRenderer.send('install-bundled-python-env');
+                      showProgress('Installing environment', true);
+                      applyButton.disabled = true;
+                      cancelButton.disabled = true;
+                    } else if (bundledRadio && bundledRadio.checked) {
+                      ipcRenderer.send('set-python-path', '');
                     } else {
-                        ipcRenderer.send('set-python-path', '');
-                    }
+                      ipcRenderer.invoke('validate-python-path', pythonPathInput.value).then((valid) => {
+                      if (valid) {
+                          ipcRenderer.send('set-python-path', pythonPathInput.value);
+                      } else {
+                          ipcRenderer.send('show-invalid-python-path-message', pythonPathInput.value);
+                      }
+                    });
+                  }
                 }
 
                 function handleCancel(el) {
@@ -565,12 +663,25 @@ export class JupyterApplication implements IApplication, IStatefulService {
                     pythonPathInput.value = path;
                 });
 
+                ipcRenderer.on('install-bundled-python-env-result', (event, result) => {
+                  const message = result === 'CANCELLED' ?
+                    'Installation cancelled!' :
+                    result === 'FAILURE' ?
+                      'Failed to install the environment!' : '';
+                  showProgress(message, false);
+                  const disableButtons = result === 'SUCCESS';
+                  applyButton.disabled = disableButtons;
+                  cancelButton.disabled = disableButtons;
+                });
+
                 handleEnvTypeChange();
             </script>
             </body>
+            </html>
         `;
     const pageSource = ejs.render(template, {
-      useBundledPythonPath,
+      reason,
+      checkBundledPythonPath,
       pythonPath
     });
     dialog.loadURL(`data:text/html;charset=utf-8,${pageSource}`);

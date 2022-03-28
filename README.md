@@ -14,7 +14,7 @@ Before installing please read the [Python Environment Customization Guide](user-
 
 - [Debian, Ubuntu Linux Installer](https://github.com/jupyterlab/jupyterlab-desktop/releases/latest/download/JupyterLab-Setup-Debian.deb)
 - [Red Hat, Fedora, SUSE Linux Installer](https://github.com/jupyterlab/jupyterlab-desktop/releases/latest/download/JupyterLab-Setup-Fedora.rpm)
-- [macOS Installer](https://github.com/jupyterlab/jupyterlab-desktop/releases/latest/download/JupyterLab-Setup-macOS.pkg)
+- [macOS Installer](https://github.com/jupyterlab/jupyterlab-desktop/releases/latest/download/JupyterLab-Setup-macOS.dmg)
 - [Windows Installer](https://github.com/jupyterlab/jupyterlab-desktop/releases/latest/download/JupyterLab-Setup-Windows.exe)
 
 ## Launching JupyterLab Desktop
@@ -44,7 +44,7 @@ By default JupyterLab Desktop will only load and write to Jupyter configuration 
 
 - `%APPDATA%\jupyterlab-desktop` on Windows
 - `$XDG_CONFIG_HOME/jupyterlab-desktop` or `~/.config/jupyterlab-desktop` on Linux
-- `~/Library/Application\ Support/jupyterlab-desktop` on macOS
+- `~/Library/jupyterlab-desktop` on macOS
 
 ignoring any other Jupyter configuration which may be present in standard Jupyter paths as defined by `jupyter --paths`.
 This includes `jupyter-server` settings, `jupyterlab` settings and workspaces, and any other configuration which would
@@ -110,13 +110,13 @@ JupyterLab Desktop bundles JupyterLab front-end and a conda environment as Jupyt
 
   Installer will be created in one of `env_installer/JupyterLabDesktopAppServer<version>-MacOSX-x86_64.sh`, `env_installer/JupyterLabDesktopAppServer-<version>-Linux-x86_64.sh`, `env_installer/JupyterLabDesktopAppServer-<version>-Windows-x86_64.exe` based on your platform
 
-- Run the installer to install the JupyterLab Desktop Server. Make sure to set install location to `jlab_server` directory that is at the same level as `jupyterlab-desktop` project source code
-
 - Now you can launch the JupyterLab Desktop locally using:
 
   ```bash
   yarn start
   ```
+
+  If JupyterLab Desktop does not find a compatible Python environment configured, it will prompt for installation using JupyterLab Desktop Server installer or let you choose a custom environment on your computer at first launch.
 
 ## Building for distribution
 
@@ -138,7 +138,7 @@ JupyterLab Desktop bundles JupyterLab front-end and a conda environment as Jupyt
   yarn dist:<platform>
   ```
 
-  Application Installer will be created in `dist/JupyterLab.pkg` (macOS), `dist/JupyterLab.deb` (Debian, Ubuntu), `dist/JupyterLab.rpm` (Red Hat, Fedora) and `dist/JupyterLab-Setup.exe` (Windows) based on the platform
+  Application Installer will be created in `dist/JupyterLab.dmg` (macOS), `dist/JupyterLab.deb` (Debian, Ubuntu), `dist/JupyterLab.rpm` (Red Hat, Fedora) and `dist/JupyterLab-Setup.exe` (Windows) based on the platform
 
 ## Release Instructions
 

@@ -2,7 +2,7 @@ import { execFile, ExecFileOptions, execFileSync } from 'child_process';
 
 import { IService } from './main';
 
-import { basename, dirname, join, normalize } from 'path';
+import { basename, join, normalize } from 'path';
 
 import * as path from 'path';
 
@@ -20,6 +20,7 @@ import {
   IPythonEnvironment,
   IVersionContainer
 } from './tokens';
+import { getUserDataDir } from './utils';
 
 const envInfoPyCode = fs
   .readFileSync(path.join(__dirname, 'env_info.py'))
@@ -390,7 +391,8 @@ export class Registry implements IRegistry {
 
   getBundledPythonPath(): string {
     const platform = process.platform;
-    let envPath = join(dirname(app.getAppPath()), 'jlab_server');
+    const userDataDir = getUserDataDir();
+    let envPath = join(userDataDir, 'jlab_server');
     if (platform !== 'win32') {
       envPath = join(envPath, 'bin');
     }
@@ -515,7 +517,7 @@ export class Registry implements IRegistry {
     let allCondas = [pathCondas, commonCondas];
 
     // add bundled conda env to the list of base conda envs
-    const bundledEnvPath = path.join(dirname(app.getAppPath()), 'jlab_server');
+    const bundledEnvPath = path.join(getUserDataDir(), 'jlab_server');
     if (fs.existsSync(path.join(bundledEnvPath, 'condabin'))) {
       allCondas.unshift(Promise.resolve([bundledEnvPath]));
     }

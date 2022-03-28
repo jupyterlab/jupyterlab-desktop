@@ -8,7 +8,8 @@ import * as fs from 'fs';
 import { randomBytes } from 'crypto';
 import { AddressInfo, createServer } from 'net';
 
-import { appConfig, isDevMode } from './utils';
+import { appConfig, getAppDir, isDevMode } from './utils';
+import { execSync } from 'child_process';
 
 async function getFreePort(): Promise<number> {
   return new Promise<number>(resolve => {
@@ -167,6 +168,28 @@ app.on('open-file', (event: Electron.Event, _path: string) => {
   process.env.JLAB_DESKTOP_HOME = path.dirname(_path);
 });
 
+function setupJLabCommand() {
+  if (process.platform !== 'darwin') {
+    return;
+  }
+
+  const symlinkPath = '/usr/local/bin/jlab';
+  const targetPath = `${getAppDir()}/app/jlab`;
+
+  if (fs.existsSync(symlinkPath) || !fs.existsSync(targetPath)) {
+    return;
+  }
+
+  try {
+    const cmd = `ln -s ${targetPath} ${symlinkPath}`;
+
+    execSync(cmd, { shell: '/bin/bash' });
+    fs.chmodSync(symlinkPath, 0o755);
+  } catch (error) {
+    log.error(error);
+  }
+}
+
 /**
  * Load all services when the electron app is
  * ready.
@@ -174,6 +197,7 @@ app.on('open-file', (event: Electron.Event, _path: string) => {
 app.on('ready', () => {
   Promise.all([setAppConfig(), handOverArguments()])
     .then(() => {
+      setupJLabCommand();
       let serviceManager = new Bottle();
       let autostarts: string[] = [];
       services.forEach((s: IService) => {

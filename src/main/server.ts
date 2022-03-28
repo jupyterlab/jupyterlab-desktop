@@ -19,7 +19,12 @@ import * as os from 'os';
 import * as path from 'path';
 import * as http from 'http';
 import { IEnvironmentType, IPythonEnvironment } from './tokens';
-import { appConfig, getEnvironmentPath, getSchemasDir } from './utils';
+import {
+  appConfig,
+  getEnvironmentPath,
+  getSchemasDir,
+  getUserDataDir
+} from './utils';
 
 const SERVER_LAUNCH_TIMEOUT = 30000; // milliseconds
 const SERVER_RESTART_LIMIT = 3; // max server restarts
@@ -258,7 +263,7 @@ export class JupyterServer {
             ...process.env,
             JUPYTER_TOKEN: appConfig.token,
             JUPYTER_CONFIG_DIR:
-              process.env.JLAB_DESKTOP_CONFIG_DIR || app.getPath('userData')
+              process.env.JLAB_DESKTOP_CONFIG_DIR || getUserDataDir()
           }
         });
 
