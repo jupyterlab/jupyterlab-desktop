@@ -86,7 +86,7 @@ jobs:
           echo "APPLEIDPASS=${{ secrets.APPLEIDPASS }}" >> $GITHUB_ENV
           echo "CSC_KEY_PASSWORD=${{ secrets.CSC_KEY_PASSWORD }}" >> $GITHUB_ENV
           echo "CSC_LINK=${{ secrets.CSC_LINK }}" >> $GITHUB_ENV
-        if: steps.release-exists.outputs.result
+        if: steps.release-exists.outputs.result == 'true'
 
       - name: Create Application Installer
         env:
