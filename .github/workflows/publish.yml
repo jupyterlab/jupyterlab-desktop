@@ -76,9 +76,9 @@ jobs:
             return releaseWithTag ? 'true' : 'false'
           result-encoding: string
 
-      # - name: Create Application Server Installer
-      #   run: |
-      #     yarn create_env_installer:${{ matrix.cfg.platform }}
+      - name: Create Application Server Installer
+        run: |
+          yarn create_env_installer:${{ matrix.cfg.platform }}
 
       - name: Create Application Installer for Test
         env:
@@ -98,84 +98,84 @@ jobs:
           yarn dist:${{ matrix.cfg.platform }}
         if: steps.release-exists.outputs.result == 'true'
 
-      # - name: Upload Debian Installer
-      #   if: matrix.cfg.platform == 'linux'
-      #   uses: actions/upload-artifact@v2
-      #   with:
-      #     name: debian-installer
-      #     path: |
-      #       dist/JupyterLab.deb
+      - name: Upload Debian Installer
+        if: matrix.cfg.platform == 'linux'
+        uses: actions/upload-artifact@v2
+        with:
+          name: debian-installer
+          path: |
+            dist/JupyterLab.deb
 
-      # - name: Upload Fedora Installer
-      #   if: matrix.cfg.platform == 'linux'
-      #   uses: actions/upload-artifact@v2
-      #   with:
-      #     name: fedora-installer
-      #     path: |
-      #       dist/JupyterLab.rpm
+      - name: Upload Fedora Installer
+        if: matrix.cfg.platform == 'linux'
+        uses: actions/upload-artifact@v2
+        with:
+          name: fedora-installer
+          path: |
+            dist/JupyterLab.rpm
 
-      # - name: Upload macOS Installer
-      #   if: matrix.cfg.platform == 'mac'
-      #   uses: actions/upload-artifact@v2
-      #   with:
-      #     name: mac-installer
-      #     path: |
-      #       dist/JupyterLab.dmg
+      - name: Upload macOS Installer
+        if: matrix.cfg.platform == 'mac'
+        uses: actions/upload-artifact@v2
+        with:
+          name: mac-installer
+          path: |
+            dist/JupyterLab.dmg
 
-      # - name: Upload Windows Installer
-      #   if: matrix.cfg.platform == 'win'
-      #   uses: actions/upload-artifact@v2
-      #   with:
-      #     name: windows-installer
-      #     path: |
-      #       dist/JupyterLab-Setup.exe
+      - name: Upload Windows Installer
+        if: matrix.cfg.platform == 'win'
+        uses: actions/upload-artifact@v2
+        with:
+          name: windows-installer
+          path: |
+            dist/JupyterLab-Setup.exe
 
-      # - name: Upload Debian Installer as Release asset
-      #   if: matrix.cfg.platform == 'linux' && steps.release-exists.outputs.result == 'true'
-      #   uses: svenstaro/upload-release-action@v2
-      #   with:
-      #     repo_token: ${{ secrets.JLAB_APP_TOKEN }}
-      #     file: dist/JupyterLab.deb
-      #     asset_name: JupyterLab-Setup-Debian.deb
-      #     tag: v${{ steps.package-info.outputs.version}}
-      #     overwrite: true
+      - name: Upload Debian Installer as Release asset
+        if: matrix.cfg.platform == 'linux' && steps.release-exists.outputs.result == 'true'
+        uses: svenstaro/upload-release-action@v2
+        with:
+          repo_token: ${{ secrets.JLAB_APP_TOKEN }}
+          file: dist/JupyterLab.deb
+          asset_name: JupyterLab-Setup-Debian.deb
+          tag: v${{ steps.package-info.outputs.version}}
+          overwrite: true
 
-      # - name: Upload Fedora Installer as Release asset
-      #   if: matrix.cfg.platform == 'linux' && steps.release-exists.outputs.result == 'true'
-      #   uses: svenstaro/upload-release-action@v2
-      #   with:
-      #     repo_token: ${{ secrets.JLAB_APP_TOKEN }}
-      #     file: dist/JupyterLab.rpm
-      #     asset_name: JupyterLab-Setup-Fedora.rpm
-      #     tag: v${{ steps.package-info.outputs.version}}
-      #     overwrite: true
+      - name: Upload Fedora Installer as Release asset
+        if: matrix.cfg.platform == 'linux' && steps.release-exists.outputs.result == 'true'
+        uses: svenstaro/upload-release-action@v2
+        with:
+          repo_token: ${{ secrets.JLAB_APP_TOKEN }}
+          file: dist/JupyterLab.rpm
+          asset_name: JupyterLab-Setup-Fedora.rpm
+          tag: v${{ steps.package-info.outputs.version}}
+          overwrite: true
 
-      # - name: Upload macOS Installer as Release asset
-      #   if: matrix.cfg.platform == 'mac' && steps.release-exists.outputs.result == 'true'
-      #   uses: svenstaro/upload-release-action@v2
-      #   with:
-      #     repo_token: ${{ secrets.JLAB_APP_TOKEN }}
-      #     file: dist/JupyterLab.dmg
-      #     asset_name: JupyterLab-Setup-macOS.dmg
-      #     tag: v${{ steps.package-info.outputs.version}}
-      #     overwrite: true
+      - name: Upload macOS Installer as Release asset
+        if: matrix.cfg.platform == 'mac' && steps.release-exists.outputs.result == 'true'
+        uses: svenstaro/upload-release-action@v2
+        with:
+          repo_token: ${{ secrets.JLAB_APP_TOKEN }}
+          file: dist/JupyterLab.dmg
+          asset_name: JupyterLab-Setup-macOS.dmg
+          tag: v${{ steps.package-info.outputs.version}}
+          overwrite: true
 
-      # - name: Upload Windows Installer as Release asset
-      #   if: matrix.cfg.platform == 'win' && steps.release-exists.outputs.result == 'true'
-      #   uses: svenstaro/upload-release-action@v2
-      #   with:
-      #     repo_token: ${{ secrets.JLAB_APP_TOKEN }}
-      #     file: dist/JupyterLab-Setup.exe
-      #     asset_name: JupyterLab-Setup-Windows.exe
-      #     tag: v${{ steps.package-info.outputs.version}}
-      #     overwrite: true
+      - name: Upload Windows Installer as Release asset
+        if: matrix.cfg.platform == 'win' && steps.release-exists.outputs.result == 'true'
+        uses: svenstaro/upload-release-action@v2
+        with:
+          repo_token: ${{ secrets.JLAB_APP_TOKEN }}
+          file: dist/JupyterLab-Setup.exe
+          asset_name: JupyterLab-Setup-Windows.exe
+          tag: v${{ steps.package-info.outputs.version}}
+          overwrite: true
 
-      # - name: Upload latest.yml Release asset
-      #   if: matrix.cfg.platform == 'win' && steps.release-exists.outputs.result == 'true'
-      #   uses: svenstaro/upload-release-action@v2
-      #   with:
-      #     repo_token: ${{ secrets.JLAB_APP_TOKEN }}
-      #     file: dist/latest.yml
-      #     asset_name: latest.yml
-      #     tag: v${{ steps.package-info.outputs.version}}
-      #     overwrite: true
+      - name: Upload latest.yml Release asset
+        if: matrix.cfg.platform == 'win' && steps.release-exists.outputs.result == 'true'
+        uses: svenstaro/upload-release-action@v2
+        with:
+          repo_token: ${{ secrets.JLAB_APP_TOKEN }}
+          file: dist/latest.yml
+          asset_name: latest.yml
+          tag: v${{ steps.package-info.outputs.version}}
+          overwrite: true
