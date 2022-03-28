@@ -185,6 +185,7 @@ function setupJLabCommand() {
 
     execSync(cmd, { shell: '/bin/bash' });
     fs.chmodSync(symlinkPath, 0o755);
+    fs.chmodSync(targetPath, 0o755);
   } catch (error) {
     log.error(error);
   }
