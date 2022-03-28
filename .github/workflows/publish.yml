@@ -82,10 +82,10 @@ jobs:
 
       - name: Sets Environment variables for release
         run: |
-          echo "APPLEID<<EOF\n${{ secrets.APPLEID }}\nEOF" >> $GITHUB_ENV
-          echo "APPLEIDPASS<<EOF\n${{ secrets.APPLEIDPASS }}\nEOF" >> $GITHUB_ENV
-          echo "CSC_KEY_PASSWORD<<EOF\n${{ secrets.CSC_KEY_PASSWORD }}\nEOF" >> $GITHUB_ENV
-          echo "CSC_LINK<<EOF\n${{ secrets.CSC_LINK }}\nEOF" >> $GITHUB_ENV
+          echo "APPLEID<<EOF1\n${{ secrets.APPLEID }}\nEOF1" >> $GITHUB_ENV
+          echo "APPLEIDPASS<<EOF2\n${{ secrets.APPLEIDPASS }}\nEOF2" >> $GITHUB_ENV
+          echo "CSC_KEY_PASSWORD<<EOF3\n${{ secrets.CSC_KEY_PASSWORD }}\nEOF3" >> $GITHUB_ENV
+          echo "CSC_LINK<<EOF4\n${{ secrets.CSC_LINK }}\nEOF4" >> $GITHUB_ENV
         if: matrix.cfg.platform == 'mac' && steps.release-exists.outputs.result == 'true'
 
       - name: Create Application Installer
