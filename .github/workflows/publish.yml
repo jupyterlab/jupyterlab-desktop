@@ -85,9 +85,7 @@ jobs:
           echo "APPLEID=${{ secrets.APPLEID }}" >> $GITHUB_ENV
           echo "APPLEIDPASS=${{ secrets.APPLEIDPASS }}" >> $GITHUB_ENV
           echo "CSC_KEY_PASSWORD=${{ secrets.CSC_KEY_PASSWORD }}" >> $GITHUB_ENV
-          echo 'CSC_LINK<<EOF' >> $GITHUB_ENV
-          echo ${{ secrets.CSC_LINK }} >> $GITHUB_ENV
-          echo 'EOF' >> $GITHUB_ENV
+          echo "CSC_LINK=${{ secrets.CSC_LINK }}" >> $GITHUB_ENV
         if: matrix.cfg.platform == 'mac' && steps.release-exists.outputs.result == 'true'
 
       # - name: Create Application Installer
