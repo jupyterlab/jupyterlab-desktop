@@ -1,7 +1,7 @@
 # github_url = "https://github.com/jupyterlab/jupyterlab-desktop/"
 
 [version]
-current = "3.3.2-1"
+current = "3.3.2-2"
 
 regex = '''
   (?P<major>\d+)
@@ -20,9 +20,6 @@ tag_template = "v{new_version}"
 [[file]]
 src = "package.json"
 search = '"version": "{current_version}"'
-[[file]]
-src = "electron-builder-scripts/wininstall.nsh"
-search = 'JupyterLabDesktopAppServer-{current_version}-Windows'
 [[file]]
 src = "env_installer/construct.yaml"
 search = 'version: {current_version}'
