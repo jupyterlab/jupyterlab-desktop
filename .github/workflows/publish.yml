@@ -82,12 +82,10 @@ jobs:
 
       - name: Sets Environment variables for release
         run: |
-          echo 'APPLEID<<EOF1' >> $GITHUB_ENV
-          echo ${{ secrets.APPLEID }} >> $GITHUB_ENV
-          echo 'EOF1\n' >> $GITHUB_ENV
-          echo 'APPLEIDPASS<<EOF2' >> $GITHUB_ENV
+          echo "APPLEID=${{ secrets.APPLEID }}" >> $GITHUB_ENV
+          echo 'APPLEIDPASS<<EOF' >> $GITHUB_ENV
           echo ${{ secrets.APPLEIDPASS }} >> $GITHUB_ENV
-          echo 'EOF2\n' >> $GITHUB_ENV
+          echo 'EOF\n' >> $GITHUB_ENV
           echo 'CSC_KEY_PASSWORD<<EOF3' >> $GITHUB_ENV
           echo ${{ secrets.CSC_KEY_PASSWORD }} >> $GITHUB_ENV
           echo 'EOF3\n' >> $GITHUB_ENV
