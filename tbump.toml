@@ -1,7 +1,7 @@
 # github_url = "https://github.com/jupyterlab/jupyterlab-desktop/"
 
 [version]
-current = "3.3.2-2"
+current = "3.3.3-1"
 
 regex = '''
   (?P<major>\d+)
