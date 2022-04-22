@@ -3677,6 +3677,11 @@ electron-builder@^23.0.2:
     update-notifier "^5.1.0"
     yargs "^17.0.1"
 
+electron-is-dev@^0.3.0:
+  version "0.3.0"
+  resolved "https://registry.yarnpkg.com/electron-is-dev/-/electron-is-dev-0.3.0.tgz#14e6fda5c68e9e4ecbeff9ccf037cbd7c05c5afe"
+  integrity sha1-FOb9pcaOnk7L7/nM8DfL18BcWv4=
+
 electron-log@^4.3.2:
   version "4.4.3"
   resolved "https://registry.yarnpkg.com/electron-log/-/electron-log-4.4.3.tgz#01c7f776e0b424b4958662ca7a043344a5fa645f"
@@ -4335,6 +4340,13 @@ get-symbol-description@^1.0.0:
     call-bind "^1.0.2"
     get-intrinsic "^1.1.1"
 
+github-url-to-object@^4.0.4:
+  version "4.0.6"
+  resolved "https://registry.yarnpkg.com/github-url-to-object/-/github-url-to-object-4.0.6.tgz#5ea8701dc8c336b8d582dc3fa5bf964165c3b365"
+  integrity sha512-NaqbYHMUAlPcmWFdrAB7bcxrNIiiJWJe8s/2+iOc9vlcHlwHqSGrPk+Yi3nu6ebTwgsZEa7igz+NH2vEq3gYwQ==
+  dependencies:
+    is-url "^1.1.0"
+
 glob-parent@^5.0.0, glob-parent@^5.1.2:
   version "5.1.2"
   resolved "https://registry.yarnpkg.com/glob-parent/-/glob-parent-5.1.2.tgz#869832c58034fe68a4093c17dc15e8340d8401c4"
@@ -4895,6 +4907,11 @@ is-typedarray@^1.0.0:
   version "1.0.0"
   resolved "https://registry.yarnpkg.com/is-typedarray/-/is-typedarray-1.0.0.tgz#e479c80858df0c1b11ddda6940f96011fcda4a9a"
   integrity sha1-5HnICFjfDBsR3dppQPlgEfzaSpo=
+
+is-url@^1.1.0, is-url@^1.2.4:
+  version "1.2.4"
+  resolved "https://registry.yarnpkg.com/is-url/-/is-url-1.2.4.tgz#04a4df46d28c4cff3d73d01ff06abeb318a1aa52"
+  integrity sha512-ITvGim8FhRiYe4IQ5uHSkj7pVaPDrCTkNd3yq3cV7iZAcJdHTUMPMEHcqSOy9xZ9qFenQCvi+2wjH9a1nXqHww==
 
 is-weakref@^1.0.1:
   version "1.0.2"
@@ -5477,6 +5494,11 @@ ms@2.1.2:
   version "2.1.2"
   resolved "https://registry.yarnpkg.com/ms/-/ms-2.1.2.tgz#d09d1f357b443f493382a8eb3ccd183872ae6009"
   integrity sha512-sGkPx+VjMtmA6MX27oA4FBFELFCZZ4S4XqeGOXCv68tT+jb3vk/RyaKWP0PTKyWtmLSM0b+adUTEvbs1PEaH2w==
+
+ms@^2.1.1:
+  version "2.1.3"
+  resolved "https://registry.yarnpkg.com/ms/-/ms-2.1.3.tgz#574c8138ce1d2b5861f0b44579dbadd60c6615b2"
+  integrity sha512-6FlzubTLZG3J2a/NVCAleEhjzq5oxgHyaCU9yYXvcLsvoVaHJq/s5xXI6/XXP6tz7R9xAOtHnSO/tXtF3WRTlA==
 
 nanoid@^3.1.23, nanoid@^3.3.1:
   version "3.3.1"
@@ -7121,6 +7143,16 @@ universalify@^2.0.0:
   version "2.0.0"
   resolved "https://registry.yarnpkg.com/universalify/-/universalify-2.0.0.tgz#75a4984efedc4b08975c5aeb73f530d02df25717"
   integrity sha512-hAZsKq7Yy11Zu1DE0OzWjw7nnLZmJZYTDZZyEFHZdUhV8FkH5MCfoU1XMaxXovpyW5nq5scPqq0ZDP9Zyl04oQ==
+
+update-electron-app@^2.0.1:
+  version "2.0.1"
+  resolved "https://registry.yarnpkg.com/update-electron-app/-/update-electron-app-2.0.1.tgz#229dbeb4534f51ec949e6a46ae1ac32f68a17eed"
+  integrity sha512-e4xEner89UZZaBGYJbYlMdL1uUrC0VjOsTAL2N4opPjzFtn+j7mdsJJsnyXZzUVeLY+8tuCX4XEsUM98oBHmZg==
+  dependencies:
+    electron-is-dev "^0.3.0"
+    github-url-to-object "^4.0.4"
+    is-url "^1.2.4"
+    ms "^2.1.1"
 
 update-notifier@^5.1.0:
   version "5.1.0"

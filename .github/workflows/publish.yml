@@ -160,6 +160,16 @@ jobs:
           tag: v${{ steps.package-info.outputs.version}}
           overwrite: true
 
+      - name: Upload macOS App as Release asset
+        if: matrix.cfg.platform == 'mac' && steps.release-exists.outputs.result == 'true'
+        uses: svenstaro/upload-release-action@v2
+        with:
+          repo_token: ${{ secrets.JLAB_APP_TOKEN }}
+          file: dist/JupyterLab.zip
+          asset_name: JupyterLab-macOS.zip
+          tag: v${{ steps.package-info.outputs.version}}
+          overwrite: true
+
       - name: Upload Windows Installer as Release asset
         if: matrix.cfg.platform == 'win' && steps.release-exists.outputs.result == 'true'
         uses: svenstaro/upload-release-action@v2

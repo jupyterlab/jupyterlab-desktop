@@ -165,7 +165,10 @@ export class JupyterApplication implements IApplication, IStatefulService {
           );
         }
 
-        if (this._applicationState.checkForUpdatesAutomatically) {
+        if (
+          process.platform !== 'darwin' &&
+          this._applicationState.checkForUpdatesAutomatically
+        ) {
           setTimeout(() => {
             this._checkForUpdates('on-new-version');
           }, 5000);
