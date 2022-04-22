@@ -1,5 +1,5 @@
 name: JupyterLabDesktopAppServer
-version: 3.3.2-2
+version: 3.3.4-1
 company: "Project Jupyter"
 
 welcome_image_text: "JupyterLab"
@@ -21,7 +21,7 @@ license_file: ../LICENSE
 specs:
   - conda
   - ipywidgets 7.6.5
-  - jupyterlab 3.3.2
+  - jupyterlab 3.3.4
   - ipympl >= 0.8.2
   - matplotlib-base
   - numpy
