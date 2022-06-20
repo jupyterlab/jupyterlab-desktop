@@ -174,7 +174,7 @@
     "@typescript-eslint/parser": "~4.8.1",
     "@yarnpkg/lockfile": "~1.1.0",
     "css-loader": "~5.1.1",
-    "electron": "^15.3.5",
+    "electron": "^15.5.5",
     "electron-builder": "^23.0.2",
     "electron-notarize": "^1.1.1",
     "eslint": "~7.14.0",
