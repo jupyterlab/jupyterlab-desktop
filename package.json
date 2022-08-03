@@ -298,7 +298,7 @@
     "@jupyterlab/vdom-extension": "3.4.3",
     "@jupyterlab/vega5-extension": "3.4.3",
     "bottlejs": "^2.0.0",
-    "ejs": "^3.1.6",
+    "ejs": "^3.1.7",
     "electron-log": "^4.3.2",
     "fix-path": "^3.0.0",
     "js-yaml": "^4.1.0",
