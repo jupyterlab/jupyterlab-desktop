@@ -19,6 +19,7 @@ const extensions: any = {
    * `resolutions` in `package.json`.
    */
   '@jupyterlab/apputils-extension': require('@jupyterlab/apputils-extension'),
+  '@jupyterlab/cell-toolbar-extension': require('@jupyterlab/cell-toolbar-extension'),
   '@jupyterlab/celltags-extension': require('@jupyterlab/celltags-extension'),
   '@jupyterlab/codemirror-extension': require('@jupyterlab/codemirror-extension'),
   '@jupyterlab/completer-extension': require('@jupyterlab/completer-extension'),
