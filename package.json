@@ -203,7 +203,7 @@
   },
   "dependencies": {
     "@fortawesome/fontawesome-free": "^5.15.2",
-    "@jupyter-widgets/jupyterlab-manager": "~3.0.1",
+    "@jupyter-widgets/jupyterlab-manager": "~5.0.2",
     "@jupyterlab/application": "3.4.5",
     "@jupyterlab/application-extension": "3.4.5",
     "@jupyterlab/apputils": "3.4.5",
