@@ -68,7 +68,7 @@ export class Registry implements IRegistry {
         name: 'jupyterlab',
         moduleName: 'jupyterlab',
         commands: ['--version'],
-        versionRange: new semver.Range('>=3.4.3')
+        versionRange: new semver.Range('>=3.4.5')
       }
     ];
 
