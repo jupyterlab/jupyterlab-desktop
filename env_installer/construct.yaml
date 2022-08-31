@@ -20,7 +20,7 @@ license_file: ../LICENSE
 
 specs:
   - conda
-  - ipywidgets 7.6.5
+  - ipywidgets >= 8.0.1
   - jupyterlab 3.4.5
   - ipympl >= 0.8.2
   - matplotlib-base
