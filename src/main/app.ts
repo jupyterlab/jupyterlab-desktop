@@ -286,12 +286,8 @@ export class JupyterApplication implements IApplication, IStatefulService {
    * Register all application event listeners
    */
   private _registerListeners(): void {
-    // On OS X it is common for applications and their menu bar to stay
-    // active until the user quits explicitly with Cmd + Q.
     app.on('window-all-closed', () => {
-      if (process.platform !== 'darwin') {
-        app.quit();
-      }
+      app.quit();
     });
 
     app.on('will-quit', event => {
