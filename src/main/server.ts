@@ -216,7 +216,7 @@ export class JupyterServer {
               type: 'error',
               buttons: ['OK', 'Cancel'],
               defaultId: 0,
-              cancelId: 0
+              cancelId: 1
             });
             if (choice == 1) {
               reject(new Error('Failed to activate conda environment'));

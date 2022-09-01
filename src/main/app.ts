@@ -368,7 +368,7 @@ export class JupyterApplication implements IApplication, IStatefulService {
           detail: `Install path (${installPath}) is not empty. Would you like to overwrite it?`,
           buttons: ['Overwrite', 'Cancel'],
           defaultId: 1,
-          cancelId: 0
+          cancelId: 1
         });
 
         if (choice === 0) {

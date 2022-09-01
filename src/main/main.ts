@@ -270,7 +270,7 @@ app.on('web-contents-created', (_event: any, webContents: WebContents) => {
       detail: 'Changes you made may not be saved.',
       buttons: ['Leave', 'Stay'],
       defaultId: 1,
-      cancelId: 0
+      cancelId: 1
     });
 
     if (choice === 0) {
