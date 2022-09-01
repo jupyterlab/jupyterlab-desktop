@@ -597,7 +597,7 @@ export class JupyterApplication implements IApplication, IStatefulService {
 
                     <div class="row">
                         <div style="flex-grow: 1;">
-                            <input type="text" id="python-path" value="<%= pythonPath %>" style="width: 100%;"></input>
+                            <input type="text" id="python-path" value="<%= pythonPath %>" style="width: 100%;" spellcheck="false"></input>
                         </div>
                         <div>
                             <button id='select-python-path' onclick='handleSelectPythonPath(this);'>Select Python path</button>
