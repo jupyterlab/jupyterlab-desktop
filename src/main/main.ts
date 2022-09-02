@@ -1,4 +1,4 @@
-import { app, autoUpdater, BrowserWindow, dialog, WebContents } from 'electron';
+import { app, autoUpdater, BrowserWindow, dialog, Menu, MenuItem, WebContents } from 'electron';
 
 const Bottle = require('bottlejs');
 import log from 'electron-log';
@@ -215,11 +215,45 @@ function setupJLabCommand() {
   }
 }
 
+function setApplicationMenu() {
+  if (process.platform !== 'darwin') {
+    return;
+  }
+
+  // hide Edit and Help menus
+  const menu = Menu.getApplicationMenu();
+  let viewMenu: MenuItem | undefined;
+  menu?.items.forEach((item) => {
+    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+    // @ts-ignore
+    if (item.role === 'editmenu' || item.role === 'help') {
+      item.visible = false;
+    }
+
+    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+    // @ts-ignore
+    if (item.role === 'viewmenu') {
+      viewMenu = item;
+    }
+  });
+  // hide Reload and Force Reload menu items
+  viewMenu?.submenu?.items.forEach((item) => {
+    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+    // @ts-ignore
+    if (item.role === 'reload' || item.role === 'forcereload') {
+      item.visible = false;
+    }
+  });
+  Menu.setApplicationMenu(menu);
+}
+
 /**
  * Load all services when the electron app is
  * ready.
  */
 app.on('ready', () => {
+  setApplicationMenu();
+
   Promise.all([setAppConfig(), handOverArguments()])
     .then(() => {
       setupJLabCommand();

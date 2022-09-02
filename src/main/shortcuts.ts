@@ -76,6 +76,10 @@ class KeyboardShortcutManager implements IShortcutManager {
     this._window.setMenuBarVisibility(wasMenuBarVisible);
   }
 
+  reload() {
+    // page reload is not allowed
+  }
+
   zoomIn() {
     let contents = webContents.getFocusedWebContents();
     if (!contents) {
@@ -156,6 +160,9 @@ class KeyboardShortcutManager implements IShortcutManager {
    * The enabled shortcuts
    */
   private _shortcuts: IKeyboardShortcut[] = [
+    { accelerator: 'CmdOrCtrl+R', command: this.reload.bind(this) },
+    { accelerator: 'CmdOrCtrl+Shift+R', command: this.reload.bind(this) },
+    { accelerator: 'F5', command: this.reload.bind(this) },
     { accelerator: 'CmdOrCtrl+=', command: this.zoomIn.bind(this) },
     { accelerator: 'CmdOrCtrl+-', command: this.zoomOut.bind(this) },
     { accelerator: 'F11', command: this.toggleFullscreen.bind(this) },
