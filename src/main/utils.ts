@@ -370,7 +370,9 @@ export function getAppDir(): string {
 
 export function getUserDataDir(): string {
   return process.platform === 'darwin'
-    ? path.normalize(path.join(app.getPath('home'), 'Library', 'jupyterlab-desktop'))
+    ? path.normalize(
+        path.join(app.getPath('home'), 'Library', 'jupyterlab-desktop')
+      )
     : app.getPath('userData');
 }
 

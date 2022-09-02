@@ -91,7 +91,7 @@ const desktopExtension: JupyterFrontEndPlugin<void> = {
     // patch for index.html? shown as app window title
     app.shell.layoutModified.connect(() => {
       setTimeout(() => {
-        if (document.title.startsWith("index.html?")) {
+        if (document.title.startsWith('index.html?')) {
           document.title = 'JupyterLab';
         }
       }, 100);

@@ -1,4 +1,12 @@
-import { app, autoUpdater, BrowserWindow, dialog, Menu, MenuItem, WebContents } from 'electron';
+import {
+  app,
+  autoUpdater,
+  BrowserWindow,
+  dialog,
+  Menu,
+  MenuItem,
+  WebContents
+} from 'electron';
 
 const Bottle = require('bottlejs');
 import log from 'electron-log';
@@ -223,7 +231,7 @@ function setApplicationMenu() {
   // hide Edit and Help menus
   const menu = Menu.getApplicationMenu();
   let viewMenu: MenuItem | undefined;
-  menu?.items.forEach((item) => {
+  menu?.items.forEach(item => {
     // eslint-disable-next-line @typescript-eslint/ban-ts-comment
     // @ts-ignore
     if (item.role === 'editmenu' || item.role === 'help') {
@@ -237,7 +245,7 @@ function setApplicationMenu() {
     }
   });
   // hide Reload and Force Reload menu items
-  viewMenu?.submenu?.items.forEach((item) => {
+  viewMenu?.submenu?.items.forEach(item => {
     // eslint-disable-next-line @typescript-eslint/ban-ts-comment
     // @ts-ignore
     if (item.role === 'reload' || item.role === 'forcereload') {
