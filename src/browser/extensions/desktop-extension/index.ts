@@ -3,8 +3,6 @@
 | Distributed under the terms of the Modified BSD License.
 |----------------------------------------------------------------------------*/
 
-import { ICommandPalette } from '@jupyterlab/apputils';
-
 import { IMainMenu } from '@jupyterlab/mainmenu';
 
 import { IStatusBar } from '@jupyterlab/statusbar';
@@ -22,10 +20,9 @@ import { ISessions } from '../../../main/sessions';
 
 const desktopExtension: JupyterFrontEndPlugin<void> = {
   id: 'jupyterlab-desktop.extensions.desktop',
-  requires: [ICommandPalette, IMainMenu, IStatusBar],
+  requires: [IMainMenu, IStatusBar],
   activate: (
     app: ElectronJupyterLab,
-    palette: ICommandPalette,
     menu: IMainMenu,
     statusBar: IStatusBar
   ) => {
@@ -90,6 +87,15 @@ const desktopExtension: JupyterFrontEndPlugin<void> = {
         ', '
       )}`;
     };
+
+    // patch for index.html? shown as app window title
+    app.shell.layoutModified.connect(() => {
+      setTimeout(() => {
+        if (document.title.startsWith("index.html?")) {
+          document.title = 'JupyterLab';
+        }
+      }, 100);
+    });
 
     asyncRemoteRenderer
       .runRemoteMethod(IAppRemoteInterface.getCurrentPythonEnvironment, void 0)
