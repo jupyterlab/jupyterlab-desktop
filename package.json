@@ -1,5 +1,6 @@
 {
   "name": "jupyterlab-desktop",
+  "productName": "JupyterLab",
   "version": "3.4.5-1",
   "description": "JupyterLab Desktop",
   "main": "./build/out/main/main.js",
