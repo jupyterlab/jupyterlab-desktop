@@ -228,13 +228,13 @@ function setApplicationMenu() {
     return;
   }
 
-  // hide Edit and Help menus
+  // hide Help menu
   const menu = Menu.getApplicationMenu();
   let viewMenu: MenuItem | undefined;
   menu?.items.forEach(item => {
     // eslint-disable-next-line @typescript-eslint/ban-ts-comment
     // @ts-ignore
-    if (item.role === 'editmenu' || item.role === 'help') {
+    if (item.role === 'help') {
       item.visible = false;
     }
 
@@ -250,6 +250,7 @@ function setApplicationMenu() {
     // @ts-ignore
     if (item.role === 'reload' || item.role === 'forcereload') {
       item.visible = false;
+      item.enabled = false;
     }
   });
   Menu.setApplicationMenu(menu);
