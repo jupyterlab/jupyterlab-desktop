@@ -76,10 +76,6 @@ class KeyboardShortcutManager implements IShortcutManager {
     this._window.setMenuBarVisibility(wasMenuBarVisible);
   }
 
-  reload() {
-    // page reload is not allowed
-  }
-
   zoomIn() {
     const contents = webContents.getFocusedWebContents();
     if (!contents) {
