@@ -1,6 +1,5 @@
 import {
   app,
-  autoUpdater,
   BrowserWindow,
   dialog,
   Menu,
@@ -18,30 +17,6 @@ import { AddressInfo, createServer } from 'net';
 
 import { appConfig, getAppDir, isDevMode } from './utils';
 import { execSync } from 'child_process';
-
-autoUpdater.on('update-downloaded', (event, releaseNotes, releaseName) => {
-  const dialogOpts = {
-    type: 'info',
-    buttons: ['Restart', 'Later'],
-    title: 'Application Update',
-    message: process.platform === 'win32' ? releaseNotes : releaseName,
-    detail:
-      'A new version has been downloaded. Restart the application to apply the updates.'
-  };
-
-  dialog.showMessageBox(dialogOpts).then(returnValue => {
-    if (returnValue.response === 0) autoUpdater.quitAndInstall();
-  });
-});
-
-autoUpdater.on('error', message => {
-  log.error('There was a problem updating the application');
-  log.error(message);
-});
-
-if (process.platform === 'darwin') {
-  require('update-electron-app')();
-}
 
 async function getFreePort(): Promise<number> {
   return new Promise<number>(resolve => {

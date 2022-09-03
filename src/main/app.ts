@@ -1,7 +1,14 @@
 // Copyright (c) Jupyter Development Team.
 // Distributed under the terms of the Modified BSD License.
 
-import { app, BrowserWindow, dialog, ipcMain, shell } from 'electron';
+import {
+  app,
+  autoUpdater,
+  BrowserWindow,
+  dialog,
+  ipcMain,
+  shell
+} from 'electron';
 
 import { IService } from './main';
 
@@ -135,6 +142,7 @@ export class JupyterApplication implements IApplication, IStatefulService {
 
     this._applicationState = {
       checkForUpdatesAutomatically: true,
+      installUpdatesAutomatically: true,
       pythonPath: '',
       condaRootPath: ''
     };
@@ -143,13 +151,14 @@ export class JupyterApplication implements IApplication, IStatefulService {
       (state: JupyterApplication.IState) => {
         if (state) {
           this._applicationState = state;
-          if (this._applicationState.pythonPath === undefined) {
-            this._applicationState.pythonPath = '';
-          }
         }
 
+        const appState = this._applicationState;
+        if (appState.pythonPath === undefined) {
+          appState.pythonPath = '';
+        }
         const bundledPythonPath = this._registry.getBundledPythonPath();
-        let pythonPath = this._applicationState.pythonPath;
+        let pythonPath = appState.pythonPath;
         if (pythonPath === '') {
           pythonPath = bundledPythonPath;
         }
@@ -158,20 +167,28 @@ export class JupyterApplication implements IApplication, IStatefulService {
 
         if (this._registry.validatePythonEnvironmentAtPath(pythonPath)) {
           this._registry.setDefaultPythonPath(pythonPath);
-          this._applicationState.pythonPath = pythonPath;
+          appState.pythonPath = pythonPath;
         } else {
           this._showPythonSelectorDialog(
             useBundledPythonPath ? 'invalid-bundled-env' : 'invalid-env'
           );
         }
 
-        if (
-          process.platform !== 'darwin' &&
-          this._applicationState.checkForUpdatesAutomatically
-        ) {
-          setTimeout(() => {
-            this._checkForUpdates('on-new-version');
-          }, 5000);
+        if (appState.checkForUpdatesAutomatically !== false) {
+          let checkDirectly = true;
+          if (
+            process.platform === 'darwin' &&
+            appState.installUpdatesAutomatically !== false
+          ) {
+            this._setupAutoUpdater();
+            checkDirectly = false;
+          }
+
+          if (checkDirectly) {
+            setTimeout(() => {
+              this._checkForUpdates('on-new-version');
+            }, 5000);
+          }
         }
       }
     );
@@ -233,6 +250,30 @@ export class JupyterApplication implements IApplication, IStatefulService {
 
   verifyState(state: JupyterApplication.IState): boolean {
     return true;
+  }
+
+  private _setupAutoUpdater() {
+    autoUpdater.on('update-downloaded', (event, releaseNotes, releaseName) => {
+      const dialogOpts = {
+        type: 'info',
+        buttons: ['Restart', 'Later'],
+        title: 'Application Update',
+        message: process.platform === 'win32' ? releaseNotes : releaseName,
+        detail:
+          'A new version has been downloaded. Restart the application to apply the updates.'
+      };
+
+      dialog.showMessageBox(dialogOpts).then(returnValue => {
+        if (returnValue.response === 0) autoUpdater.quitAndInstall();
+      });
+    });
+
+    autoUpdater.on('error', message => {
+      log.error('There was a problem updating the application');
+      log.error(message);
+    });
+
+    require('update-electron-app')();
   }
 
   private _updateState(id: string, data: JSONValue): void {
@@ -324,6 +365,10 @@ export class JupyterApplication implements IApplication, IStatefulService {
 
     ipcMain.on('set-check-for-updates-automatically', (_event, autoUpdate) => {
       this._applicationState.checkForUpdatesAutomatically = autoUpdate;
+    });
+
+    ipcMain.on('set-install-updates-automatically', (_event, autoUpdate) => {
+      this._applicationState.installUpdatesAutomatically = autoUpdate;
     });
 
     ipcMain.on('launch-installer-download-page', () => {
@@ -479,6 +524,10 @@ export class JupyterApplication implements IApplication, IStatefulService {
 
     const checkForUpdatesAutomatically =
       this._applicationState.checkForUpdatesAutomatically !== false;
+    const installUpdatesAutomaticallyEnabled = process.platform === 'darwin';
+    const installUpdatesAutomatically =
+      installUpdatesAutomaticallyEnabled &&
+      this._applicationState.installUpdatesAutomatically !== false;
     const message =
       type === 'error'
         ? 'Error occurred while checking for updates!'
@@ -487,32 +536,61 @@ export class JupyterApplication implements IApplication, IStatefulService {
         : `There is a new version available. Download the latest version from <a href="javascript:void(0)" onclick='handleReleasesLink(this);'>the Releases page</a>.`;
 
     const template = `
+            <html>
+            <head>
+              <style>
+              input:disabled+label { color: rgba(90,90,90,1); }
+              </style>
+            </head>
             <body style="background: rgba(238,238,238,1); font-size: 13px; font-family: Helvetica, Arial, sans-serif">
             <div style="height: 100%; display: flex;flex-direction: column; justify-content: space-between;">
                 <div>
                 <%- message %>
                 </div>
                 <div>
-                    <label><input type='checkbox' <%= checkForUpdatesAutomatically ? 'checked' : '' %> onclick='handleAutoCheckForUpdates(this);'>Check for updates automatically</label>
+                    <input id='checkbox-update-check' type='checkbox' <%= checkForUpdatesAutomatically ? 'checked' : '' %> onclick='handleAutoCheckForUpdates(this);'><label for='checkbox-update-check'>Check for updates automatically</label>
+                    <br>
+                    <input id='checkbox-update-install' type='checkbox' <%= installUpdatesAutomatically ? 'checked' : '' %> <%= installUpdatesAutomaticallyEnabled ? '' : 'disabled' %> onclick='handleAutoInstallUpdates(this);'><label for='checkbox-update-install'>Download and install updates automatically</label>
                 </div>
             </div>
 
             <script>
                 const ipcRenderer = require('electron').ipcRenderer;
+                const autoUpdateCheckCheckbox = document.getElementById('checkbox-update-check');
+                const autoInstallCheckbox = document.getElementById('checkbox-update-install');
 
                 function handleAutoCheckForUpdates(el) {
                     ipcRenderer.send('set-check-for-updates-automatically', el.checked);
+                    updateAutoInstallCheckboxState();
+                }
+
+                function handleAutoInstallUpdates(el) {
+                  ipcRenderer.send('set-install-updates-automatically', el.checked);
                 }
 
                 function handleReleasesLink(el) {
                     ipcRenderer.send('launch-installer-download-page');
                 }
+
+                function updateAutoInstallCheckboxState() {
+                  if (<%= installUpdatesAutomaticallyEnabled ? 'true' : 'false' %> /* installUpdatesAutomaticallyEnabled */ &&
+                      autoUpdateCheckCheckbox.checked) {
+                      autoInstallCheckbox.removeAttribute('disabled');
+                  } else {
+                    autoInstallCheckbox.disabled = 'disabled';
+                  }
+                }
+
+                updateAutoInstallCheckboxState();
             </script>
             </body>
+            </html>
         `;
     const pageSource = ejs.render(template, {
       message,
-      checkForUpdatesAutomatically
+      checkForUpdatesAutomatically,
+      installUpdatesAutomaticallyEnabled,
+      installUpdatesAutomatically
     });
     dialog.loadURL(`data:text/html;charset=utf-8,${pageSource}`);
   }
@@ -756,6 +834,7 @@ export namespace JupyterApplication {
 
   export interface IState extends JSONObject {
     checkForUpdatesAutomatically?: boolean;
+    installUpdatesAutomatically?: boolean;
     pythonPath?: string;
     condaRootPath?: string;
   }
