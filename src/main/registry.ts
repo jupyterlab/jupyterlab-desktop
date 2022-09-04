@@ -563,6 +563,10 @@ export class Registry implements IRegistry {
     let rootName = basename(rootPath);
 
     return new Promise((resolve, reject) => {
+      if (!fs.existsSync(subEnvironmentsFolder)) {
+        console.warn('No sub-environments in root: ' + rootPath);
+        return resolve([]);
+      }
       fs.readdir(subEnvironmentsFolder, (err, files) => {
         if (err) {
           reject(err);
