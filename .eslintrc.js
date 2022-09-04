@@ -19,7 +19,16 @@ module.exports = {
     'prettier',
     'plugin:react/recommended'
   ],
+  ignorePatterns: [
+    'scripts/*',
+    '.eslintrc.js',
+    'webpack.browser.js',
+    '.eslintrc.typecheck.js'
+  ],
   parser: '@typescript-eslint/parser',
+  parserOptions: {
+    project: 'tsconfig.json'
+  },
   plugins: ['@typescript-eslint'],
   rules: {
     '@typescript-eslint/naming-convention': [
@@ -33,6 +42,7 @@ module.exports = {
         }
       }
     ],
+    '@typescript-eslint/no-floating-promises': ['error', { ignoreVoid: true }],
     '@typescript-eslint/no-unused-vars': ['warn', { args: 'none' }],
     '@typescript-eslint/no-use-before-define': 'off',
     '@typescript-eslint/no-explicit-any': 'off',

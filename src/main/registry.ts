@@ -295,7 +295,7 @@ export class Registry implements IRegistry {
    */
   getUserJupyterPath(): Promise<IPythonEnvironment> {
     return new Promise<IPythonEnvironment>((resolve, reject) => {
-      dialog
+      void dialog
         .showOpenDialog({
           properties: ['openFile', 'showHiddenFiles'],
           buttonLabel: 'Use Path'
@@ -571,10 +571,9 @@ export class Registry implements IRegistry {
             files.map(subEnvPath => {
               return join(subEnvironmentsFolder, subEnvPath, 'bin', 'python');
             })
-          );
+          ).catch(reject);
 
           subEnvsWithPython
-            .catch(reject)
             .then(subEnvs => {
               return Array.prototype.concat.apply([], subEnvs) as string[];
             })
@@ -591,7 +590,8 @@ export class Registry implements IRegistry {
                   } as IPythonEnvironment;
                 })
               );
-            });
+            })
+            .catch(reject);
         }
       });
     });

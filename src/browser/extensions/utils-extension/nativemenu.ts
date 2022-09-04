@@ -34,10 +34,9 @@ export class NativeMenu implements IMainMenu {
     // Register click event listener
     asyncRemoteRenderer.onRemoteEvent(INativeMenu.clickEvent, opts => {
       if (opts.command === INativeMenu.launchNewEnvironment.id) {
-        asyncRemoteRenderer.runRemoteMethod(
-          INativeMenu.launchNewEnvironment,
-          opts
-        );
+        asyncRemoteRenderer
+          .runRemoteMethod(INativeMenu.launchNewEnvironment, opts)
+          .catch(console.error);
       } else if (this.app.commands.hasCommand(opts.command)) {
         return this.app.commands.execute(opts.command, opts.args);
       } else {
@@ -56,16 +55,18 @@ export class NativeMenu implements IMainMenu {
     this.viewMenu = new NativeViewMenu({ commands });
     this.tabsMenu = new NativeTabsMenu({ commands });
 
-    this.addMenu(this.fileMenu.menu, { rank: 0 });
-    this.addMenu(this.editMenu.menu, { rank: 1 });
-    this.addMenu(this.viewMenu.menu, { rank: 2 });
-    this.addMenu(this.runMenu.menu, { rank: 3 });
-    this.addMenu(this.kernelMenu.menu, { rank: 4 });
-    this.addMenu(this.tabsMenu.menu, { rank: 500 });
-    this.addMenu(this.settingsMenu.menu, { rank: 999 });
-    this.addMenu(this.helpMenu.menu, { rank: 1000 });
+    void this.addMenu(this.fileMenu.menu, { rank: 0 });
+    void this.addMenu(this.editMenu.menu, { rank: 1 });
+    void this.addMenu(this.viewMenu.menu, { rank: 2 });
+    void this.addMenu(this.runMenu.menu, { rank: 3 });
+    void this.addMenu(this.kernelMenu.menu, { rank: 4 });
+    void this.addMenu(this.tabsMenu.menu, { rank: 500 });
+    void this.addMenu(this.settingsMenu.menu, { rank: 999 });
+    void this.addMenu(this.helpMenu.menu, { rank: 1000 });
 
-    asyncRemoteRenderer.runRemoteMethod(INativeMenu.finalizeMenubar, undefined);
+    asyncRemoteRenderer
+      .runRemoteMethod(INativeMenu.finalizeMenubar, undefined)
+      .catch(console.error);
   }
 
   /**
@@ -183,7 +184,9 @@ class NativeEditMenu extends EditMenu {
       submenu: buildNativeMenu(this.menu)
     };
 
-    asyncRemoteRenderer.runRemoteMethod(INativeMenu.updateMenu, menuItem);
+    asyncRemoteRenderer
+      .runRemoteMethod(INativeMenu.updateMenu, menuItem)
+      .catch(console.error);
 
     return added;
   }
@@ -202,7 +205,9 @@ class NativeFileMenu extends FileMenu {
       submenu: buildNativeMenu(this.menu)
     };
 
-    asyncRemoteRenderer.runRemoteMethod(INativeMenu.updateMenu, menuItem);
+    asyncRemoteRenderer
+      .runRemoteMethod(INativeMenu.updateMenu, menuItem)
+      .catch(console.error);
 
     return res;
   }
@@ -221,7 +226,9 @@ class NativeHelpMenu extends HelpMenu {
       submenu: buildNativeMenu(this.menu)
     };
 
-    asyncRemoteRenderer.runRemoteMethod(INativeMenu.updateMenu, menuItem);
+    asyncRemoteRenderer
+      .runRemoteMethod(INativeMenu.updateMenu, menuItem)
+      .catch(console.error);
 
     return added;
   }
@@ -240,7 +247,9 @@ class NativeKernelMenu extends KernelMenu {
       submenu: buildNativeMenu(this.menu)
     };
 
-    asyncRemoteRenderer.runRemoteMethod(INativeMenu.updateMenu, menuItem);
+    asyncRemoteRenderer
+      .runRemoteMethod(INativeMenu.updateMenu, menuItem)
+      .catch(console.error);
 
     return added;
   }
@@ -259,7 +268,9 @@ class NativeRunMenu extends RunMenu {
       submenu: buildNativeMenu(this.menu)
     };
 
-    asyncRemoteRenderer.runRemoteMethod(INativeMenu.updateMenu, menuItem);
+    asyncRemoteRenderer
+      .runRemoteMethod(INativeMenu.updateMenu, menuItem)
+      .catch(console.error);
 
     return res;
   }
@@ -278,7 +289,9 @@ class NativeSettingsMenu extends SettingsMenu {
       submenu: buildNativeMenu(this.menu)
     };
 
-    asyncRemoteRenderer.runRemoteMethod(INativeMenu.updateMenu, menuItem);
+    asyncRemoteRenderer
+      .runRemoteMethod(INativeMenu.updateMenu, menuItem)
+      .catch(console.error);
 
     return res;
   }
@@ -297,7 +310,9 @@ class NativeViewMenu extends ViewMenu {
       submenu: buildNativeMenu(this.menu)
     };
 
-    asyncRemoteRenderer.runRemoteMethod(INativeMenu.updateMenu, menuItem);
+    asyncRemoteRenderer
+      .runRemoteMethod(INativeMenu.updateMenu, menuItem)
+      .catch(console.error);
 
     return res;
   }
@@ -316,7 +331,9 @@ class NativeTabsMenu extends TabsMenu {
       submenu: buildNativeMenu(this.menu)
     };
 
-    asyncRemoteRenderer.runRemoteMethod(INativeMenu.updateMenu, menuItem);
+    asyncRemoteRenderer
+      .runRemoteMethod(INativeMenu.updateMenu, menuItem)
+      .catch(console.error);
 
     return res;
   }

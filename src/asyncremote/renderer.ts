@@ -39,7 +39,7 @@ class RenderRemote implements IAsyncRemoteRender {
     method: AsyncRemote.IMethod<T, U>
   ): (arg: T) => Promise<U> {
     let func = (arg: T) => {
-      this.runRemoteMethod(method, arg);
+      return this.runRemoteMethod(method, arg);
     };
 
     return func.bind(this);

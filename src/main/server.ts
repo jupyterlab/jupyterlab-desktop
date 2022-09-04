@@ -143,7 +143,7 @@ async function waitUntilServerIsUp(port: number): Promise<boolean> {
       }
     }
 
-    checkUrl();
+    void checkUrl();
   });
 }
 
@@ -181,7 +181,7 @@ export class JupyterServer {
         const isWin = process.platform === 'win32';
         const pythonPath = this._info.environment.path;
         if (!fs.existsSync(pythonPath)) {
-          dialog.showMessageBox({
+          void dialog.showMessageBox({
             message: `Environment not found at: ${pythonPath}`,
             type: 'error'
           });
@@ -270,15 +270,17 @@ export class JupyterServer {
         Promise.race([
           waitUntilServerIsUp(appConfig.jlabPort),
           waitForDuration(SERVER_LAUNCH_TIMEOUT)
-        ]).then((up: boolean) => {
-          if (up) {
-            started = true;
-            fs.unlinkSync(launchScriptPath);
-            resolve(this._info);
-          } else {
-            reject(new Error('Failed to launch Jupyter Server'));
-          }
-        });
+        ])
+          .then((up: boolean) => {
+            if (up) {
+              started = true;
+              fs.unlinkSync(launchScriptPath);
+              resolve(this._info);
+            } else {
+              reject(new Error('Failed to launch Jupyter Server'));
+            }
+          })
+          .catch(reject);
 
         this._nbServer.on('exit', () => {
           if (started) {
@@ -294,7 +296,7 @@ export class JupyterServer {
             if (!this._stopping && this._restartCount < SERVER_RESTART_LIMIT) {
               started = false;
               this._startServer = null;
-              this.start();
+              void this.start();
               this._restartCount++;
             }
           } else {
@@ -309,7 +311,7 @@ export class JupyterServer {
 
         this._nbServer.on('error', (err: Error) => {
           if (started) {
-            dialog.showMessageBox({
+            void dialog.showMessageBox({
               message: `Jupyter Server process errored: ${err.message}`,
               type: 'error'
             });

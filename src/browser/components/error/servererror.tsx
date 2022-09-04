@@ -1,12 +1,14 @@
 // Copyright (c) Jupyter Development Team.
 // Distributed under the terms of the Modified BSD License.
 
+import { JupyterLabDesktopError } from '../../errors';
+
 import * as React from 'react';
 
 export namespace ServerError {
   export interface IProps {
     changeEnvironment: () => void;
-    error: Error;
+    error: Error | JupyterLabDesktopError;
   }
 }
 
@@ -36,6 +38,12 @@ export function ServerError(props: ServerError.IProps): JSX.Element {
         </span>
         <pre className="jpe-ServerError-error">
           {props.error.name}: {props.error.message}
+          {JSON.stringify(
+            props.error instanceof JupyterLabDesktopError
+              ? props.error.causeShim
+              : 'no more details available'
+          )}
+          {props.error.stack || 'stacktrace not available'}
         </pre>
         <div className="jpe-ServerError-btn-container">
           <button

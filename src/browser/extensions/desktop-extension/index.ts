@@ -3,7 +3,7 @@
 | Distributed under the terms of the Modified BSD License.
 |----------------------------------------------------------------------------*/
 
-import { ICommandPalette } from '@jupyterlab/apputils';
+import { ICommandPalette, showErrorMessage } from '@jupyterlab/apputils';
 
 import { IMainMenu } from '@jupyterlab/mainmenu';
 
@@ -40,20 +40,28 @@ const desktopExtension: JupyterFrontEndPlugin<void> = {
     app.commands.addCommand('check-for-updates', {
       label: 'Check for Updates…',
       execute: () => {
-        asyncRemoteRenderer.runRemoteMethod(
-          IAppRemoteInterface.checkForUpdates,
-          void 0
-        );
+        asyncRemoteRenderer
+          .runRemoteMethod(IAppRemoteInterface.checkForUpdates, void 0)
+          .catch((error: any) => {
+            showErrorMessage(
+              'Could not check for updates',
+              JSON.stringify(error)
+            ).catch(console.error);
+          });
       }
     });
 
     app.commands.addCommand('open-dev-tools', {
       label: 'Open Developer Tools',
       execute: () => {
-        asyncRemoteRenderer.runRemoteMethod(
-          IAppRemoteInterface.openDevTools,
-          void 0
-        );
+        asyncRemoteRenderer
+          .runRemoteMethod(IAppRemoteInterface.openDevTools, void 0)
+          .catch((error: any) => {
+            showErrorMessage(
+              'Could not open Developer Tools',
+              JSON.stringify(error)
+            ).catch(console.error);
+          });
       }
     });
 
@@ -63,10 +71,14 @@ const desktopExtension: JupyterFrontEndPlugin<void> = {
     );
 
     const changeEnvironment = async () => {
-      asyncRemoteRenderer.runRemoteMethod(
-        IAppRemoteInterface.showPythonPathSelector,
-        void 0
-      );
+      asyncRemoteRenderer
+        .runRemoteMethod(IAppRemoteInterface.showPythonPathSelector, void 0)
+        .catch((error: any) => {
+          showErrorMessage(
+            'Could not open environment path selector',
+            JSON.stringify(error)
+          ).catch(console.error);
+        });
     };
 
     const statusItem = new EnvironmentStatus({
@@ -95,6 +107,12 @@ const desktopExtension: JupyterFrontEndPlugin<void> = {
       .runRemoteMethod(IAppRemoteInterface.getCurrentPythonEnvironment, void 0)
       .then(env => {
         updateStatusItem(env);
+      })
+      .catch((error: any) => {
+        showErrorMessage(
+          'Could not get current environment',
+          JSON.stringify(error)
+        ).catch(console.error);
       });
   },
   autoStart: true

@@ -21,7 +21,7 @@ autoUpdater.on('update-downloaded', (event, releaseNotes, releaseName) => {
       'A new version has been downloaded. Restart the application to apply the updates.'
   };
 
-  dialog.showMessageBox(dialogOpts).then(returnValue => {
+  void dialog.showMessageBox(dialogOpts).then(returnValue => {
     if (returnValue.response === 0) autoUpdater.quitAndInstall();
   });
 });
@@ -61,12 +61,14 @@ async function getFreePort(): Promise<number> {
 }
 
 async function setAppConfig(): Promise<void> {
-  return new Promise<void>(resolve => {
-    getFreePort().then(port => {
-      appConfig.jlabPort = port;
-      appConfig.token = randomBytes(24).toString('hex');
-      resolve();
-    });
+  return new Promise<void>((resolve, reject) => {
+    getFreePort()
+      .then(port => {
+        appConfig.jlabPort = port;
+        appConfig.token = randomBytes(24).toString('hex');
+        resolve();
+      })
+      .catch(reject);
   });
 }
 

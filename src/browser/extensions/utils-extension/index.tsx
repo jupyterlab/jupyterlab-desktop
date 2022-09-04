@@ -6,7 +6,8 @@
 import {
   ICommandPalette,
   ISplashScreen,
-  IThemeManager
+  IThemeManager,
+  showErrorMessage
 } from '@jupyterlab/apputils';
 
 import { IMainMenu, MainMenu } from '@jupyterlab/mainmenu';
@@ -120,18 +121,32 @@ function createServerManager(
   app.commands.addCommand(CommandIDs.activateServerManager, {
     label: 'Add Server',
     execute: () => {
-      asyncRemoteRenderer.runRemoteMethod(ISessions.createSession, {
-        state: 'new'
-      });
+      asyncRemoteRenderer
+        .runRemoteMethod(ISessions.createSession, {
+          state: 'new'
+        })
+        .catch((error: any) => {
+          showErrorMessage(
+            'createSession in activateServerManager failed',
+            JSON.stringify(error)
+          ).catch(console.error);
+        });
     }
   });
   app.commands.addCommand(CommandIDs.connectToServer, {
     label: args => args.name as string,
     execute: (args: IServerManagerMenuArgs) => {
-      asyncRemoteRenderer.runRemoteMethod(ISessions.createSession, {
-        state: args.type,
-        remoteServerId: args.remoteServerId
-      });
+      asyncRemoteRenderer
+        .runRemoteMethod(ISessions.createSession, {
+          state: args.type,
+          remoteServerId: args.remoteServerId
+        })
+        .catch((error: any) => {
+          showErrorMessage(
+            'createSession in connectToServer failed',
+            JSON.stringify(error)
+          ).catch(console.error);
+        });
     }
   });
 
@@ -342,7 +357,12 @@ const themesPlugin: JupyterFrontEndPlugin<IThemeManager> = {
         if (args['theme'] === manager.theme) {
           return;
         }
-        manager.setTheme(args['theme'] as string);
+        manager.setTheme(args['theme'] as string).catch((error: any) => {
+          showErrorMessage(
+            'changing theme failed',
+            JSON.stringify(error)
+          ).catch(console.error);
+        });
       }
     });
 

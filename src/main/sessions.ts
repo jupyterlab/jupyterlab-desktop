@@ -112,13 +112,15 @@ export class JupyterLabSessions
       .then((state: JupyterLabSession.IState) => {
         this._lastWindowState = state;
         if (this._registry.getCurrentPythonEnvironment()) {
-          this.createSession().then(() => {
+          // TODO handle errors
+          void this.createSession().then(() => {
             this._startingSession = null;
           });
         }
       })
       .catch(() => {
-        this.createSession().then(() => {
+        // TODO handle errors
+        void this.createSession().then(() => {
           this._startingSession = null;
         });
       });
@@ -243,7 +245,8 @@ export class JupyterLabSessions
         return;
       }
       if (this._sessions.length === 0) {
-        this.createSession().then(() => {
+        // TODO handle errors
+        void this.createSession().then(() => {
           this._startingSession = null;
         });
         return;
@@ -260,14 +263,16 @@ export class JupyterLabSessions
     ipcMain.once('lab-ready', () => {
       // Skip JupyterLab executable
       for (let i = 1; i < process.argv.length; i++) {
-        this._activateLocalSession().then(() => {
+        // TODO handle errors
+        void this._activateLocalSession().then(() => {
           this._openFile(process.argv[i]);
           this._startingSession = null;
         });
       }
       app.removeAllListeners('open-file');
       app.on('open-file', (e: Electron.Event, path: string) => {
-        this._activateLocalSession().then(() => {
+        // TODO handle errors
+        void this._activateLocalSession().then(() => {
           this._openFile(path);
           this._startingSession = null;
         });
@@ -282,7 +287,7 @@ export class JupyterLabSessions
     if (this._startingSession) {
       return this._startingSession;
     }
-    this._startingSession = new Promise<void>(resolve => {
+    this._startingSession = new Promise<void>((resolve, reject) => {
       let session = this._lastFocusedSession;
       if (session && session.state().state === 'local') {
         session.browserWindow.focus();
@@ -294,11 +299,13 @@ export class JupyterLabSessions
           state = this._lastWindowState;
         }
         state.state = 'local';
-        this.createSession(state).then(() => {
-          ipcMain.once('lab-ready', () => {
-            resolve();
-          });
-        });
+        void this.createSession(state)
+          .then(() => {
+            ipcMain.once('lab-ready', () => {
+              resolve();
+            });
+          })
+          .catch(reject);
       }
     });
     return this._startingSession;
@@ -430,7 +437,8 @@ export class JupyterLabSession {
 
     const DESKTOP_APP_ASSETS_PATH = 'desktop-app-assets';
 
-    this._window.loadURL(
+    // TODO handle errors
+    void this._window.loadURL(
       `http://localhost:${
         appConfig.jlabPort
       }/${DESKTOP_APP_ASSETS_PATH}/index.html?${encodeURIComponent(
@@ -570,7 +578,8 @@ export class JupyterLabSession {
       });
 
       win.setMenuBarVisibility(false);
-      win.loadURL(url);
+      // TODO handle errors
+      void win.loadURL(url);
 
       event.newGuest = win;
     });

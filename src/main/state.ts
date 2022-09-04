@@ -205,7 +205,8 @@ export class ElectronStateDB implements IStateDB {
    */
   private _checkWriteInProgress(cb: () => void): void {
     if (this._writeInProgress) {
-      this._written.then(v => {
+      // TODO handle errors
+      void this._written.then(v => {
         /* Check write state again to ensure another waiting function
          * didn't start another write.
          */

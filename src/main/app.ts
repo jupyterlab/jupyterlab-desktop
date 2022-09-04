@@ -139,7 +139,8 @@ export class JupyterApplication implements IApplication, IStatefulService {
       condaRootPath: ''
     };
 
-    this.registerStatefulService(this).then(
+    // TODO: handle rejection in catch by sending error details to frontend?
+    void this.registerStatefulService(this).then(
       (state: JupyterApplication.IState) => {
         if (state) {
           this._applicationState = state;
@@ -179,9 +180,11 @@ export class JupyterApplication implements IApplication, IStatefulService {
 
   getPythonEnvironment(): Promise<IPythonEnvironment> {
     return new Promise<IPythonEnvironment>((resolve, _reject) => {
-      this._appState.then((state: JSONObject) => {
-        resolve(this._registry.getCurrentPythonEnvironment());
-      });
+      this._appState
+        .then((state: JSONObject) => {
+          resolve(this._registry.getCurrentPythonEnvironment());
+        })
+        .catch(_reject);
     });
   }
 
@@ -191,9 +194,11 @@ export class JupyterApplication implements IApplication, IStatefulService {
 
   getCondaRootPath(): Promise<string> {
     return new Promise<string>((resolve, _reject) => {
-      this._appState.then((state: JSONObject) => {
-        resolve(this._applicationState.condaRootPath);
-      });
+      this._appState
+        .then((state: JSONObject) => {
+          resolve(this._applicationState.condaRootPath);
+        })
+        .catch(_reject);
     });
   }
 
@@ -331,7 +336,7 @@ export class JupyterApplication implements IApplication, IStatefulService {
     });
 
     ipcMain.on('launch-installer-download-page', () => {
-      shell.openExternal(
+      void shell.openExternal(
         'https://github.com/jupyterlab/jupyterlab-desktop/releases'
       );
     });
@@ -339,7 +344,7 @@ export class JupyterApplication implements IApplication, IStatefulService {
     ipcMain.on('select-python-path', event => {
       const currentEnv = this._registry.getCurrentPythonEnvironment();
 
-      dialog
+      void dialog
         .showOpenDialog({
           properties: ['openFile', 'showHiddenFiles', 'noResolveAliases'],
           buttonLabel: 'Use Path',
@@ -418,7 +423,7 @@ export class JupyterApplication implements IApplication, IStatefulService {
       );
       const reqList = reqVersions.join(', ');
       const message = `Failed to find a compatible Python environment at the configured path "${path}". Environment Python package requirements are: ${reqList}.`;
-      dialog.showMessageBox({ message, type: 'error' });
+      void dialog.showMessageBox({ message, type: 'error' });
     });
 
     ipcMain.on('set-python-path', (event, path) => {
@@ -518,7 +523,7 @@ export class JupyterApplication implements IApplication, IStatefulService {
       message,
       checkForUpdatesAutomatically
     });
-    dialog.loadURL(`data:text/html;charset=utf-8,${pageSource}`);
+    void dialog.loadURL(`data:text/html;charset=utf-8,${pageSource}`);
   }
 
   private _showPythonSelectorDialog(
@@ -687,7 +692,7 @@ export class JupyterApplication implements IApplication, IStatefulService {
       checkBundledPythonPath,
       pythonPath
     });
-    dialog.loadURL(`data:text/html;charset=utf-8,${pageSource}`);
+    void dialog.loadURL(`data:text/html;charset=utf-8,${pageSource}`);
   }
 
   private _checkForUpdates(showDialog: 'on-new-version' | 'always') {

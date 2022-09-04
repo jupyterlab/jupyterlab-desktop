@@ -28,6 +28,12 @@ import { JupyterServer } from './utils';
 
 import { JupyterLabSession } from '../main/sessions';
 
+import {
+  JupyterLabDesktopError,
+  JupyterLabError,
+  JupyterServerError
+} from './errors';
+
 import { ipcRenderer } from 'electron';
 
 import * as React from 'react';
@@ -35,6 +41,7 @@ import log from 'electron-log';
 import { LabShell } from '@jupyterlab/application';
 import { URLExt } from '@jupyterlab/coreutils';
 import { ServerConnection } from '@jupyterlab/services';
+import { showErrorMessage } from '@jupyterlab/apputils';
 
 export class Application extends React.Component<
   Application.IProps,
@@ -42,7 +49,7 @@ export class Application extends React.Component<
 > {
   constructor(props: Application.IProps) {
     super(props);
-    this._setLabDir();
+    this._labDirUpdate = this._setLabDir();
     this._preventDefaults();
     this._renderServerManager = this._renderServerManager.bind(this);
     this._renderSplash = this._renderSplash.bind(this);
@@ -63,6 +70,13 @@ export class Application extends React.Component<
         .runRemoteMethod(IServerFactory.requestServerStart, undefined)
         .then(data => {
           this._serverReady(data);
+        })
+        .catch((error: any) => {
+          this._setErrorScreen(
+            new JupyterServerError('requestServerStart failed', {
+              cause: error
+            })
+          );
         });
     } else {
       this.state = {
@@ -116,7 +130,7 @@ export class Application extends React.Component<
   private _serverReady(data: IServerFactory.IServerStarted): void {
     if (data.error) {
       log.error(data.error);
-      this.setState({ renderState: () => this._renderErrorScreen(data.error) });
+      this._setErrorScreen(data.error);
       if (this._splash.current) {
         this._splash.current.fadeSplashScreen();
       }
@@ -152,8 +166,8 @@ export class Application extends React.Component<
       version = version.slice(1);
     }
 
-    ServerConnection.makeRequest(requestUrl, {}, settings).then(
-      async response => {
+    ServerConnection.makeRequest(requestUrl, {}, settings)
+      .then(async response => {
         const indexTemplateCode = await response.text();
 
         const parser = new DOMParser();
@@ -183,22 +197,52 @@ export class Application extends React.Component<
         base.setAttribute('href', this._server.url);
         document.body.appendChild(base);
 
-        this._setupLab().then(lab => {
-          this._lab = lab;
-          try {
-            this._lab.start({ ignorePlugins: this._ignorePlugins });
-          } catch (e) {
-            log.log(e);
-          }
-          this._lab.restored.then(() => {
-            ipcRenderer.send('lab-ready');
-            if (this._splash.current) {
-              this._splash.current.fadeSplashScreen();
+        this._setupLab()
+          .then(lab => {
+            this._lab = lab;
+            try {
+              this._lab
+                .start({ ignorePlugins: this._ignorePlugins })
+                .catch((error: any) => {
+                  this._setErrorScreen(
+                    new JupyterLabError('JupyterLab start failed', {
+                      cause: error
+                    })
+                  );
+                });
+            } catch (e) {
+              log.log(e);
             }
+            this._lab.restored
+              .then(() => {
+                ipcRenderer.send('lab-ready');
+                if (this._splash.current) {
+                  this._splash.current.fadeSplashScreen();
+                }
+              })
+              .catch((error: any) => {
+                this._setErrorScreen(
+                  new JupyterLabError('JupyterLab loading failed', {
+                    cause: error
+                  })
+                );
+              });
+          })
+          .catch((error: any) => {
+            this._setErrorScreen(
+              new JupyterServerError('JupyterLab set up failed', {
+                cause: error
+              })
+            );
           });
-        });
-      }
-    );
+      })
+      .catch((error: any) => {
+        this._setErrorScreen(
+          new JupyterServerError('ServerConnection request failed', {
+            cause: error
+          })
+        );
+      });
   }
 
   private _launchFromPath() {
@@ -206,6 +250,13 @@ export class Application extends React.Component<
       .runRemoteMethod(IServerFactory.requestServerStartPath, undefined)
       .then((data: IServerFactory.IServerStarted) => {
         this._serverReady(data);
+      })
+      .catch((error: any) => {
+        this._setErrorScreen(
+          new JupyterServerError('requestServerStartPath failed', {
+            cause: error
+          })
+        );
       });
 
     let pathSelected = () => {
@@ -227,13 +278,27 @@ export class Application extends React.Component<
   private _changeEnvironment() {
     asyncRemoteRenderer
       .runRemoteMethod(IAppRemoteInterface.showPythonPathSelector, void 0)
-      .catch(console.error);
+      .catch((error: any) => {
+        this._setErrorScreen(
+          new JupyterLabDesktopError('Environment change failed', {
+            cause: error
+          })
+        );
+      });
   }
 
   private _saveState() {
-    this._serverState.save(Application.SERVER_STATE_ID, {
-      remotes: this.state.remotes
-    });
+    this._serverState
+      .save(Application.SERVER_STATE_ID, {
+        remotes: this.state.remotes
+      })
+      .catch((error: any) => {
+        this._setErrorScreen(
+          new JupyterLabDesktopError('Saving application state failed', {
+            cause: error
+          })
+        );
+      });
   }
 
   private _setupLab() {
@@ -262,28 +327,38 @@ export class Application extends React.Component<
     PageConfig.setOption('token', server.token);
     PageConfig.setOption('appUrl', 'lab');
 
-    this._setupLab().then(lab => {
-      this._lab = lab;
-      try {
-        this._lab.start({ ignorePlugins: this._ignorePlugins });
-      } catch (e) {
-        log.log(e);
-      }
+    this._setupLab()
+      .then(lab => {
+        this._lab = lab;
+        this._lab
+          .start({ ignorePlugins: this._ignorePlugins })
+          .catch((error: any) => {
+            this._setErrorScreen(
+              new JupyterLabError('Start failed', { cause: error })
+            );
+          });
 
-      let rServer: Application.IRemoteServer = {
-        ...server,
-        id: this._nextRemoteId++
-      };
-      this.setState((prevState: ServerManager.IState) => {
-        server.id = this._nextRemoteId++;
-        let remotes = this.state.remotes.concat(rServer);
-        this._saveState();
-        return {
-          renderState: this._renderEmpty,
-          remotes: remotes
+        let rServer: Application.IRemoteServer = {
+          ...server,
+          id: this._nextRemoteId++
         };
+        this.setState((prevState: ServerManager.IState) => {
+          server.id = this._nextRemoteId++;
+          let remotes = this.state.remotes.concat(rServer);
+          this._saveState();
+          return {
+            renderState: this._renderEmpty,
+            remotes: remotes
+          };
+        });
+      })
+      .catch((error: any) => {
+        this._setErrorScreen(
+          new JupyterLabError('Set up after establishing connection failed', {
+            cause: error
+          })
+        );
       });
-    });
   }
 
   private _renderServerManager(): JSX.Element {
@@ -323,6 +398,10 @@ export class Application extends React.Component<
     return null;
   }
 
+  private _setErrorScreen(error: Error): void {
+    this.setState({ renderState: () => this._renderErrorScreen(error) });
+  }
+
   private _preventDefaults(): void {
     document.ondragover = (event: DragEvent) => {
       event.preventDefault();
@@ -343,7 +422,7 @@ export class Application extends React.Component<
       event.preventDefault();
       let files = event.dataTransfer.files;
       for (let i = 0; i < files.length; i++) {
-        this._openFile(files[i].path);
+        this._openFile(files[i].path).catch(console.error);
       }
     };
 
@@ -353,22 +432,42 @@ export class Application extends React.Component<
     );
   }
 
-  private _openFile(path: string) {
+  private async _openFile(path: string) {
+    await this._labDirUpdate;
     if (this._labDir) {
       let relPath = path.replace(this._labDir, '');
       let winConvert = relPath.split('\\').join('/');
       relPath = winConvert.replace('/', '');
-      this._lab.commands.execute('docmanager:open', { path: relPath });
+      this._lab.commands
+        .execute('docmanager:open', { path: relPath })
+        .catch((error: any) => {
+          // not switching to error screen here, as we most likely got through the init procedure correctly
+          showErrorMessage(
+            'Could not open requested file',
+            JSON.stringify(error)
+          ).catch(console.error);
+        });
+    } else {
+      console.warn('labDir not set up, cannot open requested file: ' + path);
     }
   }
 
-  private _setLabDir() {
-    asyncRemoteRenderer
+  private _setLabDir(): Promise<void> {
+    return asyncRemoteRenderer
       .runRemoteMethod(IAppRemoteInterface.getCurrentRootPath, undefined)
       .then((path: string) => {
         this._labDir = path;
+      })
+      .catch((error: any) => {
+        this._setErrorScreen(
+          new JupyterLabDesktopError('getCurrentRootPath failed', {
+            cause: error
+          })
+        );
       });
   }
+
+  private _labDirUpdate: Promise<void>;
 
   private _labDir: string;
 

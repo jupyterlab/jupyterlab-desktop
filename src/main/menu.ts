@@ -348,9 +348,11 @@ class JupyterMainMenu implements INativeMenu {
       );
     } else {
       if (menu.label === 'Add Server') {
-        this._sessions.createSession({ state: 'remote' });
+        // TODO error handling
+        void this._sessions.createSession({ state: 'remote' });
       } else if (menu.label === 'Local') {
-        this._sessions.createSession({ state: 'local' });
+        // TODO error handling
+        void this._sessions.createSession({ state: 'local' });
       }
     }
   }
