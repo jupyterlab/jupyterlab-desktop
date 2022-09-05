@@ -67,18 +67,6 @@ class KeyboardShortcutManager implements IShortcutManager {
     });
   }
 
-  copy() {
-    webContents.getFocusedWebContents().copy();
-  }
-
-  paste() {
-    webContents.getFocusedWebContents().paste();
-  }
-
-  cut() {
-    webContents.getFocusedWebContents().cut();
-  }
-
   toggleFullscreen() {
     const wasFullscreen = this._window.isFullScreen();
     const wasMenuBarVisible = this._window.menuBarVisible;
@@ -89,7 +77,10 @@ class KeyboardShortcutManager implements IShortcutManager {
   }
 
   zoomIn() {
-    let contents = webContents.getFocusedWebContents();
+    const contents = webContents.getFocusedWebContents();
+    if (!contents) {
+      return;
+    }
     const zoom = contents.getZoomLevel();
     if (zoom >= 3) {
       return;
@@ -105,7 +96,10 @@ class KeyboardShortcutManager implements IShortcutManager {
   }
 
   zoomOut() {
-    let contents = webContents.getFocusedWebContents();
+    const contents = webContents.getFocusedWebContents();
+    if (!contents) {
+      return;
+    }
     const zoom = contents.getZoomLevel();
     if (zoom <= -7) {
       return;
@@ -162,9 +156,6 @@ class KeyboardShortcutManager implements IShortcutManager {
    * The enabled shortcuts
    */
   private _shortcuts: IKeyboardShortcut[] = [
-    { accelerator: 'CmdOrCtrl+c', command: this.copy.bind(this) },
-    { accelerator: 'CmdOrCtrl+v', command: this.paste.bind(this) },
-    { accelerator: 'CmdOrCtrl+x', command: this.cut.bind(this) },
     { accelerator: 'CmdOrCtrl+=', command: this.zoomIn.bind(this) },
     { accelerator: 'CmdOrCtrl+-', command: this.zoomOut.bind(this) },
     { accelerator: 'F11', command: this.toggleFullscreen.bind(this) },

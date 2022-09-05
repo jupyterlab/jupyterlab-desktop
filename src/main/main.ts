@@ -1,4 +1,11 @@
-import { app, autoUpdater, BrowserWindow, dialog, WebContents } from 'electron';
+import {
+  app,
+  BrowserWindow,
+  dialog,
+  Menu,
+  MenuItem,
+  WebContents
+} from 'electron';
 
 const Bottle = require('bottlejs');
 import log from 'electron-log';
@@ -10,30 +17,6 @@ import { AddressInfo, createServer } from 'net';
 
 import { appConfig, getAppDir, isDevMode } from './utils';
 import { execSync } from 'child_process';
-
-autoUpdater.on('update-downloaded', (event, releaseNotes, releaseName) => {
-  const dialogOpts = {
-    type: 'info',
-    buttons: ['Restart', 'Later'],
-    title: 'Application Update',
-    message: process.platform === 'win32' ? releaseNotes : releaseName,
-    detail:
-      'A new version has been downloaded. Restart the application to apply the updates.'
-  };
-
-  dialog.showMessageBox(dialogOpts).then(returnValue => {
-    if (returnValue.response === 0) autoUpdater.quitAndInstall();
-  });
-});
-
-autoUpdater.on('error', message => {
-  log.error('There was a problem updating the application');
-  log.error(message);
-});
-
-if (process.platform === 'darwin') {
-  require('update-electron-app')();
-}
 
 async function getFreePort(): Promise<number> {
   return new Promise<number>(resolve => {
@@ -215,11 +198,46 @@ function setupJLabCommand() {
   }
 }
 
+function setApplicationMenu() {
+  if (process.platform !== 'darwin') {
+    return;
+  }
+
+  // hide Help menu
+  const menu = Menu.getApplicationMenu();
+  let viewMenu: MenuItem | undefined;
+  menu?.items.forEach(item => {
+    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+    // @ts-ignore
+    if (item.role === 'help') {
+      item.visible = false;
+    }
+
+    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+    // @ts-ignore
+    if (item.role === 'viewmenu') {
+      viewMenu = item;
+    }
+  });
+  // hide Reload and Force Reload menu items
+  viewMenu?.submenu?.items.forEach(item => {
+    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+    // @ts-ignore
+    if (item.role === 'reload' || item.role === 'forcereload') {
+      item.visible = false;
+      item.enabled = false;
+    }
+  });
+  Menu.setApplicationMenu(menu);
+}
+
 /**
  * Load all services when the electron app is
  * ready.
  */
 app.on('ready', () => {
+  setApplicationMenu();
+
   Promise.all([setAppConfig(), handOverArguments()])
     .then(() => {
       setupJLabCommand();
@@ -270,7 +288,7 @@ app.on('web-contents-created', (_event: any, webContents: WebContents) => {
       detail: 'Changes you made may not be saved.',
       buttons: ['Leave', 'Stay'],
       defaultId: 1,
-      cancelId: 0
+      cancelId: 1
     });
 
     if (choice === 0) {
