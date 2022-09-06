@@ -44,4 +44,7 @@ function main(): void {
   );
 }
 
+// Flag to test for Electron integration
+window.isElectron = true;
+
 window.onload = main;
