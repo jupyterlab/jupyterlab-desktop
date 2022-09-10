@@ -14,6 +14,13 @@ import { JupyterLabSession } from '../main/sessions';
 
 import log from 'electron-log';
 
+declare global {
+  // eslint-disable-next-line @typescript-eslint/naming-convention
+  interface Window {
+    isElectron?: boolean;
+  }
+}
+
 console.log = log.log;
 console.error = log.error;
 console.warn = log.warn;
@@ -42,12 +49,6 @@ function main(): void {
     <Application options={options} />,
     document.getElementById('root')
   );
-}
-declare global {
-  // eslint-disable-next-line @typescript-eslint/naming-convention
-  interface Window {
-    isElectron?: boolean;
-  }
 }
 
 // Flag to test for Electron integration
