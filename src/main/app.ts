@@ -27,9 +27,39 @@ import * as semver from 'semver';
 import * as ejs from 'ejs';
 import * as path from 'path';
 import * as fs from 'fs';
-import { getAppDir, getUserDataDir } from './utils';
+import { AddressInfo, createServer } from 'net';
+import { randomBytes } from 'crypto';
+
+import { appConfig, getAppDir, getUserDataDir } from './utils';
 import { execFile } from 'child_process';
 import { loadingAnimation } from '../assets/svg';
+import { IServerFactory, JupyterServer, waitUntilServerIsUp } from './server';
+import { loginAndGetServerInfo } from './login';
+
+async function getFreePort(): Promise<number> {
+  return new Promise<number>(resolve => {
+    const getPort = () => {
+      const server = createServer(socket => {
+        socket.write('Echo server\r\n');
+        socket.pipe(socket);
+      });
+
+      server.on('error', function (e) {
+        getPort();
+      });
+      server.on('listening', function (e: any) {
+        const port = (server.address() as AddressInfo).port;
+        server.close();
+
+        resolve(port);
+      });
+
+      server.listen(0, '127.0.0.1');
+    };
+
+    getPort();
+  });
+}
 
 export interface IApplication {
   /**
@@ -51,6 +81,9 @@ export interface IApplication {
   setCondaRootPath(condaRootPath: string): void;
 
   getCondaRootPath(): Promise<string>;
+
+  getServerInfo(): Promise<JupyterServer.IInfo>;
+  pageConfigSet: Promise<boolean>;
 }
 
 /**
@@ -144,7 +177,8 @@ export class JupyterApplication implements IApplication, IStatefulService {
       checkForUpdatesAutomatically: true,
       installUpdatesAutomatically: true,
       pythonPath: '',
-      condaRootPath: ''
+      condaRootPath: '',
+      remoteURL: ''
     };
 
     this.registerStatefulService(this).then(
@@ -190,6 +224,40 @@ export class JupyterApplication implements IApplication, IStatefulService {
             }, 5000);
           }
         }
+
+        if (appState.remoteURL === undefined) {
+          appState.remoteURL = '';
+        }
+        appState.remoteURL = 'https://hub-binder.mybinder.ovh/user/binder-examples-jupyterlab-a5czynjk/lab?token=hqy6-CY8StuNneCqKlaFpQ';
+
+        if (appState.remoteURL === '') {
+          appConfig.isRemote = false;
+          getFreePort().then(port => {
+            appConfig.token = randomBytes(24).toString('hex');
+            appConfig.url = new URL(`http://localhost:${port}`);
+            this._serverInfoStateSet = true;
+
+            // start
+            waitUntilServerIsUp(appConfig.url).then(() => {
+              loginAndGetServerInfo(appConfig.url.href).then((serverInfo) => {
+                appConfig.pageConfig = serverInfo.pageConfig;
+                appConfig.cookies = serverInfo.cookies;
+                this._serverPageConfigSet = true;
+              });
+            });
+
+          });
+        } else {
+          appConfig.isRemote = true;
+          appConfig.url = new URL(appState.remoteURL);
+          appConfig.token = appConfig.url.searchParams.get('token');
+          loginAndGetServerInfo(appConfig.url.href).then((serverInfo) => {
+            appConfig.pageConfig = serverInfo.pageConfig;
+            appConfig.cookies = serverInfo.cookies;
+            this._serverInfoStateSet = true;
+            this._serverPageConfigSet = true;
+          });
+        }
       }
     );
   }
@@ -211,6 +279,47 @@ export class JupyterApplication implements IApplication, IStatefulService {
       this._appState.then((state: JSONObject) => {
         resolve(this._applicationState.condaRootPath);
       });
+    });
+  }
+
+  getServerInfo(): Promise<JupyterServer.IInfo> {
+    return new Promise<JupyterServer.IInfo>((resolve) => {
+      const resolveInfo = () => {
+        resolve({
+          type: appConfig.isRemote ? 'remote' : 'local',
+          url: appConfig.url.href,
+          token: appConfig.token,
+          environment: undefined
+        })
+      };
+
+      if (this._serverInfoStateSet) {
+        resolveInfo();
+        return;
+      }
+
+      const timer = setInterval(() => {
+        if (this._serverInfoStateSet) {
+          clearInterval(timer);
+          resolveInfo();
+        }
+      }, 200);
+    });
+  }
+
+  get pageConfigSet(): Promise<boolean> {
+    return new Promise<boolean>((resolve) => {
+      if (this._serverPageConfigSet) {
+        resolve(true);
+        return;
+      }
+
+      const timer = setInterval(() => {
+        if (this._serverPageConfigSet) {
+          clearInterval(timer);
+          resolve(true);
+        }
+      }, 200); 
     });
   }
 
@@ -327,9 +436,9 @@ export class JupyterApplication implements IApplication, IStatefulService {
    * Register all application event listeners
    */
   private _registerListeners(): void {
-    app.on('window-all-closed', () => {
-      app.quit();
-    });
+    // app.on('window-all-closed', () => {
+    //   app.quit();
+    // });
 
     app.on('will-quit', event => {
       event.preventDefault();
@@ -503,6 +612,18 @@ export class JupyterApplication implements IApplication, IStatefulService {
       (): Promise<void> => {
         this._showPythonSelectorDialog('change');
         return Promise.resolve();
+      }
+    );
+
+    asyncRemoteMain.registerRemoteMethod(
+      IServerFactory.getServerInfo,
+      (): Promise<any> => {
+        return Promise.resolve({
+          factoryId: 0,
+          url: `${appConfig.url.protocol}//${appConfig.url.host}`,
+          token: '',
+          pageConfig: appConfig.pageConfig
+        });
       }
     );
   }
@@ -764,6 +885,9 @@ export class JupyterApplication implements IApplication, IStatefulService {
     dialog.loadURL(`data:text/html;charset=utf-8,${pageSource}`);
   }
 
+  private _serverInfoStateSet = false;
+  private _serverPageConfigSet = false;
+
   private _checkForUpdates(showDialog: 'on-new-version' | 'always') {
     fetch(
       'https://github.com/jupyterlab/jupyterlab-desktop/releases/latest/download/latest.yml'
@@ -837,6 +961,7 @@ export namespace JupyterApplication {
     installUpdatesAutomatically?: boolean;
     pythonPath?: string;
     condaRootPath?: string;
+    remoteURL?: string;
   }
 }
 

@@ -12,46 +12,8 @@ import log from 'electron-log';
 import * as yargs from 'yargs';
 import * as path from 'path';
 import * as fs from 'fs';
-import { randomBytes } from 'crypto';
-import { AddressInfo, createServer } from 'net';
-
-import { appConfig, getAppDir, isDevMode } from './utils';
+import { getAppDir, isDevMode } from './utils';
 import { execSync } from 'child_process';
-
-async function getFreePort(): Promise<number> {
-  return new Promise<number>(resolve => {
-    const getPort = () => {
-      const server = createServer(socket => {
-        socket.write('Echo server\r\n');
-        socket.pipe(socket);
-      });
-
-      server.on('error', function (e) {
-        getPort();
-      });
-      server.on('listening', function (e: any) {
-        const port = (server.address() as AddressInfo).port;
-        server.close();
-
-        resolve(port);
-      });
-
-      server.listen(0, '127.0.0.1');
-    };
-
-    getPort();
-  });
-}
-
-async function setAppConfig(): Promise<void> {
-  return new Promise<void>(resolve => {
-    getFreePort().then(port => {
-      appConfig.jlabPort = port;
-      appConfig.token = randomBytes(24).toString('hex');
-      resolve();
-    });
-  });
-}
 
 // handle opening file or directory with command-line arguments
 if (process.argv.length > 1) {
@@ -238,8 +200,7 @@ function setApplicationMenu() {
 app.on('ready', () => {
   setApplicationMenu();
 
-  Promise.all([setAppConfig(), handOverArguments()])
-    .then(() => {
+    handOverArguments().then(() => {
       setupJLabCommand();
       let serviceManager = new Bottle();
       let autostarts: string[] = [];
@@ -264,20 +225,20 @@ app.on('ready', () => {
 
 app.on('web-contents-created', (_event: any, webContents: WebContents) => {
   // Prevent navigation to local links on the same page and external links
-  webContents.on('will-navigate', (event: Event, navigationUrl) => {
-    const jlabBaseUrl = `http://localhost:${appConfig.jlabPort}/`;
-    if (
-      !(
-        navigationUrl.startsWith(jlabBaseUrl) &&
-        navigationUrl.indexOf('#') === -1
-      )
-    ) {
-      console.warn(
-        `Navigation is not allowed; attempted navigation to: ${navigationUrl}`
-      );
-      event.preventDefault();
-    }
-  });
+  // webContents.on('will-navigate', (event: Event, navigationUrl) => {
+  //   const jlabBaseUrl = `http://localhost:${appConfig.jlabPort}/`;
+  //   if (
+  //     !(
+  //       navigationUrl.startsWith(jlabBaseUrl) &&
+  //       navigationUrl.indexOf('#') === -1
+  //     )
+  //   ) {
+  //     console.warn(
+  //       `Navigation is not allowed; attempted navigation to: ${navigationUrl}`
+  //     );
+  //     event.preventDefault();
+  //   }
+  // });
 
   // handle page's beforeunload prompt natively
   webContents.on('will-prevent-unload', (event: Event) => {

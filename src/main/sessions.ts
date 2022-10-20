@@ -31,7 +31,20 @@ import { EventEmitter } from 'events';
 import * as fs from 'fs';
 import { URL } from 'url';
 import * as path from 'path';
+import * as ejs from 'ejs';
 import { request as httpRequest, IncomingMessage } from 'http';
+import { request as httpsRequest } from 'https';
+
+// file name to variables map
+const templateAssetPaths = new Map([
+  [
+    'index.html', () => {
+      return {
+        pageConfig: JSON.stringify(appConfig.pageConfig)
+      };
+    }
+  ]
+]);
 
 export interface ISessions extends EventEmitter {
   createSession: (opts?: JupyterLabSession.IOptions) => Promise<void>;
@@ -87,6 +100,7 @@ export class JupyterLabSessions
     super();
     this._serverFactory = serverFactory;
     this._registry = registry;
+    this._app = app;
 
     // check if UI state was set by user
     for (let arg of process.argv) {
@@ -111,15 +125,26 @@ export class JupyterLabSessions
       .registerStatefulService(this)
       .then((state: JupyterLabSession.IState) => {
         this._lastWindowState = state;
-        if (this._registry.getCurrentPythonEnvironment()) {
+
+        app.getServerInfo().then((serverInfo) => {
+          if (serverInfo.type === 'local') {
+            if (this._registry.getCurrentPythonEnvironment()) {
+              this.createSession().then(() => {
+                this._startingSession = null;
+              });
+            }
+          } else {
+            this.createSession().then(() => {
+              this._startingSession = null;
+            });
+          }
+        });
+      })
+      .catch(() => {
+        app.getServerInfo().then((serverInfo) => {
           this.createSession().then(() => {
             this._startingSession = null;
           });
-        }
-      })
-      .catch(() => {
-        this.createSession().then(() => {
-          this._startingSession = null;
         });
       });
   }
@@ -193,6 +218,10 @@ export class JupyterLabSessions
 
   get lastFocusedSession(): JupyterLabSession | null {
     return this._lastFocusedSession;
+  }
+
+  get app(): IApplication {
+    return this._app;
   }
 
   private _createSession(opts: JupyterLabSession.IOptions): Promise<void> {
@@ -362,6 +391,8 @@ export class JupyterLabSessions
   private _registry: IRegistry;
 
   private _uiState: JupyterLabSession.UIState;
+
+  private _app: IApplication;
 }
 
 export class JupyterLabSession {
@@ -399,7 +430,7 @@ export class JupyterLabSession {
       y: this._info.y,
       minWidth: 400,
       minHeight: 300,
-      show: false,
+      show: true,
       title: 'JupyterLab',
       webPreferences: {
         nodeIntegration: true,
@@ -430,14 +461,6 @@ export class JupyterLabSession {
 
     const DESKTOP_APP_ASSETS_PATH = 'desktop-app-assets';
 
-    this._window.loadURL(
-      `http://localhost:${
-        appConfig.jlabPort
-      }/${DESKTOP_APP_ASSETS_PATH}/index.html?${encodeURIComponent(
-        JSON.stringify(this.info)
-      )}`
-    );
-
     const cookies: Map<string, string> = new Map();
 
     const parseCookieName = (cookie: string): string | undefined => {
@@ -453,7 +476,7 @@ export class JupyterLabSession {
       return firstPart.substring(0, eqLoc).trim();
     };
 
-    const jlabBaseUrl = `http://localhost:${appConfig.jlabPort}/`;
+    const jlabBaseUrl = `${appConfig.url.protocol}//${appConfig.url.host}${appConfig.url.pathname}`;
     const desktopAppAssetsPrefix = `${jlabBaseUrl}${DESKTOP_APP_ASSETS_PATH}`;
     const appAssetsDir = path.normalize(path.join(__dirname, '../../'));
 
@@ -468,8 +491,18 @@ export class JupyterLabSession {
       }
       const assetFilePath = path.normalize(path.join(appAssetsDir, assetPath));
 
+      // make sure asset is in appAssetsDir, prevent access to lower level directories
       if (assetFilePath.indexOf(appAssetsDir) === 0) {
-        const assetContent = fs.readFileSync(assetFilePath);
+        // TODO: handle file not found case
+        if (!fs.existsSync(assetFilePath)) {
+          callback({statusCode: 404});
+          return;
+        }
+        let assetContent = fs.readFileSync(assetFilePath);
+        if (templateAssetPaths.has(assetPath)) {
+          assetContent = Buffer.from(ejs.render(assetContent.toString(), templateAssetPaths.get(assetPath)()));
+        }
+
         callback(assetContent);
       }
     };
@@ -483,7 +516,26 @@ export class JupyterLabSession {
         Referer: req.referrer,
         Authorization: `token ${appConfig.token}`
       };
-      const request = httpRequest(req.url, {
+
+      if (appConfig.url && req.url.startsWith(`${appConfig.url.protocol}//${appConfig.url.host}`)) {
+        let cookieArray: string[] = [];
+        if (appConfig.cookies) {
+          appConfig.cookies.forEach((cookie) => {
+            if (cookie.domain === appConfig.url.hostname) {
+              cookieArray.push(`${cookie.name}=${cookie.value}`);
+              if (cookie.name === '_xsrf') {
+                headers['X-XSRFToken'] = cookie.value;
+              }
+            }
+          });
+        }
+        headers['Cookie'] = cookieArray.join('; ');
+      }
+
+      const remoteUrl = req.url;
+      const requestFn = remoteUrl.startsWith('https') ? httpsRequest : httpRequest;
+
+      const request = requestFn(remoteUrl, {
         headers: headers,
         method: req.method
       });
@@ -528,19 +580,25 @@ export class JupyterLabSession {
       request.end();
     };
 
-    this._window.webContents.session.protocol.interceptBufferProtocol(
-      'http',
-      (req, callback) => {
-        if (req.url.startsWith(desktopAppAssetsPrefix)) {
-          handleDesktopAppAssetRequest(req, callback);
-        } else {
-          handleRemoteAssetRequest(req, callback);
-        }
+    const handleInterceptBufferProtocol = (req: Electron.ProtocolRequest, callback: (response: Buffer | Electron.ProtocolResponse) => void) => {
+      // TODO: this check is not enough to decide desktop asset. (e.g. relative image files ./test.png on notebook)
+      if (req.url.startsWith(desktopAppAssetsPrefix)) {
+        handleDesktopAppAssetRequest(req, callback);
+      } else {
+        handleRemoteAssetRequest(req, callback);
       }
+    };
+
+    this._window.webContents.session.protocol.interceptBufferProtocol(
+      'http', handleInterceptBufferProtocol
+    );
+
+    this._window.webContents.session.protocol.interceptBufferProtocol(
+      'https', handleInterceptBufferProtocol
     );
 
     const filter = {
-      urls: [`ws://localhost:${appConfig.jlabPort}/*`]
+      urls: [`ws://${appConfig.url.host}/*`, `wss://${appConfig.url.host}/*`]
     };
 
     this._window.webContents.session.webRequest.onBeforeSendHeaders(
@@ -551,6 +609,8 @@ export class JupyterLabSession {
         };
         if (cookies.size > 0) {
           requestHeaders['Cookie'] = Array.from(cookies.values()).join('; ');
+          requestHeaders['Host'] =  appConfig.url.host ;
+          requestHeaders['Origin'] = appConfig.url.origin;
         }
         callback({ cancel: false, requestHeaders });
       }
@@ -588,6 +648,14 @@ export class JupyterLabSession {
         );
       }
     );
+
+    sessionManager.app.pageConfigSet.then(() => {
+      this._window.loadURL(
+        `${appConfig.url.protocol}//${appConfig.url.host}${appConfig.url.pathname}${DESKTOP_APP_ASSETS_PATH}/index.html?${encodeURIComponent(
+          JSON.stringify(this.info)
+        )}`
+      );
+    });
   }
 
   get info(): JupyterLabSession.IInfo {

@@ -20,12 +20,16 @@ import { app } from 'electron';
 import { IPythonEnvironment } from './tokens';
 
 export interface IAppConfiguration {
-  jlabPort: number;
+  isRemote: boolean;
+  url: URL;
   token: string;
+  pageConfig?: any;
+  cookies?: Electron.Cookie[];
 }
 
 export const appConfig: IAppConfiguration = {
-  jlabPort: 8888,
+  isRemote: false,
+  url: undefined,
   token: 'jlab-token'
 };
 

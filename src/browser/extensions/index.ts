@@ -193,12 +193,11 @@ export async function main() {
   const federatedStylePromises: any[] = [];
 
   let labExtensionUrl = PageConfig.getOption('fullLabextensionsUrl');
-  const baseUrl = PageConfig.getOption('baseUrl');
 
   const allFederatedExtensions = await Promise.allSettled(
     extension_data.map(async (data: any) => {
       await loadComponent(
-        URLExt.join(baseUrl, labExtensionUrl, data.name, data.load),
+        URLExt.join(labExtensionUrl, data.name, data.load),
         data.name
       );
       return data;
