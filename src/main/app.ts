@@ -228,8 +228,8 @@ export class JupyterApplication implements IApplication, IStatefulService {
         if (appState.remoteURL === undefined) {
           appState.remoteURL = '';
         }
-        appState.remoteURL =
-          'https://hub-binder.mybinder.ovh/user/binder-examples-jupyterlab-a5czynjk/lab?token=hqy6-CY8StuNneCqKlaFpQ';
+        // appState.remoteURL =
+        //   'https://hub-binder.mybinder.ovh/user/binder-examples-jupyterlab-a5czynjk/lab?token=hqy6-CY8StuNneCqKlaFpQ';
 
         if (appState.remoteURL === '') {
           appConfig.isRemote = false;
