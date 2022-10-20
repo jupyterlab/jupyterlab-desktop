@@ -176,20 +176,6 @@ if (cli.flags.checkVersionMatch) {
     process.exit(1);
   }
 
-  // check JupyterLab versions in scripts
-  let searchString = `"appVersion": "${appVersion}",`;
-  if (
-    !searchTextInFile(
-      path.resolve(__dirname, `../src/browser/index.html`),
-      searchString
-    )
-  ) {
-    console.error(
-      `src/index.html doesn't contain correct Application version ${appVersion}`
-    );
-    process.exit(1);
-  }
-
   checkExtensionImports();
 
   console.log('JupyterLab version match satisfied!');
