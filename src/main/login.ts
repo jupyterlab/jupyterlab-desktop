@@ -1,6 +1,4 @@
-import {
-  BrowserWindow, Cookie
-} from 'electron';
+import { BrowserWindow, Cookie } from 'electron';
 
 export let loginWindow: BrowserWindow;
 
@@ -9,11 +7,14 @@ export interface IJupyterServerInfo {
   pageConfig?: any;
 }
 
-export async function loginAndGetServerInfo(url: string, showDialog: boolean = true): Promise<IJupyterServerInfo> {
+export async function loginAndGetServerInfo(
+  url: string,
+  showDialog: boolean = true
+): Promise<IJupyterServerInfo> {
   return new Promise<IJupyterServerInfo>((resolve, reject) => {
     const window = new BrowserWindow({
       show: showDialog,
-      title: 'JupyterLab Remote Server Login',
+      title: 'JupyterLab Remote Server Login'
     });
 
     loginWindow = window;
@@ -24,20 +25,27 @@ export async function loginAndGetServerInfo(url: string, showDialog: boolean = t
 
     window.webContents.on('did-navigate', (event: Event, navigationUrl) => {
       if (navigationUrl.startsWith(url)) {
-        window.webContents.executeJavaScript(`
+        window.webContents
+          .executeJavaScript(
+            `
             const config = document.getElementById('jupyter-config-data');
             JSON.parse(config ? config.textContent : '{}');
-          `).then((config: any) => {
-          window.webContents.session.cookies.get({}).then((cookies) => {
-            window.close();
-            resolve({
-              pageConfig: config,
-              cookies: cookies
-            });
-          }).catch((error) => {
-            console.log(error)
+          `
+          )
+          .then((config: any) => {
+            window.webContents.session.cookies
+              .get({})
+              .then(cookies => {
+                window.close();
+                resolve({
+                  pageConfig: config,
+                  cookies: cookies
+                });
+              })
+              .catch(error => {
+                console.log(error);
+              });
           });
-        })
       }
     });
   });

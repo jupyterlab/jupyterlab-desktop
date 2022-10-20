@@ -38,7 +38,8 @@ import { request as httpsRequest } from 'https';
 // file name to variables map
 const templateAssetPaths = new Map([
   [
-    'index.html', () => {
+    'index.html',
+    () => {
       return {
         pageConfig: JSON.stringify(appConfig.pageConfig)
       };
@@ -126,7 +127,7 @@ export class JupyterLabSessions
       .then((state: JupyterLabSession.IState) => {
         this._lastWindowState = state;
 
-        app.getServerInfo().then((serverInfo) => {
+        app.getServerInfo().then(serverInfo => {
           if (serverInfo.type === 'local') {
             if (this._registry.getCurrentPythonEnvironment()) {
               this.createSession().then(() => {
@@ -141,7 +142,7 @@ export class JupyterLabSessions
         });
       })
       .catch(() => {
-        app.getServerInfo().then((serverInfo) => {
+        app.getServerInfo().then(serverInfo => {
           this.createSession().then(() => {
             this._startingSession = null;
           });
@@ -495,12 +496,17 @@ export class JupyterLabSession {
       if (assetFilePath.indexOf(appAssetsDir) === 0) {
         // TODO: handle file not found case
         if (!fs.existsSync(assetFilePath)) {
-          callback({statusCode: 404});
+          callback({ statusCode: 404 });
           return;
         }
         let assetContent = fs.readFileSync(assetFilePath);
         if (templateAssetPaths.has(assetPath)) {
-          assetContent = Buffer.from(ejs.render(assetContent.toString(), templateAssetPaths.get(assetPath)()));
+          assetContent = Buffer.from(
+            ejs.render(
+              assetContent.toString(),
+              templateAssetPaths.get(assetPath)()
+            )
+          );
         }
 
         callback(assetContent);
@@ -517,10 +523,13 @@ export class JupyterLabSession {
         Authorization: `token ${appConfig.token}`
       };
 
-      if (appConfig.url && req.url.startsWith(`${appConfig.url.protocol}//${appConfig.url.host}`)) {
+      if (
+        appConfig.url &&
+        req.url.startsWith(`${appConfig.url.protocol}//${appConfig.url.host}`)
+      ) {
         let cookieArray: string[] = [];
         if (appConfig.cookies) {
-          appConfig.cookies.forEach((cookie) => {
+          appConfig.cookies.forEach(cookie => {
             if (cookie.domain === appConfig.url.hostname) {
               cookieArray.push(`${cookie.name}=${cookie.value}`);
               if (cookie.name === '_xsrf') {
@@ -533,7 +542,9 @@ export class JupyterLabSession {
       }
 
       const remoteUrl = req.url;
-      const requestFn = remoteUrl.startsWith('https') ? httpsRequest : httpRequest;
+      const requestFn = remoteUrl.startsWith('https')
+        ? httpsRequest
+        : httpRequest;
 
       const request = requestFn(remoteUrl, {
         headers: headers,
@@ -580,7 +591,10 @@ export class JupyterLabSession {
       request.end();
     };
 
-    const handleInterceptBufferProtocol = (req: Electron.ProtocolRequest, callback: (response: Buffer | Electron.ProtocolResponse) => void) => {
+    const handleInterceptBufferProtocol = (
+      req: Electron.ProtocolRequest,
+      callback: (response: Buffer | Electron.ProtocolResponse) => void
+    ) => {
       // TODO: this check is not enough to decide desktop asset. (e.g. relative image files ./test.png on notebook)
       if (req.url.startsWith(desktopAppAssetsPrefix)) {
         handleDesktopAppAssetRequest(req, callback);
@@ -590,11 +604,13 @@ export class JupyterLabSession {
     };
 
     this._window.webContents.session.protocol.interceptBufferProtocol(
-      'http', handleInterceptBufferProtocol
+      'http',
+      handleInterceptBufferProtocol
     );
 
     this._window.webContents.session.protocol.interceptBufferProtocol(
-      'https', handleInterceptBufferProtocol
+      'https',
+      handleInterceptBufferProtocol
     );
 
     const filter = {
@@ -609,7 +625,7 @@ export class JupyterLabSession {
         };
         if (cookies.size > 0) {
           requestHeaders['Cookie'] = Array.from(cookies.values()).join('; ');
-          requestHeaders['Host'] =  appConfig.url.host ;
+          requestHeaders['Host'] = appConfig.url.host;
           requestHeaders['Origin'] = appConfig.url.origin;
         }
         callback({ cancel: false, requestHeaders });
@@ -651,7 +667,9 @@ export class JupyterLabSession {
 
     sessionManager.app.pageConfigSet.then(() => {
       this._window.loadURL(
-        `${appConfig.url.protocol}//${appConfig.url.host}${appConfig.url.pathname}${DESKTOP_APP_ASSETS_PATH}/index.html?${encodeURIComponent(
+        `${appConfig.url.protocol}//${appConfig.url.host}${
+          appConfig.url.pathname
+        }${DESKTOP_APP_ASSETS_PATH}/index.html?${encodeURIComponent(
           JSON.stringify(this.info)
         )}`
       );

@@ -228,7 +228,8 @@ export class JupyterApplication implements IApplication, IStatefulService {
         if (appState.remoteURL === undefined) {
           appState.remoteURL = '';
         }
-        appState.remoteURL = 'https://hub-binder.mybinder.ovh/user/binder-examples-jupyterlab-a5czynjk/lab?token=hqy6-CY8StuNneCqKlaFpQ';
+        appState.remoteURL =
+          'https://hub-binder.mybinder.ovh/user/binder-examples-jupyterlab-a5czynjk/lab?token=hqy6-CY8StuNneCqKlaFpQ';
 
         if (appState.remoteURL === '') {
           appConfig.isRemote = false;
@@ -239,19 +240,18 @@ export class JupyterApplication implements IApplication, IStatefulService {
 
             // start
             waitUntilServerIsUp(appConfig.url).then(() => {
-              loginAndGetServerInfo(appConfig.url.href).then((serverInfo) => {
+              loginAndGetServerInfo(appConfig.url.href).then(serverInfo => {
                 appConfig.pageConfig = serverInfo.pageConfig;
                 appConfig.cookies = serverInfo.cookies;
                 this._serverPageConfigSet = true;
               });
             });
-
           });
         } else {
           appConfig.isRemote = true;
           appConfig.url = new URL(appState.remoteURL);
           appConfig.token = appConfig.url.searchParams.get('token');
-          loginAndGetServerInfo(appConfig.url.href).then((serverInfo) => {
+          loginAndGetServerInfo(appConfig.url.href).then(serverInfo => {
             appConfig.pageConfig = serverInfo.pageConfig;
             appConfig.cookies = serverInfo.cookies;
             this._serverInfoStateSet = true;
@@ -283,14 +283,14 @@ export class JupyterApplication implements IApplication, IStatefulService {
   }
 
   getServerInfo(): Promise<JupyterServer.IInfo> {
-    return new Promise<JupyterServer.IInfo>((resolve) => {
+    return new Promise<JupyterServer.IInfo>(resolve => {
       const resolveInfo = () => {
         resolve({
           type: appConfig.isRemote ? 'remote' : 'local',
           url: appConfig.url.href,
           token: appConfig.token,
           environment: undefined
-        })
+        });
       };
 
       if (this._serverInfoStateSet) {
@@ -308,7 +308,7 @@ export class JupyterApplication implements IApplication, IStatefulService {
   }
 
   get pageConfigSet(): Promise<boolean> {
-    return new Promise<boolean>((resolve) => {
+    return new Promise<boolean>(resolve => {
       if (this._serverPageConfigSet) {
         resolve(true);
         return;
@@ -319,7 +319,7 @@ export class JupyterApplication implements IApplication, IStatefulService {
           clearInterval(timer);
           resolve(true);
         }
-      }, 200); 
+      }, 200);
     });
   }
 

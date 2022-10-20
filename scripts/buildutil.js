@@ -37,17 +37,6 @@ const cli = meow(
   }
 );
 
-function searchTextInFile(filePath, text) {
-  try {
-    const fileContent = fs.readFileSync(filePath, 'utf8');
-    return fileContent.includes(text);
-  } catch (e) {
-    console.error('Error searching for file content', e);
-  }
-
-  return false;
-}
-
 // remove ~ or ^ prefix from semver version
 function makeVersionAbsolute(version) {
   if (version.length > 0 && (version[0] === '^' || version[0] === '~')) {

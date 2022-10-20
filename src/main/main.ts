@@ -200,7 +200,8 @@ function setApplicationMenu() {
 app.on('ready', () => {
   setApplicationMenu();
 
-    handOverArguments().then(() => {
+  handOverArguments()
+    .then(() => {
       setupJLabCommand();
       let serviceManager = new Bottle();
       let autostarts: string[] = [];

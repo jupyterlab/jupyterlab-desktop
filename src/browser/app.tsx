@@ -58,12 +58,13 @@ export class Application extends React.Component<
         remotes: []
       };
 
-      asyncRemoteRenderer.runRemoteMethod(IServerFactory.getServerInfo, undefined)
-      .then(data => {
-        this._serverReady({
-          data
+      asyncRemoteRenderer
+        .runRemoteMethod(IServerFactory.getServerInfo, undefined)
+        .then(data => {
+          this._serverReady({
+            data
+          });
         });
-      });
     } else {
       this.state = {
         renderSplash: this._renderEmpty,
