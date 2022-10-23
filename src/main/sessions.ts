@@ -135,7 +135,13 @@ export class JupyterLabSessions
               });
             }
           } else {
-            this.createSession().then(() => {
+            let options: JupyterLabSession.IOptions = {
+              state: appConfig.isRemote ? 'remote' : 'local'
+            };
+            if (this._lastWindowState) {
+              options = { ...this._lastWindowState, ...options };
+            }
+            this.createSession(options).then(() => {
               this._startingSession = null;
             });
           }
@@ -288,6 +294,10 @@ export class JupyterLabSessions
     });
 
     ipcMain.once('lab-ready', () => {
+      if (appConfig.isRemote) {
+        this._startingSession = null;
+        return;
+      }
       // Skip JupyterLab executable
       for (let i = 1; i < process.argv.length; i++) {
         this._activateLocalSession().then(() => {
@@ -860,7 +870,7 @@ let sessions: JupyterLabSessions;
  * The "open-file" listener should be registered before
  * app ready for "double click" files to open in application
  */
-if (process && process.type !== 'renderer') {
+if (process && process.type !== 'renderer' && !appConfig.isRemote) {
   app.once('will-finish-launching', (e: Electron.Event) => {
     app.on('open-file', (event: Electron.Event, path: string) => {
       ipcMain.once('lab-ready', (event: Electron.Event) => {

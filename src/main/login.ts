@@ -1,4 +1,5 @@
 import { BrowserWindow, Cookie } from 'electron';
+import { appConfig, clearSession } from './utils';
 
 export let loginWindow: BrowserWindow;
 
@@ -19,34 +20,55 @@ export async function loginAndGetServerInfo(
 
     loginWindow = window;
 
-    window.setMenuBarVisibility(false);
-    window.center();
-    window.loadURL(url);
-
-    window.webContents.on('did-navigate', (event: Event, navigationUrl) => {
-      if (navigationUrl.startsWith(url)) {
-        window.webContents
-          .executeJavaScript(
-            `
+    window.webContents.on(
+      'did-navigate',
+      (
+        event: Event,
+        navigationUrl: string,
+        httpResponseCode: number,
+        httpStatusText: string
+      ) => {
+        if (httpResponseCode !== 200) {
+          reject();
+          return;
+        }
+        if (navigationUrl.startsWith(url)) {
+          window.webContents
+            .executeJavaScript(
+              `
             const config = document.getElementById('jupyter-config-data');
             JSON.parse(config ? config.textContent : '{}');
           `
-          )
-          .then((config: any) => {
-            window.webContents.session.cookies
-              .get({})
-              .then(cookies => {
-                window.close();
-                resolve({
-                  pageConfig: config,
-                  cookies: cookies
+            )
+            .then((config: any) => {
+              window.webContents.session.cookies
+                .get({})
+                .then(cookies => {
+                  window.close();
+                  resolve({
+                    pageConfig: config,
+                    cookies: cookies
+                  });
+                })
+                .catch(error => {
+                  console.log(error);
                 });
-              })
-              .catch(error => {
-                console.log(error);
-              });
-          });
+            });
+        }
       }
-    });
+    );
+
+    window.setMenuBarVisibility(false);
+    window.center();
+
+    const clearUserSession = !appConfig.isRemote;
+
+    if (clearUserSession) {
+      clearSession(window.webContents).then(() => {
+        window.loadURL(url);
+      });
+    } else {
+      window.loadURL(url);
+    }
   });
 }

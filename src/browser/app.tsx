@@ -51,27 +51,17 @@ export class Application extends React.Component<
     this._changeEnvironment = this._changeEnvironment.bind(this);
     this._splash = React.createRef<SplashScreen>();
 
-    if (this.props.options.serverState === 'local') {
-      this.state = {
-        renderSplash: this._renderEmpty,
-        renderState: this._renderEmpty,
-        remotes: []
-      };
+    this.state = {
+      renderSplash: this._renderEmpty,
+      renderState: this._renderEmpty,
+      remotes: []
+    };
 
-      asyncRemoteRenderer
-        .runRemoteMethod(IServerFactory.getServerInfo, undefined)
-        .then(data => {
-          this._serverReady({
-            data
-          });
-        });
-    } else {
-      this.state = {
-        renderSplash: this._renderEmpty,
-        renderState: this._renderServerManager,
-        remotes: []
-      };
-    }
+    asyncRemoteRenderer
+      .runRemoteMethod(IServerFactory.getServerInfo, undefined)
+      .then(data => {
+        this._serverReady(data);
+      });
 
     this._serverState = new StateDB(/*{namespace: Application.STATE_NAMESPACE}*/);
     this._serverState
@@ -134,7 +124,7 @@ export class Application extends React.Component<
       token: data.token,
       url: data.url,
       name: 'Local',
-      type: 'local'
+      type: data.type
     };
 
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -151,6 +141,9 @@ export class Application extends React.Component<
         );
       }
     }
+
+    PageConfig.setOption('jupyterlab-desktop-server-type', data.type);
+    PageConfig.setOption('jupyterlab-desktop-server-url', data.labUrl);
 
     // correctly set the base URL so that relative paths can be used
     // (relative paths are used by upstream JupyterLab, e.g. for kernelspec

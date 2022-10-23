@@ -393,6 +393,20 @@ export function getEnvironmentPath(environment: IPythonEnvironment): string {
   return envPath;
 }
 
+export function clearSession(webContents: Electron.WebContents): Promise<void> {
+  return new Promise(resolve => {
+    webContents.clearHistory();
+    const session = webContents.session;
+    Promise.all([
+      session.clearCache(),
+      session.clearAuthCache(),
+      session.clearStorageData()
+    ]).then(() => {
+      resolve();
+    });
+  });
+}
+
 let service: IService = {
   requirements: ['IApplication'],
   provides: 'IElectronDataConnector',
