@@ -242,7 +242,7 @@ export class JupyterApplication implements IApplication, IStatefulService {
             this._serverInfoStateSet = true;
 
             waitUntilServerIsUp(appConfig.url).then(() => {
-              loginAndGetServerInfo(appConfig.url.href, {showDialog: false})
+              loginAndGetServerInfo(appConfig.url.href, { showDialog: false })
                 .then(serverInfo => {
                   appConfig.pageConfig = serverInfo.pageConfig;
                   appConfig.cookies = serverInfo.cookies;
@@ -259,7 +259,7 @@ export class JupyterApplication implements IApplication, IStatefulService {
           try {
             appConfig.url = new URL(appState.remoteURL);
             appConfig.token = appConfig.url.searchParams.get('token');
-            loginAndGetServerInfo(appConfig.url.href, {showDialog: true})
+            loginAndGetServerInfo(appConfig.url.href, { showDialog: true })
               .then(serverInfo => {
                 appConfig.pageConfig = serverInfo.pageConfig;
                 appConfig.cookies = serverInfo.cookies;
@@ -448,7 +448,7 @@ export class JupyterApplication implements IApplication, IStatefulService {
   }
 
   private _validateRemoteServerUrl(url: string): Promise<IJupyterServerInfo> {
-    return loginAndGetServerInfo(url, {showDialog: true, incognito: true});
+    return loginAndGetServerInfo(url, { showDialog: true, incognito: true });
   }
 
   private _clearSessionData(): Promise<void> {
@@ -586,21 +586,25 @@ export class JupyterApplication implements IApplication, IStatefulService {
 
     ipcMain.handle('validate-remote-server-url', (event, url) => {
       return new Promise<any>((resolve, reject) => {
-        this._validateRemoteServerUrl(url).then((value) => {
-          resolve({result: 'valid'});
-        }).catch((error) => {
-          resolve({result: 'invalid', error: error.message});
-        });
+        this._validateRemoteServerUrl(url)
+          .then(value => {
+            resolve({ result: 'valid' });
+          })
+          .catch(error => {
+            resolve({ result: 'invalid', error: error.message });
+          });
       });
     });
 
-    ipcMain.handle('clear-session-data', (event) => {
+    ipcMain.handle('clear-session-data', event => {
       return new Promise<any>((resolve, reject) => {
-        this._clearSessionData().then(() => {
-          resolve({result: 'success'});
-        }).catch((error) => {
-          resolve({result: 'error', error: error.message});
-        });
+        this._clearSessionData()
+          .then(() => {
+            resolve({ result: 'success' });
+          })
+          .catch(error => {
+            resolve({ result: 'error', error: error.message });
+          });
       });
     });
 

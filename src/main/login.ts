@@ -24,7 +24,6 @@ export async function loginAndGetServerInfo(
   options?: IRemoteServerLoginOptions
 ): Promise<IJupyterServerInfo> {
   return new Promise<IJupyterServerInfo>((resolve, reject) => {
-
     try {
       new URL(url);
     } catch (error) {
@@ -44,7 +43,7 @@ export async function loginAndGetServerInfo(
         partition: `partition-${Date.now()}`
       };
     }
-    
+
     const window = new BrowserWindow(browserOptions);
 
     const timeout = options?.timeout || 30000;
@@ -58,7 +57,9 @@ export async function loginAndGetServerInfo(
       }
       reject({
         type: 'timeout',
-        message: `Failed to connect to JupyterLab server in ${(timeout / 1000).toFixed(1)} s`
+        message: `Failed to connect to JupyterLab server in ${(
+          timeout / 1000
+        ).toFixed(1)} s`
       } as ILoginError);
     };
 
