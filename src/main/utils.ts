@@ -25,12 +25,14 @@ export interface IAppConfiguration {
   token: string;
   pageConfig?: any;
   cookies?: Electron.Cookie[];
+  persistSessionData: boolean;
 }
 
 export const appConfig: IAppConfiguration = {
   isRemote: false,
   url: undefined,
-  token: 'jlab-token'
+  token: 'jlab-token',
+  persistSessionData: true
 };
 
 export interface ISaveOptions {
@@ -393,17 +395,19 @@ export function getEnvironmentPath(environment: IPythonEnvironment): string {
   return envPath;
 }
 
-export function clearSession(webContents: Electron.WebContents): Promise<void> {
-  return new Promise(resolve => {
-    webContents.clearHistory();
-    const session = webContents.session;
-    Promise.all([
-      session.clearCache(),
-      session.clearAuthCache(),
-      session.clearStorageData()
-    ]).then(() => {
-      resolve();
-    });
+export function clearSession(session: Electron.Session): Promise<void> {
+  return new Promise((resolve, reject) => {
+    try {
+      Promise.all([
+        session.clearCache(),
+        session.clearAuthCache(),
+        session.clearStorageData()
+      ]).then(() => {
+        resolve();
+      });
+    } catch (error) {
+      reject();
+    }
   });
 }
 

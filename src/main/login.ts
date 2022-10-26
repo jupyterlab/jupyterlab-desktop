@@ -8,15 +8,68 @@ export interface IJupyterServerInfo {
   pageConfig?: any;
 }
 
+export interface IRemoteServerLoginOptions {
+  showDialog?: boolean;
+  incognito?: boolean;
+  timeout?: number;
+}
+
+export interface ILoginError {
+  type: 'invalid-url' | 'timeout' | 'dismissed';
+  message?: string;
+}
+
 export async function loginAndGetServerInfo(
   url: string,
-  showDialog: boolean = true
+  options?: IRemoteServerLoginOptions
 ): Promise<IJupyterServerInfo> {
   return new Promise<IJupyterServerInfo>((resolve, reject) => {
-    const window = new BrowserWindow({
-      show: showDialog,
-      title: 'JupyterLab Remote Server Login'
-    });
+
+    try {
+      new URL(url);
+    } catch (error) {
+      reject({
+        type: 'invalid-url',
+        message: error.message
+      } as ILoginError);
+      return;
+    }
+
+    const browserOptions: Electron.BrowserWindowConstructorOptions = {
+      title: 'JupyterLab Remote Server Login',
+      show: options?.showDialog === true
+    };
+    if (options?.incognito) {
+      browserOptions.webPreferences = {
+        partition: `partition-${Date.now()}`
+      };
+    }
+    
+    const window = new BrowserWindow(browserOptions);
+
+    const timeout = options?.timeout || 30000;
+
+    const loginTimeoutHandler = async () => {
+      if (window) {
+        if (options?.incognito) {
+          await clearSession(window.webContents.session);
+        }
+        window.close();
+      }
+      reject({
+        type: 'timeout',
+        message: `Failed to connect to JupyterLab server in ${(timeout / 1000).toFixed(1)} s`
+      } as ILoginError);
+    };
+
+    let loginTimeout: NodeJS.Timeout;
+
+    const resetLoginTimer = () => {
+      clearTimeout(loginTimeout);
+      loginTimeout = setTimeout(loginTimeoutHandler, timeout);
+    };
+
+    resetLoginTimer();
 
     loginWindow = window;
 
@@ -29,9 +82,13 @@ export async function loginAndGetServerInfo(
         httpStatusText: string
       ) => {
         if (httpResponseCode !== 200) {
+          clearTimeout(loginTimeout);
           reject();
           return;
         }
+
+        resetLoginTimer();
+
         if (navigationUrl.startsWith(url)) {
           window.webContents
             .executeJavaScript(
@@ -43,7 +100,13 @@ export async function loginAndGetServerInfo(
             .then((config: any) => {
               window.webContents.session.cookies
                 .get({})
-                .then(cookies => {
+                .then(async cookies => {
+                  clearTimeout(loginTimeout);
+
+                  if (options?.incognito) {
+                    await clearSession(window.webContents.session);
+                  }
+
                   window.close();
                   resolve({
                     pageConfig: config,
@@ -58,13 +121,21 @@ export async function loginAndGetServerInfo(
       }
     );
 
+    window.on('closed', () => {
+      clearTimeout(loginTimeout);
+      reject({
+        type: 'dismissed',
+        message: 'Window closed.'
+      } as ILoginError);
+    });
+
     window.setMenuBarVisibility(false);
     window.center();
 
-    const clearUserSession = !appConfig.isRemote;
+    const clearUserSession = !appConfig.persistSessionData;
 
     if (clearUserSession) {
-      clearSession(window.webContents).then(() => {
+      clearSession(window.webContents.session).then(() => {
         window.loadURL(url);
       });
     } else {
