@@ -35,7 +35,7 @@ import { appConfig, clearSession, getAppDir, getUserDataDir } from './utils';
 import { execFile } from 'child_process';
 import { loadingAnimation } from '../assets/svg';
 import { IServerFactory, JupyterServer, waitUntilServerIsUp } from './server';
-import { IJupyterServerInfo, loginAndGetServerInfo } from './login';
+import { connectAndGetServerInfo, IJupyterServerInfo } from './connect';
 
 async function getFreePort(): Promise<number> {
   return new Promise<number>(resolve => {
@@ -204,7 +204,7 @@ export class JupyterApplication implements IApplication, IStatefulService {
           this._registry.setDefaultPythonPath(pythonPath);
           appState.pythonPath = pythonPath;
         } else {
-          this._showPythonSelectorDialog(
+          this._showServerConnectionOptionsDialog(
             useBundledPythonPath ? 'invalid-bundled-env' : 'invalid-env'
           );
         }
@@ -242,24 +242,27 @@ export class JupyterApplication implements IApplication, IStatefulService {
             this._serverInfoStateSet = true;
 
             waitUntilServerIsUp(appConfig.url).then(() => {
-              loginAndGetServerInfo(appConfig.url.href, { showDialog: false })
+              connectAndGetServerInfo(appConfig.url.href, { showDialog: false })
                 .then(serverInfo => {
                   appConfig.pageConfig = serverInfo.pageConfig;
                   appConfig.cookies = serverInfo.cookies;
                   this._serverPageConfigSet = true;
                 })
                 .catch(() => {
-                  this._showPythonSelectorDialog('change');
+                  this._showServerConnectionOptionsDialog('change');
                 });
             });
           });
         } else {
           appConfig.isRemote = true;
           appConfig.persistSessionData = appState.persistSessionData;
+          appConfig.clearSessionDataOnNextLaunch = appState.clearSessionDataOnNextLaunch === true;
+          // reset the flag
+          appState.clearSessionDataOnNextLaunch = false;
           try {
             appConfig.url = new URL(appState.remoteURL);
             appConfig.token = appConfig.url.searchParams.get('token');
-            loginAndGetServerInfo(appConfig.url.href, { showDialog: true })
+            connectAndGetServerInfo(appConfig.url.href, { showDialog: true })
               .then(serverInfo => {
                 appConfig.pageConfig = serverInfo.pageConfig;
                 appConfig.cookies = serverInfo.cookies;
@@ -267,10 +270,10 @@ export class JupyterApplication implements IApplication, IStatefulService {
                 this._serverPageConfigSet = true;
               })
               .catch(() => {
-                this._showPythonSelectorDialog('remote-connection-failure');
+                this._showServerConnectionOptionsDialog('remote-connection-failure');
               });
           } catch (error) {
-            this._showPythonSelectorDialog('remote-connection-failure');
+            this._showServerConnectionOptionsDialog('remote-connection-failure');
           }
         }
       }
@@ -302,9 +305,10 @@ export class JupyterApplication implements IApplication, IStatefulService {
       const resolveInfo = () => {
         resolve({
           type: appConfig.isRemote ? 'remote' : 'local',
-          url: appConfig.url.href,
+          url: `${appConfig.url.protocol}//${appConfig.url.host}${appConfig.url.pathname}`,
           token: appConfig.token,
-          environment: undefined
+          environment: undefined,
+          pageConfig: appConfig.pageConfig
         });
       };
 
@@ -448,7 +452,7 @@ export class JupyterApplication implements IApplication, IStatefulService {
   }
 
   private _validateRemoteServerUrl(url: string): Promise<IJupyterServerInfo> {
-    return loginAndGetServerInfo(url, { showDialog: true, incognito: true });
+    return connectAndGetServerInfo(url, { showDialog: true, incognito: true });
   }
 
   private _clearSessionData(): Promise<void> {
@@ -459,10 +463,6 @@ export class JupyterApplication implements IApplication, IStatefulService {
    * Register all application event listeners
    */
   private _registerListeners(): void {
-    // app.on('window-all-closed', () => {
-    //   app.quit();
-    // });
-
     app.on('will-quit', event => {
       event.preventDefault();
 
@@ -626,6 +626,10 @@ export class JupyterApplication implements IApplication, IStatefulService {
     });
 
     ipcMain.on('set-remote-server-url', (event, url, persistSessionData) => {
+      if (this._applicationState.remoteURL !== url) {
+        this._applicationState.clearSessionDataOnNextLaunch = true;
+      }
+
       this._applicationState.remoteURL = url;
       this._applicationState.persistSessionData = persistSessionData;
       app.relaunch();
@@ -665,7 +669,7 @@ export class JupyterApplication implements IApplication, IStatefulService {
     asyncRemoteMain.registerRemoteMethod(
       IAppRemoteInterface.showPythonPathSelector,
       (): Promise<void> => {
-        this._showPythonSelectorDialog('change');
+        this._showServerConnectionOptionsDialog('change');
         return Promise.resolve();
       }
     );
@@ -673,14 +677,7 @@ export class JupyterApplication implements IApplication, IStatefulService {
     asyncRemoteMain.registerRemoteMethod(
       IServerFactory.getServerInfo,
       (): Promise<any> => {
-        return Promise.resolve({
-          type: appConfig.isRemote ? 'remote' : 'local',
-          factoryId: 0,
-          url: `${appConfig.url.protocol}//${appConfig.url.host}`,
-          labUrl: `${appConfig.url.protocol}//${appConfig.url.host}${appConfig.url.pathname}`,
-          token: '',
-          pageConfig: appConfig.pageConfig
-        });
+        return this.getServerInfo();
       }
     );
   }
@@ -773,7 +770,7 @@ export class JupyterApplication implements IApplication, IStatefulService {
     dialog.loadURL(`data:text/html;charset=utf-8,${pageSource}`);
   }
 
-  private _showPythonSelectorDialog(
+  private _showServerConnectionOptionsDialog(
     reason:
       | 'change'
       | 'invalid-bundled-env'
@@ -970,10 +967,10 @@ export class JupyterApplication implements IApplication, IStatefulService {
                   showProgress('Validating URL', true);
                   ipcRenderer.invoke('validate-remote-server-url', serverUrlInput.value).then(response => {
                     if (response.result === 'valid') {
-                      showProgress('URL is valid!', false);
+                      showProgress('JupyterLab Server connection test succeeded!', false);
                       setTimeout(() => {
                         showProgress('', false);
-                      }, 2000);
+                      }, 5000);
                     } else {
                       showProgress('Error: ' + response.error, false);
                     }
@@ -988,7 +985,7 @@ export class JupyterApplication implements IApplication, IStatefulService {
                     showProgress('Session data cleared!', false);
                     setTimeout(() => {
                       showProgress('', false);
-                    }, 2000);
+                    }, 5000);
                   });
                 }
 
@@ -1128,6 +1125,7 @@ export namespace JupyterApplication {
     condaRootPath?: string;
     remoteURL?: string;
     persistSessionData?: boolean;
+    clearSessionDataOnNextLaunch?: boolean;
   }
 }
 

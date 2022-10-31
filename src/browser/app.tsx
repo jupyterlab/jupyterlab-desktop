@@ -58,7 +58,7 @@ export class Application extends React.Component<
     };
 
     asyncRemoteRenderer
-      .runRemoteMethod(IServerFactory.getServerInfo, undefined)
+      .runRemoteMethod<void, IServerFactory.IServerStarted>(IServerFactory.getServerInfo, undefined)
       .then(data => {
         this._serverReady(data);
       });
@@ -104,7 +104,7 @@ export class Application extends React.Component<
     );
   }
 
-  private _serverReady(data: any): void {
+  private _serverReady(data: IServerFactory.IServerStarted): void {
     if (data.error) {
       log.error(data.error);
       this.setState({ renderState: () => this._renderErrorScreen(data.error) });
@@ -120,17 +120,11 @@ export class Application extends React.Component<
       // });
     });
 
-    this._server = {
-      token: data.token,
-      url: data.url,
-      name: 'Local',
-      type: data.type
-    };
+    const config: any = data.pageConfig;
 
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    __webpack_public_path__ = data.url;
-
-    const config: any = data.pageConfig;
+    __webpack_public_path__ = config.hasOwnProperty('fullStaticUrl') ?
+      config['fullStaticUrl'] + '/' : data.url;
 
     for (let key in config) {
       if (config.hasOwnProperty(key)) {
@@ -143,15 +137,7 @@ export class Application extends React.Component<
     }
 
     PageConfig.setOption('jupyterlab-desktop-server-type', data.type);
-    PageConfig.setOption('jupyterlab-desktop-server-url', data.labUrl);
-
-    // correctly set the base URL so that relative paths can be used
-    // (relative paths are used by upstream JupyterLab, e.g. for kernelspec
-    // logos see https://github.com/jupyterlab/jupyterlab-desktop/pull/316,
-    // and for other static assets like MathJax).
-    const base = document.createElement('base');
-    base.setAttribute('href', this._server.url);
-    document.body.appendChild(base);
+    PageConfig.setOption('jupyterlab-desktop-server-url', data.url);
 
     this._setupLab().then(lab => {
       this._lab = lab;
@@ -343,8 +329,6 @@ export class Application extends React.Component<
   private _lab: ElectronJupyterLab;
 
   private _ignorePlugins: string[] = []; //['jupyter.extensions.server-manager'];
-
-  private _server: JupyterServer.IServer = null;
 
   private _nextRemoteId: number = 1;
 

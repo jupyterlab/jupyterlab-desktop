@@ -1,10 +1,7 @@
 import {
   app,
-  BrowserWindow,
-  dialog,
   Menu,
-  MenuItem,
-  WebContents
+  MenuItem
 } from 'electron';
 
 const Bottle = require('bottlejs');
@@ -222,41 +219,6 @@ app.on('ready', () => {
       log.error(e);
       app.quit();
     });
-});
-
-app.on('web-contents-created', (_event: any, webContents: WebContents) => {
-  // Prevent navigation to local links on the same page and external links
-  // webContents.on('will-navigate', (event: Event, navigationUrl) => {
-  //   const jlabBaseUrl = `http://localhost:${appConfig.jlabPort}/`;
-  //   if (
-  //     !(
-  //       navigationUrl.startsWith(jlabBaseUrl) &&
-  //       navigationUrl.indexOf('#') === -1
-  //     )
-  //   ) {
-  //     console.warn(
-  //       `Navigation is not allowed; attempted navigation to: ${navigationUrl}`
-  //     );
-  //     event.preventDefault();
-  //   }
-  // });
-
-  // handle page's beforeunload prompt natively
-  webContents.on('will-prevent-unload', (event: Event) => {
-    const win = BrowserWindow.fromWebContents(webContents);
-    const choice = dialog.showMessageBoxSync(win, {
-      type: 'warning',
-      message: 'Do you want to leave?',
-      detail: 'Changes you made may not be saved.',
-      buttons: ['Leave', 'Stay'],
-      defaultId: 1,
-      cancelId: 1
-    });
-
-    if (choice === 0) {
-      event.preventDefault();
-    }
-  });
 });
 
 /**

@@ -26,6 +26,7 @@ export interface IAppConfiguration {
   pageConfig?: any;
   cookies?: Electron.Cookie[];
   persistSessionData: boolean;
+  clearSessionDataOnNextLaunch?: boolean;
 }
 
 export const appConfig: IAppConfiguration = {

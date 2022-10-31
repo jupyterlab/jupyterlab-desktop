@@ -406,6 +406,7 @@ export namespace JupyterServer {
     token: string;
     environment: IPythonEnvironment;
     version?: string;
+    pageConfig?: any;
   }
 }
 
@@ -451,9 +452,11 @@ export interface IServerFactory {
 export namespace IServerFactory {
   export interface IServerStarted {
     readonly factoryId: number;
+    type: 'local' | 'remote';
     url: string;
     token: string;
     error?: Error;
+    pageConfig?: any;
   }
 
   export interface IServerStop {
@@ -742,6 +745,7 @@ export class JupyterServerFactory implements IServerFactory, IClosingService {
   ): IServerFactory.IServerStarted {
     let info = data.server.info;
     return {
+      type: 'local',
       factoryId: data.factoryId,
       url: info.url,
       token: info.token
@@ -750,6 +754,7 @@ export class JupyterServerFactory implements IServerFactory, IClosingService {
 
   private _errorToIPC(e: Error): IServerFactory.IServerStarted {
     return {
+      type: 'local',
       factoryId: -1,
       url: null,
       token: null,

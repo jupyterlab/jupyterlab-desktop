@@ -5,6 +5,7 @@ import {
   app,
   BrowserWindow,
   clipboard,
+  dialog,
   ipcMain,
   Menu,
   MenuItemConstructorOptions
@@ -249,6 +250,9 @@ export class JupyterLabSessions
       session.browserWindow.on('close', (event: Event) => {
         // Save session state
         this._lastWindowState = session.state();
+
+        // close application when JupyterLab window is closed
+        app.quit();
       });
 
       session.browserWindow.on('closed', (event: Event) => {
@@ -504,7 +508,6 @@ export class JupyterLabSession {
 
       // make sure asset is in appAssetsDir, prevent access to lower level directories
       if (assetFilePath.indexOf(appAssetsDir) === 0) {
-        // TODO: handle file not found case
         if (!fs.existsSync(assetFilePath)) {
           callback({ statusCode: 404 });
           return;
@@ -605,7 +608,6 @@ export class JupyterLabSession {
       req: Electron.ProtocolRequest,
       callback: (response: Buffer | Electron.ProtocolResponse) => void
     ) => {
-      // TODO: this check is not enough to decide desktop asset. (e.g. relative image files ./test.png on notebook)
       if (req.url.startsWith(desktopAppAssetsPrefix)) {
         handleDesktopAppAssetRequest(req, callback);
       } else {
@@ -661,19 +663,46 @@ export class JupyterLabSession {
       event.newGuest = win;
     });
 
-    // Prevent reloading app from the server when jumping to an anchor
-    this._window.webContents.on(
-      'will-navigate',
-      (event: Event, navigationUrl) => {
-        const parsedUrl = new URL(navigationUrl);
-
-        asyncRemoteMain.emitRemoteEvent(
-          ISessions.navigatedToHash,
-          parsedUrl.hash,
-          this._window.webContents
+    // Prevent navigation to local links on the same page and external links
+    this._window.webContents.on('will-navigate', (event: Event, navigationUrl) => {
+      const jlabBaseUrl = `${appConfig.url.protocol}//${appConfig.url.host}`;
+      if (
+        !(
+          navigationUrl.startsWith(jlabBaseUrl) &&
+          navigationUrl.indexOf('#') === -1
+        )
+      ) {
+        console.warn(
+          `Navigation is not allowed; attempted navigation to: ${navigationUrl}`
         );
+        event.preventDefault();
+        return;
       }
-    );
+
+      const parsedUrl = new URL(navigationUrl);
+
+      asyncRemoteMain.emitRemoteEvent(
+        ISessions.navigatedToHash,
+        parsedUrl.hash,
+        this._window.webContents
+      );
+    });
+
+    // handle page's beforeunload prompt natively
+    this._window.webContents.on('will-prevent-unload', (event: Event) => {
+      const choice = dialog.showMessageBoxSync(this._window, {
+        type: 'warning',
+        message: 'Do you want to leave?',
+        detail: 'Changes you made may not be saved.',
+        buttons: ['Leave', 'Stay'],
+        defaultId: 1,
+        cancelId: 1
+      });
+
+      if (choice === 0) {
+        event.preventDefault();
+      }
+    });
 
     sessionManager.app.pageConfigSet.then(() => {
       this._window.loadURL(

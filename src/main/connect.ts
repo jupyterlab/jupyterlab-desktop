@@ -1,41 +1,42 @@
 import { BrowserWindow, Cookie } from 'electron';
 import { appConfig, clearSession } from './utils';
 
-export let loginWindow: BrowserWindow;
+export let connectWindow: BrowserWindow;
 
 export interface IJupyterServerInfo {
   cookies: Cookie[];
   pageConfig?: any;
 }
 
-export interface IRemoteServerLoginOptions {
+export interface IRemoteServerConnectOptions {
   showDialog?: boolean;
   incognito?: boolean;
   timeout?: number;
 }
 
-export interface ILoginError {
+export interface IConnectError {
   type: 'invalid-url' | 'timeout' | 'dismissed';
   message?: string;
 }
 
-export async function loginAndGetServerInfo(
+export async function connectAndGetServerInfo(
   url: string,
-  options?: IRemoteServerLoginOptions
+  options?: IRemoteServerConnectOptions
 ): Promise<IJupyterServerInfo> {
   return new Promise<IJupyterServerInfo>((resolve, reject) => {
+    let urlObj: URL;
     try {
-      new URL(url);
+      urlObj = new URL(url);
     } catch (error) {
       reject({
         type: 'invalid-url',
         message: error.message
-      } as ILoginError);
+      } as IConnectError);
       return;
     }
 
     const browserOptions: Electron.BrowserWindowConstructorOptions = {
-      title: 'JupyterLab Remote Server Login',
+      title: 'JupyterLab Server Connection',
       show: options?.showDialog === true
     };
     if (options?.incognito) {
@@ -48,7 +49,7 @@ export async function loginAndGetServerInfo(
 
     const timeout = options?.timeout || 30000;
 
-    const loginTimeoutHandler = async () => {
+    const connectTimeoutHandler = async () => {
       if (window) {
         if (options?.incognito) {
           await clearSession(window.webContents.session);
@@ -60,19 +61,19 @@ export async function loginAndGetServerInfo(
         message: `Failed to connect to JupyterLab server in ${(
           timeout / 1000
         ).toFixed(1)} s`
-      } as ILoginError);
+      } as IConnectError);
     };
 
-    let loginTimeout: NodeJS.Timeout;
+    let connectTimeout: NodeJS.Timeout;
 
-    const resetLoginTimer = () => {
-      clearTimeout(loginTimeout);
-      loginTimeout = setTimeout(loginTimeoutHandler, timeout);
+    const resetConnectTimer = () => {
+      clearTimeout(connectTimeout);
+      connectTimeout = setTimeout(connectTimeoutHandler, timeout);
     };
 
-    resetLoginTimer();
+    resetConnectTimer();
 
-    loginWindow = window;
+    connectWindow = window;
 
     window.webContents.on(
       'did-navigate',
@@ -83,12 +84,12 @@ export async function loginAndGetServerInfo(
         httpStatusText: string
       ) => {
         if (httpResponseCode !== 200) {
-          clearTimeout(loginTimeout);
+          clearTimeout(connectTimeout);
           reject();
           return;
         }
 
-        resetLoginTimer();
+        resetConnectTimer();
 
         if (navigationUrl.startsWith(url)) {
           window.webContents
@@ -102,16 +103,19 @@ export async function loginAndGetServerInfo(
               window.webContents.session.cookies
                 .get({})
                 .then(async cookies => {
-                  clearTimeout(loginTimeout);
+                  clearTimeout(connectTimeout);
 
                   if (options?.incognito) {
                     await clearSession(window.webContents.session);
                   }
 
+                  const hostname = urlObj.hostname;
+                  const domainCookies = cookies.filter(cookie => cookie.domain === hostname);
+
                   window.close();
                   resolve({
                     pageConfig: config,
-                    cookies: cookies
+                    cookies: domainCookies
                   });
                 })
                 .catch(error => {
@@ -123,17 +127,17 @@ export async function loginAndGetServerInfo(
     );
 
     window.on('closed', () => {
-      clearTimeout(loginTimeout);
+      clearTimeout(connectTimeout);
       reject({
         type: 'dismissed',
         message: 'Window closed.'
-      } as ILoginError);
+      } as IConnectError);
     });
 
     window.setMenuBarVisibility(false);
     window.center();
 
-    const clearUserSession = !appConfig.persistSessionData;
+    const clearUserSession = !appConfig.persistSessionData || appConfig.clearSessionDataOnNextLaunch;
 
     if (clearUserSession) {
       clearSession(window.webContents.session).then(() => {
