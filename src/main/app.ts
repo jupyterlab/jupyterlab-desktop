@@ -782,6 +782,11 @@ export class JupyterApplication implements IApplication, IStatefulService {
       | 'invalid-env'
       | 'remote-connection-failure' = 'change'
   ) {
+    if (this._serverConnectionOptionsDialog) {
+      this._serverConnectionOptionsDialog.focus();
+      return;
+    }
+
     const dialog = new BrowserWindow({
       title: 'JupyterLab Server Configuration',
       width: 720,
@@ -1049,11 +1054,15 @@ export class JupyterApplication implements IApplication, IStatefulService {
       remoteServerUrl,
       persistSessionData
     });
+
+    this._serverConnectionOptionsDialog = dialog;
+
+    dialog.on('close', () => {
+      this._serverConnectionOptionsDialog = null;
+    });
+
     dialog.loadURL(`data:text/html;charset=utf-8,${pageSource}`);
   }
-
-  private _serverInfoStateSet = false;
-  private _serverPageConfigSet = false;
 
   private _checkForUpdates(showDialog: 'on-new-version' | 'always') {
     fetch(
@@ -1118,6 +1127,9 @@ export class JupyterApplication implements IApplication, IStatefulService {
    * The most recently focused window
    */
   private _window: Electron.BrowserWindow;
+  private _serverInfoStateSet = false;
+  private _serverPageConfigSet = false;
+  private _serverConnectionOptionsDialog: BrowserWindow;
 }
 
 export namespace JupyterApplication {
