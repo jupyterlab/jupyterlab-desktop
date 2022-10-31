@@ -256,7 +256,8 @@ export class JupyterApplication implements IApplication, IStatefulService {
         } else {
           appConfig.isRemote = true;
           appConfig.persistSessionData = appState.persistSessionData;
-          appConfig.clearSessionDataOnNextLaunch = appState.clearSessionDataOnNextLaunch === true;
+          appConfig.clearSessionDataOnNextLaunch =
+            appState.clearSessionDataOnNextLaunch === true;
           // reset the flag
           appState.clearSessionDataOnNextLaunch = false;
           try {
@@ -270,10 +271,14 @@ export class JupyterApplication implements IApplication, IStatefulService {
                 this._serverPageConfigSet = true;
               })
               .catch(() => {
-                this._showServerConnectionOptionsDialog('remote-connection-failure');
+                this._showServerConnectionOptionsDialog(
+                  'remote-connection-failure'
+                );
               });
           } catch (error) {
-            this._showServerConnectionOptionsDialog('remote-connection-failure');
+            this._showServerConnectionOptionsDialog(
+              'remote-connection-failure'
+            );
           }
         }
       }

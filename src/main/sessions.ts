@@ -664,29 +664,32 @@ export class JupyterLabSession {
     });
 
     // Prevent navigation to local links on the same page and external links
-    this._window.webContents.on('will-navigate', (event: Event, navigationUrl) => {
-      const jlabBaseUrl = `${appConfig.url.protocol}//${appConfig.url.host}`;
-      if (
-        !(
-          navigationUrl.startsWith(jlabBaseUrl) &&
-          navigationUrl.indexOf('#') === -1
-        )
-      ) {
-        console.warn(
-          `Navigation is not allowed; attempted navigation to: ${navigationUrl}`
+    this._window.webContents.on(
+      'will-navigate',
+      (event: Event, navigationUrl) => {
+        const jlabBaseUrl = `${appConfig.url.protocol}//${appConfig.url.host}`;
+        if (
+          !(
+            navigationUrl.startsWith(jlabBaseUrl) &&
+            navigationUrl.indexOf('#') === -1
+          )
+        ) {
+          console.warn(
+            `Navigation is not allowed; attempted navigation to: ${navigationUrl}`
+          );
+          event.preventDefault();
+          return;
+        }
+
+        const parsedUrl = new URL(navigationUrl);
+
+        asyncRemoteMain.emitRemoteEvent(
+          ISessions.navigatedToHash,
+          parsedUrl.hash,
+          this._window.webContents
         );
-        event.preventDefault();
-        return;
       }
-
-      const parsedUrl = new URL(navigationUrl);
-
-      asyncRemoteMain.emitRemoteEvent(
-        ISessions.navigatedToHash,
-        parsedUrl.hash,
-        this._window.webContents
-      );
-    });
+    );
 
     // handle page's beforeunload prompt natively
     this._window.webContents.on('will-prevent-unload', (event: Event) => {

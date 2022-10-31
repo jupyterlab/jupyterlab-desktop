@@ -110,7 +110,9 @@ export async function connectAndGetServerInfo(
                   }
 
                   const hostname = urlObj.hostname;
-                  const domainCookies = cookies.filter(cookie => cookie.domain === hostname);
+                  const domainCookies = cookies.filter(
+                    cookie => cookie.domain === hostname
+                  );
 
                   window.close();
                   resolve({
@@ -137,7 +139,8 @@ export async function connectAndGetServerInfo(
     window.setMenuBarVisibility(false);
     window.center();
 
-    const clearUserSession = !appConfig.persistSessionData || appConfig.clearSessionDataOnNextLaunch;
+    const clearUserSession =
+      !appConfig.persistSessionData || appConfig.clearSessionDataOnNextLaunch;
 
     if (clearUserSession) {
       clearSession(window.webContents.session).then(() => {

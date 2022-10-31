@@ -1,8 +1,4 @@
-import {
-  app,
-  Menu,
-  MenuItem
-} from 'electron';
+import { app, Menu, MenuItem } from 'electron';
 
 const Bottle = require('bottlejs');
 import log from 'electron-log';

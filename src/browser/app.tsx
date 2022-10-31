@@ -58,7 +58,10 @@ export class Application extends React.Component<
     };
 
     asyncRemoteRenderer
-      .runRemoteMethod<void, IServerFactory.IServerStarted>(IServerFactory.getServerInfo, undefined)
+      .runRemoteMethod<void, IServerFactory.IServerStarted>(
+        IServerFactory.getServerInfo,
+        undefined
+      )
       .then(data => {
         this._serverReady(data);
       });
@@ -123,8 +126,9 @@ export class Application extends React.Component<
     const config: any = data.pageConfig;
 
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    __webpack_public_path__ = config.hasOwnProperty('fullStaticUrl') ?
-      config['fullStaticUrl'] + '/' : data.url;
+    __webpack_public_path__ = config.hasOwnProperty('fullStaticUrl')
+      ? config['fullStaticUrl'] + '/'
+      : data.url;
 
     for (let key in config) {
       if (config.hasOwnProperty(key)) {
