@@ -840,6 +840,8 @@ export class JupyterApplication implements IApplication, IStatefulService {
               .footer-row {margin-bottom: 10px;}
               .progress-message {margin-right: 5px; line-height: 24px; visibility: hidden;}
               .progress-animation {margin-right: 5px; visibility: hidden;}
+              %23server-url { outline: none; }
+              %23server-url:invalid { border-color: red; }
             </style>
             <h2>JupyterLab Server Configuration</h2>
             <div style="height: 100%; display: flex; flex-direction: column; row-gap: 5px;">
@@ -896,7 +898,7 @@ export class JupyterApplication implements IApplication, IStatefulService {
                 </div>
                 <div class="row">
                     <div style="flex-grow: 1;">
-                        <input type="text" id="server-url" value="<%= remoteServerUrl %>" placeholder="https://example.org/lab?token=abcde" style="width: 100%;" spellcheck="false">
+                        <input type="url" pattern="https?://.*/lab.*" id="server-url" value="<%= remoteServerUrl %>" placeholder="https://example.org/lab?token=abcde" style="width: 100%;" spellcheck="false" required>
                     </div>
                     <div>
                         <button id='validate-server-url' onclick='handleValidateServerUrl(this);'>Validate</button>
