@@ -75,6 +75,8 @@ export async function connectAndGetServerInfo(
 
     connectWindow = window;
 
+    const urlPrefix = `${urlObj.protocol}//${urlObj.host}${urlObj.pathname}`;
+
     window.webContents.on(
       'did-navigate',
       (
@@ -83,48 +85,65 @@ export async function connectAndGetServerInfo(
         httpResponseCode: number,
         httpStatusText: string
       ) => {
-        if (httpResponseCode !== 200) {
+        if (httpResponseCode >= 400) {
           clearTimeout(connectTimeout);
-          reject();
+          window.close();
+          reject({
+            type: 'invalid-url',
+            message: `Server responded with code: ${httpResponseCode}`
+          } as IConnectError);
           return;
         }
 
         resetConnectTimer();
 
-        if (navigationUrl.startsWith(url)) {
-          window.webContents
-            .executeJavaScript(
-              `
+        if (!navigationUrl.startsWith(urlPrefix)) {
+          return;
+        }
+
+        window.webContents
+          .executeJavaScript(
+            `
             const config = document.getElementById('jupyter-config-data');
             JSON.parse(config ? config.textContent : '{}');
           `
-            )
-            .then((config: any) => {
-              window.webContents.session.cookies
-                .get({})
-                .then(async cookies => {
-                  clearTimeout(connectTimeout);
+          )
+          .then((config: any) => {
+            resetConnectTimer();
 
-                  if (options?.incognito) {
-                    await clearSession(window.webContents.session);
-                  }
+            if (!(config && config.appVersion)) {
+              clearTimeout(connectTimeout);
+              window.close();
+              reject({
+                type: 'invalid-url',
+                message: 'Not a supported JupyterLab server found'
+              } as IConnectError);
+              return;
+            }
+            window.webContents.session.cookies
+              .get({})
+              .then(async cookies => {
+                clearTimeout(connectTimeout);
 
-                  const hostname = urlObj.hostname;
-                  const domainCookies = cookies.filter(
-                    cookie => cookie.domain === hostname
-                  );
+                if (options?.incognito) {
+                  await clearSession(window.webContents.session);
+                }
 
-                  window.close();
-                  resolve({
-                    pageConfig: config,
-                    cookies: domainCookies
-                  });
-                })
-                .catch(error => {
-                  console.log(error);
+                const hostname = urlObj.hostname;
+                const domainCookies = cookies.filter(
+                  cookie => cookie.domain === hostname
+                );
+
+                window.close();
+                resolve({
+                  pageConfig: config,
+                  cookies: domainCookies
                 });
-            });
-        }
+              })
+              .catch(error => {
+                console.log(error);
+              });
+          });
       }
     );
 
@@ -132,7 +151,7 @@ export async function connectAndGetServerInfo(
       clearTimeout(connectTimeout);
       reject({
         type: 'dismissed',
-        message: 'Window closed.'
+        message: 'Window closed'
       } as IConnectError);
     });
 
