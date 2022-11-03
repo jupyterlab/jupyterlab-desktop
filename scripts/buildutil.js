@@ -37,17 +37,6 @@ const cli = meow(
   }
 );
 
-function searchTextInFile(filePath, text) {
-  try {
-    const fileContent = fs.readFileSync(filePath, 'utf8');
-    return fileContent.includes(text);
-  } catch (e) {
-    console.error('Error searching for file content', e);
-  }
-
-  return false;
-}
-
 // remove ~ or ^ prefix from semver version
 function makeVersionAbsolute(version) {
   if (version.length > 0 && (version[0] === '^' || version[0] === '~')) {
@@ -172,20 +161,6 @@ if (cli.flags.checkVersionMatch) {
   if (appServerJLabVersion !== jlabVersion) {
     console.error(
       `Application Server package version ${appServerJLabVersion} doesn't match bundled JupyterLab version ${jlabVersion}`
-    );
-    process.exit(1);
-  }
-
-  // check JupyterLab versions in scripts
-  let searchString = `"appVersion": "${appVersion}",`;
-  if (
-    !searchTextInFile(
-      path.resolve(__dirname, `../src/browser/index.html`),
-      searchString
-    )
-  ) {
-    console.error(
-      `src/index.html doesn't contain correct Application version ${appVersion}`
     );
     process.exit(1);
   }

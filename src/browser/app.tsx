@@ -33,8 +33,6 @@ import { ipcRenderer } from 'electron';
 import * as React from 'react';
 import log from 'electron-log';
 import { LabShell } from '@jupyterlab/application';
-import { URLExt } from '@jupyterlab/coreutils';
-import { ServerConnection } from '@jupyterlab/services';
 
 export class Application extends React.Component<
   Application.IProps,
@@ -53,24 +51,20 @@ export class Application extends React.Component<
     this._changeEnvironment = this._changeEnvironment.bind(this);
     this._splash = React.createRef<SplashScreen>();
 
-    if (this.props.options.serverState === 'local') {
-      this.state = {
-        renderSplash: this._renderEmpty,
-        renderState: this._renderEmpty,
-        remotes: []
-      };
-      asyncRemoteRenderer
-        .runRemoteMethod(IServerFactory.requestServerStart, undefined)
-        .then(data => {
-          this._serverReady(data);
-        });
-    } else {
-      this.state = {
-        renderSplash: this._renderEmpty,
-        renderState: this._renderServerManager,
-        remotes: []
-      };
-    }
+    this.state = {
+      renderSplash: this._renderEmpty,
+      renderState: this._renderEmpty,
+      remotes: []
+    };
+
+    asyncRemoteRenderer
+      .runRemoteMethod<void, IServerFactory.IServerStarted>(
+        IServerFactory.getServerInfo,
+        undefined
+      )
+      .then(data => {
+        this._serverReady(data);
+      });
 
     this._serverState = new StateDB(/*{namespace: Application.STATE_NAMESPACE}*/);
     this._serverState
@@ -129,76 +123,40 @@ export class Application extends React.Component<
       // });
     });
 
-    this._server = {
-      token: data.token,
-      url: data.url,
-      name: 'Local',
-      type: 'local'
-    };
+    const config: any = data.pageConfig;
 
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    __webpack_public_path__ = data.url;
+    __webpack_public_path__ = config.hasOwnProperty('fullStaticUrl')
+      ? config['fullStaticUrl'] + '/'
+      : data.url;
 
-    PageConfig.setOption('token', this._server.token);
-    PageConfig.setOption('baseUrl', this._server.url);
-    PageConfig.setOption('appUrl', 'lab');
-
-    // get lab settings
-    const settings = ServerConnection.makeSettings();
-    const requestUrl = URLExt.join(settings.baseUrl, 'lab');
-    // store hard-coded version
-    let version: string = PageConfig.getOption('appVersion') || 'unknown';
-    if (version[0] === 'v') {
-      version = version.slice(1);
+    for (let key in config) {
+      if (config.hasOwnProperty(key)) {
+        const value = config[key];
+        PageConfig.setOption(
+          key,
+          typeof value === 'string' ? value : JSON.stringify(value)
+        );
+      }
     }
 
-    ServerConnection.makeRequest(requestUrl, {}, settings).then(
-      async response => {
-        const indexTemplateCode = await response.text();
+    PageConfig.setOption('jupyterlab-desktop-server-type', data.type);
+    PageConfig.setOption('jupyterlab-desktop-server-url', data.url);
 
-        const parser = new DOMParser();
-        const template = parser.parseFromString(indexTemplateCode, 'text/html');
-        const configElement = template.getElementById('jupyter-config-data');
-        const upstreamConfig = JSON.parse(configElement.textContent || '{}');
-
-        for (let key in upstreamConfig) {
-          if (upstreamConfig.hasOwnProperty(key)) {
-            const value = upstreamConfig[key];
-            PageConfig.setOption(
-              key,
-              typeof value === 'string' ? value : JSON.stringify(value)
-            );
-          }
-        }
-        // overwrite the server URL to make use of absolute URL
-        PageConfig.setOption('baseUrl', this._server.url);
-        // overwrite version and app name
-        PageConfig.setOption('appVersion', version);
-
-        // correctly set the base URL so that relative paths can be used
-        // (relative paths are used by upstream JupyterLab, e.g. for kernelspec
-        // logos see https://github.com/jupyterlab/jupyterlab-desktop/pull/316,
-        // and for other static assets like MathJax).
-        const base = document.createElement('base');
-        base.setAttribute('href', this._server.url);
-        document.body.appendChild(base);
-
-        this._setupLab().then(lab => {
-          this._lab = lab;
-          try {
-            this._lab.start({ ignorePlugins: this._ignorePlugins });
-          } catch (e) {
-            log.log(e);
-          }
-          this._lab.restored.then(() => {
-            ipcRenderer.send('lab-ready');
-            if (this._splash.current) {
-              this._splash.current.fadeSplashScreen();
-            }
-          });
-        });
+    this._setupLab().then(lab => {
+      this._lab = lab;
+      try {
+        this._lab.start({ ignorePlugins: this._ignorePlugins });
+      } catch (e) {
+        log.log(e);
       }
-    );
+      this._lab.restored.then(() => {
+        ipcRenderer.send('lab-ready');
+        if (this._splash.current) {
+          this._splash.current.fadeSplashScreen();
+        }
+      });
+    });
   }
 
   private _launchFromPath() {
@@ -375,8 +333,6 @@ export class Application extends React.Component<
   private _lab: ElectronJupyterLab;
 
   private _ignorePlugins: string[] = []; //['jupyter.extensions.server-manager'];
-
-  private _server: JupyterServer.IServer = null;
 
   private _nextRemoteId: number = 1;
 

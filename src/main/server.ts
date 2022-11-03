@@ -17,7 +17,8 @@ import log from 'electron-log';
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
-import * as http from 'http';
+import { request as httpRequest } from 'http';
+import { request as httpsRequest } from 'https';
 import { IEnvironmentType, IPythonEnvironment } from './tokens';
 import {
   appConfig,
@@ -62,7 +63,7 @@ function createLaunchScript(
     `--LabServerApp.schemas_dir="${schemasDir}"`,
     // do not use any config file
     '--JupyterApp.config_file_name=""',
-    `--ServerApp.port=${appConfig.jlabPort}`,
+    `--ServerApp.port=${appConfig.url.port}`,
     // use our token rather than any pre-configured password
     '--ServerApp.password=""',
     '--ServerApp.allow_origin="*"',
@@ -119,7 +120,8 @@ async function waitForDuration(duration: number): Promise<boolean> {
 
 async function checkIfUrlExists(url: URL): Promise<boolean> {
   return new Promise<boolean>(resolve => {
-    const req = http.request(url, function (r) {
+    const requestFn = url.protocol === 'https:' ? httpsRequest : httpRequest;
+    const req = requestFn(url, function (r) {
       resolve(r.statusCode >= 200 && r.statusCode < 400);
     });
     req.on('error', function (err) {
@@ -129,8 +131,7 @@ async function checkIfUrlExists(url: URL): Promise<boolean> {
   });
 }
 
-async function waitUntilServerIsUp(port: number): Promise<boolean> {
-  const url = new URL(`http://localhost:${port}`);
+export async function waitUntilServerIsUp(url: URL): Promise<boolean> {
   return new Promise<boolean>(resolve => {
     async function checkUrl() {
       const exists = await checkIfUrlExists(url);
@@ -187,7 +188,7 @@ export class JupyterServer {
           });
           reject();
         }
-        this._info.url = `http://localhost:${appConfig.jlabPort}`;
+        this._info.url = `${appConfig.url.protocol}//${appConfig.url.host}`;
         this._info.token = appConfig.token;
 
         let baseCondaPath: string = '';
@@ -268,7 +269,7 @@ export class JupyterServer {
         });
 
         Promise.race([
-          waitUntilServerIsUp(appConfig.jlabPort),
+          waitUntilServerIsUp(appConfig.url),
           waitForDuration(SERVER_LAUNCH_TIMEOUT)
         ]).then((up: boolean) => {
           if (up) {
@@ -381,6 +382,7 @@ export class JupyterServer {
   private _startServer: Promise<JupyterServer.IInfo> = null;
 
   private _info: JupyterServer.IInfo = {
+    type: 'local',
     url: null,
     token: null,
     environment: null,
@@ -399,10 +401,12 @@ export namespace JupyterServer {
   }
 
   export interface IInfo {
+    type: 'local' | 'remote';
     url: string;
     token: string;
     environment: IPythonEnvironment;
     version?: string;
+    pageConfig?: any;
   }
 }
 
@@ -448,9 +452,11 @@ export interface IServerFactory {
 export namespace IServerFactory {
   export interface IServerStarted {
     readonly factoryId: number;
+    type: 'local' | 'remote';
     url: string;
     token: string;
     error?: Error;
+    pageConfig?: any;
   }
 
   export interface IServerStop {
@@ -474,6 +480,10 @@ export namespace IServerFactory {
 
   export let pathSelectedEvent: AsyncRemote.IEvent<void> = {
     id: 'JupyterServerFactory-pathselectedevent'
+  };
+
+  export let getServerInfo: AsyncRemote.IEvent<void> = {
+    id: 'JupyterServerFactory-getserverinfo'
   };
 }
 
@@ -735,6 +745,7 @@ export class JupyterServerFactory implements IServerFactory, IClosingService {
   ): IServerFactory.IServerStarted {
     let info = data.server.info;
     return {
+      type: 'local',
       factoryId: data.factoryId,
       url: info.url,
       token: info.token
@@ -743,6 +754,7 @@ export class JupyterServerFactory implements IServerFactory, IClosingService {
 
   private _errorToIPC(e: Error): IServerFactory.IServerStarted {
     return {
+      type: 'local',
       factoryId: -1,
       url: null,
       token: null,
