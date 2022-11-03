@@ -20,13 +20,20 @@ import { app } from 'electron';
 import { IPythonEnvironment } from './tokens';
 
 export interface IAppConfiguration {
-  jlabPort: number;
+  isRemote: boolean;
+  url: URL;
   token: string;
+  pageConfig?: any;
+  cookies?: Electron.Cookie[];
+  persistSessionData: boolean;
+  clearSessionDataOnNextLaunch?: boolean;
 }
 
 export const appConfig: IAppConfiguration = {
-  jlabPort: 8888,
-  token: 'jlab-token'
+  isRemote: false,
+  url: undefined,
+  token: 'jlab-token',
+  persistSessionData: true
 };
 
 export interface ISaveOptions {
@@ -387,6 +394,22 @@ export function getEnvironmentPath(environment: IPythonEnvironment): string {
   }
 
   return envPath;
+}
+
+export function clearSession(session: Electron.Session): Promise<void> {
+  return new Promise((resolve, reject) => {
+    try {
+      Promise.all([
+        session.clearCache(),
+        session.clearAuthCache(),
+        session.clearStorageData()
+      ]).then(() => {
+        resolve();
+      });
+    } catch (error) {
+      reject();
+    }
+  });
 }
 
 let service: IService = {

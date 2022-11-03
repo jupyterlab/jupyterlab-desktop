@@ -7,6 +7,7 @@ import {
   BrowserWindow,
   dialog,
   ipcMain,
+  session,
   shell
 } from 'electron';
 
@@ -27,9 +28,39 @@ import * as semver from 'semver';
 import * as ejs from 'ejs';
 import * as path from 'path';
 import * as fs from 'fs';
-import { getAppDir, getUserDataDir } from './utils';
+import { AddressInfo, createServer } from 'net';
+import { randomBytes } from 'crypto';
+
+import { appConfig, clearSession, getAppDir, getUserDataDir } from './utils';
 import { execFile } from 'child_process';
 import { loadingAnimation } from '../assets/svg';
+import { IServerFactory, JupyterServer, waitUntilServerIsUp } from './server';
+import { connectAndGetServerInfo, IJupyterServerInfo } from './connect';
+
+async function getFreePort(): Promise<number> {
+  return new Promise<number>(resolve => {
+    const getPort = () => {
+      const server = createServer(socket => {
+        socket.write('Echo server\r\n');
+        socket.pipe(socket);
+      });
+
+      server.on('error', function (e) {
+        getPort();
+      });
+      server.on('listening', function (e: any) {
+        const port = (server.address() as AddressInfo).port;
+        server.close();
+
+        resolve(port);
+      });
+
+      server.listen(0, '127.0.0.1');
+    };
+
+    getPort();
+  });
+}
 
 export interface IApplication {
   /**
@@ -51,6 +82,9 @@ export interface IApplication {
   setCondaRootPath(condaRootPath: string): void;
 
   getCondaRootPath(): Promise<string>;
+
+  getServerInfo(): Promise<JupyterServer.IInfo>;
+  pageConfigSet: Promise<boolean>;
 }
 
 /**
@@ -144,7 +178,8 @@ export class JupyterApplication implements IApplication, IStatefulService {
       checkForUpdatesAutomatically: true,
       installUpdatesAutomatically: true,
       pythonPath: '',
-      condaRootPath: ''
+      condaRootPath: '',
+      remoteURL: ''
     };
 
     this.registerStatefulService(this).then(
@@ -169,7 +204,7 @@ export class JupyterApplication implements IApplication, IStatefulService {
           this._registry.setDefaultPythonPath(pythonPath);
           appState.pythonPath = pythonPath;
         } else {
-          this._showPythonSelectorDialog(
+          this._showServerConnectionOptionsDialog(
             useBundledPythonPath ? 'invalid-bundled-env' : 'invalid-env'
           );
         }
@@ -188,6 +223,62 @@ export class JupyterApplication implements IApplication, IStatefulService {
             setTimeout(() => {
               this._checkForUpdates('on-new-version');
             }, 5000);
+          }
+        }
+
+        if (appState.remoteURL === undefined) {
+          appState.remoteURL = '';
+        }
+
+        if (appState.persistSessionData === undefined) {
+          appState.persistSessionData = true;
+        }
+
+        if (appState.remoteURL === '') {
+          appConfig.isRemote = false;
+          getFreePort().then(port => {
+            appConfig.token = randomBytes(24).toString('hex');
+            appConfig.url = new URL(`http://localhost:${port}`);
+            this._serverInfoStateSet = true;
+
+            waitUntilServerIsUp(appConfig.url).then(() => {
+              connectAndGetServerInfo(appConfig.url.href, { showDialog: false })
+                .then(serverInfo => {
+                  appConfig.pageConfig = serverInfo.pageConfig;
+                  appConfig.cookies = serverInfo.cookies;
+                  this._serverPageConfigSet = true;
+                })
+                .catch(() => {
+                  this._showServerConnectionOptionsDialog('change');
+                });
+            });
+          });
+        } else {
+          appConfig.isRemote = true;
+          appConfig.persistSessionData = appState.persistSessionData;
+          appConfig.clearSessionDataOnNextLaunch =
+            appState.clearSessionDataOnNextLaunch === true;
+          // reset the flag
+          appState.clearSessionDataOnNextLaunch = false;
+          try {
+            appConfig.url = new URL(appState.remoteURL);
+            appConfig.token = appConfig.url.searchParams.get('token');
+            connectAndGetServerInfo(appConfig.url.href, { showDialog: true })
+              .then(serverInfo => {
+                appConfig.pageConfig = serverInfo.pageConfig;
+                appConfig.cookies = serverInfo.cookies;
+                this._serverInfoStateSet = true;
+                this._serverPageConfigSet = true;
+              })
+              .catch(() => {
+                this._showServerConnectionOptionsDialog(
+                  'remote-connection-failure'
+                );
+              });
+          } catch (error) {
+            this._showServerConnectionOptionsDialog(
+              'remote-connection-failure'
+            );
           }
         }
       }
@@ -211,6 +302,48 @@ export class JupyterApplication implements IApplication, IStatefulService {
       this._appState.then((state: JSONObject) => {
         resolve(this._applicationState.condaRootPath);
       });
+    });
+  }
+
+  getServerInfo(): Promise<JupyterServer.IInfo> {
+    return new Promise<JupyterServer.IInfo>(resolve => {
+      const resolveInfo = () => {
+        resolve({
+          type: appConfig.isRemote ? 'remote' : 'local',
+          url: `${appConfig.url.protocol}//${appConfig.url.host}${appConfig.url.pathname}`,
+          token: appConfig.token,
+          environment: undefined,
+          pageConfig: appConfig.pageConfig
+        });
+      };
+
+      if (this._serverInfoStateSet) {
+        resolveInfo();
+        return;
+      }
+
+      const timer = setInterval(() => {
+        if (this._serverInfoStateSet) {
+          clearInterval(timer);
+          resolveInfo();
+        }
+      }, 200);
+    });
+  }
+
+  get pageConfigSet(): Promise<boolean> {
+    return new Promise<boolean>(resolve => {
+      if (this._serverPageConfigSet) {
+        resolve(true);
+        return;
+      }
+
+      const timer = setInterval(() => {
+        if (this._serverPageConfigSet) {
+          clearInterval(timer);
+          resolve(true);
+        }
+      }, 200);
     });
   }
 
@@ -323,14 +456,18 @@ export class JupyterApplication implements IApplication, IStatefulService {
     });
   }
 
+  private _validateRemoteServerUrl(url: string): Promise<IJupyterServerInfo> {
+    return connectAndGetServerInfo(url, { showDialog: true, incognito: true });
+  }
+
+  private _clearSessionData(): Promise<void> {
+    return clearSession(session.defaultSession);
+  }
+
   /**
    * Register all application event listeners
    */
   private _registerListeners(): void {
-    app.on('window-all-closed', () => {
-      app.quit();
-    });
-
     app.on('will-quit', event => {
       event.preventDefault();
 
@@ -452,6 +589,30 @@ export class JupyterApplication implements IApplication, IStatefulService {
       return this._registry.validatePythonEnvironmentAtPath(path);
     });
 
+    ipcMain.handle('validate-remote-server-url', (event, url) => {
+      return new Promise<any>((resolve, reject) => {
+        this._validateRemoteServerUrl(url)
+          .then(value => {
+            resolve({ result: 'valid' });
+          })
+          .catch(error => {
+            resolve({ result: 'invalid', error: error.message });
+          });
+      });
+    });
+
+    ipcMain.handle('clear-session-data', event => {
+      return new Promise<any>((resolve, reject) => {
+        this._clearSessionData()
+          .then(() => {
+            resolve({ result: 'success' });
+          })
+          .catch(error => {
+            resolve({ result: 'error', error: error.message });
+          });
+      });
+    });
+
     ipcMain.on('show-invalid-python-path-message', (event, path) => {
       const requirements = this._registry.getRequirements();
       const reqVersions = requirements.map(
@@ -463,7 +624,19 @@ export class JupyterApplication implements IApplication, IStatefulService {
     });
 
     ipcMain.on('set-python-path', (event, path) => {
+      this._applicationState.remoteURL = '';
       this._applicationState.pythonPath = path;
+      app.relaunch();
+      app.quit();
+    });
+
+    ipcMain.on('set-remote-server-url', (event, url, persistSessionData) => {
+      if (this._applicationState.remoteURL !== url) {
+        this._applicationState.clearSessionDataOnNextLaunch = true;
+      }
+
+      this._applicationState.remoteURL = url;
+      this._applicationState.persistSessionData = persistSessionData;
       app.relaunch();
       app.quit();
     });
@@ -501,8 +674,15 @@ export class JupyterApplication implements IApplication, IStatefulService {
     asyncRemoteMain.registerRemoteMethod(
       IAppRemoteInterface.showPythonPathSelector,
       (): Promise<void> => {
-        this._showPythonSelectorDialog('change');
+        this._showServerConnectionOptionsDialog('change');
         return Promise.resolve();
+      }
+    );
+
+    asyncRemoteMain.registerRemoteMethod(
+      IServerFactory.getServerInfo,
+      (): Promise<any> => {
+        return this.getServerInfo();
       }
     );
   }
@@ -595,16 +775,24 @@ export class JupyterApplication implements IApplication, IStatefulService {
     dialog.loadURL(`data:text/html;charset=utf-8,${pageSource}`);
   }
 
-  private _showPythonSelectorDialog(
-    reason: 'change' | 'invalid-bundled-env' | 'invalid-env' = 'change'
+  private _showServerConnectionOptionsDialog(
+    reason:
+      | 'change'
+      | 'invalid-bundled-env'
+      | 'invalid-env'
+      | 'remote-connection-failure' = 'change'
   ) {
+    if (this._serverConnectionOptionsDialog) {
+      this._serverConnectionOptionsDialog.focus();
+      return;
+    }
+
     const dialog = new BrowserWindow({
-      title: 'Set Python Environment',
-      width: 600,
-      height: 280,
-      resizable: false,
-      parent: this._window,
-      modal: true,
+      title: 'JupyterLab Server Configuration',
+      width: 720,
+      height: 490,
+      resizable: true,
+      modal: false,
       webPreferences: {
         nodeIntegration: true,
         contextIsolation: false
@@ -623,48 +811,63 @@ export class JupyterApplication implements IApplication, IStatefulService {
       checkBundledPythonPath = true;
     }
     const configuredPath = pythonPath === '' ? bundledPythonPath : pythonPath;
+    const remoteServerUrl = this._applicationState.remoteURL;
+    const persistSessionData = this._applicationState.persistSessionData;
     const requirements = this._registry.getRequirements();
     const reqVersions = requirements.map(
       req => `${req.name} ${req.versionRange.format()}`
     );
     const reqList = reqVersions.join(', ');
 
-    const message =
-      reason === 'change'
-        ? `Select the Python executable in the conda or virtualenv environment you would like to use for JupyterLab Desktop. Python packages in the environment selected need to meet the following requirements: ${reqList}. Prebuilt extensions installed in the selected environment will also be available in JupyterLab Desktop.`
-        : ejs.render(
-            `Failed to find a compatible Python environment at the configured path "<%= configuredPath %>". Environment Python package requirements are: ${reqList}.`,
-            { configuredPath }
-          );
+    const message = !(
+      reason === 'invalid-bundled-env' || reason === 'invalid-env'
+    )
+      ? `Select the Python executable in the conda or virtualenv environment you would like to use for JupyterLab Desktop. Python packages in the environment selected need to meet the following requirements: ${reqList}. Prebuilt extensions installed in the selected environment will also be available in JupyterLab Desktop.`
+      : ejs.render(
+          `Failed to find a compatible Python environment at the configured path "<%= configuredPath %>". Environment Python package requirements are: ${reqList}.`,
+          { configuredPath }
+        );
 
     const template = `
             <html>
             <body style="background: rgba(238,238,238,1); font-size: 13px; font-family: Helvetica, Arial, sans-serif; padding: 20px;">
             <style>
-              .row {display: flex; margin-bottom: 10px;}
+              .server-type-row {display: flex; margin-bottom: 5px;}
+              .server-type-row label { margin-top: 3px; }
+              .row {display: flex; margin-left: 20px;}
+              .row.error {color: rgb(231, 92, 88);}
+              .radio-row {align-items: center;}
+              .footer-row {margin-bottom: 10px;}
               .progress-message {margin-right: 5px; line-height: 24px; visibility: hidden;}
               .progress-animation {margin-right: 5px; visibility: hidden;}
+              %23server-url { outline: none; }
+              %23server-url:invalid { border-color: red; }
             </style>
-            <div style="height: 100%; display: flex;flex-direction: column; justify-content: space-between;">
+            <h2>JupyterLab Server Configuration</h2>
+            <div style="height: 100%; display: flex; flex-direction: column; row-gap: 5px;">
+                <div class="server-type-row radio-row">
+                  <input type="radio" id="use-local-server" name="server_type" value="local-server" <%= !remoteServerUrl ? 'checked' : '' %> onchange="handleServerTypeChange(this);">
+                  <label for="use-local-server"><b>Start new local JupyterLab Server</b></label>
+                </div>
                 <div class="row">
-                    <b>Set Python Environment</b>
+                    <b>Local Python Environment</b>
                 </div>
                 <div class="row">
                     ${message}
                 </div>
-                <div>
+                <div style="display: flex; flex-direction: column; row-gap: 5px;">
                     <% if (reason === 'invalid-bundled-env') { %>
-                      <div class="row">
-                          <input type="radio" id="install-new" name="env_type" value="install-new" checked %> onchange="handleEnvTypeChange(this);">
+                      <div class="row radio-row">
+                          <input type="radio" id="install-new" name="env_type" value="install-new" checked onchange="handleEnvTypeChange(this);">
                           <label for="install-new">Install Python environment using the bundled installer</label>
                       </div>
                     <% } else { %>
-                      <div class="row">
+                      <div class="row radio-row">
                           <input type="radio" id="bundled" name="env_type" value="bundled" <%= checkBundledPythonPath ? 'checked' : '' %> onchange="handleEnvTypeChange(this);">
                           <label for="bundled">Use the bundled Python environment</label>
                       </div>
                     <% } %>
-                    <div class="row">
+                    <div class="row radio-row">
                         <input type="radio" id="custom" name="env_type" value="custom" <%= !checkBundledPythonPath ? 'checked' : '' %> onchange="handleEnvTypeChange(this);">
                         <label for="custom">Use a custom Python environment</label>
                     </div>
@@ -677,26 +880,64 @@ export class JupyterApplication implements IApplication, IStatefulService {
                             <button id='select-python-path' onclick='handleSelectPythonPath(this);'>Select Python path</button>
                         </div>
                     </div>
-                    <div class="row" style="justify-content: flex-end;">
-                      <div id="progress-message" class="progress-message"></div>  
-                      <div id="progress-animation" class="progress-animation">${loadingAnimation}</div>
-                      <button id="apply" onclick='handleApply(this);' style='margin-right: 5px;'>Apply and restart</button>
-                      <button id="cancel" onclick='handleCancel(this);'>Cancel</button>
+                </div>
+                <div class="server-type-row radio-row" style="margin-top: 10px;">
+                  <input type="radio" id="use-remote-server" name="server_type" value="remote-server" <%= remoteServerUrl ? 'checked' : '' %> onchange="handleServerTypeChange(this);">
+                  <label for="use-remote-server"><b>Connect to remote JupyterLab Server</b></label>
+                </div>
+                <% if (reason === 'remote-connection-failure') { %>
+                <div class="row error">
+                  Failed to connect to remote server URL. Please check your connection settings and try again.
+                </div>
+                <% } %>
+                <div class="row">
+                  Enter the URL of the existing JupyterLab Server including path to JupyterLab application (/lab) and the token as a query parameter (?token=value). If you choose 'Persist session data' option, then your session data including cookies and cache will be persisted for the next launch. If the connected JupyterLab Server requires additional authentication such as SSO then persisting the data would allow auto re-login.
+                </div>
+                <div class="row">
+                    <b>Existing Server URL</b>
+                </div>
+                <div class="row">
+                    <div style="flex-grow: 1;">
+                        <input type="url" pattern="https?://.*/lab.*" id="server-url" value="<%= remoteServerUrl %>" placeholder="https://example.org/lab?token=abcde" style="width: 100%;" spellcheck="false" required>
                     </div>
+                    <div>
+                        <button id='validate-server-url' onclick='handleValidateServerUrl(this);'>Validate</button>
+                    </div>
+                </div>
+                <div class="row">
+                    <div>
+                        <input type="checkbox" id="persist-session-data" <%= persistSessionData ? 'checked' : '' %>><label for="persist-session-data" style="margin-right: 5px;">Persist session data</label>
+                    </div>
+                    <div>
+                        <button id='clear-session-data' onclick='handleClearSessionData(this);'>Clear session data</button>
+                    </div>
+                </div>
+                <div class="row footer-row" style="justify-content: flex-end;">
+                  <div id="progress-message" class="progress-message"></div>  
+                  <div id="progress-animation" class="progress-animation">${loadingAnimation}</div>
+                  <button id="apply" onclick='handleApply(this);' style='margin-right: 5px;'>Apply and restart</button>
+                  <button id="cancel" onclick='handleCancel(this);'>Cancel</button>
                 </div>
             </div>
 
             <script>
                 const ipcRenderer = require('electron').ipcRenderer;
                 let pythonPath = '';
+                const useLocalServerRadio = document.getElementById('use-local-server');
+                const useRemoteServerRadio = document.getElementById('use-remote-server');
                 const installNewRadio = document.getElementById('install-new');
                 const bundledRadio = document.getElementById('bundled');
+                const customRadio = document.getElementById('custom');
                 const pythonPathInput = document.getElementById('python-path');
                 const selectPythonPathButton = document.getElementById('select-python-path');
                 const applyButton = document.getElementById('apply');
                 const cancelButton = document.getElementById('cancel');
                 const progressMessage = document.getElementById('progress-message');
                 const progressAnimation = document.getElementById('progress-animation');
+                const serverUrlInput = document.getElementById('server-url');
+                const validateServerUrlButton = document.getElementById('validate-server-url');
+                const persistSessionDataCheckbox = document.getElementById('persist-session-data');
+                const clearSessionDataButton = document.getElementById('clear-session-data');
 
                 function handleSelectPythonPath(el) {
                     ipcRenderer.send('select-python-path');
@@ -706,6 +947,27 @@ export class JupyterApplication implements IApplication, IStatefulService {
                     pythonPathInput.disabled = installNewOrUseBundled;
                     selectPythonPathButton.disabled = installNewOrUseBundled;
                 }
+                function handleServerTypeChange() {
+                  const useRemoteServer = useRemoteServerRadio && useRemoteServerRadio.checked;
+                  serverUrlInput.disabled = !useRemoteServer;
+                  validateServerUrlButton.disabled = !useRemoteServer;
+                  persistSessionDataCheckbox.disabled = !useRemoteServer;
+                  clearSessionDataButton.disabled = !useRemoteServer;
+
+                  if (installNewRadio) {
+                    installNewRadio.disabled = useRemoteServer;
+                  }
+                  if (bundledRadio) {
+                    bundledRadio.disabled = useRemoteServer;
+                  }
+                  customRadio.disabled = useRemoteServer;
+                  pythonPathInput.disabled = useRemoteServer;
+                  selectPythonPathButton.disabled = useRemoteServer;
+
+                  if (!useRemoteServer) {
+                    handleEnvTypeChange();
+                  }
+                }
 
                 function showProgress(message, animate) {
                   progressMessage.innerText = message;
@@ -713,7 +975,34 @@ export class JupyterApplication implements IApplication, IStatefulService {
                   progressAnimation.style.visibility = animate ? 'visible' : 'hidden';
                 }
 
+                function handleValidateServerUrl(el) {
+                  showProgress('Validating URL', true);
+                  ipcRenderer.invoke('validate-remote-server-url', serverUrlInput.value).then(response => {
+                    if (response.result === 'valid') {
+                      showProgress('JupyterLab Server connection test succeeded!', false);
+                      setTimeout(() => {
+                        showProgress('', false);
+                      }, 5000);
+                    } else {
+                      showProgress('Error: ' + response.error, false);
+                    }
+                  });
+                }
+
+                function handleClearSessionData(el) {
+                  clearSessionDataButton.disabled = true;
+                  showProgress('Clearing session data', true);
+                  ipcRenderer.invoke('clear-session-data').then(result => {
+                    clearSessionDataButton.disabled = false;
+                    showProgress('Session data cleared!', false);
+                    setTimeout(() => {
+                      showProgress('', false);
+                    }, 5000);
+                  });
+                }
+
                 function handleApply(el) {
+                  if (useLocalServerRadio.checked) {
                     if (installNewRadio && installNewRadio.checked) {
                       ipcRenderer.send('install-bundled-python-env');
                       showProgress('Installing environment', true);
@@ -723,12 +1012,15 @@ export class JupyterApplication implements IApplication, IStatefulService {
                       ipcRenderer.send('set-python-path', '');
                     } else {
                       ipcRenderer.invoke('validate-python-path', pythonPathInput.value).then((valid) => {
-                      if (valid) {
-                          ipcRenderer.send('set-python-path', pythonPathInput.value);
-                      } else {
-                          ipcRenderer.send('show-invalid-python-path-message', pythonPathInput.value);
-                      }
-                    });
+                        if (valid) {
+                            ipcRenderer.send('set-python-path', pythonPathInput.value);
+                        } else {
+                            ipcRenderer.send('show-invalid-python-path-message', pythonPathInput.value);
+                        }
+                      });
+                    }
+                  } else {
+                    ipcRenderer.send('set-remote-server-url', serverUrlInput.value, persistSessionDataCheckbox.checked);
                   }
                 }
 
@@ -751,6 +1043,7 @@ export class JupyterApplication implements IApplication, IStatefulService {
                   cancelButton.disabled = disableButtons;
                 });
 
+                handleServerTypeChange();
                 handleEnvTypeChange();
             </script>
             </body>
@@ -759,8 +1052,17 @@ export class JupyterApplication implements IApplication, IStatefulService {
     const pageSource = ejs.render(template, {
       reason,
       checkBundledPythonPath,
-      pythonPath
+      pythonPath,
+      remoteServerUrl,
+      persistSessionData
     });
+
+    this._serverConnectionOptionsDialog = dialog;
+
+    dialog.on('close', () => {
+      this._serverConnectionOptionsDialog = null;
+    });
+
     dialog.loadURL(`data:text/html;charset=utf-8,${pageSource}`);
   }
 
@@ -827,6 +1129,9 @@ export class JupyterApplication implements IApplication, IStatefulService {
    * The most recently focused window
    */
   private _window: Electron.BrowserWindow;
+  private _serverInfoStateSet = false;
+  private _serverPageConfigSet = false;
+  private _serverConnectionOptionsDialog: BrowserWindow;
 }
 
 export namespace JupyterApplication {
@@ -837,6 +1142,9 @@ export namespace JupyterApplication {
     installUpdatesAutomatically?: boolean;
     pythonPath?: string;
     condaRootPath?: string;
+    remoteURL?: string;
+    persistSessionData?: boolean;
+    clearSessionDataOnNextLaunch?: boolean;
   }
 }
 

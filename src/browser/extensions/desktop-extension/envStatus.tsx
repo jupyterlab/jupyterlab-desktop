@@ -4,7 +4,18 @@
 import { VDomModel, VDomRenderer } from '@jupyterlab/apputils';
 import React from 'react';
 import { GroupItem, interactiveItem, TextItem } from '@jupyterlab/statusbar';
-import { pythonIcon } from '@jupyterlab/ui-components';
+import { LabIcon } from '@jupyterlab/ui-components';
+
+const serverIconSvgStr = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><path class="jp-icon2" fill="#333333" d="M480 160H32c-17.673 0-32-14.327-32-32V64c0-17.673 14.327-32 32-32h448c17.673 0 32 14.327 32 32v64c0 17.673-14.327 32-32 32zm-48-88c-13.255 0-24 10.745-24 24s10.745 24 24 24 24-10.745 24-24-10.745-24-24-24zm-64 0c-13.255 0-24 10.745-24 24s10.745 24 24 24 24-10.745 24-24-10.745-24-24-24zm112 248H32c-17.673 0-32-14.327-32-32v-64c0-17.673 14.327-32 32-32h448c17.673 0 32 14.327 32 32v64c0 17.673-14.327 32-32 32zm-48-88c-13.255 0-24 10.745-24 24s10.745 24 24 24 24-10.745 24-24-10.745-24-24-24zm-64 0c-13.255 0-24 10.745-24 24s10.745 24 24 24 24-10.745 24-24-10.745-24-24-24zm112 248H32c-17.673 0-32-14.327-32-32v-64c0-17.673 14.327-32 32-32h448c17.673 0 32 14.327 32 32v64c0 17.673-14.327 32-32 32zm-48-88c-13.255 0-24 10.745-24 24s10.745 24 24 24 24-10.745 24-24-10.745-24-24-24zm-64 0c-13.255 0-24 10.745-24 24s10.745 24 24 24 24-10.745 24-24-10.745-24-24-24z"/></svg>
+<!--
+Font Awesome Free 5.2.0 by @fontawesome - https://fontawesome.com
+License - https://fontawesome.com/license (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License)
+-->`;
+
+const serverIcon = new LabIcon({
+  name: 'server-icon',
+  svgstr: serverIconSvgStr
+});
 
 /**
  * A pure functional component for rendering environment status.
@@ -18,7 +29,7 @@ function EnvironmentStatusComponent(
       spacing={2}
       title={props.description}
     >
-      <pythonIcon.react title={''} top={'2px'} stylesheet={'statusBar'} />
+      <serverIcon.react title={''} top={'2px'} stylesheet={'statusBar'} />
       <TextItem source={props.name} />
     </GroupItem>
   );

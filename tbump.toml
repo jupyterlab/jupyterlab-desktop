@@ -27,9 +27,6 @@ search = 'version: {current_version}'
 src = "env_installer/construct.yaml"
 version_template = "{major}.{minor}.{patch}"
 search = '- jupyterlab {current_version}'
-[[file]]
-src = "src/browser/index.html"
-search = '"appVersion": "{current_version}"'
 
 #  [[before_commit]]
 #  name = "check changelog"

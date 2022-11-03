@@ -9,6 +9,8 @@ import { IStatusBar } from '@jupyterlab/statusbar';
 
 import { JupyterFrontEndPlugin } from '@jupyterlab/application';
 
+import { PageConfig } from '@jupyterlab/coreutils';
+
 import { ElectronJupyterLab } from '../electron-extension';
 
 import { asyncRemoteRenderer } from '../../../asyncremote';
@@ -77,8 +79,8 @@ const desktopExtension: JupyterFrontEndPlugin<void> = {
       align: 'left'
     });
 
-    const updateStatusItem = (env: IPythonEnvironment) => {
-      statusItem.model.name = env.name;
+    const updateStatusItemLocal = (env: IPythonEnvironment) => {
+      statusItem.model.name = 'Server: local';
       let packages = [];
       for (const name in env.versions) {
         packages.push(`${name}: ${env.versions[name]}`);
@@ -86,6 +88,11 @@ const desktopExtension: JupyterFrontEndPlugin<void> = {
       statusItem.model.description = `${env.name}\n${env.path}\n${packages.join(
         ', '
       )}`;
+    };
+
+    const updateStatusItemRemote = (url: string) => {
+      statusItem.model.name = 'Server: remote';
+      statusItem.model.description = url;
     };
 
     // patch for index.html? shown as app window title
@@ -97,11 +104,20 @@ const desktopExtension: JupyterFrontEndPlugin<void> = {
       }, 100);
     });
 
-    asyncRemoteRenderer
-      .runRemoteMethod(IAppRemoteInterface.getCurrentPythonEnvironment, void 0)
-      .then(env => {
-        updateStatusItem(env);
-      });
+    const serverType = PageConfig.getOption('jupyterlab-desktop-server-type');
+    if (serverType === 'local') {
+      asyncRemoteRenderer
+        .runRemoteMethod(
+          IAppRemoteInterface.getCurrentPythonEnvironment,
+          void 0
+        )
+        .then(env => {
+          updateStatusItemLocal(env);
+        });
+    } else {
+      const serverUrl = PageConfig.getOption('jupyterlab-desktop-server-url');
+      updateStatusItemRemote(serverUrl);
+    }
   },
   autoStart: true
 };
