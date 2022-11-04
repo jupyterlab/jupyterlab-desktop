@@ -80,19 +80,19 @@ const desktopExtension: JupyterFrontEndPlugin<void> = {
     });
 
     const updateStatusItemLocal = (env: IPythonEnvironment) => {
-      statusItem.model.name = 'Server: local';
+      statusItem.model.name = `Local (${env.name})`;
       let packages = [];
       for (const name in env.versions) {
         packages.push(`${name}: ${env.versions[name]}`);
       }
-      statusItem.model.description = `${env.name}\n${env.path}\n${packages.join(
+      statusItem.model.description = `Local server\n${env.name}\n${env.path}\n${packages.join(
         ', '
       )}`;
     };
 
     const updateStatusItemRemote = (url: string) => {
-      statusItem.model.name = 'Server: remote';
-      statusItem.model.description = url;
+      statusItem.model.name = 'Remote';
+      statusItem.model.description = `Remote server\n${url}`;
     };
 
     // patch for index.html? shown as app window title
