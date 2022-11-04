@@ -123,6 +123,9 @@ export class Application extends React.Component<
       // });
     });
 
+    const appConfigEl = document.getElementById('app-config-data');
+    const appConfig = JSON.parse(appConfigEl.textContent);
+
     const config: any = data.pageConfig;
 
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -139,6 +142,8 @@ export class Application extends React.Component<
         );
       }
     }
+
+    PageConfig.setOption("appVersion", `${appConfig.version} (desktop), ${PageConfig.getOption('appVersion')} (server)`);
 
     PageConfig.setOption('jupyterlab-desktop-server-type', data.type);
     PageConfig.setOption('jupyterlab-desktop-server-url', data.url);
