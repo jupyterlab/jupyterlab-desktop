@@ -143,7 +143,12 @@ export class Application extends React.Component<
       }
     }
 
-    PageConfig.setOption("appVersion", `${appConfig.version} (desktop), ${PageConfig.getOption('appVersion')} (server)`);
+    PageConfig.setOption(
+      'appVersion',
+      `${appConfig.version} (desktop), ${PageConfig.getOption(
+        'appVersion'
+      )} (server)`
+    );
 
     PageConfig.setOption('jupyterlab-desktop-server-type', data.type);
     PageConfig.setOption('jupyterlab-desktop-server-url', data.url);

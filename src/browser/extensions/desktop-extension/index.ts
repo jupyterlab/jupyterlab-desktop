@@ -85,9 +85,9 @@ const desktopExtension: JupyterFrontEndPlugin<void> = {
       for (const name in env.versions) {
         packages.push(`${name}: ${env.versions[name]}`);
       }
-      statusItem.model.description = `Local server\n${env.name}\n${env.path}\n${packages.join(
-        ', '
-      )}`;
+      statusItem.model.description = `Local server\n${env.name}\n${
+        env.path
+      }\n${packages.join(', ')}`;
     };
 
     const updateStatusItemRemote = (url: string) => {
