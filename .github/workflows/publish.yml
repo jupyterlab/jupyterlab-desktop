@@ -26,25 +26,14 @@ jobs:
       - uses: s-weigand/setup-conda@v1
 
       - name: Install node
-        uses: actions/setup-node@v2
+        uses: actions/setup-node@v3
         with:
           node-version: '14.x'
-
-      - name: Get yarn cache directory path
-        id: yarn-cache-dir-path
-        run: echo "::set-output name=dir::$(yarn cache dir)"
-      - name: Cache yarn
-        uses: actions/cache@v2
-        id: yarn-cache # use this to check for `cache-hit` (`steps.yarn-cache.outputs.cache-hit != 'true'`)
-        with:
-          path: ${{ steps.yarn-cache-dir-path.outputs.dir }}
-          key: ${{ runner.os }}-${{ matrix.cfg.platform }}-yarn-${{ hashFiles('**/yarn.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-${{ matrix.cfg.platform }}-yarn-
+          cache: 'yarn'
 
       - name: Install dependencies
         run: |
-          npm install --global yarn
+          npm install --global yarn --prefer-offline
           conda install -c conda-forge constructor
           yarn install
 
@@ -57,17 +46,18 @@ jobs:
           yarn lint:check
 
       - name: Get package info
+        shell: bash
         id: package-info
-        uses: codex-team/action-nodejs-package-info@v1
+        run: echo "version=$(python scripts/get_package_version.py)" >> $GITHUB_OUTPUT
 
       - name: 'Find Release with tag v${{ steps.package-info.outputs.version}}'
-        uses: actions/github-script@v4
+        uses: actions/github-script@v6
         id: release-exists
         env:
           APP_VERSION: ${{ steps.package-info.outputs.version}}
         with:
           script: |
-            const releases = await github.repos.listReleases({
+            const releases = await github.rest.repos.listReleases({
               owner: context.repo.owner,
               repo: context.repo.repo
             })
