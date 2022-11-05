@@ -26,32 +26,14 @@ jobs:
       - uses: s-weigand/setup-conda@v1
 
       - name: Install node
-        uses: actions/setup-node@v2
+        uses: actions/setup-node@v3
         with:
           node-version: '14.x'
-
-      - name: Get yarn cache directory path on Windows
-        id: yarn-cache-dir-path
-        if: runner.os == 'Windows'
-        run: echo "dir=$(yarn cache dir)" >> $env:GITHUB_OUTPUT
-
-      - name: Get yarn cache directory path on other OS
-        id: yarn-cache-dir-path
-        if: runner.os != 'Windows'
-        run: echo "dir=$(yarn cache dir)" >> $GITHUB_OUTPUT
-
-      - name: Cache yarn
-        uses: actions/cache@v2
-        id: yarn-cache # use this to check for `cache-hit` (`steps.yarn-cache.outputs.cache-hit != 'true'`)
-        with:
-          path: ${{ steps.yarn-cache-dir-path.outputs.dir }}
-          key: ${{ runner.os }}-${{ matrix.cfg.platform }}-yarn-${{ hashFiles('**/yarn.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-${{ matrix.cfg.platform }}-yarn-
+          cache: 'yarn'
 
       - name: Install dependencies
         run: |
-          npm install --global yarn
+          npm install --global yarn --prefer-offline
           conda install -c conda-forge constructor
           yarn install
 
