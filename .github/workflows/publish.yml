@@ -51,13 +51,13 @@ jobs:
         run: echo "version=$(python scripts/get_package_version.py)" >> $GITHUB_OUTPUT
 
       - name: 'Find Release with tag v${{ steps.package-info.outputs.version}}'
-        uses: actions/github-script@v4
+        uses: actions/github-script@v6
         id: release-exists
         env:
           APP_VERSION: ${{ steps.package-info.outputs.version}}
         with:
           script: |
-            const releases = await github.repos.listReleases({
+            const releases = await github.rest.repos.listReleases({
               owner: context.repo.owner,
               repo: context.repo.repo
             })
