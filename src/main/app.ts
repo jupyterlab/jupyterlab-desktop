@@ -189,6 +189,15 @@ export class JupyterApplication implements IApplication, IStatefulService {
         }
 
         const appState = this._applicationState;
+
+        if (appState.remoteURL === undefined) {
+          appState.remoteURL = '';
+        }
+
+        if (appState.persistSessionData === undefined) {
+          appState.persistSessionData = true;
+        }
+
         if (appState.pythonPath === undefined) {
           appState.pythonPath = '';
         }
@@ -198,15 +207,17 @@ export class JupyterApplication implements IApplication, IStatefulService {
           pythonPath = bundledPythonPath;
         }
 
-        const useBundledPythonPath = pythonPath === bundledPythonPath;
+        if (appState.remoteURL === '') {
+          const useBundledPythonPath = pythonPath === bundledPythonPath;
 
-        if (this._registry.validatePythonEnvironmentAtPath(pythonPath)) {
-          this._registry.setDefaultPythonPath(pythonPath);
-          appState.pythonPath = pythonPath;
-        } else {
-          this._showServerConnectionOptionsDialog(
-            useBundledPythonPath ? 'invalid-bundled-env' : 'invalid-env'
-          );
+          if (this._registry.validatePythonEnvironmentAtPath(pythonPath)) {
+            this._registry.setDefaultPythonPath(pythonPath);
+            appState.pythonPath = pythonPath;
+          } else {
+            this._showServerConnectionOptionsDialog(
+              useBundledPythonPath ? 'invalid-bundled-env' : 'invalid-env'
+            );
+          }
         }
 
         if (appState.checkForUpdatesAutomatically !== false) {
@@ -224,14 +235,6 @@ export class JupyterApplication implements IApplication, IStatefulService {
               this._checkForUpdates('on-new-version');
             }, 5000);
           }
-        }
-
-        if (appState.remoteURL === undefined) {
-          appState.remoteURL = '';
-        }
-
-        if (appState.persistSessionData === undefined) {
-          appState.persistSessionData = true;
         }
 
         if (appState.remoteURL === '') {
