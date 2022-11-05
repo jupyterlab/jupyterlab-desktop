@@ -46,8 +46,9 @@ jobs:
           yarn lint:check
 
       - name: Get package info
+        shell: bash
         id: package-info
-        uses: codex-team/action-nodejs-package-info@v1
+        run: echo "version=$(python scripts/get_package_version.py)" >> $GITHUB_OUTPUT
 
       - name: 'Find Release with tag v${{ steps.package-info.outputs.version}}'
         uses: actions/github-script@v4
