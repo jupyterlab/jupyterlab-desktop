@@ -29,7 +29,13 @@ function EnvironmentStatusComponent(
       spacing={2}
       title={props.description}
     >
-      <serverIcon.react title={''} top={'2px'} stylesheet={'statusBar'} />
+      <serverIcon.react
+        title={''}
+        top={'2px'}
+        width={'15px'}
+        height={'15px'}
+        stylesheet={'statusBar'}
+      />
       <TextItem source={props.name} />
     </GroupItem>
   );

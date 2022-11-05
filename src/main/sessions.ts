@@ -42,6 +42,9 @@ const templateAssetPaths = new Map([
     'index.html',
     () => {
       return {
+        appConfig: JSON.stringify({
+          version: app.getVersion()
+        }),
         pageConfig: JSON.stringify(appConfig.pageConfig)
       };
     }
