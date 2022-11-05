@@ -6,23 +6,33 @@ JupyterLab Desktop comes with a bundled Python environment which has the essenti
 
 <img src="media/python-env-status.png" alt="Python environment status" height=100 />
 
-- Click on the status item to launch Python environment selector dialog.
+- Click on the status item to launch JupyterLab Server Configuration dialog.
 
-<img src="media/python-env-select.png" alt="Select Python environment" height=300 />
+<img src="media/python-env-select.png" alt="Select Python environment" height=600 />
 
 - Choose `Use a custom Python environment` option and then click `Select Python path` button.
 
-- Select the Python executable (`python.exe` on Windows and `python` on macOS & Linux) of the custom environment you would like to use. Python executable can be found at the root directory of the virtual environment on Windows and in then `bin` directory of the environment on macOS & Linux.
+- Select the Python executable (`python.exe` on Windows and `python` on macOS & Linux) of the custom environment you would like to use. Python executable can be found at the root directory of the virtual environment on Windows and in the `bin` directory of the environment on macOS & Linux.
 
 - Click `Apply and restart` to apply the changes. Newly selected environment will be checked for compatibility before applying the changes and you will be notified of any incompatibility issues.
 
-Python environment selection is saved in application settings and restored at application launch time. During launch, compatibility of the Python environment is checked and if found incompatible, Python environment selector dialog is shown to allow switching back to the bundled environment or using another compatible environment.
+Python environment selection is saved in application settings and restored at application launch time. During launch, compatibility of the Python environment is checked and if found incompatible, JupyterLab Server Configuration dialog is shown to allow switching back to the bundled environment or using another compatible environment.
 
 Application settings are stored in JSON format in the following locations. You can check the `pythonPath` setting in this file for troubleshooting. Setting it to empty string will cause JupyterLab Desktop to reset to the bundled Python environment.
 
 - Windows: `%APPDATA%\jupyterlab-desktop\jupyterlab-desktop-data`
 - macOS: `~/Library/jupyterlab-desktop/jupyterlab-desktop-data`
 - Linux: `$XDG_CONFIG_HOME/jupyterlab-desktop/jupyterlab-desktop-data` or `~/.config/jupyterlab-desktop/jupyterlab-desktop-data`
+
+# Connecting to a remote JupyterLab Server
+
+JupyterLab Desktop has two main components: the desktop client that is the frontend and the JupyterLab server which is the backend of the application. Frontend is designed to connect to any compatible JupyterLab server as its backend. JupyterLab Desktop can automatically launch a JupyterLab server at startup and connect to it, and it can also connect to an existing JupyterLab server instance that is running locally or remotely.
+
+<img src="media/remote-server.png" alt="Remote Server configuration" height=600 />
+
+JupyterLab Server Configuration dialog lets you configure the backend connection by providing `Start new local JupyterLab Server` and `Connect to remote JupyterLab Server` options. In order to connect to an existing JupyterLab server, select `Connect to remote JupyterLab Server` and enter the URL of the JupyterLab application including `/lab` in the URL. If the server requires a token for authentication, make sure to include it as a query parameter of the URL as well (`/lab?token=<token-value>`). Click the `Validate` button to test the connection and check if the URL is for a valid JupyterLab server.
+
+JupyterLab Desktop can connect to remote server instances that require additional authentication such as Single Sign-On (SSO). If the `Persist session data` option is checked, then the session information is stored and JupyterLab Desktop will re-use this data on the next launch. If this option is not checked, the session data is automatically deleted at next launch and servers requiring authentication will prompt for re-login. You can delete the stored session data manually at any time by clicking the `Clear session data` button. Session data is automatically deleted when server URL is updated and when user switches to `Start new local JupyterLab Server` option as well.
 
 ## How to create a Custom Python Environment
 
