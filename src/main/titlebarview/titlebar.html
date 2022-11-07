@@ -22,6 +22,7 @@ Distributed under the terms of the Modified BSD License.
     .titlebar {
         display: flex;
         flex-direction: row;
+        padding-left: 10px;
     }
     .app-title {
         flex-grow: 1;
@@ -29,25 +30,46 @@ Distributed under the terms of the Modified BSD License.
     }
     #menu-button {
         -webkit-app-region: no-drag;
-        margin-right: 5px;
+        margin-right: 10px;
     }
-    .titlebar.mac {
+    .app-ui-darwin .titlebar {
         padding-left: 70px;
+    }
+    #control-box {
+        -webkit-app-region: no-drag;
+        margin-left: 10px;
+        margin-right: 10px;
+        font-weight: bold;
+    }
+    .app-ui-darwin #control-box {
+      display: none;
     }
   </style>
 </head>
 
-<body>
-    <div class="titlebar mac">
+<body> 
+    <div class="titlebar">
         <div class="app-title">JupyterLab Desktop</div>
         <div id="menu-button"><svg width="18px" height="18px" id="Layer_1" style="enable-background:new 0 0 32 32;" version="1.1" viewBox="0 0 32 32"  xml:space="preserve" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"><path d="M4,10h24c1.104,0,2-0.896,2-2s-0.896-2-2-2H4C2.896,6,2,6.896,2,8S2.896,10,4,10z M28,14H4c-1.104,0-2,0.896-2,2  s0.896,2,2,2h24c1.104,0,2-0.896,2-2S29.104,14,28,14z M28,22H4c-1.104,0-2,0.896-2,2s0.896,2,2,2h24c1.104,0,2-0.896,2-2  S29.104,22,28,22z"/></svg></div>
+        <div id ="control-box" class="control-box">
+          <div id="close-button">X</div>
+        </div>
     </div>
     <script>
-        const { ipcRenderer } = require('electron');
-        const menuButton = document.getElementById('menu-button');
-        menuButton.onclick = () => {
-            ipcRenderer.send('show-app-context-menu');
-        }
+      const appConfig = window.electronAPI.getAppConfig();
+      const platform = appConfig.platform;
+      document.body.dataset.appPlatform = platform;
+      document.body.classList.add(`app-ui-${platform}`);
+      
+      const menuButton = document.getElementById('menu-button');
+      menuButton.onclick = () => {
+        window.electronAPI.showAppContextMenu();
+      };
+
+      const closeButton = document.getElementById('close-button');
+      closeButton.onclick = () => {
+        window.electronAPI.closeWindow();
+      };
     </script>
 </body>
 

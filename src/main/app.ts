@@ -678,6 +678,11 @@ export class JupyterApplication implements IApplication, IStatefulService {
       });
     });
 
+    ipcMain.on('close-active-window', event => {
+      const window = BrowserWindow.fromWebContents(event.sender);
+      window.close();
+    });
+
     asyncRemoteMain.registerRemoteMethod(
       IAppRemoteInterface.checkForUpdates,
       (): Promise<void> => {

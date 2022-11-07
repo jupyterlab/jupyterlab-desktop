@@ -8,8 +8,7 @@ export class TitleBarView {
   constructor() {
     this._view = new BrowserView({
       webPreferences: {
-        nodeIntegration: true,
-        contextIsolation: false
+        preload: path.join(__dirname, './preload.js')
       }
     });
   }
