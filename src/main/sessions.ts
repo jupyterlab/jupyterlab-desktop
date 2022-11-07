@@ -5,7 +5,6 @@ import {
   app,
   BrowserWindow,
   clipboard,
-  dialog,
   ipcMain,
   Menu,
   MenuItemConstructorOptions
@@ -30,26 +29,8 @@ import { appConfig } from './utils';
 import { EventEmitter } from 'events';
 
 import * as fs from 'fs';
-import { URL } from 'url';
-import * as path from 'path';
-import * as ejs from 'ejs';
-import { request as httpRequest, IncomingMessage } from 'http';
-import { request as httpsRequest } from 'https';
-
-// file name to variables map
-const templateAssetPaths = new Map([
-  [
-    'index.html',
-    () => {
-      return {
-        appConfig: JSON.stringify({
-          version: app.getVersion()
-        }),
-        pageConfig: JSON.stringify(appConfig.pageConfig)
-      };
-    }
-  ]
-]);
+import { LabView } from './labview/labview';
+import { TitleBarView } from './titlebarview/titlebarview';
 
 export interface ISessions extends EventEmitter {
   createSession: (opts?: JupyterLabSession.IOptions) => Promise<void>;
@@ -441,6 +422,12 @@ export class JupyterLabSession {
       }
     }
 
+    const labView = new LabView({
+      serverState: this._info.serverState,
+      platform: this._info.platform,
+      uiState: this._info.uiState
+    });
+
     this._window = new BrowserWindow({
       width: this._info.width,
       height: this._info.height,
@@ -450,10 +437,10 @@ export class JupyterLabSession {
       minHeight: 300,
       show: true,
       title: 'JupyterLab',
+      titleBarStyle: 'hidden',
       webPreferences: {
         nodeIntegration: true,
-        contextIsolation: false,
-        preload: path.join(__dirname, './preload.js')
+        contextIsolation: false
       }
     });
 
@@ -473,251 +460,42 @@ export class JupyterLabSession {
 
     this._addRenderAPI();
 
-    this._window.webContents.on('did-finish-load', () => {
-      this._window.show();
-    });
-
-    const DESKTOP_APP_ASSETS_PATH = 'desktop-app-assets';
-
-    const cookies: Map<string, string> = new Map();
-
-    const parseCookieName = (cookie: string): string | undefined => {
-      const parts = cookie.split(';');
-      if (parts.length < 1) {
-        return undefined;
-      }
-      const firstPart = parts[0];
-      const eqLoc = firstPart.indexOf('=');
-      if (eqLoc === -1) {
-        return undefined;
-      }
-      return firstPart.substring(0, eqLoc).trim();
-    };
-
-    const jlabBaseUrl = `${appConfig.url.protocol}//${appConfig.url.host}${appConfig.url.pathname}`;
-    const desktopAppAssetsPrefix = `${jlabBaseUrl}${DESKTOP_APP_ASSETS_PATH}`;
-    const appAssetsDir = path.normalize(path.join(__dirname, '../../'));
-
-    const handleDesktopAppAssetRequest = (
-      req: Electron.ProtocolRequest,
-      callback: (response: Buffer | Electron.ProtocolResponse) => void
-    ) => {
-      let assetPath = req.url.substring(desktopAppAssetsPrefix.length + 1);
-      const qMark = assetPath.indexOf('?');
-      if (qMark !== -1) {
-        assetPath = assetPath.substring(0, qMark);
-      }
-      const assetFilePath = path.normalize(path.join(appAssetsDir, assetPath));
-
-      // make sure asset is in appAssetsDir, prevent access to lower level directories
-      if (assetFilePath.indexOf(appAssetsDir) === 0) {
-        if (!fs.existsSync(assetFilePath)) {
-          callback({ statusCode: 404 });
-          return;
-        }
-        let assetContent = fs.readFileSync(assetFilePath);
-        if (templateAssetPaths.has(assetPath)) {
-          assetContent = Buffer.from(
-            ejs.render(
-              assetContent.toString(),
-              templateAssetPaths.get(assetPath)()
-            )
-          );
-        }
-
-        callback(assetContent);
-      }
-    };
-
-    const handleRemoteAssetRequest = (
-      req: Electron.ProtocolRequest,
-      callback: (response: Buffer | Electron.ProtocolResponse) => void
-    ) => {
-      const headers: any = {
-        ...req.headers,
-        Referer: req.referrer,
-        Authorization: `token ${appConfig.token}`
-      };
-
-      if (
-        appConfig.url &&
-        req.url.startsWith(`${appConfig.url.protocol}//${appConfig.url.host}`)
-      ) {
-        let cookieArray: string[] = [];
-        if (appConfig.cookies) {
-          appConfig.cookies.forEach(cookie => {
-            if (cookie.domain === appConfig.url.hostname) {
-              cookieArray.push(`${cookie.name}=${cookie.value}`);
-              if (cookie.name === '_xsrf') {
-                headers['X-XSRFToken'] = cookie.value;
-              }
-            }
-          });
-        }
-        headers['Cookie'] = cookieArray.join('; ');
-      }
-
-      const remoteUrl = req.url;
-      const requestFn = remoteUrl.startsWith('https')
-        ? httpsRequest
-        : httpRequest;
-
-      const request = requestFn(remoteUrl, {
-        headers: headers,
-        method: req.method
-      });
-      request.on('response', (res: IncomingMessage) => {
-        if (req.url.startsWith(jlabBaseUrl) && 'set-cookie' in res.headers) {
-          for (let cookie of res.headers['set-cookie']) {
-            const cookieName = parseCookieName(cookie);
-            if (cookieName) {
-              cookies.set(cookieName, cookie);
-            }
-          }
-        }
-
-        const chunks: Buffer[] = [];
-
-        res.on('data', (chunk: any) => {
-          chunks.push(Buffer.from(chunk));
-        });
-
-        res.on('end', async () => {
-          const file = Buffer.concat(chunks);
-          callback({
-            statusCode: res.statusCode,
-            headers: res.headers,
-            method: res.method,
-            url: res.url,
-            data: file
-          });
-        });
-      });
-
-      if (req.uploadData) {
-        req.uploadData.forEach(part => {
-          if (part.bytes) {
-            request.write(part.bytes);
-          } else if (part.file) {
-            request.write(fs.readFileSync(part.file));
-          }
-        });
-      }
-
-      request.end();
-    };
-
-    const handleInterceptBufferProtocol = (
-      req: Electron.ProtocolRequest,
-      callback: (response: Buffer | Electron.ProtocolResponse) => void
-    ) => {
-      if (req.url.startsWith(desktopAppAssetsPrefix)) {
-        handleDesktopAppAssetRequest(req, callback);
-      } else {
-        handleRemoteAssetRequest(req, callback);
-      }
-    };
-
-    this._window.webContents.session.protocol.interceptBufferProtocol(
-      'http',
-      handleInterceptBufferProtocol
-    );
-
-    this._window.webContents.session.protocol.interceptBufferProtocol(
-      'https',
-      handleInterceptBufferProtocol
-    );
-
-    const filter = {
-      urls: [`ws://${appConfig.url.host}/*`, `wss://${appConfig.url.host}/*`]
-    };
-
-    this._window.webContents.session.webRequest.onBeforeSendHeaders(
-      filter,
-      (details, callback) => {
-        const requestHeaders: Record<string, string> = {
-          ...details.requestHeaders
-        };
-        if (cookies.size > 0) {
-          requestHeaders['Cookie'] = Array.from(cookies.values()).join('; ');
-          requestHeaders['Host'] = appConfig.url.host;
-          requestHeaders['Origin'] = appConfig.url.origin;
-        }
-        callback({ cancel: false, requestHeaders });
-      }
-    );
-
     this._window.on('focus', () => {
       this._sessionManager.setFocusedSession(this);
     });
 
-    // show popups in a new BrowserWindow with default configuration
-    this._window.webContents.on('new-window', (event, url) => {
-      event.preventDefault();
-      const win = new BrowserWindow({ show: false });
-
-      win.webContents.on('did-finish-load', () => {
-        win.show();
-      });
-
-      win.setMenuBarVisibility(false);
-      win.loadURL(url);
-
-      event.newGuest = win;
-    });
-
-    // Prevent navigation to local links on the same page and external links
-    this._window.webContents.on(
-      'will-navigate',
-      (event: Event, navigationUrl) => {
-        const jlabBaseUrl = `${appConfig.url.protocol}//${appConfig.url.host}`;
-        if (
-          !(
-            navigationUrl.startsWith(jlabBaseUrl) &&
-            navigationUrl.indexOf('#') === -1
-          )
-        ) {
-          console.warn(
-            `Navigation is not allowed; attempted navigation to: ${navigationUrl}`
-          );
-          event.preventDefault();
-          return;
-        }
-
-        const parsedUrl = new URL(navigationUrl);
-
-        asyncRemoteMain.emitRemoteEvent(
-          ISessions.navigatedToHash,
-          parsedUrl.hash,
-          this._window.webContents
-        );
-      }
-    );
-
-    // handle page's beforeunload prompt natively
-    this._window.webContents.on('will-prevent-unload', (event: Event) => {
-      const choice = dialog.showMessageBoxSync(this._window, {
-        type: 'warning',
-        message: 'Do you want to leave?',
-        detail: 'Changes you made may not be saved.',
-        buttons: ['Leave', 'Stay'],
-        defaultId: 1,
-        cancelId: 1
-      });
-
-      if (choice === 0) {
-        event.preventDefault();
-      }
-    });
-
     sessionManager.app.pageConfigSet.then(() => {
-      this._window.loadURL(
-        `${appConfig.url.protocol}//${appConfig.url.host}${
-          appConfig.url.pathname
-        }${DESKTOP_APP_ASSETS_PATH}/index.html?${encodeURIComponent(
-          JSON.stringify(this.info)
-        )}`
-      );
+      const titleBarView = new TitleBarView();
+      this._window.addBrowserView(titleBarView.view);
+      titleBarView.view.setBounds({ x: 0, y: 0, width: 1200, height: 100 });
+      titleBarView.load();
+
+      this._window.addBrowserView(labView.view);
+      labView.view.setBounds({ x: 0, y: 100, width: 1200, height: 700 });
+      labView.load();
+
+      const resizeViews = () => {
+        const titleBarHeight = 28;
+        const [width, height] = this._window.getSize();
+        titleBarView.view.setBounds({
+          x: 0,
+          y: 0,
+          width: width,
+          height: titleBarHeight
+        });
+        labView.view.setBounds({
+          x: 0,
+          y: titleBarHeight,
+          width: width,
+          height: height - titleBarHeight
+        });
+      };
+
+      this._window.on('resize', () => {
+        resizeViews();
+      });
+
+      resizeViews();
     });
   }
 

@@ -46,6 +46,11 @@ function copyAssests() {
   // Copy html into build directory
   const htmlPath = path.join('browser', 'index.html');
   fs.copySync(path.join(srcDir, htmlPath), path.join(dest, '../index.html'));
+  const titlebarPath = path.join('main', 'titlebarview', 'titlebar.html');
+  fs.copySync(
+    path.join(srcDir, titlebarPath),
+    path.join(dest, '../app-assets', 'titlebarview', 'titlebar.html')
+  );
 
   const envInfoPath = path.join('main', 'env_info.py');
   fs.copySync(path.join(srcDir, envInfoPath), path.join(dest, envInfoPath));

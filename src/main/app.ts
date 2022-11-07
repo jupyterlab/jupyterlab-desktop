@@ -7,6 +7,8 @@ import {
   BrowserWindow,
   dialog,
   ipcMain,
+  Menu,
+  MenuItemConstructorOptions,
   session,
   shell
 } from 'electron';
@@ -241,7 +243,9 @@ export class JupyterApplication implements IApplication, IStatefulService {
           appConfig.isRemote = false;
           getFreePort().then(port => {
             appConfig.token = randomBytes(24).toString('hex');
-            appConfig.url = new URL(`http://localhost:${port}`);
+            appConfig.url = new URL(
+              `http://localhost:${port}/lab?token=${appConfig.token}`
+            );
             this._serverInfoStateSet = true;
 
             waitUntilServerIsUp(appConfig.url).then(() => {
@@ -642,6 +646,36 @@ export class JupyterApplication implements IApplication, IStatefulService {
       this._applicationState.persistSessionData = persistSessionData;
       app.relaunch();
       app.quit();
+    });
+
+    ipcMain.on('show-app-context-menu', event => {
+      const template: MenuItemConstructorOptions[] = [
+        {
+          label: 'Preferences',
+          click: () => {
+            this._showServerConnectionOptionsDialog('change');
+          }
+        },
+        {
+          label: 'Check for updates…',
+          click: () => {
+            this._checkForUpdates('always');
+          }
+        },
+        {
+          label: 'Open Developer Tools',
+          click: () => {
+            this._openDevTools();
+          }
+        },
+        { type: 'separator' },
+        { label: 'About' }
+      ];
+
+      const menu = Menu.buildFromTemplate(template);
+      menu.popup({
+        window: BrowserWindow.fromWebContents(event.sender)
+      });
     });
 
     asyncRemoteMain.registerRemoteMethod(
@@ -1099,6 +1133,11 @@ export class JupyterApplication implements IApplication, IStatefulService {
         }
         console.error('Failed to check for updates:', error);
       });
+  }
+
+  private _openDevTools() {
+    this._window.getBrowserViews()[0].webContents.openDevTools();
+    this._window.getBrowserViews()[1].webContents.openDevTools();
   }
 
   private _quit(): void {
