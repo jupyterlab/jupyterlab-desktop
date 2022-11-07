@@ -4,63 +4,80 @@ Copyright (c) Jupyter Development Team.
 Distributed under the terms of the Modified BSD License.
 -->
 <html>
-
-<head>
-  <meta charset="utf-8">
-  <title>JupyterLab Header</title>
-  <style>
-    body {
+  <head>
+    <meta charset="utf-8" />
+    <title>JupyterLab Header</title>
+    <style>
+      body {
         background-color: #e1e1e1;
         margin: 5px;
         overflow: hidden;
         -webkit-app-region: drag;
-        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol';
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica,
+          Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
+          'Segoe UI Symbol';
         font-size: 13px;
         -webkit-user-select: none;
         user-select: none;
-    }
-    .titlebar {
+      }
+      .titlebar {
         display: flex;
         flex-direction: row;
         padding-left: 10px;
-    }
-    .app-title {
+      }
+      .app-title {
         flex-grow: 1;
         float: left;
-    }
-    #menu-button {
+      }
+      #menu-button {
         -webkit-app-region: no-drag;
         margin-right: 10px;
-    }
-    .app-ui-darwin .titlebar {
+      }
+      .app-ui-darwin .titlebar {
         padding-left: 70px;
-    }
-    #control-box {
+      }
+      #control-box {
         -webkit-app-region: no-drag;
         margin-left: 10px;
         margin-right: 10px;
         font-weight: bold;
-    }
-    .app-ui-darwin #control-box {
-      display: none;
-    }
-  </style>
-</head>
+      }
+      .app-ui-darwin #control-box {
+        display: none;
+      }
+    </style>
+  </head>
 
-<body> 
+  <body>
     <div class="titlebar">
-        <div class="app-title">JupyterLab Desktop</div>
-        <div id="menu-button"><svg width="18px" height="18px" id="Layer_1" style="enable-background:new 0 0 32 32;" version="1.1" viewBox="0 0 32 32"  xml:space="preserve" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"><path d="M4,10h24c1.104,0,2-0.896,2-2s-0.896-2-2-2H4C2.896,6,2,6.896,2,8S2.896,10,4,10z M28,14H4c-1.104,0-2,0.896-2,2  s0.896,2,2,2h24c1.104,0,2-0.896,2-2S29.104,14,28,14z M28,22H4c-1.104,0-2,0.896-2,2s0.896,2,2,2h24c1.104,0,2-0.896,2-2  S29.104,22,28,22z"/></svg></div>
-        <div id ="control-box" class="control-box">
-          <div id="close-button">X</div>
-        </div>
+      <div class="app-title">JupyterLab Desktop</div>
+      <div id="menu-button">
+        <svg
+          width="18px"
+          height="18px"
+          id="Layer_1"
+          style="enable-background: new 0 0 32 32"
+          version="1.1"
+          viewBox="0 0 32 32"
+          xml:space="preserve"
+          xmlns="http://www.w3.org/2000/svg"
+          xmlns:xlink="http://www.w3.org/1999/xlink"
+        >
+          <path
+            d="M4,10h24c1.104,0,2-0.896,2-2s-0.896-2-2-2H4C2.896,6,2,6.896,2,8S2.896,10,4,10z M28,14H4c-1.104,0-2,0.896-2,2  s0.896,2,2,2h24c1.104,0,2-0.896,2-2S29.104,14,28,14z M28,22H4c-1.104,0-2,0.896-2,2s0.896,2,2,2h24c1.104,0,2-0.896,2-2  S29.104,22,28,22z"
+          />
+        </svg>
+      </div>
+      <div id="control-box" class="control-box">
+        <div id="close-button">X</div>
+      </div>
     </div>
     <script>
       const appConfig = window.electronAPI.getAppConfig();
       const platform = appConfig.platform;
       document.body.dataset.appPlatform = platform;
       document.body.classList.add(`app-ui-${platform}`);
-      
+
       const menuButton = document.getElementById('menu-button');
       menuButton.onclick = () => {
         window.electronAPI.showAppContextMenu();
@@ -71,6 +88,5 @@ Distributed under the terms of the Modified BSD License.
         window.electronAPI.closeWindow();
       };
     </script>
-</body>
-
+  </body>
 </html>

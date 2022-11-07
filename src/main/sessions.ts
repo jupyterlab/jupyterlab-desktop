@@ -1,10 +1,7 @@
 // Copyright (c) Jupyter Development Team.
 // Distributed under the terms of the Modified BSD License.
 
-import {
-  app,
-  ipcMain,
-} from 'electron';
+import { app, ipcMain } from 'electron';
 
 import { JSONObject } from '@lumino/coreutils';
 

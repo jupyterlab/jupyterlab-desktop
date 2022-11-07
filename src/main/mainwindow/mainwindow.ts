@@ -1,7 +1,12 @@
 // Copyright (c) Jupyter Development Team.
 // Distributed under the terms of the Modified BSD License.
 
-import { BrowserWindow, clipboard, Menu, MenuItemConstructorOptions } from 'electron';
+import {
+  BrowserWindow,
+  clipboard,
+  Menu,
+  MenuItemConstructorOptions
+} from 'electron';
 import { LabView } from '../labview/labview';
 import { TitleBarView } from '../titlebarview/titlebarview';
 
