@@ -9,6 +9,7 @@ import {
   ipcMain,
   Menu,
   MenuItemConstructorOptions,
+  nativeTheme,
   session,
   shell
 } from 'electron';
@@ -681,6 +682,10 @@ export class JupyterApplication implements IApplication, IStatefulService {
     ipcMain.on('close-active-window', event => {
       const window = BrowserWindow.fromWebContents(event.sender);
       window.close();
+    });
+
+    ipcMain.handle('is-dark-theme', event => {
+      return nativeTheme.shouldUseDarkColors;
     });
 
     asyncRemoteMain.registerRemoteMethod(

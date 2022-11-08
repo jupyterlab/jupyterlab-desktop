@@ -11,5 +11,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   },
   closeWindow: () => {
     ipcRenderer.send('close-active-window');
+  },
+  isDarkTheme: () => {
+    return ipcRenderer.invoke('is-dark-theme');
   }
 });

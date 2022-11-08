@@ -10,6 +10,7 @@ Distributed under the terms of the Modified BSD License.
     <style>
       body {
         background-color: #e1e1e1;
+        color: #000000;
         margin: 5px;
         overflow: hidden;
         -webkit-app-region: drag;
@@ -19,6 +20,10 @@ Distributed under the terms of the Modified BSD License.
         font-size: 13px;
         -webkit-user-select: none;
         user-select: none;
+      }
+      body.app-ui-dark {
+        background-color: #424242;
+        color: #ffffff;
       }
       .titlebar {
         display: flex;
@@ -33,6 +38,12 @@ Distributed under the terms of the Modified BSD License.
         -webkit-app-region: no-drag;
         margin-right: 10px;
       }
+      #menu-button svg path {
+        fill: #5a5a5a;
+      }
+      .app-ui-dark #menu-button svg path {
+        fill: #bdbdbd;
+      }
       .app-ui-darwin .titlebar {
         padding-left: 70px;
       }
@@ -41,11 +52,26 @@ Distributed under the terms of the Modified BSD License.
         margin-left: 10px;
         margin-right: 10px;
         font-weight: bold;
+        color: #5a5a5a;
+      }
+      .app-ui-dark #control-box {
+        color: #bdbdbd;
       }
       .app-ui-darwin #control-box {
         display: none;
       }
     </style>
+    <script>
+      document.addEventListener("DOMContentLoaded", async () => {
+        const appConfig = window.electronAPI.getAppConfig();
+        const platform = appConfig.platform;
+        document.body.dataset.appPlatform = platform;
+        document.body.classList.add(`app-ui-${platform}`);
+        if (await window.electronAPI.isDarkTheme()) {
+          document.body.classList.add('app-ui-dark');
+        }
+      });
+    </script>
   </head>
 
   <body>
@@ -73,11 +99,6 @@ Distributed under the terms of the Modified BSD License.
       </div>
     </div>
     <script>
-      const appConfig = window.electronAPI.getAppConfig();
-      const platform = appConfig.platform;
-      document.body.dataset.appPlatform = platform;
-      document.body.classList.add(`app-ui-${platform}`);
-
       const menuButton = document.getElementById('menu-button');
       menuButton.onclick = () => {
         window.electronAPI.showAppContextMenu();
