@@ -52,6 +52,20 @@ function copyAssests() {
     path.join(dest, '../app-assets', 'titlebarview', 'titlebar.html')
   );
 
+  const toolkitPath = path.join(
+    '../node_modules',
+    '@jupyter-notebook/web-components',
+    'dist'
+  );
+  fs.copySync(
+    path.join(srcDir, toolkitPath, 'toolkit.min.js'),
+    path.join(dest, '../jupyter-ui-toolkit/toolkit.min.js')
+  );
+  fs.copySync(
+    path.join(srcDir, toolkitPath, 'toolkit.js'),
+    path.join(dest, '../jupyter-ui-toolkit/toolkit.js')
+  );
+
   const envInfoPath = path.join('main', 'env_info.py');
   fs.copySync(path.join(srcDir, envInfoPath), path.join(dest, envInfoPath));
 

@@ -162,6 +162,7 @@
   "repository": "https://github.com/jupyterlab/jupyterlab-desktop",
   "license": "BSD-3-Clause",
   "devDependencies": {
+    "@jupyter-notebook/web-components": "0.9.1",
     "@types/ejs": "^3.1.0",
     "@types/js-yaml": "^4.0.3",
     "@types/node": "^14.14.31",

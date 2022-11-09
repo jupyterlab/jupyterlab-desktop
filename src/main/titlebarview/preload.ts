@@ -16,3 +16,5 @@ contextBridge.exposeInMainWorld('electronAPI', {
     return ipcRenderer.invoke('is-dark-theme');
   }
 });
+
+export {};

@@ -39,6 +39,7 @@ import { execFile } from 'child_process';
 import { loadingAnimation } from '../assets/svg';
 import { IServerFactory, JupyterServer, waitUntilServerIsUp } from './server';
 import { connectAndGetServerInfo, IJupyterServerInfo } from './connect';
+import { UpdateDialog } from './updatedialog/updatedialog';
 
 async function getFreePort(): Promise<number> {
   return new Promise<number>(resolve => {
@@ -737,89 +738,15 @@ export class JupyterApplication implements IApplication, IStatefulService {
   private _showUpdateDialog(
     type: 'updates-available' | 'error' | 'no-updates'
   ) {
-    const dialog = new BrowserWindow({
-      title: 'JupyterLab Update',
-      width: 400,
-      height: 150,
-      resizable: false,
-      webPreferences: {
-        nodeIntegration: true,
-        contextIsolation: false
-      }
+    const dialog = new UpdateDialog({
+      type,
+      checkForUpdatesAutomatically:
+        this._applicationState.checkForUpdatesAutomatically !== false,
+      installUpdatesAutomatically:
+        this._applicationState.installUpdatesAutomatically !== false
     });
-    dialog.setMenuBarVisibility(false);
 
-    const checkForUpdatesAutomatically =
-      this._applicationState.checkForUpdatesAutomatically !== false;
-    const installUpdatesAutomaticallyEnabled = process.platform === 'darwin';
-    const installUpdatesAutomatically =
-      installUpdatesAutomaticallyEnabled &&
-      this._applicationState.installUpdatesAutomatically !== false;
-    const message =
-      type === 'error'
-        ? 'Error occurred while checking for updates!'
-        : type === 'no-updates'
-        ? 'There are no updates available.'
-        : `There is a new version available. Download the latest version from <a href="javascript:void(0)" onclick='handleReleasesLink(this);'>the Releases page</a>.`;
-
-    const template = `
-            <html>
-            <head>
-              <style>
-              input:disabled+label { color: rgba(90,90,90,1); }
-              </style>
-            </head>
-            <body style="background: rgba(238,238,238,1); font-size: 13px; font-family: Helvetica, Arial, sans-serif">
-            <div style="height: 100%; display: flex;flex-direction: column; justify-content: space-between;">
-                <div>
-                <%- message %>
-                </div>
-                <div>
-                    <input id='checkbox-update-check' type='checkbox' <%= checkForUpdatesAutomatically ? 'checked' : '' %> onclick='handleAutoCheckForUpdates(this);'><label for='checkbox-update-check'>Check for updates automatically</label>
-                    <br>
-                    <input id='checkbox-update-install' type='checkbox' <%= installUpdatesAutomatically ? 'checked' : '' %> <%= installUpdatesAutomaticallyEnabled ? '' : 'disabled' %> onclick='handleAutoInstallUpdates(this);'><label for='checkbox-update-install'>Download and install updates automatically</label>
-                </div>
-            </div>
-
-            <script>
-                const ipcRenderer = require('electron').ipcRenderer;
-                const autoUpdateCheckCheckbox = document.getElementById('checkbox-update-check');
-                const autoInstallCheckbox = document.getElementById('checkbox-update-install');
-
-                function handleAutoCheckForUpdates(el) {
-                    ipcRenderer.send('set-check-for-updates-automatically', el.checked);
-                    updateAutoInstallCheckboxState();
-                }
-
-                function handleAutoInstallUpdates(el) {
-                  ipcRenderer.send('set-install-updates-automatically', el.checked);
-                }
-
-                function handleReleasesLink(el) {
-                    ipcRenderer.send('launch-installer-download-page');
-                }
-
-                function updateAutoInstallCheckboxState() {
-                  if (<%= installUpdatesAutomaticallyEnabled ? 'true' : 'false' %> /* installUpdatesAutomaticallyEnabled */ &&
-                      autoUpdateCheckCheckbox.checked) {
-                      autoInstallCheckbox.removeAttribute('disabled');
-                  } else {
-                    autoInstallCheckbox.disabled = 'disabled';
-                  }
-                }
-
-                updateAutoInstallCheckboxState();
-            </script>
-            </body>
-            </html>
-        `;
-    const pageSource = ejs.render(template, {
-      message,
-      checkForUpdatesAutomatically,
-      installUpdatesAutomaticallyEnabled,
-      installUpdatesAutomatically
-    });
-    dialog.loadURL(`data:text/html;charset=utf-8,${pageSource}`);
+    dialog.load();
   }
 
   private _showServerConnectionOptionsDialog(
