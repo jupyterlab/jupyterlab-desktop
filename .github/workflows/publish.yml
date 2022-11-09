@@ -90,7 +90,7 @@ jobs:
 
       - name: Upload Debian Installer
         if: matrix.cfg.platform == 'linux'
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: debian-installer
           path: |
@@ -98,7 +98,7 @@ jobs:
 
       - name: Upload Fedora Installer
         if: matrix.cfg.platform == 'linux'
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: fedora-installer
           path: |
@@ -106,7 +106,7 @@ jobs:
 
       - name: Upload macOS Installer
         if: matrix.cfg.platform == 'mac'
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: mac-installer
           path: |
@@ -114,7 +114,7 @@ jobs:
 
       - name: Upload Windows Installer
         if: matrix.cfg.platform == 'win'
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: windows-installer
           path: |
