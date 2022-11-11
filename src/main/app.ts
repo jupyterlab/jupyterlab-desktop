@@ -779,6 +779,10 @@ export class JupyterApplication implements IApplication, IStatefulService {
 
     this._serverConfigDialog = dialog;
 
+    dialog.window.on('close', () => {
+      this._serverConfigDialog = null;
+    });
+
     dialog.load();
   }
 

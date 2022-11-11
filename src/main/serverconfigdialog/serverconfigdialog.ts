@@ -2,6 +2,7 @@
 // Distributed under the terms of the Modified BSD License.
 
 import * as ejs from 'ejs';
+import { BrowserWindow } from 'electron';
 import * as path from 'path';
 import { JupyterLabWindow } from '../dialog/jupyterlabwindow';
 import { Registry } from '../registry';
@@ -261,8 +262,8 @@ export class ServerConfigDialog {
     });
   }
 
-  get window(): JupyterLabWindow {
-    return this._window;
+  get window(): BrowserWindow {
+    return this._window.window;
   }
 
   load() {

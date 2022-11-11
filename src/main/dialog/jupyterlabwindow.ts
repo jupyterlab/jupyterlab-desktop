@@ -113,10 +113,6 @@ export class JupyterLabWindow {
     );
   }
 
-  focus(): void {
-    this._window.focus();
-  }
-
   private _window: BrowserWindow;
 }
 
