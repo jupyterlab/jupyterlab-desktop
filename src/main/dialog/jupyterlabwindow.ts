@@ -21,7 +21,9 @@ export class JupyterLabWindow {
     });
 
     // hide the traffic lights
-    this._window.setWindowButtonVisibility(false);
+    if (process.platform === 'darwin') {
+      this._window.setWindowButtonVisibility(false);
+    }
     this._window.setMenuBarVisibility(false);
 
     this._window.webContents.on('did-finish-load', () => {
