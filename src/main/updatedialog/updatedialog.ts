@@ -8,8 +8,6 @@ import { JupyterLabWindow } from '../dialog/jupyterlabwindow';
 export class UpdateDialog {
   constructor(options: {
     type: 'updates-available' | 'error' | 'no-updates';
-    checkForUpdatesAutomatically: boolean;
-    installUpdatesAutomatically: boolean;
   }) {
     this._window = new JupyterLabWindow({
       title: 'Update',
@@ -19,10 +17,6 @@ export class UpdateDialog {
       preload: path.join(__dirname, './preload.js')
     });
 
-    const checkForUpdatesAutomatically = options.checkForUpdatesAutomatically;
-    const installUpdatesAutomaticallyEnabled = process.platform === 'darwin';
-    const installUpdatesAutomatically =
-      installUpdatesAutomaticallyEnabled && options.installUpdatesAutomatically;
     const message =
       options.type === 'error'
         ? 'Error occurred while checking for updates!'
@@ -31,54 +25,34 @@ export class UpdateDialog {
         : `There is a new version available. Download the latest version from <a href="javascript:void(0)" onclick='handleReleasesLink(this);'>the Releases page</a>.`;
 
     const template = `
-            <div style="height: 100%; display: flex;flex-direction: column; justify-content: space-between;">
-              <div>
-              <%- message %>
-              </div>
-              <div>
-                <jp-checkbox id='checkbox-update-check' type='checkbox' <%= checkForUpdatesAutomatically ? 'checked' : '' %> onchange='handleAutoCheckForUpdates(this);'>Check for updates automatically</jp-checkbox>
-                <br>
-                <jp-checkbox id='checkbox-update-install' type='checkbox' <%= installUpdatesAutomatically ? 'checked' : '' %> <%= installUpdatesAutomaticallyEnabled ? '' : 'disabled' %> onchange='handleAutoInstallUpdates(this);'>Download and install updates automatically</jp-checkbox>
-              </div>
-            </div>
+      <style>
+        .update-result-container {
+          style="height: 100%;
+          display: flex;
+          flex-direction: column;
+          justify-content: space-between;
+        }
+        .update-result-container a {
+          color: #222222;
+          outline: none;
+        }
+        .app-ui-dark .update-result-container a {
+          color: #5d96ed;
+        }
+      </style>
+      <div class="update-result-container">
+        <div>
+        <%- message %>
+        </div>
+      </div>
 
-            <script>
-              const autoUpdateCheckCheckbox = document.getElementById('checkbox-update-check');
-              const autoInstallCheckbox = document.getElementById('checkbox-update-install');
-
-              function handleAutoCheckForUpdates(el) {
-                window.electronAPI.setCheckForUpdatesAutomatically(el.checked);
-                updateAutoInstallCheckboxState();
-              }
-
-              function handleAutoInstallUpdates(el) {
-                window.electronAPI.setInstallUpdatesAutomatically(el.checked);
-              }
-
-              function handleReleasesLink(el) {
-                window.electronAPI.launchInstallerDownloadPage();
-              }
-
-              function updateAutoInstallCheckboxState() {
-                if (<%= installUpdatesAutomaticallyEnabled ? 'true' : 'false' %> /* installUpdatesAutomaticallyEnabled */ &&
-                  autoUpdateCheckCheckbox.checked) {
-                  autoInstallCheckbox.removeAttribute('disabled');
-                } else {
-                  autoInstallCheckbox.disabled = 'disabled';
-                }
-              }
-
-              document.addEventListener("DOMContentLoaded", () => {
-                updateAutoInstallCheckboxState();
-              });
-            </script>
-        `;
-    this._pageBody = ejs.render(template, {
-      message,
-      checkForUpdatesAutomatically,
-      installUpdatesAutomaticallyEnabled,
-      installUpdatesAutomatically
-    });
+      <script>
+        function handleReleasesLink(el) {
+          window.electronAPI.launchInstallerDownloadPage();
+        }
+      </script>
+    `;
+    this._pageBody = ejs.render(template, { message });
   }
 
   get window(): JupyterLabWindow {

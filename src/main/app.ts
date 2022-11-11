@@ -183,7 +183,8 @@ export class JupyterApplication implements IApplication, IStatefulService {
       installUpdatesAutomatically: true,
       pythonPath: '',
       condaRootPath: '',
-      remoteURL: ''
+      remoteURL: '',
+      theme: 'system'
     };
 
     this.registerStatefulService(this).then(
@@ -222,6 +223,10 @@ export class JupyterApplication implements IApplication, IStatefulService {
               useBundledPythonPath ? 'invalid-bundled-env' : 'invalid-env'
             );
           }
+        }
+
+        if (!(appState.theme === 'light' || appState.theme === 'dark')) {
+          appState.theme = 'system';
         }
 
         if (appState.checkForUpdatesAutomatically !== false) {
@@ -646,19 +651,25 @@ export class JupyterApplication implements IApplication, IStatefulService {
       app.quit();
     });
 
+    ipcMain.on('set-theme', (_event, theme) => {
+      this._applicationState.theme = theme;
+    });
+
+    ipcMain.on('restart-app', (_event) => {
+      app.relaunch();
+      app.quit();
+    });
+
+    ipcMain.on('check-for-updates', (_event) => {
+      this._checkForUpdates('always');
+    });
+
     ipcMain.on('show-app-context-menu', event => {
       const template: MenuItemConstructorOptions[] = [
         {
           label: 'Preferences',
           click: () => {
-            const dialog = new PreferencesDialog({
-              checkForUpdatesAutomatically:
-                this._applicationState.checkForUpdatesAutomatically !== false,
-              installUpdatesAutomatically:
-                this._applicationState.installUpdatesAutomatically !== false
-            });
-
-            dialog.load();
+            this._showPreferencesDialog();
           }
         },
         {
@@ -689,7 +700,13 @@ export class JupyterApplication implements IApplication, IStatefulService {
     });
 
     ipcMain.handle('is-dark-theme', event => {
-      return nativeTheme.shouldUseDarkColors;
+      if (this._applicationState.theme === 'light') {
+        return false;
+      } else if (this._applicationState.theme === 'dark') {
+        return true;
+      } else {
+        return nativeTheme.shouldUseDarkColors;
+      }
     });
 
     ipcMain.on('show-server-config-dialog', event => {
@@ -745,13 +762,7 @@ export class JupyterApplication implements IApplication, IStatefulService {
   private _showUpdateDialog(
     type: 'updates-available' | 'error' | 'no-updates'
   ) {
-    const dialog = new UpdateDialog({
-      type,
-      checkForUpdatesAutomatically:
-        this._applicationState.checkForUpdatesAutomatically !== false,
-      installUpdatesAutomatically:
-        this._applicationState.installUpdatesAutomatically !== false
-    });
+    const dialog = new UpdateDialog({ type });
 
     dialog.load();
   }
@@ -823,6 +834,29 @@ export class JupyterApplication implements IApplication, IStatefulService {
     this._window.getBrowserViews()[1].webContents.openDevTools();
   }
 
+  private _showPreferencesDialog() {
+    if (this._preferencesDialog) {
+      this._preferencesDialog.window.focus();
+      return;
+    }
+
+    const dialog = new PreferencesDialog({
+      theme: this._applicationState.theme,
+      checkForUpdatesAutomatically:
+        this._applicationState.checkForUpdatesAutomatically !== false,
+      installUpdatesAutomatically:
+        this._applicationState.installUpdatesAutomatically !== false
+    });
+
+    this._preferencesDialog = dialog;
+
+    dialog.window.on('close', () => {
+      this._preferencesDialog = null;
+    });
+
+    dialog.load();
+  }
+
   private _quit(): void {
     let closing: Promise<void>[] = this._closing.map((s: IClosingService) => {
       return s.finished();
@@ -857,6 +891,7 @@ export class JupyterApplication implements IApplication, IStatefulService {
   private _serverInfoStateSet = false;
   private _serverPageConfigSet = false;
   private _serverConfigDialog: ServerConfigDialog;
+  private _preferencesDialog: PreferencesDialog;
 }
 
 export namespace JupyterApplication {
@@ -870,6 +905,7 @@ export namespace JupyterApplication {
     remoteURL?: string;
     persistSessionData?: boolean;
     clearSessionDataOnNextLaunch?: boolean;
+    theme: 'system' | 'light' | 'dark';
   }
 }
 

@@ -2,6 +2,7 @@
 // Distributed under the terms of the Modified BSD License.
 
 import * as ejs from 'ejs';
+import { BrowserWindow } from 'electron';
 import * as path from 'path';
 import { JupyterLabWindow } from '../dialog/jupyterlabwindow';
 
@@ -14,6 +15,7 @@ export class PreferencesDialog {
       preload: path.join(__dirname, './preload.js')
     });
 
+    const theme = options.theme;
     const checkForUpdatesAutomatically = options.checkForUpdatesAutomatically;
     const installUpdatesAutomaticallyEnabled = process.platform === 'darwin';
     const installUpdatesAutomatically =
@@ -54,6 +56,10 @@ export class PreferencesDialog {
         flex-direction: column;
         align-items: flex-start;
       }
+      jp-tab-panel #tab-updates {
+        display: flex;
+        align-items: flex-start;
+      }
       </style>
       <div id="container">
         <div id="content-area">
@@ -68,26 +74,23 @@ export class PreferencesDialog {
             <jp-tab-panel id="tab-appearance">
               <jp-radio-group orientation="vertical">
                 <label slot="label">Theme</label>
-                <jp-radio value="light">Light</jp-radio>
-                <jp-radio value="dark">Dark</jp-radio>
-                <jp-radio value="system">System</jp-radio>
+                <jp-radio name="theme" value="light" <%= theme === 'light' ? 'checked' : '' %>>Light</jp-radio>
+                <jp-radio name="theme" value="dark" <%= theme === 'dark' ? 'checked' : '' %>>Dark</jp-radio>
+                <jp-radio name="theme" value="system" <%= theme === 'system' ? 'checked' : '' %>>System</jp-radio>
               </jp-radio-group>
             </jp-tab-panel>
 
             <jp-tab-panel id="tab-updates">
               <jp-checkbox id='checkbox-update-check' type='checkbox' <%= checkForUpdatesAutomatically ? 'checked' : '' %> onchange='handleAutoCheckForUpdates(this);'>Check for updates automatically</jp-checkbox>
-              <jp-checkbox id='checkbox-update-install' type='checkbox' <%= installUpdatesAutomatically ? 'checked' : '' %> <%= installUpdatesAutomaticallyEnabled ? '' : 'disabled' %> onchange='handleAutoInstallUpdates(this);'>Download and install updates automatically</jp-checkbox>
+              <jp-checkbox id='checkbox-update-install' type='checkbox' <%= installUpdatesAutomatically ? 'checked' : '' %> <%= installUpdatesAutomaticallyEnabled ? '' : 'disabled' %>>Download and install updates automatically</jp-checkbox>
+
+              <jp-button onclick='handleCheckForUpdates(this);'>Check now</jp-button>
               <script>
                 const autoUpdateCheckCheckbox = document.getElementById('checkbox-update-check');
                 const autoInstallCheckbox = document.getElementById('checkbox-update-install');
 
                 function handleAutoCheckForUpdates(el) {
-                  window.electronAPI.setCheckForUpdatesAutomatically(el.checked);
                   updateAutoInstallCheckboxState();
-                }
-
-                function handleAutoInstallUpdates(el) {
-                  window.electronAPI.setInstallUpdatesAutomatically(el.checked);
                 }
 
                 function updateAutoInstallCheckboxState() {
@@ -95,8 +98,12 @@ export class PreferencesDialog {
                     autoUpdateCheckCheckbox.checked) {
                     autoInstallCheckbox.removeAttribute('disabled');
                   } else {
-                    autoInstallCheckbox.disabled = 'disabled';
+                    autoInstallCheckbox.setAttribute('disabled', 'disabled');
                   }
+                }
+
+                function handleCheckForUpdates(el) {
+                  window.electronAPI.checkForUpdates();
                 }
 
                 document.addEventListener("DOMContentLoaded", () => {
@@ -107,19 +114,30 @@ export class PreferencesDialog {
           </jp-tabs>
         </div>
         <div id="footer">
-          <jp-button appearance="accent">Apply & restart</jp-button>
+          <jp-button appearance="accent" onclick='handleApply(this);'>Apply & restart</jp-button>
         </div>
       </div>
+      <script>
+        function handleApply() {
+          const theme = document.querySelector('jp-radio[name="theme"].checked').value;
+          window.electronAPI.setTheme(theme);
+          window.electronAPI.setCheckForUpdatesAutomatically(autoUpdateCheckCheckbox.checked);
+          window.electronAPI.setInstallUpdatesAutomatically(autoInstallCheckbox.checked);
+
+          window.electronAPI.restartApp();
+        }
+      </script>
     `;
     this._pageBody = ejs.render(template, {
+      theme,
       checkForUpdatesAutomatically,
       installUpdatesAutomaticallyEnabled,
       installUpdatesAutomatically
     });
   }
 
-  get window(): JupyterLabWindow {
-    return this._window;
+  get window(): BrowserWindow {
+    return this._window.window;
   }
 
   load() {
@@ -132,6 +150,7 @@ export class PreferencesDialog {
 
 export namespace PreferencesDialog {
   export interface IOptions {
+    theme: 'system' | 'light' | 'dark';
     checkForUpdatesAutomatically: boolean;
     installUpdatesAutomatically: boolean;
   }

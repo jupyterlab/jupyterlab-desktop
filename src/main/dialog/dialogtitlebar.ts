@@ -56,15 +56,21 @@ class JupyterLabDialogTitleBar extends HTMLElement {
         float: left;
       }
 
-      #close-button {
+      .close-button {
         -webkit-app-region: no-drag;
         font-weight: bold;
         color: #5a5a5a;
-        mergin-left: 10px;
-        mergin-right: 10px;
+        padding: 0 5px;
       }
-      .app-ui-dark #close-button {
+      .app-ui-dark .close-button {
         color: #bdbdbd;
+      }
+
+      .close-button:hover {
+        background-color: #c1c1c1;
+      }
+      .app-ui-dark .close-button:hover {
+        background-color: #505050;
       }
     `;
 

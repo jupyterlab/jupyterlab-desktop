@@ -12,15 +12,24 @@ contextBridge.exposeInMainWorld('electronAPI', {
   closeWindow: () => {
     ipcRenderer.send('close-active-window');
   },
+  restartApp: () => {
+    ipcRenderer.send('restart-app');
+  },
   setCheckForUpdatesAutomatically: (check: boolean) => {
     ipcRenderer.send('set-check-for-updates-automatically', check);
   },
   setInstallUpdatesAutomatically: (install: boolean) => {
     ipcRenderer.send('set-install-updates-automatically', install);
   },
+  checkForUpdates: () => {
+    ipcRenderer.send('check-for-updates');
+  },
   launchInstallerDownloadPage: () => {
     ipcRenderer.send('launch-installer-download-page');
-  }
+  },
+  setTheme: (theme: string) => {
+    ipcRenderer.send('set-theme', theme);
+  },
 });
 
 export {};
