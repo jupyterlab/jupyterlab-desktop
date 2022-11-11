@@ -11,17 +11,25 @@ export class JupyterLabWindow {
       title: options.title,
       width: options.width,
       height: options.height,
+      show: false,
       resizable: options.resizable !== false,
       titleBarStyle: 'hidden',
       frame: process.platform === 'darwin',
       webPreferences: {
-        preload: options.preload
+        preload: options.preload || path.join(__dirname, './preload.js')
       }
     });
 
     // hide the traffic lights
     this._window.setWindowButtonVisibility(false);
     this._window.setMenuBarVisibility(false);
+
+    this._window.webContents.on('did-finish-load', () => {
+      // wait for CSS to apply
+      setTimeout(() => {
+        this._window.show();
+      }, 200);
+    });
   }
 
   get window(): BrowserWindow {
@@ -69,27 +77,42 @@ export class JupyterLabWindow {
             color: #000000;
             font-size: var(--type-ramp-base-font-size);
             font-family: var(--body-font);
+            -webkit-user-select: none;
+            user-select: none;
           }
           body.app-ui-dark {
             background: #212121;
             color: #ffffff;
           }
+          .page-container {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+          }
           .jlab-dialog-body {
-            margin: 10px;
+            flex-grow: 1;
+            padding: 10px;
+            overflow-y: auto;
           }
           </style>
         </head>
         <body>
-        <jlab-dialog-titlebar data-title="${this._window.title}"></jlab-dialog-titlebar>
-        <div class="jlab-dialog-body">
-        ${bodyHtml}
-        </div>
+          <div class="page-container">
+            <jlab-dialog-titlebar id="title-bar" data-title="${this._window.title}"></jlab-dialog-titlebar>
+            <div class="jlab-dialog-body">
+            ${bodyHtml}
+            </div>
+          </div>
         </body>
       </html>
       `;
     this._window.loadURL(
       `data:text/html;charset=utf-8,${encodeURIComponent(pageSource)}`
     );
+  }
+
+  focus(): void {
+    this._window.focus();
   }
 
   private _window: BrowserWindow;

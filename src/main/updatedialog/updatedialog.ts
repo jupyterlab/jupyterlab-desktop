@@ -12,7 +12,7 @@ export class UpdateDialog {
     installUpdatesAutomatically: boolean;
   }) {
     this._window = new JupyterLabWindow({
-      title: 'JupyterLab Update',
+      title: 'Update',
       width: 400,
       height: 180,
       resizable: false,
@@ -31,7 +31,7 @@ export class UpdateDialog {
         : `There is a new version available. Download the latest version from <a href="javascript:void(0)" onclick='handleReleasesLink(this);'>the Releases page</a>.`;
 
     const template = `
-            <div style="height: calc(100% - 50px); display: flex;flex-direction: column; justify-content: space-between;">
+            <div style="height: 100%; display: flex;flex-direction: column; justify-content: space-between;">
               <div>
               <%- message %>
               </div>
