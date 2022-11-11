@@ -52,6 +52,12 @@ function copyAssests() {
     path.join(dest, '../app-assets', 'titlebarview', 'titlebar.html')
   );
 
+  const iconPath = path.join('assets', 'icon.svg');
+  fs.copySync(
+    path.join(srcDir, iconPath),
+    path.join(dest, '../app-assets', 'icon.svg')
+  );
+
   const toolkitPath = path.join(
     '../node_modules',
     '@jupyter-notebook/web-components',

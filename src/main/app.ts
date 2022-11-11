@@ -40,6 +40,7 @@ import { connectAndGetServerInfo, IJupyterServerInfo } from './connect';
 import { UpdateDialog } from './updatedialog/updatedialog';
 import { PreferencesDialog } from './preferencesdialog/preferencesdialog';
 import { ServerConfigDialog } from './serverconfigdialog/serverconfigdialog';
+import { AboutDialog } from './aboutdialog/aboutdialog';
 
 async function getFreePort(): Promise<number> {
   return new Promise<number>(resolve => {
@@ -524,6 +525,10 @@ export class JupyterApplication implements IApplication, IStatefulService {
       );
     });
 
+    ipcMain.on('launch-about-jupyter-page', () => {
+      shell.openExternal('https://jupyter.org/about.html');
+    });
+
     ipcMain.on('select-python-path', event => {
       const currentEnv = this._registry.getCurrentPythonEnvironment();
 
@@ -685,7 +690,12 @@ export class JupyterApplication implements IApplication, IStatefulService {
           }
         },
         { type: 'separator' },
-        { label: 'About' }
+        {
+          label: 'About',
+          click: () => {
+            this._showAboutDialog();
+          }
+        }
       ];
 
       const menu = Menu.buildFromTemplate(template);
@@ -854,6 +864,11 @@ export class JupyterApplication implements IApplication, IStatefulService {
       this._preferencesDialog = null;
     });
 
+    dialog.load();
+  }
+
+  private _showAboutDialog() {
+    const dialog = new AboutDialog();
     dialog.load();
   }
 
