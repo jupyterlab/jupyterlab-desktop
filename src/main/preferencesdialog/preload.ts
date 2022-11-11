@@ -29,7 +29,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   },
   setTheme: (theme: string) => {
     ipcRenderer.send('set-theme', theme);
-  },
+  }
 });
 
 export {};

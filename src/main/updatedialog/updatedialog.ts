@@ -6,9 +6,7 @@ import * as path from 'path';
 import { JupyterLabWindow } from '../dialog/jupyterlabwindow';
 
 export class UpdateDialog {
-  constructor(options: {
-    type: 'updates-available' | 'error' | 'no-updates';
-  }) {
+  constructor(options: { type: 'updates-available' | 'error' | 'no-updates' }) {
     this._window = new JupyterLabWindow({
       title: 'Update',
       width: 400,

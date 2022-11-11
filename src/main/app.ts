@@ -655,12 +655,12 @@ export class JupyterApplication implements IApplication, IStatefulService {
       this._applicationState.theme = theme;
     });
 
-    ipcMain.on('restart-app', (_event) => {
+    ipcMain.on('restart-app', _event => {
       app.relaunch();
       app.quit();
     });
 
-    ipcMain.on('check-for-updates', (_event) => {
+    ipcMain.on('check-for-updates', _event => {
       this._checkForUpdates('always');
     });
 
