@@ -52,9 +52,8 @@ function copyAssests() {
     path.join(dest, '../app-assets', 'titlebarview', 'titlebar.html')
   );
 
-  const iconPath = path.join('assets', 'icon.svg');
   fs.copySync(
-    path.join(srcDir, iconPath),
+    path.join(srcDir, 'assets', 'icon.svg'),
     path.join(dest, '../app-assets', 'icon.svg')
   );
 

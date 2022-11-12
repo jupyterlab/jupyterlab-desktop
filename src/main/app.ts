@@ -709,6 +709,21 @@ export class JupyterApplication implements IApplication, IStatefulService {
       window.close();
     });
 
+    ipcMain.on('minimize-window', event => {
+      const window = BrowserWindow.fromWebContents(event.sender);
+      window.minimize();
+    });
+
+    ipcMain.on('maximize-window', event => {
+      const window = BrowserWindow.fromWebContents(event.sender);
+      window.maximize();
+    });
+
+    ipcMain.on('restore-window', event => {
+      const window = BrowserWindow.fromWebContents(event.sender);
+      window.unmaximize();
+    });
+
     ipcMain.handle('is-dark-theme', event => {
       if (this._applicationState.theme === 'light') {
         return false;

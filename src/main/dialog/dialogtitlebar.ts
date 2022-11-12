@@ -1,6 +1,8 @@
 // Copyright (c) Jupyter Development Team.
 // Distributed under the terms of the Modified BSD License.
 
+// close button SVG from https://github.com/AlexTorresSk/custom-electron-titlebar
+
 class JupyterLabDialogTitleBar extends HTMLElement {
   constructor() {
     super();
@@ -15,7 +17,8 @@ class JupyterLabDialogTitleBar extends HTMLElement {
 
     const closeButton = document.createElement('div');
     closeButton.setAttribute('class', 'close-button');
-    closeButton.innerText = 'X';
+    closeButton.innerHTML = `<svg viewBox='0 0 10 10'><polygon points='10.2,0.7 9.5,0 5.1,4.4 0.7,0 0,0.7 4.4,5.1 0,9.5 0.7,10.2 5.1,5.8 9.5,10.2 10.2,9.5 5.8,5.1'/></svg>`;
+    closeButton.title = 'Close';
     closeButton.onclick = () => {
       // eslint-disable-next-line @typescript-eslint/ban-ts-comment
       // @ts-ignore
@@ -71,6 +74,13 @@ class JupyterLabDialogTitleBar extends HTMLElement {
       }
       .app-ui-dark .close-button:hover {
         background-color: #505050;
+      }
+      
+      .close-button svg {
+        width: 12px;
+        height: 12px;
+        padding-top: 8px;
+        fill: var(--neutral-foreground-rest);
       }
     `;
 

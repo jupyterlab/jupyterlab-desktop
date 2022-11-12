@@ -66,7 +66,7 @@ export class AboutDialog {
       <div class="dialog-container">
         <div class="row logo-row">
           <div class="logo">
-            <%- logoSrc %>
+            ${logoSrc}
           </div>
           <div class="app-title-version">
             <div class="app-title">
@@ -93,7 +93,6 @@ export class AboutDialog {
       </div>
     `;
     this._pageBody = ejs.render(template, {
-      logoSrc,
       version: app.getVersion(),
       thisYear: new Date().getFullYear()
     });

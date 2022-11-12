@@ -14,6 +14,15 @@ contextBridge.exposeInMainWorld('electronAPI', {
   },
   isDarkTheme: () => {
     return ipcRenderer.invoke('is-dark-theme');
+  },
+  minimizeWindow: () => {
+    ipcRenderer.send('minimize-window');
+  },
+  maximizeWindow: () => {
+    ipcRenderer.send('maximize-window');
+  },
+  restoreWindow: () => {
+    ipcRenderer.send('restore-window');
   }
 });
 
