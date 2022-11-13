@@ -859,8 +859,9 @@ export class JupyterApplication implements IApplication, IStatefulService {
   }
 
   private _openDevTools() {
-    this._window.getBrowserViews()[0].webContents.openDevTools();
-    this._window.getBrowserViews()[1].webContents.openDevTools();
+    this._window.getBrowserViews().forEach(view => {
+      view.webContents.openDevTools();
+    });
   }
 
   private _showPreferencesDialog() {
