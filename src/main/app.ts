@@ -147,9 +147,6 @@ export namespace IAppRemoteInterface {
   > = {
     id: 'JupyterLabDesktop-get-python-env'
   };
-  export let getCurrentRootPath: AsyncRemote.IMethod<void, string> = {
-    id: 'JupyterLabDesktop-get-current-path'
-  };
   export let showPythonPathSelector: AsyncRemote.IMethod<void, void> = {
     id: 'JupyterLabDesktop-select-python-path'
   };
@@ -600,6 +597,14 @@ export class JupyterApplication implements IApplication, IStatefulService {
       });
     });
 
+    ipcMain.handle('get-server-info', event => {
+      return this.getServerInfo();
+    });
+
+    ipcMain.handle('get-current-python-environment', event => {
+      return this.getPythonEnvironment();
+    });
+
     ipcMain.handle('validate-python-path', (event, path) => {
       return this._registry.validatePythonEnvironmentAtPath(path);
     });
@@ -625,6 +630,12 @@ export class JupyterApplication implements IApplication, IStatefulService {
           .catch(error => {
             resolve({ result: 'error', error: error.message });
           });
+      });
+    });
+
+    ipcMain.handle('get-current-root-path', event => {
+      return new Promise<any>((resolve, reject) => {
+        resolve(process.env.JLAB_DESKTOP_HOME || app.getPath('home'));
       });
     });
 
@@ -758,13 +769,6 @@ export class JupyterApplication implements IApplication, IStatefulService {
       IAppRemoteInterface.getCurrentPythonEnvironment,
       (): Promise<IPythonEnvironment> => {
         return this.getPythonEnvironment();
-      }
-    );
-
-    asyncRemoteMain.registerRemoteMethod(
-      IAppRemoteInterface.getCurrentRootPath,
-      async (): Promise<string> => {
-        return process.env.JLAB_DESKTOP_HOME || app.getPath('home');
       }
     );
 

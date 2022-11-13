@@ -44,10 +44,6 @@ export namespace ISessions {
     id: 'JupyterLabSessions-createsession'
   };
 
-  export let openFileEvent: AsyncRemote.IEvent<string> = {
-    id: 'JupyterLabSessions-openfile'
-  };
-
   export let minimizeEvent: AsyncRemote.IEvent<void> = {
     id: 'JupyterLabSessions-minimize'
   };
@@ -273,7 +269,7 @@ export class JupyterLabSessions
       this._sessions[0].browserWindow.focus();
     });
 
-    ipcMain.once('lab-ready', () => {
+    ipcMain.once('lab-ui-ready', () => {
       if (appConfig.isRemote) {
         this._startingSession = null;
         return;
@@ -315,7 +311,7 @@ export class JupyterLabSessions
         }
         state.state = 'local';
         this.createSession(state).then(() => {
-          ipcMain.once('lab-ready', () => {
+          ipcMain.once('lab-ui-ready', () => {
             resolve();
           });
         });
@@ -334,11 +330,7 @@ export class JupyterLabSessions
         let session = this._lastFocusedSession;
         session.browserWindow.restore();
         session.browserWindow.focus();
-        asyncRemoteMain.emitRemoteEvent(
-          ISessions.openFileEvent,
-          path,
-          session.browserWindow.webContents
-        );
+        session.browserWindow.webContents.send('open-file-event', path);
       })
       .catch((error: any) => {
         return;
@@ -505,12 +497,11 @@ let sessions: JupyterLabSessions;
 if (process && process.type !== 'renderer' && !appConfig.isRemote) {
   app.once('will-finish-launching', (e: Electron.Event) => {
     app.on('open-file', (event: Electron.Event, path: string) => {
-      ipcMain.once('lab-ready', (event: Electron.Event) => {
+      ipcMain.once('lab-ui-ready', (event: Electron.Event) => {
         if (sessions?.lastFocusedSession) {
-          asyncRemoteMain.emitRemoteEvent(
-            ISessions.openFileEvent,
-            path,
-            sessions.lastFocusedSession.browserWindow.webContents
+          sessions.lastFocusedSession.browserWindow.webContents.send(
+            'open-file-event',
+            path
           );
         }
       });

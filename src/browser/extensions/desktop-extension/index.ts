@@ -4,21 +4,12 @@
 |----------------------------------------------------------------------------*/
 
 import { IMainMenu } from '@jupyterlab/mainmenu';
-
 import { IStatusBar } from '@jupyterlab/statusbar';
-
 import { JupyterFrontEndPlugin } from '@jupyterlab/application';
-
 import { PageConfig } from '@jupyterlab/coreutils';
-
 import { ElectronJupyterLab } from '../electron-extension';
-
-import { asyncRemoteRenderer } from '../../../asyncremote';
-
-import { IAppRemoteInterface } from '../../../main/app';
 import { IPythonEnvironment } from 'src/main/tokens';
 import { EnvironmentStatus } from './envStatus';
-import { ISessions } from '../../../main/sessions';
 
 const desktopExtension: JupyterFrontEndPlugin<void> = {
   id: 'jupyterlab-desktop.extensions.desktop',
@@ -28,44 +19,8 @@ const desktopExtension: JupyterFrontEndPlugin<void> = {
     menu: IMainMenu,
     statusBar: IStatusBar
   ) => {
-    asyncRemoteRenderer.onRemoteEvent(
-      ISessions.navigatedToHash,
-      (hash: string) => {
-        console.debug(`Navigate to hash received, navigating to: ${hash}`);
-        window.location.hash = hash;
-      }
-    );
-
-    app.commands.addCommand('check-for-updates', {
-      label: 'Check for Updates…',
-      execute: () => {
-        asyncRemoteRenderer.runRemoteMethod(
-          IAppRemoteInterface.checkForUpdates,
-          void 0
-        );
-      }
-    });
-
-    app.commands.addCommand('open-dev-tools', {
-      label: 'Open Developer Tools',
-      execute: () => {
-        asyncRemoteRenderer.runRemoteMethod(
-          IAppRemoteInterface.openDevTools,
-          void 0
-        );
-      }
-    });
-
-    menu.helpMenu.addGroup(
-      [{ command: 'open-dev-tools' }, { command: 'check-for-updates' }],
-      20
-    );
-
     const changeEnvironment = async () => {
-      asyncRemoteRenderer.runRemoteMethod(
-        IAppRemoteInterface.showPythonPathSelector,
-        void 0
-      );
+      window.electronAPI.showServerConfigDialog();
     };
 
     const statusItem = new EnvironmentStatus({
@@ -106,14 +61,9 @@ const desktopExtension: JupyterFrontEndPlugin<void> = {
 
     const serverType = PageConfig.getOption('jupyterlab-desktop-server-type');
     if (serverType === 'local') {
-      asyncRemoteRenderer
-        .runRemoteMethod(
-          IAppRemoteInterface.getCurrentPythonEnvironment,
-          void 0
-        )
-        .then(env => {
-          updateStatusItemLocal(env);
-        });
+      window.electronAPI.getCurrentPythonEnvironment().then(env => {
+        updateStatusItemLocal(env);
+      });
     } else {
       const serverUrl = PageConfig.getOption('jupyterlab-desktop-server-url');
       updateStatusItemRemote(serverUrl);

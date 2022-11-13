@@ -127,7 +127,7 @@ function createShared(packageData) {
 
 module.exports = {
   entry: './build/out/browser/index.js',
-  target: 'electron-renderer',
+  target: 'web',
   output: {
     path: buildDir,
     library: {

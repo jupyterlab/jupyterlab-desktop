@@ -34,11 +34,7 @@ export class MainWindow {
       show: true,
       title: 'JupyterLab',
       titleBarStyle: 'hidden',
-      frame: process.platform === 'darwin',
-      webPreferences: {
-        nodeIntegration: true,
-        contextIsolation: false
-      }
+      frame: process.platform === 'darwin'
     });
 
     this._window.setMenuBarVisibility(false);

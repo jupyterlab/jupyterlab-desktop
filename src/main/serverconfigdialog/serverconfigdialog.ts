@@ -129,7 +129,7 @@ export class ServerConfigDialog {
         <div class="row footer-row" style="height: 40px; overflow-y: hidden;justify-content: flex-end;">
           <div id="progress-message" class="progress-message"></div>  
           <div id="progress-animation" class="progress-animation"><jp-progress-ring></jp-progress-ring></div>
-          <jp-button id="apply" onclick='handleApply(this);' style='margin-right: 5px;'>Apply & restart</jp-button>
+          <jp-button id="apply" onclick='handleApply(this);' style='margin-right: 5px;' appearance="accent">Apply & restart</jp-button>
         </div>
       </div>
 

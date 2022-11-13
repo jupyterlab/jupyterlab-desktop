@@ -2,13 +2,12 @@
 // Distributed under the terms of the Modified BSD License.
 
 import { PageConfig, URLExt } from '@jupyterlab/coreutils';
-import log from 'electron-log';
+
+const logger = window.electronAPI.logger;
 
 const extensions: any = {
   './electron-extension': require('./electron-extension'),
   './desktop-extension': require('./desktop-extension'),
-  // turn off menu customization for now
-  // './utils-extension': require('./utils-extension'),
   /**
    * Following extensions are defined under `extensions` in `package.json` and
    * are loaded eagerly by webpack module federation, which makes it possible
@@ -97,7 +96,7 @@ function loadExtensions(extensions: { [key: string]: any }): any[] {
         }
       }
     } catch (e) {
-      log.error(e);
+      logger.error(e);
     }
   }
   return enabled;

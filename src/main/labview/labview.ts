@@ -1,7 +1,7 @@
 // Copyright (c) Jupyter Development Team.
 // Distributed under the terms of the Modified BSD License.
 
-import { app, BrowserView } from 'electron';
+import { BrowserView } from 'electron';
 import { request as httpRequest, IncomingMessage } from 'http';
 import { request as httpsRequest } from 'https';
 
@@ -18,9 +18,6 @@ const templateAssetPaths = new Map([
     'index.html',
     () => {
       return {
-        appConfig: JSON.stringify({
-          version: app.getVersion()
-        }),
         pageConfig: JSON.stringify(appConfig.pageConfig)
       };
     }
@@ -38,8 +35,6 @@ export class LabView {
     this._info = info;
     this._view = new BrowserView({
       webPreferences: {
-        nodeIntegration: true,
-        contextIsolation: false,
         preload: path.join(__dirname, './preload.js')
       }
     });
