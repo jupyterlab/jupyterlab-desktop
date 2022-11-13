@@ -4,11 +4,11 @@
 import * as ejs from 'ejs';
 import { BrowserWindow } from 'electron';
 import * as path from 'path';
-import { JupyterLabWindow } from '../dialog/jupyterlabwindow';
+import { ThemedWindow } from '../dialog/themedwindow';
 
 export class PreferencesDialog {
   constructor(options: PreferencesDialog.IOptions) {
-    this._window = new JupyterLabWindow({
+    this._window = new ThemedWindow({
       title: 'Preferences',
       width: 500,
       height: 300,
@@ -144,7 +144,7 @@ export class PreferencesDialog {
     this._window.loadDialogContent(this._pageBody);
   }
 
-  private _window: JupyterLabWindow;
+  private _window: ThemedWindow;
   private _pageBody: string;
 }
 

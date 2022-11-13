@@ -5,8 +5,8 @@ import { BrowserWindow } from 'electron';
 import * as fs from 'fs';
 import * as path from 'path';
 
-export class JupyterLabWindow {
-  constructor(options: JupyterLabWindow.IWindowOptions) {
+export class ThemedWindow {
+  constructor(options: ThemedWindow.IWindowOptions) {
     this._window = new BrowserWindow({
       title: options.title,
       width: options.width,
@@ -116,7 +116,7 @@ export class JupyterLabWindow {
   private _window: BrowserWindow;
 }
 
-export namespace JupyterLabWindow {
+export namespace ThemedWindow {
   export interface IWindowOptions {
     title: string;
     width: number;

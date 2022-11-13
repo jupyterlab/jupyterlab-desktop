@@ -3,11 +3,11 @@
 
 import * as ejs from 'ejs';
 import * as path from 'path';
-import { JupyterLabWindow } from '../dialog/jupyterlabwindow';
+import { ThemedWindow } from '../dialog/themedwindow';
 
 export class UpdateDialog {
   constructor(options: { type: 'updates-available' | 'error' | 'no-updates' }) {
-    this._window = new JupyterLabWindow({
+    this._window = new ThemedWindow({
       title: 'Update',
       width: 400,
       height: 180,
@@ -53,7 +53,7 @@ export class UpdateDialog {
     this._pageBody = ejs.render(template, { message });
   }
 
-  get window(): JupyterLabWindow {
+  get window(): ThemedWindow {
     return this._window;
   }
 
@@ -61,6 +61,6 @@ export class UpdateDialog {
     this._window.loadDialogContent(this._pageBody);
   }
 
-  private _window: JupyterLabWindow;
+  private _window: ThemedWindow;
   private _pageBody: string;
 }

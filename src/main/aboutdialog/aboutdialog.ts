@@ -4,12 +4,12 @@
 import * as ejs from 'ejs';
 import * as path from 'path';
 import * as fs from 'fs';
-import { JupyterLabWindow } from '../dialog/jupyterlabwindow';
+import { ThemedWindow } from '../dialog/themedwindow';
 import { app } from 'electron';
 
 export class AboutDialog {
   constructor() {
-    this._window = new JupyterLabWindow({
+    this._window = new ThemedWindow({
       title: 'About JupyterLab Desktop',
       width: 350,
       height: 250,
@@ -98,7 +98,7 @@ export class AboutDialog {
     });
   }
 
-  get window(): JupyterLabWindow {
+  get window(): ThemedWindow {
     return this._window;
   }
 
@@ -106,6 +106,6 @@ export class AboutDialog {
     this._window.loadDialogContent(this._pageBody);
   }
 
-  private _window: JupyterLabWindow;
+  private _window: ThemedWindow;
   private _pageBody: string;
 }

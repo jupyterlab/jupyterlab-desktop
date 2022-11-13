@@ -4,12 +4,12 @@
 import * as ejs from 'ejs';
 import { BrowserWindow } from 'electron';
 import * as path from 'path';
-import { JupyterLabWindow } from '../dialog/jupyterlabwindow';
+import { ThemedWindow } from '../dialog/themedwindow';
 import { Registry } from '../registry';
 
 export class ServerConfigDialog {
   constructor(options: ServerConfigDialog.IOptions) {
-    this._window = new JupyterLabWindow({
+    this._window = new ThemedWindow({
       title: 'Server Configuration',
       width: 700,
       height: 400,
@@ -270,7 +270,7 @@ export class ServerConfigDialog {
     this._window.loadDialogContent(this._pageBody);
   }
 
-  private _window: JupyterLabWindow;
+  private _window: ThemedWindow;
   private _pageBody: string;
 }
 
