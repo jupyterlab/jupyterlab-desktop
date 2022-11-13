@@ -7,7 +7,6 @@ const logger = window.electronAPI.logger;
 
 const extensions: any = {
   './electron-extension': require('./electron-extension'),
-  './desktop-extension': require('./desktop-extension'),
   /**
    * Following extensions are defined under `extensions` in `package.json` and
    * are loaded eagerly by webpack module federation, which makes it possible

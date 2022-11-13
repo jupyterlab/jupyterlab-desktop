@@ -23,6 +23,15 @@ contextBridge.exposeInMainWorld('electronAPI', {
   },
   restoreWindow: () => {
     ipcRenderer.send('restore-window');
+  },
+  getServerInfo: () => {
+    return ipcRenderer.invoke('get-server-info');
+  },
+  getCurrentPythonEnvironment: () => {
+    return ipcRenderer.invoke('get-current-python-environment');
+  },
+  showServerConfigDialog: () => {
+    ipcRenderer.send('show-server-config-dialog');
   }
 });
 

@@ -37,27 +37,52 @@ Distributed under the terms of the Modified BSD License.
         flex-grow: 1;
         float: left;
       }
-      #menu-button {
+      #server-button {
         -webkit-app-region: no-drag;
-        margin-right: 10px;
+        display: flex;
+        padding-right: 5px;
+        color: #343434;
+      }
+      .app-ui-dark #server-button {
+        color: #c1c1c1;
+      }
+      #server-icon svg {
+        width: 15px;
+        height: 15px;
+        padding-top: 6px;
+      }
+      #server-icon, #menu-button {
+        -webkit-app-region: no-drag;
+        margin-right: 5px;
         width: 28px;
         text-align: center;
       }
+      #server-icon {
+        margin-right: 0;
+      }
       #menu-button svg {
-        padding-top: 5px;
+        padding-top: 4px;
+        width: 20px;
+        height: 20px;
       }
       #menu-button svg path {
         fill: #5a5a5a;
       }
+      #server-icon svg path {
+        fill: #1976d2;
+      }
       .app-ui-dark #menu-button svg path {
         fill: #bdbdbd;
+      }
+      .app-ui-dark #server-icon svg path {
+        fill: #2196f3;
       }
       .app-ui-darwin .titlebar {
         padding-left: 70px;
       }
       #control-box {
         -webkit-app-region: no-drag;
-        margin-right: 10px;
+        margin: 0 5px;
         font-weight: bold;
         color: #5a5a5a;
         display: flex;
@@ -88,10 +113,14 @@ Distributed under the terms of the Modified BSD License.
         color: #bdbdbd;
       }
 
-      .control-box-button:hover, #menu-button:hover {
+      .control-box-button:hover,
+      #menu-button:hover,
+      #server-button:hover {
         background-color: #c1c1c1;
       }
-      .app-ui-dark .control-box-button:hover, .app-ui-dark #menu-button:hover {
+      .app-ui-dark .control-box-button:hover,
+      .app-ui-dark #menu-button:hover,
+      .app-ui-dark #server-button:hover {
         background-color: #505050;
       }
 
@@ -115,6 +144,16 @@ Distributed under the terms of the Modified BSD License.
   <body>
     <div class="titlebar">
       <div class="app-title">JupyterLab Desktop</div>
+      <div id="server-button">
+        <div id="server-icon">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><path fill="#333333" d="M480 160H32c-17.673 0-32-14.327-32-32V64c0-17.673 14.327-32 32-32h448c17.673 0 32 14.327 32 32v64c0 17.673-14.327 32-32 32zm-48-88c-13.255 0-24 10.745-24 24s10.745 24 24 24 24-10.745 24-24-10.745-24-24-24zm-64 0c-13.255 0-24 10.745-24 24s10.745 24 24 24 24-10.745 24-24-10.745-24-24-24zm112 248H32c-17.673 0-32-14.327-32-32v-64c0-17.673 14.327-32 32-32h448c17.673 0 32 14.327 32 32v64c0 17.673-14.327 32-32 32zm-48-88c-13.255 0-24 10.745-24 24s10.745 24 24 24 24-10.745 24-24-10.745-24-24-24zm-64 0c-13.255 0-24 10.745-24 24s10.745 24 24 24 24-10.745 24-24-10.745-24-24-24zm112 248H32c-17.673 0-32-14.327-32-32v-64c0-17.673 14.327-32 32-32h448c17.673 0 32 14.327 32 32v64c0 17.673-14.327 32-32 32zm-48-88c-13.255 0-24 10.745-24 24s10.745 24 24 24 24-10.745 24-24-10.745-24-24-24zm-64 0c-13.255 0-24 10.745-24 24s10.745 24 24 24 24-10.745 24-24-10.745-24-24-24z"/></svg>
+          <!--
+          Font Awesome Free 5.2.0 by @fontawesome - https://fontawesome.com
+          License - https://fontawesome.com/license (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License)
+          -->
+        </div>
+        <div id="server-label"></div>
+      </div>
       <div id="menu-button" title="Application Menu">
         <svg
           width="18px"
@@ -148,6 +187,9 @@ Distributed under the terms of the Modified BSD License.
       </div>
     </div>
     <script>
+      const serverButton = document.getElementById('server-button');
+      const serverIcon = document.getElementById('server-icon');
+      const serverLabel = document.getElementById('server-label');
       const menuButton = document.getElementById('menu-button');
       const minimizeButton = document.getElementById('minimize-button');
       const maximizeButton = document.getElementById('maximize-button');
@@ -177,6 +219,36 @@ Distributed under the terms of the Modified BSD License.
       closeButton.onclick = () => {
         window.electronAPI.closeWindow();
       };
+
+      serverButton.onclick = () => {
+        window.electronAPI.showServerConfigDialog();
+      };
+
+      const updateStatusItemLocal = (env) => {
+        serverLabel.innerText = `Local (${env.name})`;
+        let packages = [];
+        for (const name in env.versions) {
+          packages.push(`${name}: ${env.versions[name]}`);
+        }
+        serverButton.title = `Local server\n${env.name}\n${
+          env.path
+        }\n${packages.join(', ')}`;
+      };
+
+      const updateStatusItemRemote = (url) => {
+        serverLabel.innerText = 'Remote';
+        serverButton.title = `Remote server\n${url}`;
+      };
+
+      window.electronAPI.getServerInfo().then(data => {
+        if (data.type === 'local') {
+          window.electronAPI.getCurrentPythonEnvironment().then(env => {
+            updateStatusItemLocal(env);
+          });
+        } else {
+          updateStatusItemRemote(data.url);
+        }
+      });
     </script>
   </body>
 </html>

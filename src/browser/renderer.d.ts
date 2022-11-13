@@ -2,13 +2,10 @@
 // Distributed under the terms of the Modified BSD License.
 
 import { IServerFactory } from 'src/main/server';
-import { IPythonEnvironment } from 'src/main/tokens';
 
 type OpenFileEventListener = (path: string) => void;
 
 export interface IElectronAPI {
-  showServerConfigDialog: () => void;
-  getCurrentPythonEnvironment: () => Promise<IPythonEnvironment>;
   getServerInfo: () => Promise<IServerFactory.IServerStarted>;
   broadcastLabUIReady: () => void;
   onOpenFileEvent: (callback: OpenFileEventListener) => void;
