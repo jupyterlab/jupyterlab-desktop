@@ -37,7 +37,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.send('set-python-path', path);
   },
   validatePythonPath: (path: string) => {
-    return ipcRenderer.invoke('select-python-path');
+    return ipcRenderer.invoke('validate-python-path', path);
   },
   showInvalidPythonPathMessage: (path: string) => {
     ipcRenderer.send('show-invalid-python-path-message', path);

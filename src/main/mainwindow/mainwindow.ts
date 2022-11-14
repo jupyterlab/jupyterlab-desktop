@@ -1,34 +1,19 @@
 // Copyright (c) Jupyter Development Team.
 // Distributed under the terms of the Modified BSD License.
 
-import {
-  BrowserWindow,
-  clipboard,
-  Menu,
-  MenuItemConstructorOptions
-} from 'electron';
+import { BrowserWindow } from 'electron';
 import { LabView } from '../labview/labview';
 import { TitleBarView } from '../titlebarview/titlebarview';
 
-export interface IInfo {
-  serverState: 'new' | 'local' | 'remote';
-  platform: NodeJS.Platform;
-  uiState: 'linux' | 'mac' | 'windows';
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-}
-
 export class MainWindow {
-  constructor(info: IInfo) {
-    this._info = info;
+  constructor(options: MainWindow.IOptions) {
+    this._options = options;
 
     this._window = new BrowserWindow({
-      width: this._info.width,
-      height: this._info.height,
-      x: this._info.x,
-      y: this._info.y,
+      width: this._options.width,
+      height: this._options.height,
+      x: this._options.x,
+      y: this._options.y,
       minWidth: 400,
       minHeight: 300,
       show: true,
@@ -39,14 +24,12 @@ export class MainWindow {
 
     this._window.setMenuBarVisibility(false);
 
-    this._addFallbackContextMenu();
-
-    if (this._info.x && this._info.y) {
+    if (this._options.x && this._options.y) {
       this._window.setBounds({
-        x: this._info.x,
-        y: this._info.y,
-        height: this._info.height,
-        width: this._info.width
+        x: this._options.x,
+        y: this._options.y,
+        height: this._options.height,
+        width: this._options.width
       });
     } else {
       this._window.center();
@@ -58,10 +41,10 @@ export class MainWindow {
   }
 
   load() {
-    const labView = new LabView({
-      serverState: this._info.serverState,
-      platform: this._info.platform,
-      uiState: this._info.uiState
+    const labView = new LabView(this, {
+      serverState: this._options.serverState,
+      platform: this._options.platform,
+      uiState: this._options.uiState
     });
 
     const titleBarView = new TitleBarView();
@@ -93,57 +76,28 @@ export class MainWindow {
     this._window.on('resize', () => {
       resizeViews();
     });
+    this._window.on('maximize', () => {
+      resizeViews();
+    });
+    this._window.on('restore', () => {
+      resizeViews();
+    });
 
     resizeViews();
   }
 
-  /**
-   * Simple fallback context menu shown on Shift + Right Click.
-   * May be removed in future versions once (/if) JupyterLab builtin menu
-   * supports cut/copy/paste, including "Copy link URL" and "Copy image".
-   * @private
-   */
-  private _addFallbackContextMenu(): void {
-    const selectionTemplate: MenuItemConstructorOptions[] = [{ role: 'copy' }];
-
-    const inputMenu = Menu.buildFromTemplate([
-      { role: 'cut' },
-      { role: 'copy' },
-      { role: 'paste' },
-      { role: 'selectAll' }
-    ]);
-
-    this._window.webContents.on('context-menu', (event, params) => {
-      if (params.isEditable) {
-        inputMenu.popup({ window: this._window });
-      } else {
-        const template: MenuItemConstructorOptions[] = [];
-        if (params.selectionText) {
-          template.push(...selectionTemplate);
-        }
-        if (params.linkURL) {
-          template.push({
-            label: 'Copy link URL',
-            click: () => {
-              clipboard.writeText(params.linkURL);
-            }
-          });
-        }
-        if (params.hasImageContents) {
-          template.push({
-            label: 'Copy image',
-            click: () => {
-              this._window.webContents.copyImageAt(params.x, params.y);
-            }
-          });
-        }
-        if (template.length) {
-          Menu.buildFromTemplate(template).popup({ window: this._window });
-        }
-      }
-    });
-  }
-
-  private _info: IInfo;
+  private _options: MainWindow.IOptions;
   private _window: BrowserWindow;
+}
+
+export namespace MainWindow {
+  export interface IOptions {
+    serverState: 'new' | 'local' | 'remote';
+    platform: NodeJS.Platform;
+    uiState: 'linux' | 'mac' | 'windows';
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  }
 }

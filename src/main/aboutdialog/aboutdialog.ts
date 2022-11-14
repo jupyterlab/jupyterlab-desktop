@@ -11,8 +11,8 @@ export class AboutDialog {
   constructor() {
     this._window = new ThemedWindow({
       title: 'About JupyterLab Desktop',
-      width: 350,
-      height: 250,
+      width: 400,
+      height: 275,
       preload: path.join(__dirname, './preload.js')
     });
 
@@ -23,7 +23,6 @@ export class AboutDialog {
     const template = `
       <style>
         .dialog-container {
-          height: 100%;
           display: flex;
           flex-direction: column;
           padding: 10px;

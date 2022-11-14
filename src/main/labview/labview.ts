@@ -1,7 +1,12 @@
 // Copyright (c) Jupyter Development Team.
 // Distributed under the terms of the Modified BSD License.
 
-import { BrowserView } from 'electron';
+import {
+  BrowserView,
+  clipboard,
+  Menu,
+  MenuItemConstructorOptions
+} from 'electron';
 import { request as httpRequest, IncomingMessage } from 'http';
 import { request as httpsRequest } from 'https';
 
@@ -9,6 +14,7 @@ import * as path from 'path';
 import * as fs from 'fs';
 import * as ejs from 'ejs';
 import { appConfig } from '../utils';
+import { MainWindow } from '../mainwindow/mainwindow';
 
 const DESKTOP_APP_ASSETS_PATH = 'desktop-app-assets';
 
@@ -24,15 +30,10 @@ const templateAssetPaths = new Map([
   ]
 ]);
 
-export interface IInfo {
-  serverState: 'new' | 'local' | 'remote';
-  platform: NodeJS.Platform;
-  uiState: 'linux' | 'mac' | 'windows';
-}
-
 export class LabView {
-  constructor(info: IInfo) {
-    this._info = info;
+  constructor(parent: MainWindow, options: LabView.IOptions) {
+    this._parent = parent;
+    this._options = options;
     this._view = new BrowserView({
       webPreferences: {
         preload: path.join(__dirname, './preload.js')
@@ -40,6 +41,8 @@ export class LabView {
     });
 
     this._registerRequestHandlers();
+
+    this._addFallbackContextMenu();
   }
 
   public get view(): BrowserView {
@@ -51,7 +54,7 @@ export class LabView {
       `${appConfig.url.protocol}//${appConfig.url.host}${
         appConfig.url.pathname
       }${DESKTOP_APP_ASSETS_PATH}/index.html?${encodeURIComponent(
-        JSON.stringify(this._info)
+        JSON.stringify(this._options)
       )}`
     );
   }
@@ -66,6 +69,54 @@ export class LabView {
 
   get appAssetsDir(): string {
     return path.normalize(path.join(__dirname, '../../../'));
+  }
+
+  /**
+   * Simple fallback context menu shown on Shift + Right Click.
+   * May be removed in future versions once (/if) JupyterLab builtin menu
+   * supports cut/copy/paste, including "Copy link URL" and "Copy image".
+   * @private
+   */
+  private _addFallbackContextMenu(): void {
+    const selectionTemplate: MenuItemConstructorOptions[] = [{ role: 'copy' }];
+
+    const inputMenu = Menu.buildFromTemplate([
+      { role: 'cut' },
+      { role: 'copy' },
+      { role: 'paste' },
+      { role: 'selectAll' }
+    ]);
+
+    this._view.webContents.on('context-menu', (event, params) => {
+      const window = this._parent.window;
+      if (params.isEditable) {
+        inputMenu.popup({ window });
+      } else {
+        const template: MenuItemConstructorOptions[] = [];
+        if (params.selectionText) {
+          template.push(...selectionTemplate);
+        }
+        if (params.linkURL) {
+          template.push({
+            label: 'Copy link URL',
+            click: () => {
+              clipboard.writeText(params.linkURL);
+            }
+          });
+        }
+        if (params.hasImageContents) {
+          template.push({
+            label: 'Copy image',
+            click: () => {
+              this._view.webContents.copyImageAt(params.x, params.y);
+            }
+          });
+        }
+        if (template.length) {
+          Menu.buildFromTemplate(template).popup({ window });
+        }
+      }
+    });
   }
 
   private _registerRequestHandlers() {
@@ -237,7 +288,16 @@ export class LabView {
   }
 
   private _view: BrowserView;
-  private _info: IInfo;
+  private _parent: MainWindow;
+  private _options: LabView.IOptions;
   private _cookies: Map<string, string> = new Map();
   private _jlabBaseUrl = `${appConfig.url.protocol}//${appConfig.url.host}${appConfig.url.pathname}`;
+}
+
+export namespace LabView {
+  export interface IOptions {
+    serverState: 'new' | 'local' | 'remote';
+    platform: NodeJS.Platform;
+    uiState: 'linux' | 'mac' | 'windows';
+  }
 }
