@@ -78,6 +78,10 @@ export class MainWindow {
     });
     this._window.on('maximize', () => {
       resizeViews();
+      // on linux a delayed resize is necessary
+      setTimeout(() => {
+        resizeViews();
+      }, 500);
     });
     this._window.on('restore', () => {
       resizeViews();
