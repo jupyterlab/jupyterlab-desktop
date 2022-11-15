@@ -736,13 +736,7 @@ export class JupyterApplication implements IApplication, IStatefulService {
     });
 
     ipcMain.handle('is-dark-theme', event => {
-      if (this._applicationState.theme === 'light') {
-        return false;
-      } else if (this._applicationState.theme === 'dark') {
-        return true;
-      } else {
-        return nativeTheme.shouldUseDarkColors;
-      }
+      return this._isDarkTheme();
     });
 
     ipcMain.on('show-server-config-dialog', event => {
@@ -890,6 +884,16 @@ export class JupyterApplication implements IApplication, IStatefulService {
   private _showAboutDialog() {
     const dialog = new AboutDialog();
     dialog.load();
+  }
+
+  private _isDarkTheme() {
+    if (this._applicationState.theme === 'light') {
+      return false;
+    } else if (this._applicationState.theme === 'dark') {
+      return true;
+    } else {
+      return nativeTheme.shouldUseDarkColors;
+    }
   }
 
   private _quit(): void {

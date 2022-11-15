@@ -47,9 +47,14 @@ export class ThemedWindow {
     toolkitJsSrc = `
       ${toolkitJsSrc};
       (async () => {
+        const darkTheme = await window.electronAPI.isDarkTheme();
+        document.body.dataset.jpThemeLight = !darkTheme;
+        provideJupyterDesignSystem().register(allComponents);
+        addJupyterLabThemeChangeListener();
         baseLayerLuminance.setValueFor(
           document.body,
-          await window.electronAPI.isDarkTheme() ? StandardLuminance.DarkMode : StandardLuminance.LightMode);
+          darkTheme ? StandardLuminance.DarkMode : StandardLuminance.LightMode
+        );
       })();
     `;
     const titlebarJsSrc = fs.readFileSync(
@@ -59,6 +64,16 @@ export class ThemedWindow {
     const pageSource = `
       <html>
         <head>
+          <style>
+          :root {
+            --jp-brand-color1: var(--md-blue-700);
+            --jp-border-width: 1px;
+            --jp-border-color1: var(--md-grey-400);
+            --jp-ui-font-size1: 13px;
+            --md-grey-400: #78909C;
+            --md-blue-700: #1976D2;
+          }
+          </style>
           <script type="module">${toolkitJsSrc}</script>
           <script type="module">${titlebarJsSrc}</script>
           <script>
@@ -98,7 +113,7 @@ export class ThemedWindow {
           }
           </style>
         </head>
-        <body>
+        <body data-jp-theme-name="jlab-desktop-theme">
           <div class="page-container">
             <jlab-dialog-titlebar id="title-bar" data-title="${this._window.title}"></jlab-dialog-titlebar>
             <div class="jlab-dialog-body">
