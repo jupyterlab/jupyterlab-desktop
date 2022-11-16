@@ -49,12 +49,12 @@ export class ThemedWindow {
       (async () => {
         const darkTheme = await window.electronAPI.isDarkTheme();
         document.body.dataset.jpThemeLight = !darkTheme;
+        document.body.dataset.jpThemeName = 'jlab-desktop-theme';
         provideJupyterDesignSystem().register(allComponents);
         addJupyterLabThemeChangeListener();
-        baseLayerLuminance.setValueFor(
-          document.body,
-          darkTheme ? StandardLuminance.DarkMode : StandardLuminance.LightMode
-        );
+        if (darkTheme) {
+          document.body.classList.add('app-ui-dark');
+        }
       })();
     `;
     const titlebarJsSrc = fs.readFileSync(
@@ -66,6 +66,7 @@ export class ThemedWindow {
         <head>
           <style>
           :root {
+            --jp-layout-color1: #FFFFFF;
             --jp-brand-color1: var(--md-blue-700);
             --jp-border-width: 1px;
             --jp-border-color1: var(--md-grey-400);
@@ -73,21 +74,6 @@ export class ThemedWindow {
             --md-grey-400: #78909C;
             --md-blue-700: #1976D2;
           }
-          </style>
-          <script type="module">${toolkitJsSrc}</script>
-          <script type="module">${titlebarJsSrc}</script>
-          <script>
-            document.addEventListener("DOMContentLoaded", async () => {
-              const appConfig = window.electronAPI.getAppConfig();
-              const platform = appConfig.platform;
-              document.body.dataset.appPlatform = platform;
-              document.body.classList.add('app-ui-' + platform);
-              if (await window.electronAPI.isDarkTheme()) {
-                document.body.classList.add('app-ui-dark');
-              }
-            });
-          </script>
-          <style>
           body {
             margin: 0;
             background: #ffffff;
@@ -112,8 +98,18 @@ export class ThemedWindow {
             overflow-y: auto;
           }
           </style>
+          <script type="module">${toolkitJsSrc}</script>
+          <script type="module">${titlebarJsSrc}</script>
+          <script>
+            document.addEventListener("DOMContentLoaded", () => {
+              const appConfig = window.electronAPI.getAppConfig();
+              const platform = appConfig.platform;
+              document.body.dataset.appPlatform = platform;
+              document.body.classList.add('app-ui-' + platform);
+            });
+          </script>
         </head>
-        <body data-jp-theme-name="jlab-desktop-theme">
+        <body>
           <div class="page-container">
             <jlab-dialog-titlebar id="title-bar" data-title="${this._window.title}"></jlab-dialog-titlebar>
             <div class="jlab-dialog-body">
