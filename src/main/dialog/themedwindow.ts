@@ -66,7 +66,6 @@ export class ThemedWindow {
         <head>
           <style>
           :root {
-            --jp-layout-color1: #FFFFFF;
             --jp-brand-color1: var(--md-blue-700);
             --jp-border-width: 1px;
             --jp-border-color1: var(--md-grey-400);
