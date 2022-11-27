@@ -34,7 +34,7 @@
     "eslint:check": "eslint --ext .js,.jsx,.ts,.tsx --cache .",
     "eslint:check:typed": "eslint --config .eslintrc.typecheck.js --ext .js,.jsx,.ts,.tsx .",
     "eslint:typed": "eslint --config .eslintrc.typecheck.js --cache --ext .js,.jsx,.ts,.tsx --fix .",
-    "lint": "yarn && yarn prettier && yarn eslint && yarn stylelint",
+    "lint": "yarn && yarn prettier && yarn eslint && yarn stylelint --allow-empty-input",
     "lint:check": "yarn prettier:check && yarn eslint:check && yarn stylelint:check",
     "prettier": "prettier --write \"**/*{.ts,.tsx,.js,.jsx,.css,.json,.md}\"",
     "prettier:check": "prettier --check \"**/*{.ts,.tsx,.js,.jsx,.css,.json,.md}\"",

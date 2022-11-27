@@ -5,8 +5,6 @@ import { app, ipcMain } from 'electron';
 
 import { JSONObject } from '@lumino/coreutils';
 
-import { AsyncRemote, asyncRemoteMain } from '../asyncremote';
-
 import { IApplication, IStatefulService } from './app';
 
 import { IServerFactory, JupyterServer } from './server';
@@ -30,35 +28,6 @@ export interface ISessions extends EventEmitter {
   isAppFocused: () => boolean;
 
   length: number;
-}
-
-export namespace ISessions {
-  export const navigatedToHash: AsyncRemote.IEvent<string> = {
-    id: 'navigated-to-hash'
-  };
-
-  export let createSession: AsyncRemote.IMethod<
-    JupyterLabSession.IOptions,
-    void
-  > = {
-    id: 'JupyterLabSessions-createsession'
-  };
-
-  export let minimizeEvent: AsyncRemote.IEvent<void> = {
-    id: 'JupyterLabSessions-minimize'
-  };
-
-  export let enterFullScreenEvent: AsyncRemote.IEvent<void> = {
-    id: 'JupyterLabSessions-maximize'
-  };
-
-  export let leaveFullScreenEvent: AsyncRemote.IEvent<void> = {
-    id: 'JupyterLabSessions-unmaximize'
-  };
-
-  export let restoreEvent: AsyncRemote.IEvent<void> = {
-    id: 'JupyterLabSessions-restore'
-  };
 }
 
 export class JupyterLabSessions
@@ -88,11 +57,6 @@ export class JupyterLabSessions
     }
 
     this._registerListeners();
-
-    asyncRemoteMain.registerRemoteMethod(
-      ISessions.createSession,
-      this.createSession.bind(this)
-    );
 
     // Get last session state
     app

@@ -6,8 +6,6 @@ import { IRegistry } from './registry';
 
 import { app, dialog } from 'electron';
 
-import { AsyncRemote, asyncRemoteMain } from '../asyncremote';
-
 import { IApplication, IClosingService } from './app';
 
 import { ArrayExt } from '@lumino/algorithm';
@@ -462,29 +460,6 @@ export namespace IServerFactory {
   export interface IServerStop {
     factoryId: number;
   }
-
-  export let requestServerStart: AsyncRemote.IMethod<void, IServerStarted> = {
-    id: 'JupyterServerFactory-requestserverstart'
-  };
-
-  export let requestServerStop: AsyncRemote.IMethod<IServerStop, void> = {
-    id: 'JupyterServerFactory-requestserverstop'
-  };
-
-  export let requestServerStartPath: AsyncRemote.IMethod<
-    void,
-    IServerStarted
-  > = {
-    id: 'JupyterServerFactory-requestserverstartpath'
-  };
-
-  export let pathSelectedEvent: AsyncRemote.IEvent<void> = {
-    id: 'JupyterServerFactory-pathselectedevent'
-  };
-
-  export let getServerInfo: AsyncRemote.IEvent<void> = {
-    id: 'JupyterServerFactory-getserverinfo'
-  };
 }
 
 export class JupyterServerFactory implements IServerFactory, IClosingService {
@@ -492,50 +467,6 @@ export class JupyterServerFactory implements IServerFactory, IClosingService {
     this._app = app;
     this._registry = registry;
     app.registerClosingService(this);
-
-    asyncRemoteMain.registerRemoteMethod(
-      IServerFactory.requestServerStart,
-      () => {
-        return this.createServer({} as JupyterServer.IOptions)
-          .then((data: JupyterServerFactory.IFactoryItem) => {
-            return this._factoryToIPC(data);
-          })
-          .catch((e: Error) => {
-            return this._errorToIPC(e);
-          });
-      }
-    );
-
-    asyncRemoteMain.registerRemoteMethod(
-      IServerFactory.requestServerStartPath,
-      (data: any, caller) => {
-        return this._registry
-          .getUserJupyterPath()
-          .then((environment: IPythonEnvironment) => {
-            asyncRemoteMain.emitRemoteEvent(
-              IServerFactory.pathSelectedEvent,
-              undefined,
-              caller
-            );
-            return this.createServer({ environment });
-          })
-          .then((data: JupyterServerFactory.IFactoryItem) => {
-            return this._factoryToIPC(data);
-          })
-          .catch((e: Error) => {
-            if (e.message !== 'cancel') {
-              return this._errorToIPC(e);
-            }
-          });
-      }
-    );
-
-    asyncRemoteMain.registerRemoteMethod(
-      IServerFactory.requestServerStop,
-      (arg: IServerFactory.IServerStop) => {
-        return this.stopServer(arg.factoryId);
-      }
-    );
   }
 
   /**
@@ -738,28 +669,6 @@ export class JupyterServerFactory implements IServerFactory, IClosingService {
         return false;
       }
     );
-  }
-
-  private _factoryToIPC(
-    data: JupyterServerFactory.IFactoryItem
-  ): IServerFactory.IServerStarted {
-    let info = data.server.info;
-    return {
-      type: 'local',
-      factoryId: data.factoryId,
-      url: info.url,
-      token: info.token
-    };
-  }
-
-  private _errorToIPC(e: Error): IServerFactory.IServerStarted {
-    return {
-      type: 'local',
-      factoryId: -1,
-      url: null,
-      token: null,
-      error: e
-    };
   }
 
   private _servers: JupyterServerFactory.IFactoryItem[] = [];

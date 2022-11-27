@@ -22,7 +22,6 @@ import { JSONObject, JSONValue } from '@lumino/coreutils';
 
 import log from 'electron-log';
 
-import { AsyncRemote, asyncRemoteMain } from '../asyncremote';
 import { IPythonEnvironment } from './tokens';
 import { IRegistry } from './registry';
 import fetch from 'node-fetch';
@@ -35,7 +34,7 @@ import { randomBytes } from 'crypto';
 
 import { appConfig, clearSession, getAppDir, getUserDataDir } from './utils';
 import { execFile } from 'child_process';
-import { IServerFactory, JupyterServer, waitUntilServerIsUp } from './server';
+import { JupyterServer, waitUntilServerIsUp } from './server';
 import { connectAndGetServerInfo, IJupyterServerInfo } from './connect';
 import { UpdateDialog } from './updatedialog/updatedialog';
 import { PreferencesDialog } from './preferencesdialog/preferencesdialog';
@@ -132,24 +131,6 @@ export interface IClosingService {
    * @return promise that is fulfilled when the service is ready to quit
    */
   finished(): Promise<void>;
-}
-
-export namespace IAppRemoteInterface {
-  export let checkForUpdates: AsyncRemote.IMethod<void, void> = {
-    id: 'JupyterLabDesktop-check-for-updates'
-  };
-  export let openDevTools: AsyncRemote.IMethod<void, void> = {
-    id: 'JupyterLabDesktop-open-dev-tools'
-  };
-  export let getCurrentPythonEnvironment: AsyncRemote.IMethod<
-    void,
-    IPythonEnvironment
-  > = {
-    id: 'JupyterLabDesktop-get-python-env'
-  };
-  export let showPythonPathSelector: AsyncRemote.IMethod<void, void> = {
-    id: 'JupyterLabDesktop-select-python-path'
-  };
 }
 
 export class JupyterApplication implements IApplication, IStatefulService {
@@ -742,44 +723,6 @@ export class JupyterApplication implements IApplication, IStatefulService {
     ipcMain.on('show-server-config-dialog', event => {
       this._showServerConfigDialog();
     });
-
-    asyncRemoteMain.registerRemoteMethod(
-      IAppRemoteInterface.checkForUpdates,
-      (): Promise<void> => {
-        this._checkForUpdates('always');
-        return Promise.resolve();
-      }
-    );
-
-    asyncRemoteMain.registerRemoteMethod(
-      IAppRemoteInterface.openDevTools,
-      (): Promise<void> => {
-        this._window.webContents.openDevTools();
-        return Promise.resolve();
-      }
-    );
-
-    asyncRemoteMain.registerRemoteMethod(
-      IAppRemoteInterface.getCurrentPythonEnvironment,
-      (): Promise<IPythonEnvironment> => {
-        return this.getPythonEnvironment();
-      }
-    );
-
-    asyncRemoteMain.registerRemoteMethod(
-      IAppRemoteInterface.showPythonPathSelector,
-      (): Promise<void> => {
-        this._showServerConfigDialog('change');
-        return Promise.resolve();
-      }
-    );
-
-    asyncRemoteMain.registerRemoteMethod(
-      IServerFactory.getServerInfo,
-      (): Promise<any> => {
-        return this.getServerInfo();
-      }
-    );
   }
 
   private _showUpdateDialog(
