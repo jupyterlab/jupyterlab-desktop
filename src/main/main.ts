@@ -125,6 +125,16 @@ const services = [
   return require(service).default;
 });
 
+const thisYear = new Date().getFullYear();
+
+app.setAboutPanelOptions({
+  applicationName: 'JupyterLab Desktop',
+  applicationVersion: app.getVersion(),
+  version: app.getVersion(),
+  website: 'https://jupyter.org/about.html',
+  copyright: `© 2015-${thisYear}  Project Jupyter Contributors`
+});
+
 app.on('open-file', (event: Electron.Event, _path: string) => {
   process.env.JLAB_DESKTOP_HOME = path.dirname(_path);
 });
