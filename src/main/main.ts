@@ -118,7 +118,6 @@ const services = [
   './app',
   './sessions',
   './server',
-  './menu',
   './shortcuts',
   './utils',
   './registry'
