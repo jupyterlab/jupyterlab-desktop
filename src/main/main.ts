@@ -147,15 +147,18 @@ function setupJLabCommand() {
   const symlinkPath = '/usr/local/bin/jlab';
   const targetPath = `${getAppDir()}/app/jlab`;
 
-  if (fs.existsSync(symlinkPath) || !fs.existsSync(targetPath)) {
+  if (!fs.existsSync(targetPath)) {
     return;
   }
 
   try {
-    const cmd = `ln -s ${targetPath} ${symlinkPath}`;
+    if (!fs.existsSync(symlinkPath)) {
+      const cmd = `ln -s ${targetPath} ${symlinkPath}`;
+      execSync(cmd, { shell: '/bin/bash' });
+      fs.chmodSync(symlinkPath, 0o755);
+    }
 
-    execSync(cmd, { shell: '/bin/bash' });
-    fs.chmodSync(symlinkPath, 0o755);
+    // after a DMG install, mode resets
     fs.chmodSync(targetPath, 0o755);
   } catch (error) {
     log.error(error);

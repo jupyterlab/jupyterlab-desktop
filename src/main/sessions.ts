@@ -20,7 +20,9 @@ import { appConfig } from './utils';
 import { EventEmitter } from 'events';
 
 import * as fs from 'fs';
+import * as path from 'path';
 import { MainWindow } from './mainwindow/mainwindow';
+import { LabView } from './labview/labview';
 
 export interface ISessions extends EventEmitter {
   createSession: (opts?: JupyterLabSession.IOptions) => Promise<void>;
@@ -241,7 +243,7 @@ export class JupyterLabSessions
       // Skip JupyterLab executable
       for (let i = 1; i < process.argv.length; i++) {
         this._activateLocalSession().then(() => {
-          this._openFile(process.argv[i]);
+          this._openFile(path.resolve(process.argv[i]));
           this._startingSession = null;
         });
       }
@@ -294,7 +296,7 @@ export class JupyterLabSessions
         let session = this._lastFocusedSession;
         session.browserWindow.restore();
         session.browserWindow.focus();
-        session.browserWindow.webContents.send('open-file-event', path);
+        session.labView.view.webContents.send('open-file-event', path);
       })
       .catch((error: any) => {
         return;
@@ -394,6 +396,10 @@ export class JupyterLabSession {
     return this._window.window;
   }
 
+  get labView(): LabView {
+    return this._window.labView;
+  }
+
   state(): JupyterLabSession.IState {
     let info = this.info;
 
@@ -463,7 +469,7 @@ if (process && process.type !== 'renderer' && !appConfig.isRemote) {
     app.on('open-file', (event: Electron.Event, path: string) => {
       ipcMain.once('lab-ui-ready', (event: Electron.Event) => {
         if (sessions?.lastFocusedSession) {
-          sessions.lastFocusedSession.browserWindow.webContents.send(
+          sessions.lastFocusedSession.labView.view.webContents.send(
             'open-file-event',
             path
           );

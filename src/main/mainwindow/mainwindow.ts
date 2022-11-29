@@ -56,6 +56,9 @@ export class MainWindow {
     labView.view.setBounds({ x: 0, y: 100, width: 1200, height: 700 });
     labView.load();
 
+    this._titleBarView = titleBarView;
+    this._labView = labView;
+
     const resizeViews = () => {
       const titleBarHeight = 28;
       const [width, height] = this._window.getSize();
@@ -90,8 +93,18 @@ export class MainWindow {
     resizeViews();
   }
 
+  get titleBarView(): TitleBarView {
+    return this._titleBarView;
+  }
+
+  get labView(): LabView {
+    return this._labView;
+  }
+
   private _options: MainWindow.IOptions;
   private _window: BrowserWindow;
+  private _titleBarView: TitleBarView;
+  private _labView: LabView;
 }
 
 export namespace MainWindow {
