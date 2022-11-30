@@ -350,9 +350,19 @@ export function getAppDir(): string {
 }
 
 export function getUserDataDir(): string {
-  return process.platform === 'darwin'
+  const userDataDir = process.platform === 'darwin'
     ? path.normalize(path.join(app.getPath('home'), 'Library', app.getName()))
     : app.getPath('userData');
+
+  if (!fs.existsSync(userDataDir)) {
+    try {
+      fs.mkdirSync(userDataDir, {recursive: true});
+    } catch (error) {
+      log.error(error);
+    }
+  }
+
+  return userDataDir;
 }
 
 export function getSchemasDir(): string {
