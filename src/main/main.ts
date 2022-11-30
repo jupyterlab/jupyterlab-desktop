@@ -118,12 +118,21 @@ const services = [
   './app',
   './sessions',
   './server',
-  './menu',
   './shortcuts',
   './utils',
   './registry'
 ].map((service: string) => {
   return require(service).default;
+});
+
+const thisYear = new Date().getFullYear();
+
+app.setAboutPanelOptions({
+  applicationName: 'JupyterLab Desktop',
+  applicationVersion: app.getVersion(),
+  version: app.getVersion(),
+  website: 'https://jupyter.org/about.html',
+  copyright: `© 2015-${thisYear}  Project Jupyter Contributors`
 });
 
 app.on('open-file', (event: Electron.Event, _path: string) => {
@@ -138,15 +147,18 @@ function setupJLabCommand() {
   const symlinkPath = '/usr/local/bin/jlab';
   const targetPath = `${getAppDir()}/app/jlab`;
 
-  if (fs.existsSync(symlinkPath) || !fs.existsSync(targetPath)) {
+  if (!fs.existsSync(targetPath)) {
     return;
   }
 
   try {
-    const cmd = `ln -s ${targetPath} ${symlinkPath}`;
+    if (!fs.existsSync(symlinkPath)) {
+      const cmd = `ln -s ${targetPath} ${symlinkPath}`;
+      execSync(cmd, { shell: '/bin/bash' });
+      fs.chmodSync(symlinkPath, 0o755);
+    }
 
-    execSync(cmd, { shell: '/bin/bash' });
-    fs.chmodSync(symlinkPath, 0o755);
+    // after a DMG install, mode resets
     fs.chmodSync(targetPath, 0o755);
   } catch (error) {
     log.error(error);

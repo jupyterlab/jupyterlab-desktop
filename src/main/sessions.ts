@@ -1,19 +1,9 @@
 // Copyright (c) Jupyter Development Team.
 // Distributed under the terms of the Modified BSD License.
 
-import {
-  app,
-  BrowserWindow,
-  clipboard,
-  dialog,
-  ipcMain,
-  Menu,
-  MenuItemConstructorOptions
-} from 'electron';
+import { app, ipcMain } from 'electron';
 
 import { JSONObject } from '@lumino/coreutils';
-
-import { AsyncRemote, asyncRemoteMain } from '../asyncremote';
 
 import { IApplication, IStatefulService } from './app';
 
@@ -30,26 +20,9 @@ import { appConfig } from './utils';
 import { EventEmitter } from 'events';
 
 import * as fs from 'fs';
-import { URL } from 'url';
 import * as path from 'path';
-import * as ejs from 'ejs';
-import { request as httpRequest, IncomingMessage } from 'http';
-import { request as httpsRequest } from 'https';
-
-// file name to variables map
-const templateAssetPaths = new Map([
-  [
-    'index.html',
-    () => {
-      return {
-        appConfig: JSON.stringify({
-          version: app.getVersion()
-        }),
-        pageConfig: JSON.stringify(appConfig.pageConfig)
-      };
-    }
-  ]
-]);
+import { MainWindow } from './mainwindow/mainwindow';
+import { LabView } from './labview/labview';
 
 export interface ISessions extends EventEmitter {
   createSession: (opts?: JupyterLabSession.IOptions) => Promise<void>;
@@ -57,39 +30,6 @@ export interface ISessions extends EventEmitter {
   isAppFocused: () => boolean;
 
   length: number;
-}
-
-export namespace ISessions {
-  export const navigatedToHash: AsyncRemote.IEvent<string> = {
-    id: 'navigated-to-hash'
-  };
-
-  export let createSession: AsyncRemote.IMethod<
-    JupyterLabSession.IOptions,
-    void
-  > = {
-    id: 'JupyterLabSessions-createsession'
-  };
-
-  export let openFileEvent: AsyncRemote.IEvent<string> = {
-    id: 'JupyterLabSessions-openfile'
-  };
-
-  export let minimizeEvent: AsyncRemote.IEvent<void> = {
-    id: 'JupyterLabSessions-minimize'
-  };
-
-  export let enterFullScreenEvent: AsyncRemote.IEvent<void> = {
-    id: 'JupyterLabSessions-maximize'
-  };
-
-  export let leaveFullScreenEvent: AsyncRemote.IEvent<void> = {
-    id: 'JupyterLabSessions-unmaximize'
-  };
-
-  export let restoreEvent: AsyncRemote.IEvent<void> = {
-    id: 'JupyterLabSessions-restore'
-  };
 }
 
 export class JupyterLabSessions
@@ -119,11 +59,6 @@ export class JupyterLabSessions
     }
 
     this._registerListeners();
-
-    asyncRemoteMain.registerRemoteMethod(
-      ISessions.createSession,
-      this.createSession.bind(this)
-    );
 
     // Get last session state
     app
@@ -300,7 +235,7 @@ export class JupyterLabSessions
       this._sessions[0].browserWindow.focus();
     });
 
-    ipcMain.once('lab-ready', () => {
+    ipcMain.once('lab-ui-ready', () => {
       if (appConfig.isRemote) {
         this._startingSession = null;
         return;
@@ -308,7 +243,7 @@ export class JupyterLabSessions
       // Skip JupyterLab executable
       for (let i = 1; i < process.argv.length; i++) {
         this._activateLocalSession().then(() => {
-          this._openFile(process.argv[i]);
+          this._openFile(path.resolve(process.argv[i]));
           this._startingSession = null;
         });
       }
@@ -342,7 +277,7 @@ export class JupyterLabSessions
         }
         state.state = 'local';
         this.createSession(state).then(() => {
-          ipcMain.once('lab-ready', () => {
+          ipcMain.once('lab-ui-ready', () => {
             resolve();
           });
         });
@@ -361,11 +296,7 @@ export class JupyterLabSessions
         let session = this._lastFocusedSession;
         session.browserWindow.restore();
         session.browserWindow.focus();
-        asyncRemoteMain.emitRemoteEvent(
-          ISessions.openFileEvent,
-          path,
-          session.browserWindow.webContents
-        );
+        session.labView.view.webContents.send('open-file-event', path);
       })
       .catch((error: any) => {
         return;
@@ -441,288 +372,19 @@ export class JupyterLabSession {
       }
     }
 
-    this._window = new BrowserWindow({
-      width: this._info.width,
-      height: this._info.height,
-      x: this._info.x,
-      y: this._info.y,
-      minWidth: 400,
-      minHeight: 300,
-      show: true,
-      title: 'JupyterLab',
-      webPreferences: {
-        nodeIntegration: true,
-        contextIsolation: false,
-        preload: path.join(__dirname, './preload.js')
-      }
-    });
+    this._window = new MainWindow(this._info);
 
-    this._window.setMenuBarVisibility(false);
-    this._addFallbackContextMenu();
-
-    if (this._info.x && this._info.y) {
-      this._window.setBounds({
-        x: this._info.x,
-        y: this._info.y,
-        height: this._info.height,
-        width: this._info.width
-      });
-    } else {
-      this._window.center();
-    }
-
-    this._addRenderAPI();
-
-    this._window.webContents.on('did-finish-load', () => {
-      this._window.show();
-    });
-
-    const DESKTOP_APP_ASSETS_PATH = 'desktop-app-assets';
-
-    const cookies: Map<string, string> = new Map();
-
-    const parseCookieName = (cookie: string): string | undefined => {
-      const parts = cookie.split(';');
-      if (parts.length < 1) {
-        return undefined;
-      }
-      const firstPart = parts[0];
-      const eqLoc = firstPart.indexOf('=');
-      if (eqLoc === -1) {
-        return undefined;
-      }
-      return firstPart.substring(0, eqLoc).trim();
-    };
-
-    const jlabBaseUrl = `${appConfig.url.protocol}//${appConfig.url.host}${appConfig.url.pathname}`;
-    const desktopAppAssetsPrefix = `${jlabBaseUrl}${DESKTOP_APP_ASSETS_PATH}`;
-    const appAssetsDir = path.normalize(path.join(__dirname, '../../'));
-
-    const handleDesktopAppAssetRequest = (
-      req: Electron.ProtocolRequest,
-      callback: (response: Buffer | Electron.ProtocolResponse) => void
-    ) => {
-      let assetPath = req.url.substring(desktopAppAssetsPrefix.length + 1);
-      const qMark = assetPath.indexOf('?');
-      if (qMark !== -1) {
-        assetPath = assetPath.substring(0, qMark);
-      }
-      const assetFilePath = path.normalize(path.join(appAssetsDir, assetPath));
-
-      // make sure asset is in appAssetsDir, prevent access to lower level directories
-      if (assetFilePath.indexOf(appAssetsDir) === 0) {
-        if (!fs.existsSync(assetFilePath)) {
-          callback({ statusCode: 404 });
-          return;
-        }
-        let assetContent = fs.readFileSync(assetFilePath);
-        if (templateAssetPaths.has(assetPath)) {
-          assetContent = Buffer.from(
-            ejs.render(
-              assetContent.toString(),
-              templateAssetPaths.get(assetPath)()
-            )
-          );
-        }
-
-        callback(assetContent);
-      }
-    };
-
-    const handleRemoteAssetRequest = (
-      req: Electron.ProtocolRequest,
-      callback: (response: Buffer | Electron.ProtocolResponse) => void
-    ) => {
-      const headers: any = {
-        ...req.headers,
-        Referer: req.referrer,
-        Authorization: `token ${appConfig.token}`
-      };
-
-      if (
-        appConfig.url &&
-        req.url.startsWith(`${appConfig.url.protocol}//${appConfig.url.host}`)
-      ) {
-        let cookieArray: string[] = [];
-        if (appConfig.cookies) {
-          appConfig.cookies.forEach(cookie => {
-            if (cookie.domain === appConfig.url.hostname) {
-              cookieArray.push(`${cookie.name}=${cookie.value}`);
-              if (cookie.name === '_xsrf') {
-                headers['X-XSRFToken'] = cookie.value;
-              }
-            }
-          });
-        }
-        headers['Cookie'] = cookieArray.join('; ');
-      }
-
-      const remoteUrl = req.url;
-      const requestFn = remoteUrl.startsWith('https')
-        ? httpsRequest
-        : httpRequest;
-
-      const request = requestFn(remoteUrl, {
-        headers: headers,
-        method: req.method
-      });
-      request.on('response', (res: IncomingMessage) => {
-        if (req.url.startsWith(jlabBaseUrl) && 'set-cookie' in res.headers) {
-          for (let cookie of res.headers['set-cookie']) {
-            const cookieName = parseCookieName(cookie);
-            if (cookieName) {
-              cookies.set(cookieName, cookie);
-            }
-          }
-        }
-
-        const chunks: Buffer[] = [];
-
-        res.on('data', (chunk: any) => {
-          chunks.push(Buffer.from(chunk));
-        });
-
-        res.on('end', async () => {
-          const file = Buffer.concat(chunks);
-          callback({
-            statusCode: res.statusCode,
-            headers: res.headers,
-            method: res.method,
-            url: res.url,
-            data: file
-          });
-        });
-      });
-
-      if (req.uploadData) {
-        req.uploadData.forEach(part => {
-          if (part.bytes) {
-            request.write(part.bytes);
-          } else if (part.file) {
-            request.write(fs.readFileSync(part.file));
-          }
-        });
-      }
-
-      request.end();
-    };
-
-    const handleInterceptBufferProtocol = (
-      req: Electron.ProtocolRequest,
-      callback: (response: Buffer | Electron.ProtocolResponse) => void
-    ) => {
-      if (req.url.startsWith(desktopAppAssetsPrefix)) {
-        handleDesktopAppAssetRequest(req, callback);
-      } else {
-        handleRemoteAssetRequest(req, callback);
-      }
-    };
-
-    this._window.webContents.session.protocol.interceptBufferProtocol(
-      'http',
-      handleInterceptBufferProtocol
-    );
-
-    this._window.webContents.session.protocol.interceptBufferProtocol(
-      'https',
-      handleInterceptBufferProtocol
-    );
-
-    const filter = {
-      urls: [`ws://${appConfig.url.host}/*`, `wss://${appConfig.url.host}/*`]
-    };
-
-    this._window.webContents.session.webRequest.onBeforeSendHeaders(
-      filter,
-      (details, callback) => {
-        const requestHeaders: Record<string, string> = {
-          ...details.requestHeaders
-        };
-        if (cookies.size > 0) {
-          requestHeaders['Cookie'] = Array.from(cookies.values()).join('; ');
-          requestHeaders['Host'] = appConfig.url.host;
-          requestHeaders['Origin'] = appConfig.url.origin;
-        }
-        callback({ cancel: false, requestHeaders });
-      }
-    );
-
-    this._window.on('focus', () => {
+    this._window.window.on('focus', () => {
       this._sessionManager.setFocusedSession(this);
     });
 
-    // show popups in a new BrowserWindow with default configuration
-    this._window.webContents.on('new-window', (event, url) => {
-      event.preventDefault();
-      const win = new BrowserWindow({ show: false });
-
-      win.webContents.on('did-finish-load', () => {
-        win.show();
-      });
-
-      win.setMenuBarVisibility(false);
-      win.loadURL(url);
-
-      event.newGuest = win;
-    });
-
-    // Prevent navigation to local links on the same page and external links
-    this._window.webContents.on(
-      'will-navigate',
-      (event: Event, navigationUrl) => {
-        const jlabBaseUrl = `${appConfig.url.protocol}//${appConfig.url.host}`;
-        if (
-          !(
-            navigationUrl.startsWith(jlabBaseUrl) &&
-            navigationUrl.indexOf('#') === -1
-          )
-        ) {
-          console.warn(
-            `Navigation is not allowed; attempted navigation to: ${navigationUrl}`
-          );
-          event.preventDefault();
-          return;
-        }
-
-        const parsedUrl = new URL(navigationUrl);
-
-        asyncRemoteMain.emitRemoteEvent(
-          ISessions.navigatedToHash,
-          parsedUrl.hash,
-          this._window.webContents
-        );
-      }
-    );
-
-    // handle page's beforeunload prompt natively
-    this._window.webContents.on('will-prevent-unload', (event: Event) => {
-      const choice = dialog.showMessageBoxSync(this._window, {
-        type: 'warning',
-        message: 'Do you want to leave?',
-        detail: 'Changes you made may not be saved.',
-        buttons: ['Leave', 'Stay'],
-        defaultId: 1,
-        cancelId: 1
-      });
-
-      if (choice === 0) {
-        event.preventDefault();
-      }
-    });
-
     sessionManager.app.pageConfigSet.then(() => {
-      this._window.loadURL(
-        `${appConfig.url.protocol}//${appConfig.url.host}${
-          appConfig.url.pathname
-        }${DESKTOP_APP_ASSETS_PATH}/index.html?${encodeURIComponent(
-          JSON.stringify(this.info)
-        )}`
-      );
+      this._window.load();
     });
   }
 
   get info(): JupyterLabSession.IInfo {
-    let winBounds = this._window.getBounds();
+    let winBounds = this._window.window.getBounds();
     this._info.x = winBounds.x;
     this._info.y = winBounds.y;
     this._info.width = winBounds.width;
@@ -731,7 +393,11 @@ export class JupyterLabSession {
   }
 
   get browserWindow(): Electron.BrowserWindow {
-    return this._window;
+    return this._window.window;
+  }
+
+  get labView(): LabView {
+    return this._window.labView;
   }
 
   state(): JupyterLabSession.IState {
@@ -747,118 +413,11 @@ export class JupyterLabSession {
     };
   }
 
-  /**
-   * Simple fallback context menu shown on Shift + Right Click.
-   * May be removed in future versions once (/if) JupyterLab builtin menu
-   * supports cut/copy/paste, including "Copy link URL" and "Copy image".
-   * @private
-   */
-  private _addFallbackContextMenu(): void {
-    const selectionTemplate: MenuItemConstructorOptions[] = [{ role: 'copy' }];
-
-    const inputMenu = Menu.buildFromTemplate([
-      { role: 'cut' },
-      { role: 'copy' },
-      { role: 'paste' },
-      { role: 'selectAll' }
-    ]);
-
-    this._window.webContents.on('context-menu', (event, params) => {
-      if (params.isEditable) {
-        inputMenu.popup({ window: this._window });
-      } else {
-        const template: MenuItemConstructorOptions[] = [];
-        if (params.selectionText) {
-          template.push(...selectionTemplate);
-        }
-        if (params.linkURL) {
-          template.push({
-            label: 'Copy link URL',
-            click: () => {
-              clipboard.writeText(params.linkURL);
-            }
-          });
-        }
-        if (params.hasImageContents) {
-          template.push({
-            label: 'Copy image',
-            click: () => {
-              this._window.webContents.copyImageAt(params.x, params.y);
-            }
-          });
-        }
-        if (template.length) {
-          Menu.buildFromTemplate(template).popup({ window: this._window });
-        }
-      }
-    });
-  }
-
-  private _addRenderAPI(): void {
-    ipcMain.on('state-update', (evt: any, arg: any) => {
-      for (let key in arg) {
-        if ((this._info as any)[key]) {
-          (this._info as any)[key] = (arg as any)[key];
-        }
-      }
-    });
-
-    if (this.info.uiState === 'mac') {
-      this._window.on('enter-full-screen', () => {
-        asyncRemoteMain.emitRemoteEvent(
-          ISessions.enterFullScreenEvent,
-          undefined,
-          this._window.webContents
-        );
-      });
-
-      this._window.on('leave-full-screen', () => {
-        asyncRemoteMain.emitRemoteEvent(
-          ISessions.leaveFullScreenEvent,
-          undefined,
-          this._window.webContents
-        );
-      });
-    } else {
-      this._window.on('maximize', () => {
-        asyncRemoteMain.emitRemoteEvent(
-          ISessions.enterFullScreenEvent,
-          undefined,
-          this._window.webContents
-        );
-      });
-
-      this._window.on('unmaximize', () => {
-        asyncRemoteMain.emitRemoteEvent(
-          ISessions.leaveFullScreenEvent,
-          undefined,
-          this._window.webContents
-        );
-      });
-    }
-
-    this._window.on('minimize', () => {
-      asyncRemoteMain.emitRemoteEvent(
-        ISessions.minimizeEvent,
-        undefined,
-        this._window.webContents
-      );
-    });
-
-    this._window.on('restore', () => {
-      asyncRemoteMain.emitRemoteEvent(
-        ISessions.restoreEvent,
-        undefined,
-        this._window.webContents
-      );
-    });
-  }
-
   private _sessionManager: JupyterLabSessions = null;
 
   private _info: JupyterLabSession.IInfo = null;
 
-  private _window: Electron.BrowserWindow = null;
+  private _window: MainWindow = null;
 }
 
 export namespace JupyterLabSession {
@@ -908,12 +467,11 @@ let sessions: JupyterLabSessions;
 if (process && process.type !== 'renderer' && !appConfig.isRemote) {
   app.once('will-finish-launching', (e: Electron.Event) => {
     app.on('open-file', (event: Electron.Event, path: string) => {
-      ipcMain.once('lab-ready', (event: Electron.Event) => {
+      ipcMain.once('lab-ui-ready', (event: Electron.Event) => {
         if (sessions?.lastFocusedSession) {
-          asyncRemoteMain.emitRemoteEvent(
-            ISessions.openFileEvent,
-            path,
-            sessions.lastFocusedSession.browserWindow.webContents
+          sessions.lastFocusedSession.labView.view.webContents.send(
+            'open-file-event',
+            path
           );
         }
       });

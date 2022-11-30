@@ -5,8 +5,6 @@ import { JSONValue } from '@lumino/coreutils';
 
 import { IApplication, IStatefulService } from './app';
 
-import { AsyncRemote, asyncRemoteMain } from '../asyncremote';
-
 import { ISettingRegistry } from '@jupyterlab/settingregistry';
 
 import { IDataConnector } from '@jupyterlab/statedb';
@@ -44,16 +42,6 @@ export interface ISaveOptions {
 export interface IElectronDataConnector
   extends IDataConnector<ISettingRegistry.IPlugin, string> {}
 
-export namespace IElectronDataConnector {
-  export let fetch: AsyncRemote.IMethod<string, ISettingRegistry.IPlugin> = {
-    id: 'JupyterLabDataConnector-fetch'
-  };
-
-  export let save: AsyncRemote.IMethod<ISaveOptions, void> = {
-    id: 'JupyterLabDataConnector-save'
-  };
-}
-
 /**
  * Create a data connector to be used by the render
  * processes. Stores JupyterLab plugin settings that
@@ -86,20 +74,6 @@ export class JupyterLabDataConnector
           this._getDefaultSettings(schemas)
         );
       });
-
-    // Create 'fetch' remote method
-    asyncRemoteMain.registerRemoteMethod(
-      IElectronDataConnector.fetch,
-      this.fetch.bind(this)
-    );
-
-    // Create 'save' remote method
-    asyncRemoteMain.registerRemoteMethod(
-      IElectronDataConnector.save,
-      (opts: ISaveOptions) => {
-        return this.save(opts.id, opts.raw);
-      }
-    );
   }
 
   /**
@@ -376,9 +350,20 @@ export function getAppDir(): string {
 }
 
 export function getUserDataDir(): string {
-  return process.platform === 'darwin'
-    ? path.normalize(path.join(app.getPath('home'), 'Library', app.getName()))
-    : app.getPath('userData');
+  const userDataDir =
+    process.platform === 'darwin'
+      ? path.normalize(path.join(app.getPath('home'), 'Library', app.getName()))
+      : app.getPath('userData');
+
+  if (!fs.existsSync(userDataDir)) {
+    try {
+      fs.mkdirSync(userDataDir, { recursive: true });
+    } catch (error) {
+      log.error(error);
+    }
+  }
+
+  return userDataDir;
 }
 
 export function getSchemasDir(): string {

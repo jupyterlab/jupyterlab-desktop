@@ -11,19 +11,9 @@ import { PageConfig } from '@jupyterlab/coreutils';
 
 import { ICommandPalette } from '@jupyterlab/apputils';
 
-import { Browser } from '../../utils';
-
 import { JupyterLabSession } from '../../../main/sessions';
 
 import { ServerConnection } from '@jupyterlab/services';
-
-import { each } from '@lumino/algorithm';
-
-import { Widget } from '@lumino/widgets';
-
-import { asyncRemoteRenderer } from '../../../asyncremote';
-
-import { IShortcutManager } from '../../../main/shortcuts';
 
 import plugins from '@jupyterlab/application-extension';
 
@@ -78,28 +68,6 @@ export class ElectronJupyterLab extends JupyterLab {
     this._electronInfo = { ...JupyterLab.defaultInfo, ...options };
     if (this._electronInfo.devMode) {
       this.shell.addClass('jp-mod-devMode');
-    }
-
-    // Get the top panel widget
-    let topPanel: Widget;
-    each(this.shell.layout.iter(), (widget: Widget) => {
-      if (widget.id === 'jp-top-panel') {
-        topPanel = widget;
-        return false;
-      }
-    });
-    topPanel.addClass('jpe-mod-' + options.uiState);
-
-    if (options.uiState === 'mac') {
-      // Resize the top panel based on zoom factor
-      topPanel.node.style.minHeight = topPanel.node.style.height =
-        String(Browser.getTopPanelSize()) + 'px';
-      // Resize the top panel on zoom events
-      asyncRemoteRenderer.onRemoteEvent(IShortcutManager.zoomEvent, () => {
-        topPanel.node.style.minHeight = topPanel.node.style.height =
-          String(Browser.getTopPanelSize()) + 'px';
-        this.shell.fit();
-      });
     }
   }
 

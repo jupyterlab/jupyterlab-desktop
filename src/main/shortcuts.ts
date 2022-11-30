@@ -7,19 +7,7 @@ import { ISessions } from './sessions';
 
 import { IService } from './main';
 
-import { AsyncRemote, asyncRemoteMain } from '../asyncremote';
-
 export interface IShortcutManager {}
-
-export namespace IShortcutManager {
-  export let zoomEvent: AsyncRemote.IEvent<void> = {
-    id: 'KeyboardShortcutManager-zoom'
-  };
-
-  export let fullscreenToggledEvent: AsyncRemote.IEvent<void> = {
-    id: 'KeyboardShortcutManager-fullscreen'
-  };
-}
 
 /**
  * Interface for keyboard shortcuts recognized by the shortcut manager
@@ -86,13 +74,6 @@ class KeyboardShortcutManager implements IShortcutManager {
       return;
     }
     contents.setZoomLevel(zoom + 1);
-
-    // Emit zoom event
-    asyncRemoteMain.emitRemoteEvent(
-      IShortcutManager.zoomEvent,
-      undefined,
-      contents
-    );
   }
 
   zoomOut() {
@@ -105,13 +86,6 @@ class KeyboardShortcutManager implements IShortcutManager {
       return;
     }
     contents.setZoomLevel(zoom - 1);
-
-    // Emit zoom event
-    asyncRemoteMain.emitRemoteEvent(
-      IShortcutManager.zoomEvent,
-      undefined,
-      contents
-    );
   }
 
   quit() {

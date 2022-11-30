@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<!--
+Copyright (c) Jupyter Development Team.
+Distributed under the terms of the Modified BSD License.
+
+// control box SVGs from https://github.com/AlexTorresSk/custom-electron-titlebar
+-->
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>JupyterLab Header</title>
+    <style>
+      body {
+        background-color: #e1e1e1;
+        color: #000000;
+        margin: 0;
+        overflow: hidden;
+        -webkit-app-region: drag;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica,
+          Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
+          'Segoe UI Symbol';
+        font-size: 13px;
+        -webkit-user-select: none;
+        user-select: none;
+      }
+      body.app-ui-dark {
+        background-color: #424242;
+        color: #ffffff;
+      }
+      .titlebar {
+        display: flex;
+        flex-direction: row;
+        padding-left: 10px;
+        line-height: 28px;
+      }
+      .app-title {
+        flex-grow: 1;
+        float: left;
+      }
+      #server-button {
+        -webkit-app-region: no-drag;
+        display: flex;
+        padding-right: 5px;
+        color: #343434;
+      }
+      .app-ui-dark #server-button {
+        color: #c1c1c1;
+      }
+      #server-icon svg {
+        width: 15px;
+        height: 15px;
+        padding-top: 6px;
+      }
+      #server-icon, #menu-button {
+        -webkit-app-region: no-drag;
+        margin-right: 5px;
+        width: 28px;
+        text-align: center;
+      }
+      #server-icon {
+        margin-right: 0;
+      }
+      #menu-button svg {
+        padding-top: 4px;
+        width: 20px;
+        height: 20px;
+      }
+      #menu-button svg path {
+        fill: #5a5a5a;
+      }
+      #server-icon svg path {
+        fill: #1976d2;
+      }
+      .app-ui-dark #menu-button svg path {
+        fill: #bdbdbd;
+      }
+      .app-ui-dark #server-icon svg path {
+        fill: #2196f3;
+      }
+      .app-ui-darwin .titlebar {
+        padding-left: 70px;
+      }
+      #control-box {
+        -webkit-app-region: no-drag;
+        margin: 0 5px;
+        font-weight: bold;
+        color: #5a5a5a;
+        display: flex;
+      }
+      .app-ui-dark #control-box {
+        color: #bdbdbd;
+      }
+      .app-ui-darwin #control-box {
+        display: none;
+      }
+      #control-box svg {
+        width: 12px;
+        height: 12px;
+        padding-top: 8px;
+        fill: #5a5a5a;
+      }
+      .app-ui-dark #control-box svg {
+        fill: #bdbdbd;
+      }
+      .control-box-button {
+        -webkit-app-region: no-drag;
+        color: #5a5a5a;
+        padding: 0 5px;
+        width: 18px;
+        text-align: center;
+      }
+      .app-ui-dark .control-box-button {
+        color: #bdbdbd;
+      }
+
+      .control-box-button:hover,
+      #menu-button:hover,
+      #server-button:hover {
+        background-color: #c1c1c1;
+      }
+      .app-ui-dark .control-box-button:hover,
+      .app-ui-dark #menu-button:hover,
+      .app-ui-dark #server-button:hover {
+        background-color: #505050;
+      }
+
+      #restore-button {
+        display: none;
+      }
+    </style>
+    <script>
+      document.addEventListener("DOMContentLoaded", async () => {
+        const appConfig = window.electronAPI.getAppConfig();
+        const platform = appConfig.platform;
+        document.body.dataset.appPlatform = platform;
+        document.body.classList.add(`app-ui-${platform}`);
+        if (await window.electronAPI.isDarkTheme()) {
+          document.body.classList.add('app-ui-dark');
+        }
+      });
+    </script>
+  </head>
+
+  <body>
+    <div class="titlebar">
+      <div class="app-title">JupyterLab Desktop</div>
+      <div id="server-button">
+        <div id="server-icon">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><path fill="#333333" d="M480 160H32c-17.673 0-32-14.327-32-32V64c0-17.673 14.327-32 32-32h448c17.673 0 32 14.327 32 32v64c0 17.673-14.327 32-32 32zm-48-88c-13.255 0-24 10.745-24 24s10.745 24 24 24 24-10.745 24-24-10.745-24-24-24zm-64 0c-13.255 0-24 10.745-24 24s10.745 24 24 24 24-10.745 24-24-10.745-24-24-24zm112 248H32c-17.673 0-32-14.327-32-32v-64c0-17.673 14.327-32 32-32h448c17.673 0 32 14.327 32 32v64c0 17.673-14.327 32-32 32zm-48-88c-13.255 0-24 10.745-24 24s10.745 24 24 24 24-10.745 24-24-10.745-24-24-24zm-64 0c-13.255 0-24 10.745-24 24s10.745 24 24 24 24-10.745 24-24-10.745-24-24-24zm112 248H32c-17.673 0-32-14.327-32-32v-64c0-17.673 14.327-32 32-32h448c17.673 0 32 14.327 32 32v64c0 17.673-14.327 32-32 32zm-48-88c-13.255 0-24 10.745-24 24s10.745 24 24 24 24-10.745 24-24-10.745-24-24-24zm-64 0c-13.255 0-24 10.745-24 24s10.745 24 24 24 24-10.745 24-24-10.745-24-24-24z"/></svg>
+          <!--
+          Font Awesome Free 5.2.0 by @fontawesome - https://fontawesome.com
+          License - https://fontawesome.com/license (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License)
+          -->
+        </div>
+        <div id="server-label"></div>
+      </div>
+      <div id="menu-button" title="Application Menu">
+        <svg
+          width="18px"
+          height="18px"
+          id="Layer_1"
+          style="enable-background: new 0 0 32 32"
+          version="1.1"
+          viewBox="0 0 32 32"
+          xml:space="preserve"
+          xmlns="http://www.w3.org/2000/svg"
+          xmlns:xlink="http://www.w3.org/1999/xlink"
+        >
+          <path
+            d="M4,10h24c1.104,0,2-0.896,2-2s-0.896-2-2-2H4C2.896,6,2,6.896,2,8S2.896,10,4,10z M28,14H4c-1.104,0-2,0.896-2,2  s0.896,2,2,2h24c1.104,0,2-0.896,2-2S29.104,14,28,14z M28,22H4c-1.104,0-2,0.896-2,2s0.896,2,2,2h24c1.104,0,2-0.896,2-2  S29.104,22,28,22z"
+          />
+        </svg>
+      </div>
+      <div id="control-box" class="control-box">
+        <div id="minimize-button" class="control-box-button" title="Minimize">
+          <svg viewBox='0 0 10.2 1'><rect x='0' y='50%' width='10.2' height='1'/></svg>
+        </div>
+        <div id="maximize-button" class="control-box-button" title="Maximize">
+          <svg viewBox='0 0 10 10'><path d='M0,0v10h10V0H0z M9,9H1V1h8V9z'/></svg>
+        </div>
+        <div id="restore-button" class="control-box-button" title="Restore">
+          <svg viewBox='0 0 10.2 10.1'><path d='M2.1,0v2H0v8.1h8.2v-2h2V0H2.1z M7.2,9.2H1.1V3h6.1V9.2z M9.2,7.1h-1V2H3.1V1h6.1V7.1z'/></svg>
+        </div>
+        <div id="close-button" class="control-box-button" title="Close">
+          <svg viewBox='0 0 10 10'><polygon points='10.2,0.7 9.5,0 5.1,4.4 0.7,0 0,0.7 4.4,5.1 0,9.5 0.7,10.2 5.1,5.8 9.5,10.2 10.2,9.5 5.8,5.1'/></svg>
+        </div>
+      </div>
+    </div>
+    <script>
+      const serverButton = document.getElementById('server-button');
+      const serverIcon = document.getElementById('server-icon');
+      const serverLabel = document.getElementById('server-label');
+      const menuButton = document.getElementById('menu-button');
+      const minimizeButton = document.getElementById('minimize-button');
+      const maximizeButton = document.getElementById('maximize-button');
+      const restoreButton = document.getElementById('restore-button');
+      const closeButton = document.getElementById('close-button');
+
+      menuButton.onclick = () => {
+        window.electronAPI.showAppContextMenu();
+      };
+
+      minimizeButton.onclick = () => {
+        window.electronAPI.minimizeWindow();
+      };
+
+      maximizeButton.onclick = () => {
+        window.electronAPI.maximizeWindow();
+        maximizeButton.style.display = 'none';
+        restoreButton.style.display = 'block';
+      };
+
+      restoreButton.onclick = () => {
+        window.electronAPI.restoreWindow();
+        restoreButton.style.display = 'none';
+        maximizeButton.style.display = 'block';
+      };
+
+      closeButton.onclick = () => {
+        window.electronAPI.closeWindow();
+      };
+
+      serverButton.onclick = () => {
+        window.electronAPI.showServerConfigDialog();
+      };
+
+      const updateStatusItemLocal = (env) => {
+        serverLabel.innerText = `Local (${env.name})`;
+        let packages = [];
+        for (const name in env.versions) {
+          packages.push(`${name}: ${env.versions[name]}`);
+        }
+        serverButton.title = `Local server\n${env.name}\n${
+          env.path
+        }\n${packages.join(', ')}`;
+      };
+
+      const updateStatusItemRemote = (url) => {
+        serverLabel.innerText = 'Remote';
+        serverButton.title = `Remote server\n${url}`;
+      };
+
+      window.electronAPI.getServerInfo().then(data => {
+        if (data.type === 'local') {
+          window.electronAPI.getCurrentPythonEnvironment().then(env => {
+            updateStatusItemLocal(env);
+          });
+        } else {
+          updateStatusItemRemote(data.url);
+        }
+      });
+    </script>
+  </body>
+</html>

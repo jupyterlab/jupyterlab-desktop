@@ -34,8 +34,8 @@
     "eslint:check": "eslint --ext .js,.jsx,.ts,.tsx --cache .",
     "eslint:check:typed": "eslint --config .eslintrc.typecheck.js --ext .js,.jsx,.ts,.tsx .",
     "eslint:typed": "eslint --config .eslintrc.typecheck.js --cache --ext .js,.jsx,.ts,.tsx --fix .",
-    "lint": "yarn && yarn prettier && yarn eslint && yarn stylelint",
-    "lint:check": "yarn prettier:check && yarn eslint:check && yarn stylelint:check",
+    "lint": "yarn && yarn prettier && yarn eslint && yarn stylelint --allow-empty-input",
+    "lint:check": "yarn prettier:check && yarn eslint:check && yarn stylelint:check --allow-empty-input",
     "prettier": "prettier --write \"**/*{.ts,.tsx,.js,.jsx,.css,.json,.md}\"",
     "prettier:check": "prettier --check \"**/*{.ts,.tsx,.js,.jsx,.css,.json,.md}\"",
     "stylelint": "yarn stylelint:check --fix",
@@ -162,6 +162,7 @@
   "repository": "https://github.com/jupyterlab/jupyterlab-desktop",
   "license": "BSD-3-Clause",
   "devDependencies": {
+    "@jupyter-notebook/web-components": "0.9.1",
     "@types/ejs": "^3.1.0",
     "@types/js-yaml": "^4.0.3",
     "@types/node": "^14.14.31",

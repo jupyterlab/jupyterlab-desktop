@@ -46,6 +46,30 @@ function copyAssests() {
   // Copy html into build directory
   const htmlPath = path.join('browser', 'index.html');
   fs.copySync(path.join(srcDir, htmlPath), path.join(dest, '../index.html'));
+  const titlebarPath = path.join('main', 'titlebarview', 'titlebar.html');
+  fs.copySync(
+    path.join(srcDir, titlebarPath),
+    path.join(dest, '../app-assets', 'titlebarview', 'titlebar.html')
+  );
+
+  fs.copySync(
+    path.join(srcDir, 'assets', 'icon.svg'),
+    path.join(dest, '../app-assets', 'icon.svg')
+  );
+
+  const toolkitPath = path.join(
+    '../node_modules',
+    '@jupyter-notebook/web-components',
+    'dist'
+  );
+  fs.copySync(
+    path.join(srcDir, toolkitPath, 'toolkit.min.js'),
+    path.join(dest, '../jupyter-ui-toolkit/toolkit.min.js')
+  );
+  fs.copySync(
+    path.join(srcDir, toolkitPath, 'toolkit.js'),
+    path.join(dest, '../jupyter-ui-toolkit/toolkit.js')
+  );
 
   const envInfoPath = path.join('main', 'env_info.py');
   fs.copySync(path.join(srcDir, envInfoPath), path.join(dest, envInfoPath));

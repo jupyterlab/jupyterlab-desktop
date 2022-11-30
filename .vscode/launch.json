@@ -12,7 +12,10 @@
         },
         "args" : ["."],
         "outputCapture": "std",
-        "preLaunchTask": "npm: build"
+        "preLaunchTask": "npm: build",
+        "env": {
+          "NODE_ENV": "development"
+        }
       },
       {
         "name": "Debug Electron App without Build",
@@ -24,7 +27,10 @@
           "runtimeExecutable": "${workspaceFolder}\\node_modules\\.bin\\electron.cmd"
         },
         "args" : ["."],
-        "outputCapture": "std"
+        "outputCapture": "std",
+        "env": {
+          "NODE_ENV": "development"
+        }
       }
     ]
   }
