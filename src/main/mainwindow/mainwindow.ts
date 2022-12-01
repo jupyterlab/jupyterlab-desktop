@@ -86,6 +86,11 @@ export class MainWindow {
         width: width,
         height: height - titleBarHeight
       });
+
+      setTimeout(() => {
+        titleBarView.view.webContents.invalidate();
+        labView.view.webContents.invalidate();
+      }, 200);
     };
 
     this._window.on('resize', () => {
