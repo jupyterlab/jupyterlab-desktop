@@ -336,24 +336,29 @@ export class JupyterServer {
 
     this._stopping = true;
 
-    this._stopServer = new Promise<void>((res, rej) => {
+    this._stopServer = new Promise<void>((resolve, reject) => {
       if (this._nbServer !== undefined) {
         if (process.platform === 'win32') {
           execFile(
             'taskkill',
             ['/PID', String(this._nbServer.pid), '/T', '/F'],
             () => {
-              res();
+              this._shutdownServer().then(() => {
+                this._stopping = false;
+                resolve();
+              });
             }
           );
         } else {
           this._nbServer.kill();
-          this._stopping = false;
-          res();
+          this._shutdownServer().then(() => {
+            this._stopping = false;
+            resolve();
+          });
         }
       } else {
         this._stopping = false;
-        res();
+        resolve();
       }
     });
     return this._stopServer;
@@ -368,6 +373,25 @@ export class JupyterServer {
   private _cleanupListeners(): void {
     this._nbServer.removeAllListeners();
     this._nbServer.stderr.removeAllListeners();
+  }
+
+  private _shutdownServer(): Promise<void> {
+    return new Promise<void>((resolve, reject) => {
+      const req = httpRequest(`http://localhost:${appConfig.url.port}/api/shutdown?_xsrf=${appConfig.token}`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `token ${appConfig.token}`
+        }
+      }, (r) => {
+        if (r.statusCode == 200) {
+          resolve();
+        }
+      });
+      req.on('error', function (err) {
+        reject(err);
+      });
+      req.end();
+    });
   }
 
   /**
