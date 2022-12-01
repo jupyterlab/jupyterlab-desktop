@@ -50,10 +50,22 @@ export class MainWindow {
     const titleBarView = new TitleBarView();
     this._window.addBrowserView(titleBarView.view);
     titleBarView.view.setBounds({ x: 0, y: 0, width: 1200, height: 100 });
-    titleBarView.load();
 
     this._window.addBrowserView(labView.view);
     labView.view.setBounds({ x: 0, y: 100, width: 1200, height: 700 });
+
+    // transfer focus to labView
+    this._window.webContents.on('focus', () => {
+      labView.view.webContents.focus();
+    });
+    titleBarView.view.webContents.on('focus', () => {
+      labView.view.webContents.focus();
+    });
+    labView.view.webContents.on('did-finish-load', () => {
+      labView.view.webContents.focus();
+    });
+
+    titleBarView.load();
     labView.load();
 
     this._titleBarView = titleBarView;
