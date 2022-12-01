@@ -377,16 +377,20 @@ export class JupyterServer {
 
   private _shutdownServer(): Promise<void> {
     return new Promise<void>((resolve, reject) => {
-      const req = httpRequest(`http://localhost:${appConfig.url.port}/api/shutdown?_xsrf=${appConfig.token}`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `token ${appConfig.token}`
+      const req = httpRequest(
+        `http://localhost:${appConfig.url.port}/api/shutdown?_xsrf=${appConfig.token}`,
+        {
+          method: 'POST',
+          headers: {
+            Authorization: `token ${appConfig.token}`
+          }
+        },
+        r => {
+          if (r.statusCode == 200) {
+            resolve();
+          }
         }
-      }, (r) => {
-        if (r.statusCode == 200) {
-          resolve();
-        }
-      });
+      );
       req.on('error', function (err) {
         reject(err);
       });
