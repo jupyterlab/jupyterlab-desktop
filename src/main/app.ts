@@ -723,6 +723,26 @@ export class JupyterApplication implements IApplication, IStatefulService {
     ipcMain.on('show-server-config-dialog', event => {
       this._showServerConfigDialog();
     });
+
+    ipcMain.on('logger-log', (event, params) => {
+      log.log(params);
+    });
+
+    ipcMain.on('logger-info', (event, params) => {
+      log.info(params);
+    });
+
+    ipcMain.on('logger-warn', (event, params) => {
+      log.warn(params);
+    });
+
+    ipcMain.on('logger-debug', (event, params) => {
+      log.debug(params);
+    });
+
+    ipcMain.on('logger-error', (event, params) => {
+      log.error(params);
+    });
   }
 
   private _showUpdateDialog(

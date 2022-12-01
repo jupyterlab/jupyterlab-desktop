@@ -1,5 +1,4 @@
 const { contextBridge, ipcRenderer } = require('electron');
-import * as electronLog from 'electron-log';
 
 type OpenFileEventListener = (path: string) => void;
 
@@ -31,19 +30,19 @@ contextBridge.exposeInMainWorld('electronAPI', {
   },
   logger: {
     log: (...params: any[]): void => {
-      electronLog.log(params);
+      ipcRenderer.send('logger-log', params);
     },
     info: (...params: any[]): void => {
-      electronLog.info(params);
+      ipcRenderer.send('logger-info', params);
     },
     warn: (...params: any[]): void => {
-      electronLog.warn(params);
+      ipcRenderer.send('logger-warn', params);
     },
     debug: (...params: any[]): void => {
-      electronLog.debug(params);
+      ipcRenderer.send('logger-debug', params);
     },
     error: (...params: any[]): void => {
-      electronLog.error(params);
+      ipcRenderer.send('logger-error', params);
     }
   }
 });
