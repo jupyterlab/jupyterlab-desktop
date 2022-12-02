@@ -386,6 +386,8 @@ export class JupyterServer {
         r => {
           if (r.statusCode == 200) {
             resolve();
+          } else {
+            reject(`Server failed to shutdown. Response code: ${r.statusCode}`);
           }
         }
       );

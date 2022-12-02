@@ -73,7 +73,7 @@ export class MainWindow {
 
     const resizeViews = () => {
       const titleBarHeight = 28;
-      const{width, height} = this._window.getContentBounds();
+      const { width, height } = this._window.getContentBounds();
       titleBarView.view.setBounds({
         x: 0,
         y: 0,
