@@ -343,10 +343,8 @@ export class JupyterServer {
             'taskkill',
             ['/PID', String(this._nbServer.pid), '/T', '/F'],
             () => {
-              this._shutdownServer().then(() => {
-                this._stopping = false;
-                resolve();
-              });
+              this._stopping = false;
+              resolve();
             }
           );
         } else {

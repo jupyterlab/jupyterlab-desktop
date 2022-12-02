@@ -73,7 +73,7 @@ export class MainWindow {
 
     const resizeViews = () => {
       const titleBarHeight = 28;
-      const [width, height] = this._window.getSize();
+      const{width, height} = this._window.getContentBounds();
       titleBarView.view.setBounds({
         x: 0,
         y: 0,
@@ -87,6 +87,9 @@ export class MainWindow {
         height: height - titleBarHeight
       });
 
+      // invalidate to trigger repaint
+      // TODO: on linux, electron 22 does not repaint properly after resize
+      // check if fixed in newer versions
       setTimeout(() => {
         titleBarView.view.webContents.invalidate();
         labView.view.webContents.invalidate();
