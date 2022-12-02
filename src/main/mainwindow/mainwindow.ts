@@ -71,38 +71,20 @@ export class MainWindow {
     this._titleBarView = titleBarView;
     this._labView = labView;
 
-    const resizeViews = () => {
-      const titleBarHeight = 28;
-      const [width, height] = this._window.getSize();
-      titleBarView.view.setBounds({
-        x: 0,
-        y: 0,
-        width: width,
-        height: titleBarHeight
-      });
-      labView.view.setBounds({
-        x: 0,
-        y: titleBarHeight,
-        width: width,
-        height: height - titleBarHeight
-      });
-    };
-
     this._window.on('resize', () => {
-      resizeViews();
+      this._resizeViews();
     });
     this._window.on('maximize', () => {
-      resizeViews();
-      // on linux a delayed resize is necessary
-      setTimeout(() => {
-        resizeViews();
-      }, 500);
+      this._resizeViewsDelayed();
+    });
+    this._window.on('unmaximize', () => {
+      this._resizeViewsDelayed();
     });
     this._window.on('restore', () => {
-      resizeViews();
+      this._resizeViewsDelayed();
     });
 
-    resizeViews();
+    this._resizeViews();
   }
 
   get titleBarView(): TitleBarView {
@@ -111,6 +93,38 @@ export class MainWindow {
 
   get labView(): LabView {
     return this._labView;
+  }
+
+  private _resizeViewsDelayed() {
+    // on linux a delayed resize is necessary
+    setTimeout(() => {
+      this._resizeViews();
+    }, 300);
+  }
+
+  private _resizeViews() {
+    const titleBarHeight = 28;
+    const { width, height } = this._window.getContentBounds();
+    this._titleBarView.view.setBounds({
+      x: 0,
+      y: 0,
+      width: width,
+      height: titleBarHeight
+    });
+    this._labView.view.setBounds({
+      x: 0,
+      y: titleBarHeight,
+      width: width,
+      height: height - titleBarHeight
+    });
+
+    // invalidate to trigger repaint
+    // TODO: on linux, electron 22 does not repaint properly after resize
+    // check if fixed in newer versions
+    setTimeout(() => {
+      this._titleBarView.view.webContents.invalidate();
+      this._labView.view.webContents.invalidate();
+    }, 200);
   }
 
   private _options: MainWindow.IOptions;
