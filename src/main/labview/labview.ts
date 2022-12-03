@@ -7,13 +7,14 @@ import {
   Menu,
   MenuItemConstructorOptions
 } from 'electron';
+import log from 'electron-log';
 import { request as httpRequest, IncomingMessage } from 'http';
 import { request as httpsRequest } from 'https';
 
 import * as path from 'path';
 import * as fs from 'fs';
 import * as ejs from 'ejs';
-import { appConfig } from '../utils';
+import { appConfig, getCurrentRootPath } from '../utils';
 import { MainWindow } from '../mainwindow/mainwindow';
 
 const DESKTOP_APP_ASSETS_PATH = 'desktop-app-assets';
@@ -40,8 +41,7 @@ export class LabView {
       }
     });
 
-    this._registerRequestHandlers();
-
+    this._registerBrowserEventHandlers();
     this._addFallbackContextMenu();
   }
 
@@ -50,13 +50,19 @@ export class LabView {
   }
 
   load() {
-    this._view.webContents.loadURL(
-      `${appConfig.url.protocol}//${appConfig.url.host}${
-        appConfig.url.pathname
-      }${DESKTOP_APP_ASSETS_PATH}/index.html?${encodeURIComponent(
-        JSON.stringify(this._options)
-      )}`
-    );
+    if (appConfig.frontEndMode === 'web-app') {
+      this._view.webContents.loadURL(
+        `${appConfig.url.protocol}//${appConfig.url.host}${appConfig.url.pathname}`
+      );
+    } else {
+      this._view.webContents.loadURL(
+        `${appConfig.url.protocol}//${appConfig.url.host}${
+          appConfig.url.pathname
+        }${DESKTOP_APP_ASSETS_PATH}/index.html?${encodeURIComponent(
+          JSON.stringify(this._options)
+        )}`
+      );
+    }
   }
 
   get jlabBaseUrl(): string {
@@ -69,6 +75,21 @@ export class LabView {
 
   get appAssetsDir(): string {
     return path.normalize(path.join(__dirname, '../../../'));
+  }
+
+  async openFile(path: string): Promise<void> {
+    const labDir = getCurrentRootPath();
+    let relPath = path.replace(labDir, '');
+    const winConvert = relPath.split('\\').join('/');
+    relPath = winConvert.replace('/', '');
+
+    await this._view.webContents.executeJavaScript(`
+      const lab = window.jupyterapp || window.jupyterlab;
+      if (lab) {
+        lab.commands.execute('docmanager:open', { path: '${relPath}' });
+      }
+      0; // response
+    `);
   }
 
   /**
@@ -119,7 +140,67 @@ export class LabView {
     });
   }
 
-  private _registerRequestHandlers() {
+  private _registerBrowserEventHandlers() {
+    this._view.webContents.on(
+      'console-message',
+      (event: Electron.Event, level: number, message: string) => {
+        switch (level) {
+          case 0:
+            log.verbose(message);
+            break;
+          case 1:
+            log.info(message);
+            break;
+          case 2:
+            log.warn(message);
+            break;
+          case 3:
+            log.error(message);
+            break;
+        }
+      }
+    );
+
+    if (appConfig.frontEndMode == 'web-app') {
+      this._registerServerFrontEndHandlers();
+    } else {
+      this._registerBundledFrontEndHandlers();
+    }
+  }
+
+  private _registerServerFrontEndHandlers() {
+    this._view.webContents.on('dom-ready', () => {
+      this._view.webContents.executeJavaScript(`
+        async function getLab() {
+          return new Promise((resolve) => {
+            const checkLab = () => {
+              return window.jupyterapp || window.jupyterlab;
+            };
+      
+            const lab = checkLab();
+            if (lab) {
+              resolve(lab);
+            }
+            let timer = setInterval(() => {
+              const lab = checkLab();
+              if (lab) {
+                clearTimeout(timer);
+                resolve(lab);
+              }
+            }, 200);
+          });
+        }
+
+        getLab().then((lab) => {
+          lab.restored.then(() => {
+            window.electronAPI.broadcastLabUIReady();
+          });
+        });
+      `);
+    });
+  }
+
+  private _registerBundledFrontEndHandlers() {
     this._view.webContents.session.protocol.interceptBufferProtocol(
       'http',
       this._handleInterceptBufferProtocol.bind(this)

@@ -29,6 +29,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   },
   setTheme: (theme: string) => {
     ipcRenderer.send('set-theme', theme);
+  },
+  setFrontEndMode: (mode: string) => {
+    ipcRenderer.send('set-frontend-mode', mode);
   }
 });
 

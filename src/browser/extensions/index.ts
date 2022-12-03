@@ -3,8 +3,6 @@
 
 import { PageConfig, URLExt } from '@jupyterlab/coreutils';
 
-const logger = window.electronAPI.logger;
-
 const extensions: any = {
   './electron-extension': require('./electron-extension'),
   /**
@@ -95,7 +93,7 @@ function loadExtensions(extensions: { [key: string]: any }): any[] {
         }
       }
     } catch (e) {
-      logger.error(e);
+      console.error(e);
     }
   }
   return enabled;

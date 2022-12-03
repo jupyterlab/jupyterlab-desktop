@@ -296,7 +296,7 @@ export class JupyterLabSessions
         let session = this._lastFocusedSession;
         session.browserWindow.restore();
         session.browserWindow.focus();
-        session.labView.view.webContents.send('open-file-event', path);
+        session.labView.openFile(path);
       })
       .catch((error: any) => {
         return;
@@ -469,10 +469,7 @@ if (process && process.type !== 'renderer' && !appConfig.isRemote) {
     app.on('open-file', (event: Electron.Event, path: string) => {
       ipcMain.once('lab-ui-ready', (event: Electron.Event) => {
         if (sessions?.lastFocusedSession) {
-          sessions.lastFocusedSession.labView.view.webContents.send(
-            'open-file-event',
-            path
-          );
+          sessions.lastFocusedSession.labView.openFile(path);
         }
       });
     });

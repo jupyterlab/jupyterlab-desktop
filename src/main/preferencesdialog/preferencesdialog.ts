@@ -20,6 +20,7 @@ export class PreferencesDialog {
     const installUpdatesAutomaticallyEnabled = process.platform === 'darwin';
     const installUpdatesAutomatically =
       installUpdatesAutomaticallyEnabled && options.installUpdatesAutomatically;
+    const frontEndMode = options.frontEndMode;
 
     const template = `
       <style>
@@ -72,11 +73,17 @@ export class PreferencesDialog {
             </jp-tab>
           
             <jp-tab-panel id="tab-appearance">
-              <jp-radio-group orientation="vertical">
+              <jp-radio-group orientation="horizontal">
                 <label slot="label">Theme</label>
                 <jp-radio name="theme" value="light" <%= theme === 'light' ? 'checked' : '' %>>Light</jp-radio>
                 <jp-radio name="theme" value="dark" <%= theme === 'dark' ? 'checked' : '' %>>Dark</jp-radio>
                 <jp-radio name="theme" value="system" <%= theme === 'system' ? 'checked' : '' %>>System</jp-radio>
+              </jp-radio-group>
+
+              <jp-radio-group orientation="horizontal">
+                <label slot="label">Front-end mode</label>
+                <jp-radio name="frontend-mode" value="web-app" <%= frontEndMode === 'web-app' ? 'checked' : '' %>>Web app</jp-radio>
+                <jp-radio name="frontend-mode" value="client-app" <%= frontEndMode === 'client-app' ? 'checked' : '' %>>Client app</jp-radio>
               </jp-radio-group>
             </jp-tab-panel>
 
@@ -121,6 +128,8 @@ export class PreferencesDialog {
         function handleApply() {
           const theme = document.querySelector('jp-radio[name="theme"].checked').value;
           window.electronAPI.setTheme(theme);
+          const frontEndMode = document.querySelector('jp-radio[name="frontend-mode"].checked').value;
+          window.electronAPI.setFrontEndMode(frontEndMode);
           window.electronAPI.setCheckForUpdatesAutomatically(autoUpdateCheckCheckbox.checked);
           window.electronAPI.setInstallUpdatesAutomatically(autoInstallCheckbox.checked);
 
@@ -132,7 +141,8 @@ export class PreferencesDialog {
       theme,
       checkForUpdatesAutomatically,
       installUpdatesAutomaticallyEnabled,
-      installUpdatesAutomatically
+      installUpdatesAutomatically,
+      frontEndMode
     });
   }
 
@@ -151,6 +161,7 @@ export class PreferencesDialog {
 export namespace PreferencesDialog {
   export interface IOptions {
     theme: 'system' | 'light' | 'dark';
+    frontEndMode: 'web-app' | 'client-app';
     checkForUpdatesAutomatically: boolean;
     installUpdatesAutomatically: boolean;
   }

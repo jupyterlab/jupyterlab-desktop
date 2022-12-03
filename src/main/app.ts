@@ -163,7 +163,8 @@ export class JupyterApplication implements IApplication, IStatefulService {
       pythonPath: '',
       condaRootPath: '',
       remoteURL: '',
-      theme: 'system'
+      theme: 'system',
+      frontEndMode: 'web-app'
     };
 
     this.registerStatefulService(this).then(
@@ -207,6 +208,11 @@ export class JupyterApplication implements IApplication, IStatefulService {
         if (!(appState.theme === 'light' || appState.theme === 'dark')) {
           appState.theme = 'system';
         }
+
+        if (appState.frontEndMode !== 'client-app') {
+          appState.frontEndMode = 'web-app';
+        }
+        appConfig.frontEndMode = appState.frontEndMode;
 
         if (appState.checkForUpdatesAutomatically !== false) {
           let checkDirectly = true;
@@ -614,12 +620,6 @@ export class JupyterApplication implements IApplication, IStatefulService {
       });
     });
 
-    ipcMain.handle('get-current-root-path', event => {
-      return new Promise<any>((resolve, reject) => {
-        resolve(process.env.JLAB_DESKTOP_HOME || app.getPath('home'));
-      });
-    });
-
     ipcMain.on('show-invalid-python-path-message', (event, path) => {
       const requirements = this._registry.getRequirements();
       const reqVersions = requirements.map(
@@ -650,6 +650,10 @@ export class JupyterApplication implements IApplication, IStatefulService {
 
     ipcMain.on('set-theme', (_event, theme) => {
       this._applicationState.theme = theme;
+    });
+
+    ipcMain.on('set-frontend-mode', (_event, mode) => {
+      this._applicationState.frontEndMode = mode;
     });
 
     ipcMain.on('restart-app', _event => {
@@ -722,26 +726,6 @@ export class JupyterApplication implements IApplication, IStatefulService {
 
     ipcMain.on('show-server-config-dialog', event => {
       this._showServerConfigDialog();
-    });
-
-    ipcMain.on('logger-log', (event, params) => {
-      log.log(params);
-    });
-
-    ipcMain.on('logger-info', (event, params) => {
-      log.info(params);
-    });
-
-    ipcMain.on('logger-warn', (event, params) => {
-      log.warn(params);
-    });
-
-    ipcMain.on('logger-debug', (event, params) => {
-      log.debug(params);
-    });
-
-    ipcMain.on('logger-error', (event, params) => {
-      log.error(params);
     });
   }
 
@@ -829,6 +813,7 @@ export class JupyterApplication implements IApplication, IStatefulService {
 
     const dialog = new PreferencesDialog({
       theme: this._applicationState.theme,
+      frontEndMode: this._applicationState.frontEndMode,
       checkForUpdatesAutomatically:
         this._applicationState.checkForUpdatesAutomatically !== false,
       installUpdatesAutomatically:
@@ -908,6 +893,7 @@ export namespace JupyterApplication {
     persistSessionData?: boolean;
     clearSessionDataOnNextLaunch?: boolean;
     theme: 'system' | 'light' | 'dark';
+    frontEndMode: 'web-app' | 'client-app';
   }
 }
 

@@ -25,13 +25,15 @@ export interface IAppConfiguration {
   cookies?: Electron.Cookie[];
   persistSessionData: boolean;
   clearSessionDataOnNextLaunch?: boolean;
+  frontEndMode: 'web-app' | 'client-app';
 }
 
 export const appConfig: IAppConfiguration = {
   isRemote: false,
   url: undefined,
   token: 'jlab-token',
-  persistSessionData: true
+  persistSessionData: true,
+  frontEndMode: 'web-app'
 };
 
 export interface ISaveOptions {
@@ -379,6 +381,10 @@ export function getEnvironmentPath(environment: IPythonEnvironment): string {
   }
 
   return envPath;
+}
+
+export function getCurrentRootPath(): string {
+  return process.env.JLAB_DESKTOP_HOME || app.getPath('home');
 }
 
 export function clearSession(session: Electron.Session): Promise<void> {
