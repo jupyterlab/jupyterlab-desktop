@@ -4,6 +4,7 @@
 import {
   BrowserView,
   clipboard,
+  ipcMain,
   Menu,
   MenuItemConstructorOptions
 } from 'electron';
@@ -14,7 +15,7 @@ import { request as httpsRequest } from 'https';
 import * as path from 'path';
 import * as fs from 'fs';
 import * as ejs from 'ejs';
-import { appConfig, getCurrentRootPath } from '../utils';
+import { appConfig, getCurrentRootPath, isDarkTheme } from '../utils';
 import { MainWindow } from '../mainwindow/mainwindow';
 
 const DESKTOP_APP_ASSETS_PATH = 'desktop-app-assets';
@@ -160,6 +161,20 @@ export class LabView {
         }
       }
     );
+
+    ipcMain.on('set-theme', async (_event, theme) => {
+      const themeName = isDarkTheme(theme)
+        ? 'JupyterLab Dark'
+        : 'JupyterLab Light';
+
+      await this._view.webContents.executeJavaScript(`
+        const lab = window.jupyterapp || window.jupyterlab;
+        if (lab) {
+          lab.commands.execute('apputils:change-theme', { theme: '${themeName}' });
+        }
+        0; // response
+      `);
+    });
 
     if (appConfig.frontEndMode == 'web-app') {
       this._registerServerFrontEndHandlers();

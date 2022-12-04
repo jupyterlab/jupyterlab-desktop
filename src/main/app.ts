@@ -9,7 +9,6 @@ import {
   ipcMain,
   Menu,
   MenuItemConstructorOptions,
-  nativeTheme,
   session,
   shell
 } from 'electron';
@@ -32,7 +31,13 @@ import * as fs from 'fs';
 import { AddressInfo, createServer } from 'net';
 import { randomBytes } from 'crypto';
 
-import { appConfig, clearSession, getAppDir, getUserDataDir } from './utils';
+import {
+  appConfig,
+  clearSession,
+  getAppDir,
+  getUserDataDir,
+  isDarkTheme
+} from './utils';
 import { execFile } from 'child_process';
 import { JupyterServer, waitUntilServerIsUp } from './server';
 import { connectAndGetServerInfo, IJupyterServerInfo } from './connect';
@@ -208,6 +213,7 @@ export class JupyterApplication implements IApplication, IStatefulService {
         if (!(appState.theme === 'light' || appState.theme === 'dark')) {
           appState.theme = 'system';
         }
+        appConfig.theme = appState.theme;
 
         if (appState.frontEndMode !== 'client-app') {
           appState.frontEndMode = 'web-app';
@@ -721,7 +727,7 @@ export class JupyterApplication implements IApplication, IStatefulService {
     });
 
     ipcMain.handle('is-dark-theme', event => {
-      return this._isDarkTheme();
+      return isDarkTheme(this._applicationState.theme);
     });
 
     ipcMain.on('show-server-config-dialog', event => {
@@ -832,16 +838,6 @@ export class JupyterApplication implements IApplication, IStatefulService {
   private _showAboutDialog() {
     const dialog = new AboutDialog();
     dialog.load();
-  }
-
-  private _isDarkTheme() {
-    if (this._applicationState.theme === 'light') {
-      return false;
-    } else if (this._applicationState.theme === 'dark') {
-      return true;
-    } else {
-      return nativeTheme.shouldUseDarkColors;
-    }
   }
 
   private _quit(): void {

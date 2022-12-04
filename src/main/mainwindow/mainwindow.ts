@@ -4,6 +4,7 @@
 import { BrowserWindow } from 'electron';
 import { LabView } from '../labview/labview';
 import { TitleBarView } from '../titlebarview/titlebarview';
+import { appConfig, isDarkTheme } from '../utils';
 
 export class MainWindow {
   constructor(options: MainWindow.IOptions) {
@@ -19,7 +20,8 @@ export class MainWindow {
       show: true,
       title: 'JupyterLab',
       titleBarStyle: 'hidden',
-      frame: process.platform === 'darwin'
+      frame: process.platform === 'darwin',
+      backgroundColor: isDarkTheme(appConfig.theme) ? '#212121' : '#ffffff'
     });
 
     this._window.setMenuBarVisibility(false);
