@@ -52,7 +52,7 @@ export class LabView {
 
   load() {
     if (appConfig.frontEndMode === 'web-app') {
-      this._view.webContents.loadURL(`${appConfig.url.href}`);
+      this._view.webContents.loadURL(appConfig.url.href);
     } else {
       this._view.webContents.loadURL(
         `${appConfig.url.protocol}//${appConfig.url.host}${
