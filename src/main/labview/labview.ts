@@ -86,9 +86,11 @@ export class LabView {
         relPath = winConvert.replace('/', '');
 
         await this._view.webContents.executeJavaScript(`
-          const lab = window.jupyterapp || window.jupyterlab;
-          if (lab) {
-            lab.commands.execute('docmanager:open', { path: '${relPath}' });
+          {
+            const lab = window.jupyterapp || window.jupyterlab;
+            if (lab) {
+              lab.commands.execute('docmanager:open', { path: '${relPath}' });
+            }
           }
           0; // response
         `);
@@ -194,12 +196,14 @@ export class LabView {
       : 'JupyterLab Light';
 
     await this._view.webContents.executeJavaScript(`
-      const lab = window.jupyterapp || window.jupyterlab;
-      if (lab) {
-        const existingTheme = document.body.dataset?.jpThemeName;
-        const newTheme = '${themeName}';
-        if (existingTheme !== newTheme) {
-          lab.commands.execute('apputils:change-theme', { theme: newTheme });
+      {
+        const lab = window.jupyterapp || window.jupyterlab;
+        if (lab) {
+          const existingTheme = document.body.dataset?.jpThemeName;
+          const newTheme = '${themeName}';
+          if (existingTheme !== newTheme) {
+            lab.commands.execute('apputils:change-theme', { theme: newTheme });
+          }
         }
       }
       0; // response

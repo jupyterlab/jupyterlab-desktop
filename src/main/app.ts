@@ -829,7 +829,7 @@ export class JupyterApplication implements IApplication, IStatefulService {
 
     const dialog = new PreferencesDialog({
       theme: this._applicationState.theme,
-      syncJupyterLabTheme: true,
+      syncJupyterLabTheme: this._applicationState.syncJupyterLabTheme,
       frontEndMode: this._applicationState.frontEndMode,
       checkForUpdatesAutomatically:
         this._applicationState.checkForUpdatesAutomatically !== false,
