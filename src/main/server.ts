@@ -58,6 +58,7 @@ function createLaunchScript(
     '-m',
     'jupyterlab',
     '--no-browser',
+    '--expose-app-in-browser',
     `--LabServerApp.schemas_dir="${schemasDir}"`,
     // do not use any config file
     '--JupyterApp.config_file_name=""',

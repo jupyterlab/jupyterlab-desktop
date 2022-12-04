@@ -12,15 +12,12 @@ import { JupyterLabSession } from '../main/sessions';
 import * as React from 'react';
 import { LabShell } from '@jupyterlab/application';
 
-const logger = window.electronAPI.logger;
-
 export class Application extends React.Component<
   Application.IProps,
   Application.IState
 > {
   constructor(props: Application.IProps) {
     super(props);
-    this._setLabDir();
     this._preventDefaults();
     this._renderEmpty = this._renderEmpty.bind(this);
 
@@ -41,10 +38,9 @@ export class Application extends React.Component<
 
   private _serverReady(data: IServerFactory.IServerStarted): void {
     if (data.error) {
-      logger.error(data.error);
+      console.error(data.error);
       return;
     }
-    this._registerFileHandler();
 
     const config: any = data.pageConfig;
 
@@ -68,10 +64,19 @@ export class Application extends React.Component<
 
     this._setupLab().then(lab => {
       this._lab = lab;
+
+      const exposeAppInBrowser =
+        (PageConfig.getOption('exposeAppInBrowser') || '').toLowerCase() ===
+        'true';
+
+      if (exposeAppInBrowser) {
+        window.jupyterapp = lab;
+      }
+
       try {
         this._lab.start({ ignorePlugins: this._ignorePlugins });
       } catch (e) {
-        logger.log(e);
+        console.log(e);
       }
       this._lab.restored.then(() => {
         window.electronAPI.broadcastLabUIReady();
@@ -94,7 +99,7 @@ export class Application extends React.Component<
       try {
         lab.registerPluginModules(extensions.jupyterlab);
       } catch (e) {
-        logger.error(e);
+        console.error(e);
       }
       return lab;
     });
@@ -118,35 +123,6 @@ export class Application extends React.Component<
       event.preventDefault();
     };
   }
-
-  private _registerFileHandler(): void {
-    document.ondrop = (event: DragEvent) => {
-      event.preventDefault();
-      let files = event.dataTransfer.files;
-      for (let i = 0; i < files.length; i++) {
-        this._openFile(files[i].path);
-      }
-    };
-
-    window.electronAPI.onOpenFileEvent(this._openFile.bind(this));
-  }
-
-  private _openFile(path: string) {
-    if (this._labDir) {
-      let relPath = path.replace(this._labDir, '');
-      let winConvert = relPath.split('\\').join('/');
-      relPath = winConvert.replace('/', '');
-      this._lab.commands.execute('docmanager:open', { path: relPath });
-    }
-  }
-
-  private _setLabDir() {
-    window.electronAPI.getCurrentRootPath().then(path => {
-      this._labDir = path;
-    });
-  }
-
-  private _labDir: string;
 
   private _lab: ElectronJupyterLab;
 

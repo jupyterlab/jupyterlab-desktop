@@ -4,16 +4,18 @@
 import {
   BrowserView,
   clipboard,
+  ipcMain,
   Menu,
   MenuItemConstructorOptions
 } from 'electron';
+import log from 'electron-log';
 import { request as httpRequest, IncomingMessage } from 'http';
 import { request as httpsRequest } from 'https';
 
 import * as path from 'path';
 import * as fs from 'fs';
 import * as ejs from 'ejs';
-import { appConfig } from '../utils';
+import { appConfig, getCurrentRootPath, isDarkTheme } from '../utils';
 import { MainWindow } from '../mainwindow/mainwindow';
 
 const DESKTOP_APP_ASSETS_PATH = 'desktop-app-assets';
@@ -40,8 +42,7 @@ export class LabView {
       }
     });
 
-    this._registerRequestHandlers();
-
+    this._registerBrowserEventHandlers();
     this._addFallbackContextMenu();
   }
 
@@ -50,13 +51,17 @@ export class LabView {
   }
 
   load() {
-    this._view.webContents.loadURL(
-      `${appConfig.url.protocol}//${appConfig.url.host}${
-        appConfig.url.pathname
-      }${DESKTOP_APP_ASSETS_PATH}/index.html?${encodeURIComponent(
-        JSON.stringify(this._options)
-      )}`
-    );
+    if (appConfig.frontEndMode === 'web-app') {
+      this._view.webContents.loadURL(appConfig.url.href);
+    } else {
+      this._view.webContents.loadURL(
+        `${appConfig.url.protocol}//${appConfig.url.host}${
+          appConfig.url.pathname
+        }${DESKTOP_APP_ASSETS_PATH}/index.html?${encodeURIComponent(
+          JSON.stringify(this._options)
+        )}`
+      );
+    }
   }
 
   get jlabBaseUrl(): string {
@@ -69,6 +74,32 @@ export class LabView {
 
   get appAssetsDir(): string {
     return path.normalize(path.join(__dirname, '../../../'));
+  }
+
+  async openFile(path: string): Promise<void> {
+    try {
+      const stats = fs.lstatSync(path);
+      if (stats.isFile()) {
+        const labDir = getCurrentRootPath();
+        let relPath = path.replace(labDir, '');
+        const winConvert = relPath.split('\\').join('/');
+        relPath = winConvert.replace('/', '');
+
+        await this._view.webContents.executeJavaScript(`
+          {
+            const lab = window.jupyterapp || window.jupyterlab;
+            if (lab) {
+              lab.commands.execute('docmanager:open', { path: '${relPath}' });
+            }
+          }
+          0; // response
+        `);
+      } else {
+        log.error(`Valid file not found at path: ${path}`);
+      }
+    } catch (error) {
+      log.error(`Failed to open file at path: ${path}. Error: `, error);
+    }
   }
 
   /**
@@ -119,7 +150,99 @@ export class LabView {
     });
   }
 
-  private _registerRequestHandlers() {
+  private _registerBrowserEventHandlers() {
+    this._view.webContents.on(
+      'console-message',
+      (event: Electron.Event, level: number, message: string) => {
+        switch (level) {
+          case 0:
+            log.verbose(message);
+            break;
+          case 1:
+            log.info(message);
+            break;
+          case 2:
+            log.warn(message);
+            break;
+          case 3:
+            log.error(message);
+            break;
+        }
+      }
+    );
+
+    if (appConfig.syncJupyterLabTheme) {
+      ipcMain.once('lab-ui-ready', () => {
+        this._setJupyterLabTheme(appConfig.theme);
+      });
+    }
+
+    ipcMain.on('set-theme', async (_event, theme) => {
+      if (appConfig.syncJupyterLabTheme) {
+        await this._setJupyterLabTheme(theme);
+      }
+    });
+
+    if (appConfig.frontEndMode == 'web-app') {
+      this._registerWebAppFrontEndHandlers();
+    } else {
+      this._registerClientAppFrontEndHandlers();
+    }
+  }
+
+  private async _setJupyterLabTheme(theme: string) {
+    const themeName = isDarkTheme(theme)
+      ? 'JupyterLab Dark'
+      : 'JupyterLab Light';
+
+    await this._view.webContents.executeJavaScript(`
+      {
+        const lab = window.jupyterapp || window.jupyterlab;
+        if (lab) {
+          const existingTheme = document.body.dataset?.jpThemeName;
+          const newTheme = '${themeName}';
+          if (existingTheme !== newTheme) {
+            lab.commands.execute('apputils:change-theme', { theme: newTheme });
+          }
+        }
+      }
+      0; // response
+    `);
+  }
+
+  private _registerWebAppFrontEndHandlers() {
+    this._view.webContents.on('dom-ready', () => {
+      this._view.webContents.executeJavaScript(`
+        async function getLab() {
+          return new Promise((resolve) => {
+            const checkLab = () => {
+              return window.jupyterapp || window.jupyterlab;
+            };
+      
+            const lab = checkLab();
+            if (lab) {
+              resolve(lab);
+            }
+            let timer = setInterval(() => {
+              const lab = checkLab();
+              if (lab) {
+                clearTimeout(timer);
+                resolve(lab);
+              }
+            }, 200);
+          });
+        }
+
+        getLab().then((lab) => {
+          lab.restored.then(() => {
+            window.electronAPI.broadcastLabUIReady();
+          });
+        });
+      `);
+    });
+  }
+
+  private _registerClientAppFrontEndHandlers() {
     this._view.webContents.session.protocol.interceptBufferProtocol(
       'http',
       this._handleInterceptBufferProtocol.bind(this)

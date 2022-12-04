@@ -11,20 +11,12 @@ import * as ReactDOM from 'react-dom';
 
 import { JupyterLabSession } from '../main/sessions';
 
-const logger = window.electronAPI.logger;
-
 declare global {
   // eslint-disable-next-line @typescript-eslint/naming-convention
   interface Window {
     isElectron?: boolean;
   }
 }
-
-console.log = logger.log;
-console.error = logger.error;
-console.warn = logger.warn;
-console.info = logger.info;
-console.debug = logger.debug;
 
 function main(): void {
   const optionsStr = decodeURIComponent(window.location.search);

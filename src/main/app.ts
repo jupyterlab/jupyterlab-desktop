@@ -9,7 +9,6 @@ import {
   ipcMain,
   Menu,
   MenuItemConstructorOptions,
-  nativeTheme,
   session,
   shell
 } from 'electron';
@@ -32,7 +31,13 @@ import * as fs from 'fs';
 import { AddressInfo, createServer } from 'net';
 import { randomBytes } from 'crypto';
 
-import { appConfig, clearSession, getAppDir, getUserDataDir } from './utils';
+import {
+  appConfig,
+  clearSession,
+  getAppDir,
+  getUserDataDir,
+  isDarkTheme
+} from './utils';
 import { execFile } from 'child_process';
 import { JupyterServer, waitUntilServerIsUp } from './server';
 import { connectAndGetServerInfo, IJupyterServerInfo } from './connect';
@@ -163,7 +168,9 @@ export class JupyterApplication implements IApplication, IStatefulService {
       pythonPath: '',
       condaRootPath: '',
       remoteURL: '',
-      theme: 'system'
+      theme: 'system',
+      syncJupyterLabTheme: true,
+      frontEndMode: 'web-app'
     };
 
     this.registerStatefulService(this).then(
@@ -207,6 +214,17 @@ export class JupyterApplication implements IApplication, IStatefulService {
         if (!(appState.theme === 'light' || appState.theme === 'dark')) {
           appState.theme = 'system';
         }
+        appConfig.theme = appState.theme;
+
+        if (appState.syncJupyterLabTheme !== false) {
+          appState.syncJupyterLabTheme = true;
+        }
+        appConfig.syncJupyterLabTheme = appState.syncJupyterLabTheme;
+
+        if (appState.frontEndMode !== 'client-app') {
+          appState.frontEndMode = 'web-app';
+        }
+        appConfig.frontEndMode = appState.frontEndMode;
 
         if (appState.checkForUpdatesAutomatically !== false) {
           let checkDirectly = true;
@@ -614,12 +632,6 @@ export class JupyterApplication implements IApplication, IStatefulService {
       });
     });
 
-    ipcMain.handle('get-current-root-path', event => {
-      return new Promise<any>((resolve, reject) => {
-        resolve(process.env.JLAB_DESKTOP_HOME || app.getPath('home'));
-      });
-    });
-
     ipcMain.on('show-invalid-python-path-message', (event, path) => {
       const requirements = this._registry.getRequirements();
       const reqVersions = requirements.map(
@@ -650,6 +662,14 @@ export class JupyterApplication implements IApplication, IStatefulService {
 
     ipcMain.on('set-theme', (_event, theme) => {
       this._applicationState.theme = theme;
+    });
+
+    ipcMain.on('set-sync-jupyterlab-theme', (_event, sync) => {
+      this._applicationState.syncJupyterLabTheme = sync;
+    });
+
+    ipcMain.on('set-frontend-mode', (_event, mode) => {
+      this._applicationState.frontEndMode = mode;
     });
 
     ipcMain.on('restart-app', _event => {
@@ -717,31 +737,11 @@ export class JupyterApplication implements IApplication, IStatefulService {
     });
 
     ipcMain.handle('is-dark-theme', event => {
-      return this._isDarkTheme();
+      return isDarkTheme(this._applicationState.theme);
     });
 
     ipcMain.on('show-server-config-dialog', event => {
       this._showServerConfigDialog();
-    });
-
-    ipcMain.on('logger-log', (event, params) => {
-      log.log(params);
-    });
-
-    ipcMain.on('logger-info', (event, params) => {
-      log.info(params);
-    });
-
-    ipcMain.on('logger-warn', (event, params) => {
-      log.warn(params);
-    });
-
-    ipcMain.on('logger-debug', (event, params) => {
-      log.debug(params);
-    });
-
-    ipcMain.on('logger-error', (event, params) => {
-      log.error(params);
     });
   }
 
@@ -829,6 +829,8 @@ export class JupyterApplication implements IApplication, IStatefulService {
 
     const dialog = new PreferencesDialog({
       theme: this._applicationState.theme,
+      syncJupyterLabTheme: this._applicationState.syncJupyterLabTheme,
+      frontEndMode: this._applicationState.frontEndMode,
       checkForUpdatesAutomatically:
         this._applicationState.checkForUpdatesAutomatically !== false,
       installUpdatesAutomatically:
@@ -847,16 +849,6 @@ export class JupyterApplication implements IApplication, IStatefulService {
   private _showAboutDialog() {
     const dialog = new AboutDialog();
     dialog.load();
-  }
-
-  private _isDarkTheme() {
-    if (this._applicationState.theme === 'light') {
-      return false;
-    } else if (this._applicationState.theme === 'dark') {
-      return true;
-    } else {
-      return nativeTheme.shouldUseDarkColors;
-    }
   }
 
   private _quit(): void {
@@ -908,6 +900,8 @@ export namespace JupyterApplication {
     persistSessionData?: boolean;
     clearSessionDataOnNextLaunch?: boolean;
     theme: 'system' | 'light' | 'dark';
+    syncJupyterLabTheme: boolean;
+    frontEndMode: 'web-app' | 'client-app';
   }
 }
 

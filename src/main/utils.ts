@@ -14,7 +14,7 @@ import { IService } from './main';
 import * as path from 'path';
 import * as fs from 'fs';
 import log from 'electron-log';
-import { app } from 'electron';
+import { app, nativeTheme } from 'electron';
 import { IPythonEnvironment } from './tokens';
 
 export interface IAppConfiguration {
@@ -25,13 +25,19 @@ export interface IAppConfiguration {
   cookies?: Electron.Cookie[];
   persistSessionData: boolean;
   clearSessionDataOnNextLaunch?: boolean;
+  frontEndMode: 'web-app' | 'client-app';
+  theme: 'system' | 'light' | 'dark';
+  syncJupyterLabTheme: boolean;
 }
 
 export const appConfig: IAppConfiguration = {
   isRemote: false,
   url: undefined,
   token: 'jlab-token',
-  persistSessionData: true
+  persistSessionData: true,
+  frontEndMode: 'web-app',
+  theme: 'system',
+  syncJupyterLabTheme: true
 };
 
 export interface ISaveOptions {
@@ -379,6 +385,20 @@ export function getEnvironmentPath(environment: IPythonEnvironment): string {
   }
 
   return envPath;
+}
+
+export function getCurrentRootPath(): string {
+  return process.env.JLAB_DESKTOP_HOME || app.getPath('home');
+}
+
+export function isDarkTheme(themeType: string) {
+  if (themeType === 'light') {
+    return false;
+  } else if (themeType === 'dark') {
+    return true;
+  } else {
+    return nativeTheme.shouldUseDarkColors;
+  }
 }
 
 export function clearSession(session: Electron.Session): Promise<void> {

@@ -15,8 +15,12 @@ export class PreferencesDialog {
       preload: path.join(__dirname, './preload.js')
     });
 
-    const theme = options.theme;
-    const checkForUpdatesAutomatically = options.checkForUpdatesAutomatically;
+    const {
+      theme,
+      syncJupyterLabTheme,
+      frontEndMode,
+      checkForUpdatesAutomatically
+    } = options;
     const installUpdatesAutomaticallyEnabled = process.platform === 'darwin';
     const installUpdatesAutomatically =
       installUpdatesAutomaticallyEnabled && options.installUpdatesAutomatically;
@@ -72,12 +76,23 @@ export class PreferencesDialog {
             </jp-tab>
           
             <jp-tab-panel id="tab-appearance">
-              <jp-radio-group orientation="vertical">
+              <jp-radio-group orientation="horizontal">
                 <label slot="label">Theme</label>
                 <jp-radio name="theme" value="light" <%= theme === 'light' ? 'checked' : '' %>>Light</jp-radio>
                 <jp-radio name="theme" value="dark" <%= theme === 'dark' ? 'checked' : '' %>>Dark</jp-radio>
                 <jp-radio name="theme" value="system" <%= theme === 'system' ? 'checked' : '' %>>System</jp-radio>
               </jp-radio-group>
+              <jp-checkbox id='checkbox-sync-jupyterlab-theme' type='checkbox' <%= syncJupyterLabTheme ? 'checked' : '' %>>Sync JupyterLab theme</jp-checkbox>
+
+              <jp-radio-group orientation="horizontal">
+                <label slot="label">JupyterLab UI mode</label>
+                <jp-radio name="frontend-mode" value="web-app" <%= frontEndMode === 'web-app' ? 'checked' : '' %> title="Use the server supplied web application as JupyterLab UI">Web app</jp-radio>
+                <jp-radio name="frontend-mode" value="client-app" <%= frontEndMode === 'client-app' ? 'checked' : '' %> title="Use the bundled client application as JupyterLab UI">Client app</jp-radio>
+              </jp-radio-group>
+
+              <script>
+              const syncJupyterLabThemeCheckbox = document.getElementById('checkbox-sync-jupyterlab-theme');
+              </script>
             </jp-tab-panel>
 
             <jp-tab-panel id="tab-updates">
@@ -121,6 +136,9 @@ export class PreferencesDialog {
         function handleApply() {
           const theme = document.querySelector('jp-radio[name="theme"].checked').value;
           window.electronAPI.setTheme(theme);
+          window.electronAPI.setSyncJupyterLabTheme(syncJupyterLabThemeCheckbox.checked);
+          const frontEndMode = document.querySelector('jp-radio[name="frontend-mode"].checked').value;
+          window.electronAPI.setFrontEndMode(frontEndMode);
           window.electronAPI.setCheckForUpdatesAutomatically(autoUpdateCheckCheckbox.checked);
           window.electronAPI.setInstallUpdatesAutomatically(autoInstallCheckbox.checked);
 
@@ -130,9 +148,11 @@ export class PreferencesDialog {
     `;
     this._pageBody = ejs.render(template, {
       theme,
+      syncJupyterLabTheme,
       checkForUpdatesAutomatically,
       installUpdatesAutomaticallyEnabled,
-      installUpdatesAutomatically
+      installUpdatesAutomatically,
+      frontEndMode
     });
   }
 
@@ -151,6 +171,8 @@ export class PreferencesDialog {
 export namespace PreferencesDialog {
   export interface IOptions {
     theme: 'system' | 'light' | 'dark';
+    syncJupyterLabTheme: boolean;
+    frontEndMode: 'web-app' | 'client-app';
     checkForUpdatesAutomatically: boolean;
     installUpdatesAutomatically: boolean;
   }
