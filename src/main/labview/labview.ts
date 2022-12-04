@@ -52,9 +52,7 @@ export class LabView {
 
   load() {
     if (appConfig.frontEndMode === 'web-app') {
-      this._view.webContents.loadURL(
-        `${appConfig.url.href}`
-      );
+      this._view.webContents.loadURL(`${appConfig.url.href}`);
     } else {
       this._view.webContents.loadURL(
         `${appConfig.url.protocol}//${appConfig.url.host}${
@@ -86,7 +84,7 @@ export class LabView {
         let relPath = path.replace(labDir, '');
         const winConvert = relPath.split('\\').join('/');
         relPath = winConvert.replace('/', '');
-    
+
         await this._view.webContents.executeJavaScript(`
           const lab = window.jupyterapp || window.jupyterlab;
           if (lab) {
@@ -95,7 +93,7 @@ export class LabView {
           0; // response
         `);
       } else {
-        log.error(`Valid file not found at path: ${path}`);  
+        log.error(`Valid file not found at path: ${path}`);
       }
     } catch (error) {
       log.error(`Failed to open file at path: ${path}. Error: `, error);
