@@ -664,6 +664,10 @@ export class JupyterApplication implements IApplication, IStatefulService {
       this._applicationState.theme = theme;
     });
 
+    ipcMain.on('set-sync-jupyterlab-theme', (_event, sync) => {
+      this._applicationState.syncJupyterLabTheme = sync;
+    });
+
     ipcMain.on('set-frontend-mode', (_event, mode) => {
       this._applicationState.frontEndMode = mode;
     });

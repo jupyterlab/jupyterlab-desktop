@@ -30,6 +30,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   setTheme: (theme: string) => {
     ipcRenderer.send('set-theme', theme);
   },
+  setSyncJupyterLabTheme: (sync: boolean) => {
+    ipcRenderer.send('set-sync-jupyterlab-theme', sync);
+  },
   setFrontEndMode: (mode: string) => {
     ipcRenderer.send('set-frontend-mode', mode);
   }
