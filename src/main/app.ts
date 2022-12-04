@@ -169,6 +169,7 @@ export class JupyterApplication implements IApplication, IStatefulService {
       condaRootPath: '',
       remoteURL: '',
       theme: 'system',
+      syncJupyterLabTheme: true,
       frontEndMode: 'web-app'
     };
 
@@ -214,6 +215,11 @@ export class JupyterApplication implements IApplication, IStatefulService {
           appState.theme = 'system';
         }
         appConfig.theme = appState.theme;
+
+        if (appState.syncJupyterLabTheme !== false) {
+          appState.syncJupyterLabTheme = true;
+        }
+        appConfig.syncJupyterLabTheme = appState.syncJupyterLabTheme;
 
         if (appState.frontEndMode !== 'client-app') {
           appState.frontEndMode = 'web-app';
@@ -819,6 +825,7 @@ export class JupyterApplication implements IApplication, IStatefulService {
 
     const dialog = new PreferencesDialog({
       theme: this._applicationState.theme,
+      syncJupyterLabTheme: true,
       frontEndMode: this._applicationState.frontEndMode,
       checkForUpdatesAutomatically:
         this._applicationState.checkForUpdatesAutomatically !== false,
@@ -889,6 +896,7 @@ export namespace JupyterApplication {
     persistSessionData?: boolean;
     clearSessionDataOnNextLaunch?: boolean;
     theme: 'system' | 'light' | 'dark';
+    syncJupyterLabTheme: boolean;
     frontEndMode: 'web-app' | 'client-app';
   }
 }

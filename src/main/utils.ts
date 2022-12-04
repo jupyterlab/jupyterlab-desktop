@@ -27,6 +27,7 @@ export interface IAppConfiguration {
   clearSessionDataOnNextLaunch?: boolean;
   frontEndMode: 'web-app' | 'client-app';
   theme: 'system' | 'light' | 'dark';
+  syncJupyterLabTheme: boolean;
 }
 
 export const appConfig: IAppConfiguration = {
@@ -35,7 +36,8 @@ export const appConfig: IAppConfiguration = {
   token: 'jlab-token',
   persistSessionData: true,
   frontEndMode: 'web-app',
-  theme: 'system'
+  theme: 'system',
+  syncJupyterLabTheme: true
 };
 
 export interface ISaveOptions {

@@ -53,7 +53,7 @@ export class LabView {
   load() {
     if (appConfig.frontEndMode === 'web-app') {
       this._view.webContents.loadURL(
-        `${appConfig.url.protocol}//${appConfig.url.host}${appConfig.url.pathname}`
+        `${appConfig.url.href}`
       );
     } else {
       this._view.webContents.loadURL(
@@ -79,18 +79,27 @@ export class LabView {
   }
 
   async openFile(path: string): Promise<void> {
-    const labDir = getCurrentRootPath();
-    let relPath = path.replace(labDir, '');
-    const winConvert = relPath.split('\\').join('/');
-    relPath = winConvert.replace('/', '');
-
-    await this._view.webContents.executeJavaScript(`
-      const lab = window.jupyterapp || window.jupyterlab;
-      if (lab) {
-        lab.commands.execute('docmanager:open', { path: '${relPath}' });
+    try {
+      const stats = fs.lstatSync(path);
+      if (stats.isFile()) {
+        const labDir = getCurrentRootPath();
+        let relPath = path.replace(labDir, '');
+        const winConvert = relPath.split('\\').join('/');
+        relPath = winConvert.replace('/', '');
+    
+        await this._view.webContents.executeJavaScript(`
+          const lab = window.jupyterapp || window.jupyterlab;
+          if (lab) {
+            lab.commands.execute('docmanager:open', { path: '${relPath}' });
+          }
+          0; // response
+        `);
+      } else {
+        log.error(`Valid file not found at path: ${path}`);  
       }
-      0; // response
-    `);
+    } catch (error) {
+      log.error(`Failed to open file at path: ${path}. Error: `, error);
+    }
   }
 
   /**
@@ -162,28 +171,44 @@ export class LabView {
       }
     );
 
-    ipcMain.on('set-theme', async (_event, theme) => {
-      const themeName = isDarkTheme(theme)
-        ? 'JupyterLab Dark'
-        : 'JupyterLab Light';
+    if (appConfig.syncJupyterLabTheme) {
+      ipcMain.once('lab-ui-ready', () => {
+        this._setJupyterLabTheme(appConfig.theme);
+      });
+    }
 
-      await this._view.webContents.executeJavaScript(`
-        const lab = window.jupyterapp || window.jupyterlab;
-        if (lab) {
-          lab.commands.execute('apputils:change-theme', { theme: '${themeName}' });
-        }
-        0; // response
-      `);
+    ipcMain.on('set-theme', async (_event, theme) => {
+      if (appConfig.syncJupyterLabTheme) {
+        await this._setJupyterLabTheme(theme);
+      }
     });
 
     if (appConfig.frontEndMode == 'web-app') {
-      this._registerServerFrontEndHandlers();
+      this._registerWebAppFrontEndHandlers();
     } else {
-      this._registerBundledFrontEndHandlers();
+      this._registerClientAppFrontEndHandlers();
     }
   }
 
-  private _registerServerFrontEndHandlers() {
+  private async _setJupyterLabTheme(theme: string) {
+    const themeName = isDarkTheme(theme)
+      ? 'JupyterLab Dark'
+      : 'JupyterLab Light';
+
+    await this._view.webContents.executeJavaScript(`
+      const lab = window.jupyterapp || window.jupyterlab;
+      if (lab) {
+        const existingTheme = document.body.dataset?.jpThemeName;
+        const newTheme = '${themeName}';
+        if (existingTheme !== newTheme) {
+          lab.commands.execute('apputils:change-theme', { theme: newTheme });
+        }
+      }
+      0; // response
+    `);
+  }
+
+  private _registerWebAppFrontEndHandlers() {
     this._view.webContents.on('dom-ready', () => {
       this._view.webContents.executeJavaScript(`
         async function getLab() {
@@ -215,7 +240,7 @@ export class LabView {
     });
   }
 
-  private _registerBundledFrontEndHandlers() {
+  private _registerClientAppFrontEndHandlers() {
     this._view.webContents.session.protocol.interceptBufferProtocol(
       'http',
       this._handleInterceptBufferProtocol.bind(this)

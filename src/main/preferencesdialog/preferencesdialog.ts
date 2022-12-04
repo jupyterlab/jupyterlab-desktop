@@ -15,12 +15,15 @@ export class PreferencesDialog {
       preload: path.join(__dirname, './preload.js')
     });
 
-    const theme = options.theme;
-    const checkForUpdatesAutomatically = options.checkForUpdatesAutomatically;
+    const {
+      theme,
+      syncJupyterLabTheme,
+      frontEndMode,
+      checkForUpdatesAutomatically
+    } = options;
     const installUpdatesAutomaticallyEnabled = process.platform === 'darwin';
     const installUpdatesAutomatically =
       installUpdatesAutomaticallyEnabled && options.installUpdatesAutomatically;
-    const frontEndMode = options.frontEndMode;
 
     const template = `
       <style>
@@ -79,11 +82,12 @@ export class PreferencesDialog {
                 <jp-radio name="theme" value="dark" <%= theme === 'dark' ? 'checked' : '' %>>Dark</jp-radio>
                 <jp-radio name="theme" value="system" <%= theme === 'system' ? 'checked' : '' %>>System</jp-radio>
               </jp-radio-group>
+              <jp-checkbox id='checkbox-sync-jupyterlab-theme' type='checkbox' <%= syncJupyterLabTheme ? 'checked' : '' %>>Sync JupyterLab theme</jp-checkbox>
 
               <jp-radio-group orientation="horizontal">
-                <label slot="label">Front-end mode</label>
-                <jp-radio name="frontend-mode" value="web-app" <%= frontEndMode === 'web-app' ? 'checked' : '' %>>Web app</jp-radio>
-                <jp-radio name="frontend-mode" value="client-app" <%= frontEndMode === 'client-app' ? 'checked' : '' %>>Client app</jp-radio>
+                <label slot="label">JupyterLab UI mode</label>
+                <jp-radio name="frontend-mode" value="web-app" <%= frontEndMode === 'web-app' ? 'checked' : '' %> title="Use the server supplied web application as JupyterLab UI">Web app</jp-radio>
+                <jp-radio name="frontend-mode" value="client-app" <%= frontEndMode === 'client-app' ? 'checked' : '' %> title="Use the bundled client application as JupyterLab UI">Client app</jp-radio>
               </jp-radio-group>
             </jp-tab-panel>
 
@@ -139,6 +143,7 @@ export class PreferencesDialog {
     `;
     this._pageBody = ejs.render(template, {
       theme,
+      syncJupyterLabTheme,
       checkForUpdatesAutomatically,
       installUpdatesAutomaticallyEnabled,
       installUpdatesAutomatically,
@@ -161,6 +166,7 @@ export class PreferencesDialog {
 export namespace PreferencesDialog {
   export interface IOptions {
     theme: 'system' | 'light' | 'dark';
+    syncJupyterLabTheme: boolean;
     frontEndMode: 'web-app' | 'client-app';
     checkForUpdatesAutomatically: boolean;
     installUpdatesAutomatically: boolean;
