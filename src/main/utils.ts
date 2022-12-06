@@ -17,6 +17,9 @@ import log from 'electron-log';
 import { app, nativeTheme } from 'electron';
 import { IPythonEnvironment } from './tokens';
 
+export const DarkThemeBGColor = '#212121';
+export const LightThemeBGColor = '#ffffff';
+
 export interface IAppConfiguration {
   isRemote: boolean;
   url: URL;

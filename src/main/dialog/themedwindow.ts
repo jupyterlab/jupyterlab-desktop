@@ -4,6 +4,7 @@
 import { BrowserWindow } from 'electron';
 import * as fs from 'fs';
 import * as path from 'path';
+import { DarkThemeBGColor, LightThemeBGColor } from '../utils';
 
 export class ThemedWindow {
   constructor(options: ThemedWindow.IWindowOptions) {
@@ -75,7 +76,7 @@ export class ThemedWindow {
           }
           body {
             margin: 0;
-            background: #ffffff;
+            background: ${LightThemeBGColor};
             color: #000000;
             font-size: var(--type-ramp-base-font-size);
             font-family: var(--body-font);
@@ -83,7 +84,7 @@ export class ThemedWindow {
             user-select: none;
           }
           body.app-ui-dark {
-            background: #212121;
+            background: ${DarkThemeBGColor};
             color: #ffffff;
           }
           .page-container {
