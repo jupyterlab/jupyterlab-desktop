@@ -2,19 +2,19 @@
 
 JupyterLab Desktop comes with a bundled Python environment which has the essential Python packages for scientific computing and data science workflows. For more advanced use cases and specific needs, you can set the Python environment used by JupyterLab Desktop to another `conda`, `venv`, or `pyenv` virtual environment available on your computer. This feature also enables you to reuse the same Python environment, that has your custom package installations, when you upgrade to a newer version of JupyterLab Desktop. You can change the Python environment by following the steps below.
 
-- Active Python environment info is shown on the status bar. If you hover on it you will see the details of the environment such as its path and certain package versions.
+- Active Python environment info is shown on the title bar. If you hover on it you will see the details of the environment such as its path and certain package versions.
 
-<img src="media/python-env-status.png" alt="Python environment status" height=100 />
+<img src="media/python-env-status.png" alt="Python environment status" height=150 />
 
 - Click on the status item to launch JupyterLab Server Configuration dialog.
 
-<img src="media/python-env-select.png" alt="Select Python environment" height=600 />
+<img src="media/python-env-select.png" alt="Select Python environment" />
 
 - Choose `Use a custom Python environment` option and then click `Select Python path` button.
 
 - Select the Python executable (`python.exe` on Windows and `python` on macOS & Linux) of the custom environment you would like to use. Python executable can be found at the root directory of the virtual environment on Windows and in the `bin` directory of the environment on macOS & Linux.
 
-- Click `Apply and restart` to apply the changes. Newly selected environment will be checked for compatibility before applying the changes and you will be notified of any incompatibility issues.
+- Click `Apply & restart` to apply the changes. Newly selected environment will be checked for compatibility before applying the changes and you will be notified of any incompatibility issues.
 
 Python environment selection is saved in application settings and restored at application launch time. During launch, compatibility of the Python environment is checked and if found incompatible, JupyterLab Server Configuration dialog is shown to allow switching back to the bundled environment or using another compatible environment.
 
@@ -28,7 +28,7 @@ Application settings are stored in JSON format in the following locations. You c
 
 JupyterLab Desktop has two main components: the desktop client that is the frontend and the JupyterLab server which is the backend of the application. Frontend is designed to connect to any compatible JupyterLab server as its backend. JupyterLab Desktop can automatically launch a JupyterLab server at startup and connect to it, and it can also connect to an existing JupyterLab server instance that is running locally or remotely.
 
-<img src="media/remote-server.png" alt="Remote Server configuration" height=600 />
+<img src="media/remote-server.png" alt="Remote Server configuration" />
 
 JupyterLab Server Configuration dialog lets you configure the backend connection by providing `Start new local JupyterLab Server` and `Connect to remote JupyterLab Server` options. In order to connect to an existing JupyterLab server, select `Connect to remote JupyterLab Server` and enter the URL of the JupyterLab application including `/lab` in the URL. If the server requires a token for authentication, make sure to include it as a query parameter of the URL as well (`/lab?token=<token-value>`). Click the `Validate` button to test the connection and check if the URL is for a valid JupyterLab server.
 
