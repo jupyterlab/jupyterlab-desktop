@@ -17,6 +17,8 @@ Before installing please read the [Python Environment Customization Guide](user-
 - [macOS Installer](https://github.com/jupyterlab/jupyterlab-desktop/releases/latest/download/JupyterLab-Setup-macOS.dmg)
 - [Windows Installer](https://github.com/jupyterlab/jupyterlab-desktop/releases/latest/download/JupyterLab-Setup-Windows.exe)
 
+Additionally, JupyterLab Desktop can be installed on Windows via winget: `winget install jupyterlab`.
+
 ## Launching JupyterLab Desktop
 
 JupyterLab Desktop can be launched from the GUI of your operating system by clicking the application's icon or by using `jlab` command from the command line. Double clicking `.ipynb` files is also supported and it will launch JupyterLab Desktop and load the notebook file.
