@@ -125,25 +125,6 @@
           "from": "dist-resources/darwin/jlab.sh",
           "to": "app/jlab"
         }
-      ],
-      "binaries": [
-        "./dist/mac/JupyterLab.app/Contents/MacOS/JupyterLab",
-        "./dist/mac/JupyterLab.app/Contents/Frameworks/JupyterLab Helper (GPU).app/Contents/MacOS/JupyterLab Helper (GPU)",
-        "./dist/mac/JupyterLab.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Electron Framework",
-        "./dist/mac/JupyterLab.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Libraries/libEGL.dylib",
-        "./dist/mac/JupyterLab.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Libraries/libswiftshader_libEGL.dylib",
-        "./dist/mac/JupyterLab.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Libraries/libvk_swiftshader.dylib",
-        "./dist/mac/JupyterLab.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Libraries/libGLESv2.dylib",
-        "./dist/mac/JupyterLab.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Libraries/libswiftshader_libGLESv2.dylib",
-        "./dist/mac/JupyterLab.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Libraries/libffmpeg.dylib",
-        "./dist/mac/JupyterLab.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Helpers/chrome_crashpad_handler",
-        "./dist/mac/JupyterLab.app/Contents/Frameworks/ReactiveObjC.framework/Versions/A/ReactiveObjC",
-        "./dist/mac/JupyterLab.app/Contents/Frameworks/Squirrel.framework/Versions/A/Squirrel",
-        "./dist/mac/JupyterLab.app/Contents/Frameworks/Squirrel.framework/Versions/A/Resources/ShipIt",
-        "./dist/mac/JupyterLab.app/Contents/Frameworks/JupyterLab Helper (Renderer).app/Contents/MacOS/JupyterLab Helper (Renderer)",
-        "./dist/mac/JupyterLab.app/Contents/Frameworks/Mantle.framework/Versions/A/Mantle",
-        "./dist/mac/JupyterLab.app/Contents/Frameworks/JupyterLab Helper (Plugin).app/Contents/MacOS/JupyterLab Helper (Plugin)",
-        "./dist/mac/JupyterLab.app/Contents/Frameworks/JupyterLab Helper.app/Contents/MacOS/JupyterLab Helper"
       ]
     },
     "dmg": {
