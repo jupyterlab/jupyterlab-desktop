@@ -1,5 +1,11 @@
 const { contextBridge, ipcRenderer } = require('electron');
 
+type SetTitleListener = (title: string) => void;
+type SetActiveListener = (active: boolean) => void;
+
+let onSetTitleListener: SetTitleListener;
+let onSetActiveListener: SetActiveListener;
+
 contextBridge.exposeInMainWorld('electronAPI', {
   getAppConfig: () => {
     return {
@@ -32,6 +38,24 @@ contextBridge.exposeInMainWorld('electronAPI', {
   },
   showServerConfigDialog: () => {
     ipcRenderer.send('show-server-config-dialog');
+  },
+  onSetTitle: (callback: SetTitleListener) => {
+    onSetTitleListener = callback;
+  },
+  onSetActive: (callback: SetActiveListener) => {
+    onSetActiveListener = callback;
+  }
+});
+
+ipcRenderer.on('set-title', (event, title) => {
+  if (onSetTitleListener) {
+    onSetTitleListener(title);
+  }
+});
+
+ipcRenderer.on('set-active', (event, active) => {
+  if (onSetActiveListener) {
+    onSetActiveListener(active);
   }
 });
 

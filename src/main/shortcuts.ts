@@ -130,8 +130,6 @@ class KeyboardShortcutManager implements IShortcutManager {
    * The enabled shortcuts
    */
   private _shortcuts: IKeyboardShortcut[] = [
-    { accelerator: 'CmdOrCtrl+=', command: this.zoomIn.bind(this) },
-    { accelerator: 'CmdOrCtrl+-', command: this.zoomOut.bind(this) },
     { accelerator: 'F11', command: this.toggleFullscreen.bind(this) },
     {
       accelerator:

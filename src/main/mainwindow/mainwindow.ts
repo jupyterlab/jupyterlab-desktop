@@ -77,6 +77,13 @@ export class MainWindow {
       labView.view.webContents.focus();
     });
 
+    this._window.on('focus', () => {
+      titleBarView.activate();
+    });
+    this._window.on('blur', () => {
+      titleBarView.deactivate();
+    });
+
     titleBarView.load();
     labView.load();
 
@@ -97,6 +104,11 @@ export class MainWindow {
     });
 
     this._resizeViews();
+
+    this.labView.view.webContents.on('page-title-updated', (event, title) => {
+      this.titleBarView.setTitle(title);
+      this._window.setTitle(title);
+    });
   }
 
   get titleBarView(): TitleBarView {
@@ -115,13 +127,15 @@ export class MainWindow {
   }
 
   private _resizeViews() {
-    const titleBarHeight = 28;
+    const titleBarHeight = 29;
     const { width, height } = this._window.getContentBounds();
+    // add padding to allow resizing around title bar
+    const padding = process.platform === 'darwin' ? 0 : 1;
     this._titleBarView.view.setBounds({
-      x: 0,
-      y: 0,
-      width: width,
-      height: titleBarHeight
+      x: padding,
+      y: padding,
+      width: width - 2 * padding,
+      height: titleBarHeight - padding
     });
     this._labView.view.setBounds({
       x: 0,

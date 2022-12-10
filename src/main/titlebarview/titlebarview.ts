@@ -12,10 +12,29 @@ export class TitleBarView {
         devTools: process.env.NODE_ENV === 'development'
       }
     });
+
+    // prevent Ctrl +/- zoom
+    this._view.webContents.on('before-input-event', (event, input) => {
+      if (input.control && ['+', '-'].includes(input.key)) {
+        event.preventDefault();
+      }
+    });
   }
 
   get view(): BrowserView {
     return this._view;
+  }
+
+  setTitle(title: string) {
+    this._view.webContents.send('set-title', title);
+  }
+
+  activate() {
+    this._view.webContents.send('set-active', true);
+  }
+
+  deactivate() {
+    this._view.webContents.send('set-active', false);
   }
 
   load() {

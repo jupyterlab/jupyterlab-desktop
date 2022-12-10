@@ -8,14 +8,14 @@ Distributed under the terms of the Modified BSD License.
 <html>
   <head>
     <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0">
     <title>JupyterLab Header</title>
     <style>
       body {
         background-color: #e1e1e1;
-        color: #000000;
+        color: #555555;
         margin: 0;
         overflow: hidden;
-        -webkit-app-region: drag;
         font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica,
           Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
           'Segoe UI Symbol';
@@ -25,25 +25,42 @@ Distributed under the terms of the Modified BSD License.
       }
       body.app-ui-dark {
         background-color: #424242;
+        color: #bbbbbb;
+      }
+      body.active {
+        color: #000000;
+      }
+      body.active.app-ui-dark {
         color: #ffffff;
       }
       .titlebar {
-        display: flex;
-        flex-direction: row;
-        padding-left: 10px;
         line-height: 28px;
       }
       .app-title {
-        flex-grow: 1;
-        float: left;
+        -webkit-app-region: drag;
+        width: 100%;
+        text-align: center;
+      }
+      #right-widgets {
+        position: absolute;
+        top: 0;
+        right: 0;
+        display: flex;
+        flex-direction: row;
       }
       #server-button {
         -webkit-app-region: no-drag;
         display: flex;
         padding-right: 5px;
-        color: #343434;
+        color: #606060;
       }
       .app-ui-dark #server-button {
+        color: #909090;
+      }
+      .active #server-button {
+        color: #343434;
+      }
+      .active.app-ui-dark #server-button {
         color: #c1c1c1;
       }
       #server-icon svg {
@@ -76,9 +93,6 @@ Distributed under the terms of the Modified BSD License.
       }
       .app-ui-dark #server-icon svg path {
         fill: #2196f3;
-      }
-      .app-ui-darwin .titlebar {
-        padding-left: 70px;
       }
       #control-box {
         -webkit-app-region: no-drag;
@@ -141,52 +155,55 @@ Distributed under the terms of the Modified BSD License.
     </script>
   </head>
 
-  <body>
+  <body class="active">
     <div class="titlebar">
-      <div class="app-title">JupyterLab Desktop</div>
-      <div id="server-button">
-        <div id="server-icon">
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><path fill="#333333" d="M480 160H32c-17.673 0-32-14.327-32-32V64c0-17.673 14.327-32 32-32h448c17.673 0 32 14.327 32 32v64c0 17.673-14.327 32-32 32zm-48-88c-13.255 0-24 10.745-24 24s10.745 24 24 24 24-10.745 24-24-10.745-24-24-24zm-64 0c-13.255 0-24 10.745-24 24s10.745 24 24 24 24-10.745 24-24-10.745-24-24-24zm112 248H32c-17.673 0-32-14.327-32-32v-64c0-17.673 14.327-32 32-32h448c17.673 0 32 14.327 32 32v64c0 17.673-14.327 32-32 32zm-48-88c-13.255 0-24 10.745-24 24s10.745 24 24 24 24-10.745 24-24-10.745-24-24-24zm-64 0c-13.255 0-24 10.745-24 24s10.745 24 24 24 24-10.745 24-24-10.745-24-24-24zm112 248H32c-17.673 0-32-14.327-32-32v-64c0-17.673 14.327-32 32-32h448c17.673 0 32 14.327 32 32v64c0 17.673-14.327 32-32 32zm-48-88c-13.255 0-24 10.745-24 24s10.745 24 24 24 24-10.745 24-24-10.745-24-24-24zm-64 0c-13.255 0-24 10.745-24 24s10.745 24 24 24 24-10.745 24-24-10.745-24-24-24z"/></svg>
-          <!--
-          Font Awesome Free 5.2.0 by @fontawesome - https://fontawesome.com
-          License - https://fontawesome.com/license (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License)
-          -->
+      <div id="app-title" class="app-title">JupyterLab</div>
+      <div id="right-widgets">
+        <div id="server-button">
+          <div id="server-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><path fill="#333333" d="M480 160H32c-17.673 0-32-14.327-32-32V64c0-17.673 14.327-32 32-32h448c17.673 0 32 14.327 32 32v64c0 17.673-14.327 32-32 32zm-48-88c-13.255 0-24 10.745-24 24s10.745 24 24 24 24-10.745 24-24-10.745-24-24-24zm-64 0c-13.255 0-24 10.745-24 24s10.745 24 24 24 24-10.745 24-24-10.745-24-24-24zm112 248H32c-17.673 0-32-14.327-32-32v-64c0-17.673 14.327-32 32-32h448c17.673 0 32 14.327 32 32v64c0 17.673-14.327 32-32 32zm-48-88c-13.255 0-24 10.745-24 24s10.745 24 24 24 24-10.745 24-24-10.745-24-24-24zm-64 0c-13.255 0-24 10.745-24 24s10.745 24 24 24 24-10.745 24-24-10.745-24-24-24zm112 248H32c-17.673 0-32-14.327-32-32v-64c0-17.673 14.327-32 32-32h448c17.673 0 32 14.327 32 32v64c0 17.673-14.327 32-32 32zm-48-88c-13.255 0-24 10.745-24 24s10.745 24 24 24 24-10.745 24-24-10.745-24-24-24zm-64 0c-13.255 0-24 10.745-24 24s10.745 24 24 24 24-10.745 24-24-10.745-24-24-24z"/></svg>
+            <!--
+            Font Awesome Free 5.2.0 by @fontawesome - https://fontawesome.com
+            License - https://fontawesome.com/license (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License)
+            -->
+          </div>
+          <div id="server-label"></div>
         </div>
-        <div id="server-label"></div>
-      </div>
-      <div id="menu-button" title="Application Menu">
-        <svg
-          width="18px"
-          height="18px"
-          id="Layer_1"
-          style="enable-background: new 0 0 32 32"
-          version="1.1"
-          viewBox="0 0 32 32"
-          xml:space="preserve"
-          xmlns="http://www.w3.org/2000/svg"
-          xmlns:xlink="http://www.w3.org/1999/xlink"
-        >
-          <path
-            d="M4,10h24c1.104,0,2-0.896,2-2s-0.896-2-2-2H4C2.896,6,2,6.896,2,8S2.896,10,4,10z M28,14H4c-1.104,0-2,0.896-2,2  s0.896,2,2,2h24c1.104,0,2-0.896,2-2S29.104,14,28,14z M28,22H4c-1.104,0-2,0.896-2,2s0.896,2,2,2h24c1.104,0,2-0.896,2-2  S29.104,22,28,22z"
-          />
-        </svg>
-      </div>
-      <div id="control-box" class="control-box">
-        <div id="minimize-button" class="control-box-button" title="Minimize">
-          <svg viewBox='0 0 10.2 1'><rect x='0' y='50%' width='10.2' height='1'/></svg>
+        <div id="menu-button" title="Application Menu">
+          <svg
+            width="18px"
+            height="18px"
+            id="Layer_1"
+            style="enable-background: new 0 0 32 32"
+            version="1.1"
+            viewBox="0 0 32 32"
+            xml:space="preserve"
+            xmlns="http://www.w3.org/2000/svg"
+            xmlns:xlink="http://www.w3.org/1999/xlink"
+          >
+            <path
+              d="M4,10h24c1.104,0,2-0.896,2-2s-0.896-2-2-2H4C2.896,6,2,6.896,2,8S2.896,10,4,10z M28,14H4c-1.104,0-2,0.896-2,2  s0.896,2,2,2h24c1.104,0,2-0.896,2-2S29.104,14,28,14z M28,22H4c-1.104,0-2,0.896-2,2s0.896,2,2,2h24c1.104,0,2-0.896,2-2  S29.104,22,28,22z"
+            />
+          </svg>
         </div>
-        <div id="maximize-button" class="control-box-button" title="Maximize">
-          <svg viewBox='0 0 10 10'><path d='M0,0v10h10V0H0z M9,9H1V1h8V9z'/></svg>
-        </div>
-        <div id="restore-button" class="control-box-button" title="Restore">
-          <svg viewBox='0 0 10.2 10.1'><path d='M2.1,0v2H0v8.1h8.2v-2h2V0H2.1z M7.2,9.2H1.1V3h6.1V9.2z M9.2,7.1h-1V2H3.1V1h6.1V7.1z'/></svg>
-        </div>
-        <div id="close-button" class="control-box-button" title="Close">
-          <svg viewBox='0 0 10 10'><polygon points='10.2,0.7 9.5,0 5.1,4.4 0.7,0 0,0.7 4.4,5.1 0,9.5 0.7,10.2 5.1,5.8 9.5,10.2 10.2,9.5 5.8,5.1'/></svg>
+        <div id="control-box" class="control-box">
+          <div id="minimize-button" class="control-box-button" title="Minimize">
+            <svg viewBox='0 0 10.2 1'><rect x='0' y='50%' width='10.2' height='1'/></svg>
+          </div>
+          <div id="maximize-button" class="control-box-button" title="Maximize">
+            <svg viewBox='0 0 10 10'><path d='M0,0v10h10V0H0z M9,9H1V1h8V9z'/></svg>
+          </div>
+          <div id="restore-button" class="control-box-button" title="Restore">
+            <svg viewBox='0 0 10.2 10.1'><path d='M2.1,0v2H0v8.1h8.2v-2h2V0H2.1z M7.2,9.2H1.1V3h6.1V9.2z M9.2,7.1h-1V2H3.1V1h6.1V7.1z'/></svg>
+          </div>
+          <div id="close-button" class="control-box-button" title="Close">
+            <svg viewBox='0 0 10 10'><polygon points='10.2,0.7 9.5,0 5.1,4.4 0.7,0 0,0.7 4.4,5.1 0,9.5 0.7,10.2 5.1,5.8 9.5,10.2 10.2,9.5 5.8,5.1'/></svg>
+          </div>
         </div>
       </div>
     </div>
     <script>
+      const appTitle = document.getElementById('app-title');
       const serverButton = document.getElementById('server-button');
       const serverIcon = document.getElementById('server-icon');
       const serverLabel = document.getElementById('server-label');
@@ -195,6 +212,18 @@ Distributed under the terms of the Modified BSD License.
       const maximizeButton = document.getElementById('maximize-button');
       const restoreButton = document.getElementById('restore-button');
       const closeButton = document.getElementById('close-button');
+
+      window.electronAPI.onSetTitle((title) => {
+        appTitle.innerText = title;
+      });
+
+      window.electronAPI.onSetActive((active) => {
+        if (active) {
+          document.body.classList.add('active');
+        } else {
+          document.body.classList.remove('active');
+        }
+      });
 
       menuButton.onclick = () => {
         window.electronAPI.showAppContextMenu();
