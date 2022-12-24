@@ -89,12 +89,12 @@ function createLaunchScript(
   } else {
     if (isConda) {
       script = `
-        source ${baseCondaPath}/bin/activate
-        conda activate ${envPath}
+        source "${baseCondaPath}/bin/activate"
+        conda activate "${envPath}"
         ${launchCmd}`;
     } else {
       script = `
-        source ${envPath}/bin/activate
+        source "${envPath}/bin/activate"
         ${launchCmd}`;
     }
   }
