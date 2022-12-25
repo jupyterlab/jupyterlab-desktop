@@ -17,7 +17,12 @@ import * as fs from 'fs';
 import * as ejs from 'ejs';
 import { getCurrentRootPath, isDarkTheme } from '../utils';
 import { MainWindow } from '../mainwindow/mainwindow';
-import { appData, SettingType, userSettings } from '../settings';
+import {
+  appData,
+  SessionConfig,
+  SettingType,
+  WorkspaceSettings
+} from '../settings';
 
 const DESKTOP_APP_ASSETS_PATH = 'desktop-app-assets';
 
@@ -34,11 +39,11 @@ const templateAssetPaths = new Map([
 ]);
 
 export class LabView {
-  constructor(parent: MainWindow, options: LabView.IOptions) {
+  constructor(parent: MainWindow, config: SessionConfig) {
     this._parent = parent;
-    this._options = options;
-    const sessionConfig = appData.getSessionConfig();
-    this._jlabBaseUrl = `${sessionConfig.url.protocol}//${sessionConfig.url.host}${sessionConfig.url.pathname}`;
+    this._sessionConfig = config;
+    this._wsSettings = new WorkspaceSettings(config.workingDirectory);
+    this._jlabBaseUrl = `${config.url.protocol}//${config.url.host}${config.url.pathname}`;
     this._view = new BrowserView({
       webPreferences: {
         preload: path.join(__dirname, './preload.js')
@@ -54,15 +59,16 @@ export class LabView {
   }
 
   load() {
-    const sessionConfig = appData.getSessionConfig();
-    if (userSettings.getValue(SettingType.frontEndMode) === 'web-app') {
+    const sessionConfig = this._sessionConfig;
+
+    if (this._wsSettings.getValue(SettingType.frontEndMode) === 'web-app') {
       this._view.webContents.loadURL(sessionConfig.url.href);
     } else {
       this._view.webContents.loadURL(
         `${sessionConfig.url.protocol}//${sessionConfig.url.host}${
           sessionConfig.url.pathname
         }${DESKTOP_APP_ASSETS_PATH}/index.html?${encodeURIComponent(
-          JSON.stringify(this._options)
+          JSON.stringify(this._sessionConfig)
         )}`
       );
     }
@@ -175,19 +181,19 @@ export class LabView {
       }
     );
 
-    if (userSettings.getValue(SettingType.syncJupyterLabTheme)) {
+    if (this._wsSettings.getValue(SettingType.syncJupyterLabTheme)) {
       ipcMain.once('lab-ui-ready', () => {
-        this._setJupyterLabTheme(userSettings.getValue(SettingType.theme));
+        this._setJupyterLabTheme(this._wsSettings.getValue(SettingType.theme));
       });
     }
 
     ipcMain.on('set-theme', async (_event, theme) => {
-      if (userSettings.getValue(SettingType.syncJupyterLabTheme)) {
+      if (this._wsSettings.getValue(SettingType.syncJupyterLabTheme)) {
         await this._setJupyterLabTheme(theme);
       }
     });
 
-    if (userSettings.getValue(SettingType.frontEndMode) == 'web-app') {
+    if (this._wsSettings.getValue(SettingType.frontEndMode) == 'web-app') {
       this._registerWebAppFrontEndHandlers();
     } else {
       this._registerClientAppFrontEndHandlers();
@@ -423,15 +429,8 @@ export class LabView {
 
   private _view: BrowserView;
   private _parent: MainWindow;
-  private _options: LabView.IOptions;
+  private _sessionConfig: SessionConfig;
   private _cookies: Map<string, string> = new Map();
   private _jlabBaseUrl: string;
-}
-
-export namespace LabView {
-  export interface IOptions {
-    serverState: 'new' | 'local' | 'remote';
-    platform: NodeJS.Platform;
-    uiState: 'linux' | 'mac' | 'windows';
-  }
+  private _wsSettings: WorkspaceSettings;
 }

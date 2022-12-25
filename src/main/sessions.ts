@@ -3,8 +3,6 @@
 
 import { app, ipcMain } from 'electron';
 
-import { JSONObject } from '@lumino/coreutils';
-
 import { IApplication } from './app';
 
 import { IServerFactory, JupyterServer } from './server';
@@ -21,17 +19,17 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { MainWindow } from './mainwindow/mainwindow';
 import { LabView } from './labview/labview';
-import { appData } from './settings';
+import { appData, SessionConfig } from './settings';
 
 export interface ISessions extends EventEmitter {
-  createSession: (opts?: JupyterLabSession.IOptions) => Promise<void>;
+  createSession: (config: SessionConfig) => Promise<void>;
 
   isAppFocused: () => boolean;
 
   length: number;
 }
 
-export class JupyterLabSessions extends EventEmitter implements ISessions {
+export class SessionManager extends EventEmitter implements ISessions {
   readonly id = 'JupyterLabSessions';
 
   constructor(
@@ -44,35 +42,18 @@ export class JupyterLabSessions extends EventEmitter implements ISessions {
     this._registry = registry;
     this._app = app;
 
-    // check if UI state was set by user
-    for (let arg of process.argv) {
-      if (arg === '--windows-ui') {
-        this._uiState = 'windows';
-      } else if (arg === '--mac-ui') {
-        this._uiState = 'mac';
-      } else if (arg === '--linux-ui') {
-        this._uiState = 'linux';
-      }
-    }
-
     this._registerListeners();
 
     app.getServerInfo().then(serverInfo => {
+      const sessionConfig = appData.getSessionConfig();
       if (serverInfo.type === 'local') {
         if (this._registry.getCurrentPythonEnvironment()) {
-          this.createSession().then(() => {
+          this.createSession(sessionConfig).then(() => {
             this._startingSession = null;
           });
         }
       } else {
-        const sessionConfig = appData.getSessionConfig();
-        let options: JupyterLabSession.IOptions = {
-          state: sessionConfig.isRemote ? 'remote' : 'local'
-        };
-        if (this._lastWindowState) {
-          options = { ...this._lastWindowState, ...options };
-        }
-        this.createSession(options).then(() => {
+        this.createSession(sessionConfig).then(() => {
           this._startingSession = null;
         });
       }
@@ -103,47 +84,12 @@ export class JupyterLabSessions extends EventEmitter implements ISessions {
     return visible && focus;
   }
 
-  createSession(opts?: JupyterLabSession.IOptions): Promise<void> {
-    if (opts) {
-      return this._createSession(opts);
-    } else if (this._lastWindowState) {
-      return this._createSession(this._lastWindowState);
-    } else {
-      return this._createSession({ state: 'local' });
-    }
-  }
-
-  getStateBeforeQuit(): Promise<JupyterLabSession.IState> {
-    return Promise.resolve(this._lastWindowState);
+  createSession(config: SessionConfig): Promise<void> {
+    return this._createSession(config);
   }
 
   setFocusedSession(session: JupyterLabSession): void {
     this._lastFocusedSession = session;
-  }
-
-  verifyState(state: JupyterLabSession.IState): boolean {
-    if (!state.state || typeof state.state !== 'string') {
-      return false;
-    }
-    if (!state.x || typeof state.x !== 'number') {
-      return false;
-    }
-    if (!state.y || typeof state.y !== 'number') {
-      return false;
-    }
-    if (!state.width || typeof state.width !== 'number') {
-      return false;
-    }
-    if (!state.height || typeof state.height !== 'number') {
-      return false;
-    }
-    if (
-      state.state === 'remote' &&
-      (!state.remoteServerId || typeof state.remoteServerId !== 'number')
-    ) {
-      return false;
-    }
-    return true;
   }
 
   get lastFocusedSession(): JupyterLabSession | null {
@@ -154,25 +100,17 @@ export class JupyterLabSessions extends EventEmitter implements ISessions {
     return this._app;
   }
 
-  private _createSession(opts: JupyterLabSession.IOptions): Promise<void> {
+  private _createSession(config: SessionConfig): Promise<void> {
     this._startingSession = new Promise<void>(resolve => {
-      opts.uiState = opts.uiState || this._uiState;
       // pre launch a local server to improve load time
-      if (opts.state === 'local') {
-        if (opts.serverOpts) {
-          this._serverFactory.createFreeServer(opts.serverOpts);
-        } else {
-          this._serverFactory.createFreeServer({} as JupyterServer.IOptions);
-        }
+      if (!config.isRemote) {
+        this._serverFactory.createFreeServer({} as JupyterServer.IOptions);
       }
 
-      let session = new JupyterLabSession(this, opts);
+      let session = new JupyterLabSession(this, config);
 
       // Register dialog on window close
       session.browserWindow.on('close', (event: Event) => {
-        // Save session state
-        this._lastWindowState = session.state();
-
         // close application when JupyterLab window is closed
         app.quit();
       });
@@ -205,7 +143,8 @@ export class JupyterLabSessions extends EventEmitter implements ISessions {
         return;
       }
       if (this._sessions.length === 0) {
-        this.createSession().then(() => {
+        const sessionConfig = appData.getSessionConfig();
+        this.createSession(sessionConfig).then(() => {
           this._startingSession = null;
         });
         return;
@@ -251,17 +190,14 @@ export class JupyterLabSessions extends EventEmitter implements ISessions {
     }
     this._startingSession = new Promise<void>(resolve => {
       let session = this._lastFocusedSession;
-      if (session && session.state().state === 'local') {
+      if (session && !session.config.isRemote) {
         session.browserWindow.focus();
         session.browserWindow.restore();
         resolve();
       } else {
-        let state: JupyterLabSession.IOptions = { state: null };
-        if (this._lastWindowState) {
-          state = this._lastWindowState;
-        }
-        state.state = 'local';
-        this.createSession(state).then(() => {
+        const sessionConfig = SessionConfig.createLocal();
+        appData.setSessionConfig(sessionConfig);
+        this.createSession(sessionConfig).then(() => {
           ipcMain.once('lab-ui-ready', () => {
             resolve();
           });
@@ -318,46 +254,19 @@ export class JupyterLabSessions extends EventEmitter implements ISessions {
 
   private _sessions: JupyterLabSession[] = [];
 
-  private _lastWindowState: JupyterLabSession.IState;
-
   private _serverFactory: IServerFactory;
 
   private _registry: IRegistry;
-
-  private _uiState: JupyterLabSession.UIState;
 
   private _app: IApplication;
 }
 
 export class JupyterLabSession {
-  constructor(
-    sessionManager: JupyterLabSessions,
-    options: JupyterLabSession.IOptions
-  ) {
+  constructor(sessionManager: SessionManager, config: SessionConfig) {
     this._sessionManager = sessionManager;
+    this._sessionConfig = config;
 
-    this._info = {
-      serverState: options.state,
-      platform: options.platform || process.platform,
-      uiState: options.uiState,
-      x: options.x,
-      y: options.y,
-      width: options.width || 800,
-      height: options.height || 600,
-      remoteServerId: options.remoteServerId
-    };
-
-    if (!this._info.uiState) {
-      if (this._info.platform === 'darwin') {
-        this._info.uiState = 'mac';
-      } else if (this._info.platform === 'linux') {
-        this._info.uiState = 'linux';
-      } else {
-        this._info.uiState = 'windows';
-      }
-    }
-
-    this._window = new MainWindow(this._info);
+    this._window = new MainWindow(config);
 
     this._window.window.on('focus', () => {
       this._sessionManager.setFocusedSession(this);
@@ -368,15 +277,6 @@ export class JupyterLabSession {
     });
   }
 
-  get info(): JupyterLabSession.IInfo {
-    let winBounds = this._window.window.getBounds();
-    this._info.x = winBounds.x;
-    this._info.y = winBounds.y;
-    this._info.width = winBounds.width;
-    this._info.height = winBounds.height;
-    return this._info;
-  }
-
   get browserWindow(): Electron.BrowserWindow {
     return this._window.window;
   }
@@ -385,65 +285,16 @@ export class JupyterLabSession {
     return this._window.labView;
   }
 
-  state(): JupyterLabSession.IState {
-    let info = this.info;
-
-    return {
-      x: info.x,
-      y: info.y,
-      width: info.width,
-      height: info.height,
-      state: info.serverState,
-      remoteServerId: info.remoteServerId
-    };
+  get config(): SessionConfig {
+    return this._sessionConfig;
   }
 
-  private _sessionManager: JupyterLabSessions = null;
-
-  private _info: JupyterLabSession.IInfo = null;
-
+  private _sessionManager: SessionManager = null;
+  private _sessionConfig: SessionConfig;
   private _window: MainWindow = null;
 }
 
-export namespace JupyterLabSession {
-  export type UIState = 'linux' | 'mac' | 'windows';
-
-  export type ServerState = 'new' | 'local' | 'remote';
-
-  export interface IOptions {
-    state: ServerState;
-    platform?: NodeJS.Platform;
-    uiState?: UIState;
-    x?: number;
-    y?: number;
-    width?: number;
-    height?: number;
-    remoteServerId?: number;
-    serverOpts?: JupyterServer.IOptions;
-  }
-
-  export interface IInfo {
-    serverState: ServerState;
-    platform: NodeJS.Platform;
-    uiState: UIState;
-    x: number;
-    y: number;
-    width: number;
-    height: number;
-    remoteServerId?: number;
-  }
-
-  export interface IState extends JSONObject {
-    state: ServerState;
-    x: number;
-    y: number;
-    width: number;
-    height: number;
-    remoteServerId?: number;
-  }
-}
-
-let sessions: JupyterLabSessions;
+let sessions: SessionManager;
 const sessionConfig = appData.getSessionConfig();
 
 /**
@@ -470,7 +321,7 @@ let service: IService = {
     serverFactory: IServerFactory,
     registry: IRegistry
   ): ISessions => {
-    sessions = new JupyterLabSessions(app, serverFactory, registry);
+    sessions = new SessionManager(app, serverFactory, registry);
     return sessions;
   },
   autostart: true

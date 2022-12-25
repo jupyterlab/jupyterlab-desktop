@@ -4,7 +4,7 @@ import { IService } from './main';
 
 import { IRegistry } from './registry';
 
-import { app, dialog } from 'electron';
+import { dialog } from 'electron';
 
 import { IApplication, IClosingService } from './app';
 
@@ -175,7 +175,6 @@ export class JupyterServer {
     this._startServer = new Promise<JupyterServer.IInfo>(
       // eslint-disable-next-line no-async-promise-executor
       async (resolve, reject) => {
-        const home = process.env.JLAB_DESKTOP_HOME || app.getPath('home');
         const isWin = process.platform === 'win32';
         const pythonPath = this._info.environment.path;
         if (!fs.existsSync(pythonPath)) {
@@ -255,7 +254,7 @@ export class JupyterServer {
         );
 
         this._nbServer = execFile(launchScriptPath, {
-          cwd: home,
+          cwd: sessionConfig.resolvedWorkingDirectory,
           shell: isWin ? 'cmd.exe' : '/bin/bash',
           env: {
             ...process.env,

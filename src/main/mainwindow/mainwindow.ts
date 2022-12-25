@@ -3,26 +3,27 @@
 
 import { BrowserWindow } from 'electron';
 import { LabView } from '../labview/labview';
-import { SettingType, userSettings } from '../settings';
+import { SessionConfig, SettingType, WorkspaceSettings } from '../settings';
 import { TitleBarView } from '../titlebarview/titlebarview';
 import { DarkThemeBGColor, isDarkTheme, LightThemeBGColor } from '../utils';
 
 export class MainWindow {
-  constructor(options: MainWindow.IOptions) {
-    this._options = options;
+  constructor(config: SessionConfig) {
+    this._sessionConfig = config;
+    const wsSettings = new WorkspaceSettings(config.workingDirectory);
 
     this._window = new BrowserWindow({
-      width: this._options.width,
-      height: this._options.height,
-      x: this._options.x,
-      y: this._options.y,
+      width: this._sessionConfig.width,
+      height: this._sessionConfig.height,
+      x: this._sessionConfig.x,
+      y: this._sessionConfig.y,
       minWidth: 400,
       minHeight: 300,
       show: true,
       title: 'JupyterLab',
       titleBarStyle: 'hidden',
       frame: process.platform === 'darwin',
-      backgroundColor: isDarkTheme(userSettings.getValue(SettingType.theme))
+      backgroundColor: isDarkTheme(wsSettings.getValue(SettingType.theme))
         ? DarkThemeBGColor
         : LightThemeBGColor,
       webPreferences: {
@@ -32,12 +33,15 @@ export class MainWindow {
 
     this._window.setMenuBarVisibility(false);
 
-    if (this._options.x && this._options.y) {
+    if (
+      this._sessionConfig.x !== undefined &&
+      this._sessionConfig.y !== undefined
+    ) {
       this._window.setBounds({
-        x: this._options.x,
-        y: this._options.y,
-        height: this._options.height,
-        width: this._options.width
+        x: this._sessionConfig.x,
+        y: this._sessionConfig.y,
+        height: this._sessionConfig.height,
+        width: this._sessionConfig.width
       });
     } else {
       this._window.center();
@@ -49,11 +53,7 @@ export class MainWindow {
   }
 
   load() {
-    const labView = new LabView(this, {
-      serverState: this._options.serverState,
-      platform: this._options.platform,
-      uiState: this._options.uiState
-    });
+    const labView = new LabView(this, this._sessionConfig);
 
     const titleBarView = new TitleBarView();
     this._window.addBrowserView(titleBarView.view);
@@ -149,20 +149,8 @@ export class MainWindow {
     }, 200);
   }
 
-  private _options: MainWindow.IOptions;
+  private _sessionConfig: SessionConfig;
   private _window: BrowserWindow;
   private _titleBarView: TitleBarView;
   private _labView: LabView;
-}
-
-export namespace MainWindow {
-  export interface IOptions {
-    serverState: 'new' | 'local' | 'remote';
-    platform: NodeJS.Platform;
-    uiState: 'linux' | 'mac' | 'windows';
-    x: number;
-    y: number;
-    width: number;
-    height: number;
-  }
 }

@@ -286,6 +286,8 @@ export class JupyterApplication implements IApplication {
   private _registerListeners(): void {
     app.on('will-quit', event => {
       event.preventDefault();
+      appData.save();
+      userSettings.save();
 
       this._quit();
     });

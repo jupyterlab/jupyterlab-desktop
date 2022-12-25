@@ -88,7 +88,7 @@ export enum SettingType {
 }
 
 export class UserSettings {
-  constructor() {
+  constructor(readSettings: boolean = true) {
     this._settings = {
       checkForUpdatesAutomatically: new Setting<boolean>(true),
       installUpdatesAutomatically: new Setting<boolean>(true),
@@ -103,7 +103,9 @@ export class UserSettings {
       pythonPath: new Setting<string>('', { wsOverridable: true })
     };
 
-    this.read();
+    if (readSettings) {
+      this.read();
+    }
   }
 
   getValue(setting: SettingType) {
@@ -141,7 +143,7 @@ export class UserSettings {
       }
     }
 
-    fs.writeFileSync(userSettingsPath, JSON.stringify(userSettings));
+    fs.writeFileSync(userSettingsPath, JSON.stringify(userSettings, null, 2));
   }
 
   private _getUserSettingsPath(): string {
@@ -154,7 +156,7 @@ export class UserSettings {
 
 export class WorkspaceSettings extends UserSettings {
   constructor(workingDirectory: string) {
-    super();
+    super(false);
 
     this._workingDirectory = resolveWorkingDirectory(workingDirectory);
     this.read();
@@ -219,7 +221,7 @@ export class WorkspaceSettings extends UserSettings {
           fs.mkdirSync(dirPath, { recursive: true });
         }
       }
-      fs.writeFileSync(wsSettingsPath, JSON.stringify(wsSettings));
+      fs.writeFileSync(wsSettingsPath, JSON.stringify(wsSettings, null, 2));
     }
   }
 
@@ -258,7 +260,7 @@ export class ApplicationData {
   constructor() {
     this.read();
 
-    const sessionConfig = new SessionConfig();
+    const sessionConfig = SessionConfig.createLocal();
 
     this.sessions.push(sessionConfig);
   }
@@ -275,6 +277,10 @@ export class ApplicationData {
     return this.sessions[0];
   }
 
+  setSessionConfig(config: SessionConfig) {
+    this.sessions[0] = config;
+  }
+
   sessions: SessionConfig[] = [];
   condaRootPath: string;
 
@@ -289,11 +295,11 @@ export class SessionConfig implements ISessionData, IWindowData {
   width: number = 800;
   height: number = 600;
   remoteURL: string = '';
+  persistSessionData: boolean = true;
   workingDirectory: string = '$HOME';
   fileToOpen: string = '';
   pythonPath: string = '';
   clearSessionDataOnNextLaunch: boolean = false;
-  persistSessionData: boolean;
   lastOpened: Date;
 
   url: URL;
@@ -301,10 +307,43 @@ export class SessionConfig implements ISessionData, IWindowData {
   pageConfig: any;
   cookies?: Electron.Cookie[];
 
+  static createLocal(
+    workingDirectory?: string,
+    fileToOpen?: string,
+    pythonPath?: string
+  ): SessionConfig {
+    const sessionConfig = new SessionConfig();
+    sessionConfig.workingDirectory =
+      workingDirectory ||
+      userSettings.getValue(SettingType.defaultWorkingDirectory);
+    if (fileToOpen) {
+      sessionConfig.fileToOpen = fileToOpen;
+    }
+    sessionConfig.pythonPath =
+      pythonPath || userSettings.getValue(SettingType.pythonPath);
+
+    return sessionConfig;
+  }
+
+  static createRemote(
+    remoteURL: string,
+    persistSessionData?: boolean
+  ): SessionConfig {
+    const sessionConfig = new SessionConfig();
+    sessionConfig.remoteURL = remoteURL;
+    sessionConfig.persistSessionData = persistSessionData !== false;
+
+    return sessionConfig;
+  }
+
   get isRemote(): boolean {
     return this.remoteURL !== '';
   }
+
+  get resolvedWorkingDirectory(): string {
+    return resolveWorkingDirectory(this.workingDirectory);
+  }
 }
 
-export const appData = new ApplicationData();
 export const userSettings = new UserSettings();
+export const appData = new ApplicationData();

@@ -11,8 +11,6 @@ import { PageConfig } from '@jupyterlab/coreutils';
 
 import { ICommandPalette } from '@jupyterlab/apputils';
 
-import { JupyterLabSession } from '../../../main/sessions';
-
 import { ServerConnection } from '@jupyterlab/services';
 
 import plugins from '@jupyterlab/application-extension';
@@ -34,7 +32,7 @@ namespace CommandIDs {
 }
 
 export class ElectronJupyterLab extends JupyterLab {
-  constructor(options: ElectronJupyterLab.IOptions) {
+  constructor(options: JupyterLab.IOptions) {
     /**
      * WORKAROUND
      * The constructor of JupyterLab in @jupyterlab/application initializes
@@ -64,15 +62,6 @@ export class ElectronJupyterLab extends JupyterLab {
     };
 
     super(options);
-
-    this._electronInfo = { ...JupyterLab.defaultInfo, ...options };
-    if (this._electronInfo.devMode) {
-      this.shell.addClass('jp-mod-devMode');
-    }
-  }
-
-  get info(): ElectronJupyterLab.IInfo {
-    return this._electronInfo;
   }
 
   get paths(): JupyterFrontEnd.IPaths {
@@ -103,31 +92,6 @@ export class ElectronJupyterLab extends JupyterLab {
       }
     };
   }
-
-  private _electronInfo: ElectronJupyterLab.IInfo;
-}
-
-export namespace ElectronJupyterLab {
-  export interface IOptions extends JupyterLab.IOptions {
-    uiState?: JupyterLabSession.UIState;
-    platform: NodeJS.Platform;
-  }
-
-  export interface IInfo extends JupyterLab.IInfo {
-    uiState?: string;
-    platform: string;
-  }
-
-  /**
-   * The default application info.
-   */
-  export const defaultInfo: IInfo = {
-    ...{
-      uiState: PageConfig.getOption('uistate') || 'windows',
-      platform: PageConfig.getOption('platform')
-    },
-    ...JupyterLab.defaultInfo
-  };
 }
 
 /**
