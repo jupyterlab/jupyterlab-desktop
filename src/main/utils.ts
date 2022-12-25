@@ -65,10 +65,6 @@ export function getEnvironmentPath(environment: IPythonEnvironment): string {
   return envPath;
 }
 
-export function getCurrentRootPath(): string {
-  return process.env.JLAB_DESKTOP_HOME || app.getPath('home');
-}
-
 export function isDarkTheme(themeType: string) {
   if (themeType === 'light') {
     return false;

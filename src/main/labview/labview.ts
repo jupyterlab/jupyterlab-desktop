@@ -15,7 +15,7 @@ import { request as httpsRequest } from 'https';
 import * as path from 'path';
 import * as fs from 'fs';
 import * as ejs from 'ejs';
-import { getCurrentRootPath, isDarkTheme } from '../utils';
+import { isDarkTheme } from '../utils';
 import { MainWindow } from '../mainwindow/mainwindow';
 import {
   appData,
@@ -86,30 +86,35 @@ export class LabView {
     return path.normalize(path.join(__dirname, '../../../'));
   }
 
-  async openFile(path: string): Promise<void> {
-    try {
-      const stats = fs.lstatSync(path);
-      if (stats.isFile()) {
-        const labDir = getCurrentRootPath();
-        let relPath = path.replace(labDir, '');
-        const winConvert = relPath.split('\\').join('/');
-        relPath = winConvert.replace('/', '');
-
-        await this._view.webContents.executeJavaScript(`
-          {
-            const lab = window.jupyterapp || window.jupyterlab;
-            if (lab) {
-              lab.commands.execute('docmanager:open', { path: '${relPath}' });
-            }
-          }
-          0; // response
-        `);
-      } else {
-        log.error(`Valid file not found at path: ${path}`);
+  async openFiles() {
+    const filesToOpen = this._sessionConfig.filesToOpen;
+    filesToOpen.forEach(async (relPath: string) => {
+      if (relPath === '') {
+        return;
       }
-    } catch (error) {
-      log.error(`Failed to open file at path: ${path}. Error: `, error);
-    }
+  
+      const labDir = this._sessionConfig.resolvedWorkingDirectory;
+      const filePath = path.resolve(labDir, relPath);
+  
+      try {
+        const stats = fs.lstatSync(filePath);
+        if (stats.isFile()) {
+          await this._view.webContents.executeJavaScript(`
+            {
+              const lab = window.jupyterapp || window.jupyterlab;
+              if (lab) {
+                lab.commands.execute('docmanager:open', { path: '${relPath}' });
+              }
+            }
+            0; // response
+          `);
+        } else {
+          log.error(`Valid file not found at path: ${path}`);
+        }
+      } catch (error) {
+        log.error(`Failed to open file at path: ${path}. Error: `, error);
+      }
+    });
   }
 
   /**

@@ -69,7 +69,7 @@ export interface IWindowData {
 export interface ISessionData {
   remoteURL: string;
   workingDirectory: string;
-  fileToOpen: string;
+  filesToOpen: string[];
   pythonPath: string;
   persistSessionData: boolean;
   clearSessionDataOnNextLaunch: boolean;
@@ -256,13 +256,40 @@ export interface ISessionIdentifier {
   remoteURL: string;
 }
 
+let _appDataSingleton: ApplicationData;
+
 export class ApplicationData {
   constructor() {
+    if (_appDataSingleton) {
+      throw 'This is a singleton class. Use ApplicationData.getSingleton()';
+    }
+
     this.read();
 
     const sessionConfig = SessionConfig.createLocal();
 
+    // handle opening file or directory with command-line arguments
+    if (process.argv.length > 1) {
+      const openPath = path.resolve(process.argv[1]);
+
+      if (fs.existsSync(openPath)) {
+        if (fs.lstatSync(openPath).isDirectory()) {
+          sessionConfig.workingDirectory = openPath;
+        } else {
+          sessionConfig.workingDirectory = path.dirname(openPath);
+        }
+      }
+    }
+
     this.sessions.push(sessionConfig);
+  }
+
+  static getSingleton() {
+    if (!_appDataSingleton) {
+      _appDataSingleton = new ApplicationData();
+    }
+
+    return _appDataSingleton;
   }
 
   read() {
@@ -297,7 +324,7 @@ export class SessionConfig implements ISessionData, IWindowData {
   remoteURL: string = '';
   persistSessionData: boolean = true;
   workingDirectory: string = '$HOME';
-  fileToOpen: string = '';
+  filesToOpen: string[] = [];
   pythonPath: string = '';
   clearSessionDataOnNextLaunch: boolean = false;
   lastOpened: Date;
@@ -317,7 +344,7 @@ export class SessionConfig implements ISessionData, IWindowData {
       workingDirectory ||
       userSettings.getValue(SettingType.defaultWorkingDirectory);
     if (fileToOpen) {
-      sessionConfig.fileToOpen = fileToOpen;
+      sessionConfig.setFileToOpen(fileToOpen);
     }
     sessionConfig.pythonPath =
       pythonPath || userSettings.getValue(SettingType.pythonPath);
@@ -343,7 +370,20 @@ export class SessionConfig implements ISessionData, IWindowData {
   get resolvedWorkingDirectory(): string {
     return resolveWorkingDirectory(this.workingDirectory);
   }
+
+  setFileToOpen(filePath: string) {
+    const stats = fs.lstatSync(filePath);
+    if (stats.isFile()) {
+      const workingDir = this.resolvedWorkingDirectory;
+      if (filePath.startsWith(workingDir)) {
+        let relPath = filePath.substring(workingDir.length);
+        const winConvert = relPath.split('\\').join('/');
+        relPath = winConvert.replace('/', '');
+        this.filesToOpen = [relPath];
+      }
+    }
+  }
 }
 
 export const userSettings = new UserSettings();
-export const appData = new ApplicationData();
+export const appData = ApplicationData.getSingleton();

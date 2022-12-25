@@ -217,7 +217,8 @@ export class SessionManager extends EventEmitter implements ISessions {
         let session = this._lastFocusedSession;
         session.browserWindow.restore();
         session.browserWindow.focus();
-        session.labView.openFile(path);
+        session.config.setFileToOpen(path);
+        session.labView.openFiles();
       })
       .catch((error: any) => {
         return;
@@ -306,7 +307,8 @@ if (process && process.type !== 'renderer' && !sessionConfig.isRemote) {
     app.on('open-file', (event: Electron.Event, path: string) => {
       ipcMain.once('lab-ui-ready', (event: Electron.Event) => {
         if (sessions?.lastFocusedSession) {
-          sessions.lastFocusedSession.labView.openFile(path);
+          sessions.lastFocusedSession.config.setFileToOpen(path);
+          sessions.lastFocusedSession.labView.openFiles();
         }
       });
     });

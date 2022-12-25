@@ -7,19 +7,7 @@ import * as path from 'path';
 import * as fs from 'fs';
 import { getAppDir, isDevMode } from './utils';
 import { execSync } from 'child_process';
-
-// handle opening file or directory with command-line arguments
-if (process.argv.length > 1) {
-  const openPath = path.resolve(process.argv[1]);
-
-  if (fs.existsSync(openPath)) {
-    if (fs.lstatSync(openPath).isDirectory()) {
-      process.env.JLAB_DESKTOP_HOME = openPath;
-    } else {
-      process.env.JLAB_DESKTOP_HOME = path.dirname(openPath);
-    }
-  }
-}
+import { appData } from './settings';
 
 /**
  *  * On Mac OSX the PATH env variable a packaged app gets does not
@@ -135,7 +123,8 @@ app.setAboutPanelOptions({
 });
 
 app.on('open-file', (event: Electron.Event, _path: string) => {
-  process.env.JLAB_DESKTOP_HOME = path.dirname(_path);
+  const sessionConfig = appData.getSessionConfig();
+  sessionConfig.workingDirectory = path.dirname(_path);
 });
 
 function setupJLabCommand() {
