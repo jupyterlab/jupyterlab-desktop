@@ -119,7 +119,6 @@ const services = [
   './sessions',
   './server',
   './shortcuts',
-  './utils',
   './registry'
 ].map((service: string) => {
   return require(service).default;

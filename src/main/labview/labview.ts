@@ -15,8 +15,9 @@ import { request as httpsRequest } from 'https';
 import * as path from 'path';
 import * as fs from 'fs';
 import * as ejs from 'ejs';
-import { appConfig, getCurrentRootPath, isDarkTheme } from '../utils';
+import { getCurrentRootPath, isDarkTheme } from '../utils';
 import { MainWindow } from '../mainwindow/mainwindow';
+import { appData, SettingType, userSettings } from '../settings';
 
 const DESKTOP_APP_ASSETS_PATH = 'desktop-app-assets';
 
@@ -26,7 +27,7 @@ const templateAssetPaths = new Map([
     'index.html',
     () => {
       return {
-        pageConfig: JSON.stringify(appConfig.pageConfig)
+        pageConfig: JSON.stringify(appData.getSessionConfig().pageConfig)
       };
     }
   ]
@@ -36,6 +37,8 @@ export class LabView {
   constructor(parent: MainWindow, options: LabView.IOptions) {
     this._parent = parent;
     this._options = options;
+    const sessionConfig = appData.getSessionConfig();
+    this._jlabBaseUrl = `${sessionConfig.url.protocol}//${sessionConfig.url.host}${sessionConfig.url.pathname}`;
     this._view = new BrowserView({
       webPreferences: {
         preload: path.join(__dirname, './preload.js')
@@ -51,12 +54,13 @@ export class LabView {
   }
 
   load() {
-    if (appConfig.frontEndMode === 'web-app') {
-      this._view.webContents.loadURL(appConfig.url.href);
+    const sessionConfig = appData.getSessionConfig();
+    if (userSettings.getValue(SettingType.frontEndMode) === 'web-app') {
+      this._view.webContents.loadURL(sessionConfig.url.href);
     } else {
       this._view.webContents.loadURL(
-        `${appConfig.url.protocol}//${appConfig.url.host}${
-          appConfig.url.pathname
+        `${sessionConfig.url.protocol}//${sessionConfig.url.host}${
+          sessionConfig.url.pathname
         }${DESKTOP_APP_ASSETS_PATH}/index.html?${encodeURIComponent(
           JSON.stringify(this._options)
         )}`
@@ -171,19 +175,19 @@ export class LabView {
       }
     );
 
-    if (appConfig.syncJupyterLabTheme) {
+    if (userSettings.getValue(SettingType.syncJupyterLabTheme)) {
       ipcMain.once('lab-ui-ready', () => {
-        this._setJupyterLabTheme(appConfig.theme);
+        this._setJupyterLabTheme(userSettings.getValue(SettingType.theme));
       });
     }
 
     ipcMain.on('set-theme', async (_event, theme) => {
-      if (appConfig.syncJupyterLabTheme) {
+      if (userSettings.getValue(SettingType.syncJupyterLabTheme)) {
         await this._setJupyterLabTheme(theme);
       }
     });
 
-    if (appConfig.frontEndMode == 'web-app') {
+    if (userSettings.getValue(SettingType.frontEndMode) == 'web-app') {
       this._registerWebAppFrontEndHandlers();
     } else {
       this._registerClientAppFrontEndHandlers();
@@ -243,6 +247,7 @@ export class LabView {
   }
 
   private _registerClientAppFrontEndHandlers() {
+    const sessionConfig = appData.getSessionConfig();
     this._view.webContents.session.protocol.interceptBufferProtocol(
       'http',
       this._handleInterceptBufferProtocol.bind(this)
@@ -254,7 +259,10 @@ export class LabView {
     );
 
     const filter = {
-      urls: [`ws://${appConfig.url.host}/*`, `wss://${appConfig.url.host}/*`]
+      urls: [
+        `ws://${sessionConfig.url.host}/*`,
+        `wss://${sessionConfig.url.host}/*`
+      ]
     };
 
     this._view.webContents.session.webRequest.onBeforeSendHeaders(
@@ -267,8 +275,8 @@ export class LabView {
           requestHeaders['Cookie'] = Array.from(this._cookies.values()).join(
             '; '
           );
-          requestHeaders['Host'] = appConfig.url.host;
-          requestHeaders['Origin'] = appConfig.url.origin;
+          requestHeaders['Host'] = sessionConfig.url.host;
+          requestHeaders['Origin'] = sessionConfig.url.origin;
         }
         callback({ cancel: false, requestHeaders });
       }
@@ -323,20 +331,23 @@ export class LabView {
     req: Electron.ProtocolRequest,
     callback: (response: Buffer | Electron.ProtocolResponse) => void
   ): void {
+    const sessionConfig = appData.getSessionConfig();
     const headers: any = {
       ...req.headers,
       Referer: req.referrer,
-      Authorization: `token ${appConfig.token}`
+      Authorization: `token ${sessionConfig.token}`
     };
 
     if (
-      appConfig.url &&
-      req.url.startsWith(`${appConfig.url.protocol}//${appConfig.url.host}`)
+      sessionConfig.url &&
+      req.url.startsWith(
+        `${sessionConfig.url.protocol}//${sessionConfig.url.host}`
+      )
     ) {
       let cookieArray: string[] = [];
-      if (appConfig.cookies) {
-        appConfig.cookies.forEach(cookie => {
-          if (cookie.domain === appConfig.url.hostname) {
+      if (sessionConfig.cookies) {
+        sessionConfig.cookies.forEach(cookie => {
+          if (cookie.domain === sessionConfig.url.hostname) {
             cookieArray.push(`${cookie.name}=${cookie.value}`);
             if (cookie.name === '_xsrf') {
               headers['X-XSRFToken'] = cookie.value;
@@ -414,7 +425,7 @@ export class LabView {
   private _parent: MainWindow;
   private _options: LabView.IOptions;
   private _cookies: Map<string, string> = new Map();
-  private _jlabBaseUrl = `${appConfig.url.protocol}//${appConfig.url.host}${appConfig.url.pathname}`;
+  private _jlabBaseUrl: string;
 }
 
 export namespace LabView {

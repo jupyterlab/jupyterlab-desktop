@@ -3,13 +3,9 @@
 
 import { BrowserWindow } from 'electron';
 import { LabView } from '../labview/labview';
+import { SettingType, userSettings } from '../settings';
 import { TitleBarView } from '../titlebarview/titlebarview';
-import {
-  appConfig,
-  DarkThemeBGColor,
-  isDarkTheme,
-  LightThemeBGColor
-} from '../utils';
+import { DarkThemeBGColor, isDarkTheme, LightThemeBGColor } from '../utils';
 
 export class MainWindow {
   constructor(options: MainWindow.IOptions) {
@@ -26,7 +22,7 @@ export class MainWindow {
       title: 'JupyterLab',
       titleBarStyle: 'hidden',
       frame: process.platform === 'darwin',
-      backgroundColor: isDarkTheme(appConfig.theme)
+      backgroundColor: isDarkTheme(userSettings.getValue(SettingType.theme))
         ? DarkThemeBGColor
         : LightThemeBGColor,
       webPreferences: {

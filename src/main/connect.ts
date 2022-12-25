@@ -2,7 +2,8 @@
 // Distributed under the terms of the Modified BSD License.
 
 import { BrowserWindow, Cookie } from 'electron';
-import { appConfig, clearSession } from './utils';
+import { appData } from './settings';
+import { clearSession } from './utils';
 
 export let connectWindow: BrowserWindow;
 
@@ -161,8 +162,10 @@ export async function connectAndGetServerInfo(
     window.setMenuBarVisibility(false);
     window.center();
 
+    const sessionConfig = appData.getSessionConfig();
     const clearUserSession =
-      !appConfig.persistSessionData || appConfig.clearSessionDataOnNextLaunch;
+      !sessionConfig.persistSessionData ||
+      sessionConfig.clearSessionDataOnNextLaunch;
 
     if (clearUserSession) {
       clearSession(window.webContents.session).then(() => {

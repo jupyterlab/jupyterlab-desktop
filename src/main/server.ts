@@ -18,12 +18,8 @@ import * as path from 'path';
 import { request as httpRequest } from 'http';
 import { request as httpsRequest } from 'https';
 import { IEnvironmentType, IPythonEnvironment } from './tokens';
-import {
-  appConfig,
-  getEnvironmentPath,
-  getSchemasDir,
-  getUserDataDir
-} from './utils';
+import { getEnvironmentPath, getSchemasDir, getUserDataDir } from './utils';
+import { appData } from './settings';
 
 const SERVER_LAUNCH_TIMEOUT = 30000; // milliseconds
 const SERVER_RESTART_LIMIT = 3; // max server restarts
@@ -49,6 +45,7 @@ function createLaunchScript(
 ): string {
   const isWin = process.platform === 'win32';
   const envPath = getEnvironmentPath(environment);
+  const sessionConfig = appData.getSessionConfig();
 
   // note: traitlets<5.0 require fully specified arguments to
   // be followed by equals sign without a space; this can be
@@ -62,7 +59,7 @@ function createLaunchScript(
     `--LabServerApp.schemas_dir="${schemasDir}"`,
     // do not use any config file
     '--JupyterApp.config_file_name=""',
-    `--ServerApp.port=${appConfig.url.port}`,
+    `--ServerApp.port=${sessionConfig.url.port}`,
     // use our token rather than any pre-configured password
     '--ServerApp.password=""',
     '--ServerApp.allow_origin="*"',
@@ -173,6 +170,7 @@ export class JupyterServer {
       return this._startServer;
     }
     let started = false;
+    const sessionConfig = appData.getSessionConfig();
 
     this._startServer = new Promise<JupyterServer.IInfo>(
       // eslint-disable-next-line no-async-promise-executor
@@ -187,8 +185,8 @@ export class JupyterServer {
           });
           reject();
         }
-        this._info.url = `${appConfig.url.protocol}//${appConfig.url.host}`;
-        this._info.token = appConfig.token;
+        this._info.url = `${sessionConfig.url.protocol}//${sessionConfig.url.host}`;
+        this._info.token = sessionConfig.token;
 
         let baseCondaPath: string = '';
         if (this._info.environment.type === IEnvironmentType.CondaRoot) {
@@ -261,14 +259,14 @@ export class JupyterServer {
           shell: isWin ? 'cmd.exe' : '/bin/bash',
           env: {
             ...process.env,
-            JUPYTER_TOKEN: appConfig.token,
+            JUPYTER_TOKEN: sessionConfig.token,
             JUPYTER_CONFIG_DIR:
               process.env.JLAB_DESKTOP_CONFIG_DIR || getUserDataDir()
           }
         });
 
         Promise.race([
-          waitUntilServerIsUp(appConfig.url),
+          waitUntilServerIsUp(sessionConfig.url),
           waitForDuration(SERVER_LAUNCH_TIMEOUT)
         ]).then((up: boolean) => {
           if (up) {
@@ -375,13 +373,14 @@ export class JupyterServer {
   }
 
   private _shutdownServer(): Promise<void> {
+    const sessionConfig = appData.getSessionConfig();
     return new Promise<void>((resolve, reject) => {
       const req = httpRequest(
-        `http://localhost:${appConfig.url.port}/api/shutdown?_xsrf=${appConfig.token}`,
+        `http://localhost:${sessionConfig.url.port}/api/shutdown?_xsrf=${sessionConfig.token}`,
         {
           method: 'POST',
           headers: {
-            Authorization: `token ${appConfig.token}`
+            Authorization: `token ${sessionConfig.token}`
           }
         },
         r => {

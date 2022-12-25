@@ -5,7 +5,7 @@ import { app, ipcMain } from 'electron';
 
 import { JSONObject } from '@lumino/coreutils';
 
-import { IApplication, IStatefulService } from './app';
+import { IApplication } from './app';
 
 import { IServerFactory, JupyterServer } from './server';
 
@@ -15,14 +15,13 @@ import { IService } from './main';
 
 import { IRegistry } from './registry';
 
-import { appConfig } from './utils';
-
 import { EventEmitter } from 'events';
 
 import * as fs from 'fs';
 import * as path from 'path';
 import { MainWindow } from './mainwindow/mainwindow';
 import { LabView } from './labview/labview';
+import { appData } from './settings';
 
 export interface ISessions extends EventEmitter {
   createSession: (opts?: JupyterLabSession.IOptions) => Promise<void>;
@@ -32,9 +31,7 @@ export interface ISessions extends EventEmitter {
   length: number;
 }
 
-export class JupyterLabSessions
-  extends EventEmitter
-  implements ISessions, IStatefulService {
+export class JupyterLabSessions extends EventEmitter implements ISessions {
   readonly id = 'JupyterLabSessions';
 
   constructor(
@@ -60,39 +57,26 @@ export class JupyterLabSessions
 
     this._registerListeners();
 
-    // Get last session state
-    app
-      .registerStatefulService(this)
-      .then((state: JupyterLabSession.IState) => {
-        this._lastWindowState = state;
-
-        app.getServerInfo().then(serverInfo => {
-          if (serverInfo.type === 'local') {
-            if (this._registry.getCurrentPythonEnvironment()) {
-              this.createSession().then(() => {
-                this._startingSession = null;
-              });
-            }
-          } else {
-            let options: JupyterLabSession.IOptions = {
-              state: appConfig.isRemote ? 'remote' : 'local'
-            };
-            if (this._lastWindowState) {
-              options = { ...this._lastWindowState, ...options };
-            }
-            this.createSession(options).then(() => {
-              this._startingSession = null;
-            });
-          }
-        });
-      })
-      .catch(() => {
-        app.getServerInfo().then(serverInfo => {
+    app.getServerInfo().then(serverInfo => {
+      if (serverInfo.type === 'local') {
+        if (this._registry.getCurrentPythonEnvironment()) {
           this.createSession().then(() => {
             this._startingSession = null;
           });
+        }
+      } else {
+        const sessionConfig = appData.getSessionConfig();
+        let options: JupyterLabSession.IOptions = {
+          state: sessionConfig.isRemote ? 'remote' : 'local'
+        };
+        if (this._lastWindowState) {
+          options = { ...this._lastWindowState, ...options };
+        }
+        this.createSession(options).then(() => {
+          this._startingSession = null;
         });
-      });
+      }
+    });
   }
 
   get length(): number {
@@ -236,7 +220,8 @@ export class JupyterLabSessions
     });
 
     ipcMain.once('lab-ui-ready', () => {
-      if (appConfig.isRemote) {
+      const sessionConfig = appData.getSessionConfig();
+      if (sessionConfig.isRemote) {
         this._startingSession = null;
         return;
       }
@@ -459,12 +444,13 @@ export namespace JupyterLabSession {
 }
 
 let sessions: JupyterLabSessions;
+const sessionConfig = appData.getSessionConfig();
 
 /**
  * The "open-file" listener should be registered before
  * app ready for "double click" files to open in application
  */
-if (process && process.type !== 'renderer' && !appConfig.isRemote) {
+if (process && process.type !== 'renderer' && !sessionConfig.isRemote) {
   app.once('will-finish-launching', (e: Electron.Event) => {
     app.on('open-file', (event: Electron.Event, path: string) => {
       ipcMain.once('lab-ui-ready', (event: Electron.Event) => {

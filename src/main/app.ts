@@ -15,10 +15,6 @@ import {
 
 import { IService } from './main';
 
-import { ElectronStateDB } from './state';
-
-import { JSONObject, JSONValue } from '@lumino/coreutils';
-
 import log from 'electron-log';
 
 import { IPythonEnvironment } from './tokens';
@@ -31,13 +27,7 @@ import * as fs from 'fs';
 import { AddressInfo, createServer } from 'net';
 import { randomBytes } from 'crypto';
 
-import {
-  appConfig,
-  clearSession,
-  getAppDir,
-  getUserDataDir,
-  isDarkTheme
-} from './utils';
+import { clearSession, getAppDir, getUserDataDir, isDarkTheme } from './utils';
 import { execFile } from 'child_process';
 import { JupyterServer, waitUntilServerIsUp } from './server';
 import { connectAndGetServerInfo, IJupyterServerInfo } from './connect';
@@ -45,6 +35,7 @@ import { UpdateDialog } from './updatedialog/updatedialog';
 import { PreferencesDialog } from './preferencesdialog/preferencesdialog';
 import { ServerConfigDialog } from './serverconfigdialog/serverconfigdialog';
 import { AboutDialog } from './aboutdialog/aboutdialog';
+import { appData, SettingType, userSettings } from './settings';
 
 async function getFreePort(): Promise<number> {
   return new Promise<number>(resolve => {
@@ -72,19 +63,7 @@ async function getFreePort(): Promise<number> {
 }
 
 export interface IApplication {
-  /**
-   * Register as service with persistent state.
-   *
-   * @return promise fulfileld with the service's previous state.
-   */
-  registerStatefulService: (service: IStatefulService) => Promise<JSONValue>;
-
   registerClosingService: (service: IClosingService) => void;
-
-  /**
-   * Force the application service to write data to the disk.
-   */
-  saveState: (service: IStatefulService, data: JSONValue) => Promise<void>;
 
   getPythonEnvironment(): Promise<IPythonEnvironment>;
 
@@ -94,35 +73,6 @@ export interface IApplication {
 
   getServerInfo(): Promise<JupyterServer.IInfo>;
   pageConfigSet: Promise<boolean>;
-}
-
-/**
- * A service that has data that needs to persist.
- */
-export interface IStatefulService {
-  /**
-   * The human-readable id for the service state. Must be unique
-   * to each service.
-   */
-  id: string;
-
-  /**
-   * Called before the application quits. Qutting will
-   * be suspended until the returned promise is resolved with
-   * the service's state.
-   *
-   * @return promise that is fulfilled with the service's state.
-   */
-  getStateBeforeQuit(): Promise<JSONValue>;
-
-  /**
-   * Called before state is passed to the service. Implementing
-   * services should scan the state for issues in this function.
-   * If the data is invalid, the function should return false.
-   *
-   * @return true if the data is valid, false otherwise.
-   */
-  verifyState: (state: JSONValue) => boolean;
 }
 
 /**
@@ -138,7 +88,7 @@ export interface IClosingService {
   finished(): Promise<void>;
 }
 
-export class JupyterApplication implements IApplication, IStatefulService {
+export class JupyterApplication implements IApplication {
   readonly id = 'JupyterLabDesktop';
   private _registry: IRegistry;
 
@@ -149,178 +99,118 @@ export class JupyterApplication implements IApplication, IStatefulService {
     this._registry = registry;
     this._registerListeners();
 
-    // Get application state from state db file.
-    this._appState = new Promise<JSONObject>((res, rej) => {
-      this._appStateDB
-        .fetch(JupyterApplication.APP_STATE_NAMESPACE)
-        .then((state: JSONObject) => {
-          res(state);
-        })
-        .catch(e => {
-          log.error(e);
-          res({});
-        });
-    });
+    const sessionConfig = appData.getSessionConfig();
 
-    this._applicationState = {
-      checkForUpdatesAutomatically: true,
-      installUpdatesAutomatically: true,
-      pythonPath: '',
-      condaRootPath: '',
-      remoteURL: '',
-      theme: 'system',
-      syncJupyterLabTheme: true,
-      frontEndMode: 'web-app'
-    };
+    const bundledPythonPath = this._registry.getBundledPythonPath();
+    let pythonPath = sessionConfig.pythonPath;
+    if (pythonPath === '') {
+      pythonPath = bundledPythonPath;
+    }
 
-    this.registerStatefulService(this).then(
-      (state: JupyterApplication.IState) => {
-        if (state) {
-          this._applicationState = state;
-        }
+    if (sessionConfig.remoteURL === '') {
+      const useBundledPythonPath = pythonPath === bundledPythonPath;
 
-        const appState = this._applicationState;
-
-        if (appState.remoteURL === undefined) {
-          appState.remoteURL = '';
-        }
-
-        if (appState.persistSessionData === undefined) {
-          appState.persistSessionData = true;
-        }
-
-        if (appState.pythonPath === undefined) {
-          appState.pythonPath = '';
-        }
-        const bundledPythonPath = this._registry.getBundledPythonPath();
-        let pythonPath = appState.pythonPath;
-        if (pythonPath === '') {
-          pythonPath = bundledPythonPath;
-        }
-
-        if (appState.remoteURL === '') {
-          const useBundledPythonPath = pythonPath === bundledPythonPath;
-
-          if (this._registry.validatePythonEnvironmentAtPath(pythonPath)) {
-            this._registry.setDefaultPythonPath(pythonPath);
-            appState.pythonPath = pythonPath;
-          } else {
-            this._showServerConfigDialog(
-              useBundledPythonPath ? 'invalid-bundled-env' : 'invalid-env'
-            );
-          }
-        }
-
-        if (!(appState.theme === 'light' || appState.theme === 'dark')) {
-          appState.theme = 'system';
-        }
-        appConfig.theme = appState.theme;
-
-        if (appState.syncJupyterLabTheme !== false) {
-          appState.syncJupyterLabTheme = true;
-        }
-        appConfig.syncJupyterLabTheme = appState.syncJupyterLabTheme;
-
-        if (appState.frontEndMode !== 'client-app') {
-          appState.frontEndMode = 'web-app';
-        }
-        appConfig.frontEndMode = appState.frontEndMode;
-
-        if (appState.checkForUpdatesAutomatically !== false) {
-          let checkDirectly = true;
-          if (
-            process.platform === 'darwin' &&
-            appState.installUpdatesAutomatically !== false
-          ) {
-            this._setupAutoUpdater();
-            checkDirectly = false;
-          }
-
-          if (checkDirectly) {
-            setTimeout(() => {
-              this._checkForUpdates('on-new-version');
-            }, 5000);
-          }
-        }
-
-        if (appState.remoteURL === '') {
-          appConfig.isRemote = false;
-          getFreePort().then(port => {
-            appConfig.token = randomBytes(24).toString('hex');
-            appConfig.url = new URL(
-              `http://localhost:${port}/lab?token=${appConfig.token}`
-            );
-            this._serverInfoStateSet = true;
-
-            waitUntilServerIsUp(appConfig.url).then(() => {
-              connectAndGetServerInfo(appConfig.url.href, { showDialog: false })
-                .then(serverInfo => {
-                  appConfig.pageConfig = serverInfo.pageConfig;
-                  appConfig.cookies = serverInfo.cookies;
-                  this._serverPageConfigSet = true;
-                })
-                .catch(() => {
-                  this._showServerConfigDialog('change');
-                });
-            });
-          });
-        } else {
-          appConfig.isRemote = true;
-          appConfig.persistSessionData = appState.persistSessionData;
-          appConfig.clearSessionDataOnNextLaunch =
-            appState.clearSessionDataOnNextLaunch === true;
-          // reset the flag
-          appState.clearSessionDataOnNextLaunch = false;
-          try {
-            appConfig.url = new URL(appState.remoteURL);
-            appConfig.token = appConfig.url.searchParams.get('token');
-            connectAndGetServerInfo(appConfig.url.href, { showDialog: true })
-              .then(serverInfo => {
-                appConfig.pageConfig = serverInfo.pageConfig;
-                appConfig.cookies = serverInfo.cookies;
-                this._serverInfoStateSet = true;
-                this._serverPageConfigSet = true;
-              })
-              .catch(() => {
-                this._showServerConfigDialog('remote-connection-failure');
-              });
-          } catch (error) {
-            this._showServerConfigDialog('remote-connection-failure');
-          }
-        }
+      if (this._registry.validatePythonEnvironmentAtPath(pythonPath)) {
+        this._registry.setDefaultPythonPath(pythonPath);
+        sessionConfig.pythonPath = pythonPath;
+      } else {
+        this._showServerConfigDialog(
+          useBundledPythonPath ? 'invalid-bundled-env' : 'invalid-env'
+        );
       }
-    );
+    }
+
+    if (
+      userSettings.getValue(SettingType.checkForUpdatesAutomatically) !== false
+    ) {
+      let checkDirectly = true;
+      if (
+        process.platform === 'darwin' &&
+        userSettings.getValue(SettingType.installUpdatesAutomatically) !== false
+      ) {
+        this._setupAutoUpdater();
+        checkDirectly = false;
+      }
+
+      if (checkDirectly) {
+        setTimeout(() => {
+          this._checkForUpdates('on-new-version');
+        }, 5000);
+      }
+    }
+
+    if (sessionConfig.remoteURL === '') {
+      getFreePort().then(port => {
+        sessionConfig.token = randomBytes(24).toString('hex');
+        sessionConfig.url = new URL(
+          `http://localhost:${port}/lab?token=${sessionConfig.token}`
+        );
+        this._serverInfoStateSet = true;
+
+        waitUntilServerIsUp(sessionConfig.url).then(() => {
+          connectAndGetServerInfo(sessionConfig.url.href, { showDialog: false })
+            .then(serverInfo => {
+              sessionConfig.pageConfig = serverInfo.pageConfig;
+              sessionConfig.cookies = serverInfo.cookies;
+              this._serverPageConfigSet = true;
+            })
+            .catch(() => {
+              this._showServerConfigDialog('change');
+            });
+        });
+      });
+    } else {
+      // reset the flag
+      // sessionConfig.clearSessionDataOnNextLaunch = false;
+      try {
+        sessionConfig.url = new URL(sessionConfig.remoteURL);
+        sessionConfig.token = sessionConfig.url.searchParams.get('token');
+        connectAndGetServerInfo(sessionConfig.url.href, { showDialog: true })
+          .then(serverInfo => {
+            sessionConfig.pageConfig = serverInfo.pageConfig;
+            sessionConfig.cookies = serverInfo.cookies;
+            this._serverInfoStateSet = true;
+            this._serverPageConfigSet = true;
+          })
+          .catch(() => {
+            this._showServerConfigDialog('remote-connection-failure');
+          });
+      } catch (error) {
+        this._showServerConfigDialog('remote-connection-failure');
+      }
+    }
   }
 
   getPythonEnvironment(): Promise<IPythonEnvironment> {
     return new Promise<IPythonEnvironment>((resolve, _reject) => {
-      this._appState.then((state: JSONObject) => {
-        resolve(this._registry.getCurrentPythonEnvironment());
-      });
+      // this._appState.then((state: JSONObject) => {
+      resolve(this._registry.getCurrentPythonEnvironment());
+      // });
     });
   }
 
   setCondaRootPath(condaRootPath: string): void {
-    this._applicationState.condaRootPath = condaRootPath;
+    appData.condaRootPath = condaRootPath;
   }
 
   getCondaRootPath(): Promise<string> {
     return new Promise<string>((resolve, _reject) => {
-      this._appState.then((state: JSONObject) => {
-        resolve(this._applicationState.condaRootPath);
-      });
+      // this._appState.then((state: JSONObject) => {
+      resolve(appData.condaRootPath);
+      // });
     });
   }
 
   getServerInfo(): Promise<JupyterServer.IInfo> {
     return new Promise<JupyterServer.IInfo>(resolve => {
       const resolveInfo = () => {
+        const sessionConfig = appData.getSessionConfig();
         resolve({
-          type: appConfig.isRemote ? 'remote' : 'local',
-          url: `${appConfig.url.protocol}//${appConfig.url.host}${appConfig.url.pathname}`,
-          token: appConfig.token,
+          type: sessionConfig.isRemote ? 'remote' : 'local',
+          url: `${sessionConfig.url.protocol}//${sessionConfig.url.host}${sessionConfig.url.pathname}`,
+          token: sessionConfig.token,
           environment: undefined,
-          pageConfig: appConfig.pageConfig
+          pageConfig: sessionConfig.pageConfig
         });
       };
 
@@ -354,42 +244,8 @@ export class JupyterApplication implements IApplication, IStatefulService {
     });
   }
 
-  registerStatefulService(service: IStatefulService): Promise<JSONValue> {
-    this._services.push(service);
-
-    return new Promise<JSONValue>((res, rej) => {
-      this._appState
-        .then((state: JSONObject) => {
-          if (
-            state &&
-            state[service.id] &&
-            service.verifyState(state[service.id])
-          ) {
-            res(state[service.id]);
-          }
-          res(null);
-        })
-        .catch(() => {
-          res(null);
-        });
-    });
-  }
-
   registerClosingService(service: IClosingService): void {
     this._closing.push(service);
-  }
-
-  saveState(service: IStatefulService, data: JSONValue): Promise<void> {
-    this._updateState(service.id, data);
-    return this._saveState();
-  }
-
-  getStateBeforeQuit(): Promise<JupyterApplication.IState> {
-    return Promise.resolve(this._applicationState);
-  }
-
-  verifyState(state: JupyterApplication.IState): boolean {
-    return true;
   }
 
   private _setupAutoUpdater() {
@@ -416,53 +272,6 @@ export class JupyterApplication implements IApplication, IStatefulService {
     require('update-electron-app')();
   }
 
-  private _updateState(id: string, data: JSONValue): void {
-    let prevState = this._appState;
-
-    this._appState = new Promise<JSONObject>((res, rej) => {
-      prevState
-        .then((state: JSONObject) => {
-          state[id] = data;
-          res(state);
-        })
-        .catch((state: JSONObject) => res(state));
-    });
-  }
-
-  private _rewriteState(ids: string[], data: JSONValue[]): void {
-    let prevState = this._appState;
-
-    this._appState = new Promise<JSONObject>((res, rej) => {
-      prevState
-        .then(() => {
-          let state: JSONObject = {};
-          ids.forEach((id: string, idx: number) => {
-            state[id] = data[idx];
-          });
-          res(state);
-        })
-        .catch((state: JSONObject) => res(state));
-    });
-  }
-
-  private _saveState(): Promise<void> {
-    return new Promise<void>((res, rej) => {
-      this._appState
-        .then((state: JSONObject) => {
-          return this._appStateDB.save(
-            JupyterApplication.APP_STATE_NAMESPACE,
-            state
-          );
-        })
-        .then(() => {
-          res();
-        })
-        .catch(e => {
-          rej(e);
-        });
-    });
-  }
-
   private _validateRemoteServerUrl(url: string): Promise<IJupyterServerInfo> {
     return connectAndGetServerInfo(url, { showDialog: true, incognito: true });
   }
@@ -478,29 +287,7 @@ export class JupyterApplication implements IApplication, IStatefulService {
     app.on('will-quit', event => {
       event.preventDefault();
 
-      // Collect data from services
-      let state: Promise<JSONValue>[] = this._services.map(
-        (s: IStatefulService) => {
-          return s.getStateBeforeQuit();
-        }
-      );
-      let ids: string[] = this._services.map((s: IStatefulService) => {
-        return s.id;
-      });
-
-      // Wait for all services to return state
-      Promise.all(state)
-        .then((data: JSONValue[]) => {
-          this._rewriteState(ids, data);
-          return this._saveState();
-        })
-        .then(() => {
-          this._quit();
-        })
-        .catch(() => {
-          log.error(new Error('JupyterLab did not save state successfully'));
-          this._quit();
-        });
+      this._quit();
     });
 
     app.on('browser-window-focus', (_event: Event, window: BrowserWindow) => {
@@ -508,11 +295,14 @@ export class JupyterApplication implements IApplication, IStatefulService {
     });
 
     ipcMain.on('set-check-for-updates-automatically', (_event, autoUpdate) => {
-      this._applicationState.checkForUpdatesAutomatically = autoUpdate;
+      userSettings.setValue(
+        SettingType.checkForUpdatesAutomatically,
+        autoUpdate
+      );
     });
 
-    ipcMain.on('set-install-updates-automatically', (_event, autoUpdate) => {
-      this._applicationState.installUpdatesAutomatically = autoUpdate;
+    ipcMain.on('set-install-updates-automatically', (_event, install) => {
+      userSettings.setValue(SettingType.installUpdatesAutomatically, install);
     });
 
     ipcMain.on('launch-installer-download-page', () => {
@@ -643,33 +433,33 @@ export class JupyterApplication implements IApplication, IStatefulService {
     });
 
     ipcMain.on('set-python-path', (event, path) => {
-      this._applicationState.remoteURL = '';
-      this._applicationState.pythonPath = path;
+      appData.getSessionConfig().remoteURL = '';
+      appData.getSessionConfig().pythonPath = path;
       app.relaunch();
       app.quit();
     });
 
     ipcMain.on('set-remote-server-url', (event, url, persistSessionData) => {
-      if (this._applicationState.remoteURL !== url) {
-        this._applicationState.clearSessionDataOnNextLaunch = true;
+      if (appData.getSessionConfig().remoteURL !== url) {
+        appData.getSessionConfig().clearSessionDataOnNextLaunch = true;
       }
 
-      this._applicationState.remoteURL = url;
-      this._applicationState.persistSessionData = persistSessionData;
+      appData.getSessionConfig().remoteURL = url;
+      appData.getSessionConfig().persistSessionData = persistSessionData;
       app.relaunch();
       app.quit();
     });
 
     ipcMain.on('set-theme', (_event, theme) => {
-      this._applicationState.theme = theme;
+      userSettings.setValue(SettingType.theme, theme);
     });
 
     ipcMain.on('set-sync-jupyterlab-theme', (_event, sync) => {
-      this._applicationState.syncJupyterLabTheme = sync;
+      userSettings.setValue(SettingType.syncJupyterLabTheme, sync);
     });
 
     ipcMain.on('set-frontend-mode', (_event, mode) => {
-      this._applicationState.frontEndMode = mode;
+      userSettings.setValue(SettingType.frontEndMode, mode);
     });
 
     ipcMain.on('restart-app', _event => {
@@ -737,7 +527,7 @@ export class JupyterApplication implements IApplication, IStatefulService {
     });
 
     ipcMain.handle('is-dark-theme', event => {
-      return isDarkTheme(this._applicationState.theme);
+      return isDarkTheme(userSettings.getValue(SettingType.theme));
     });
 
     ipcMain.on('show-server-config-dialog', event => {
@@ -765,12 +555,14 @@ export class JupyterApplication implements IApplication, IStatefulService {
       return;
     }
 
+    const sessionConfig = appData.getSessionConfig();
+
     const dialog = new ServerConfigDialog({
       reason,
       bundledPythonPath: this._registry.getBundledPythonPath(),
-      pythonPath: this._applicationState.pythonPath,
-      remoteURL: this._applicationState.remoteURL,
-      persistSessionData: this._applicationState.persistSessionData,
+      pythonPath: sessionConfig.pythonPath,
+      remoteURL: sessionConfig.remoteURL,
+      persistSessionData: sessionConfig.persistSessionData,
       envRequirements: this._registry.getRequirements()
     });
 
@@ -828,13 +620,17 @@ export class JupyterApplication implements IApplication, IStatefulService {
     }
 
     const dialog = new PreferencesDialog({
-      theme: this._applicationState.theme,
-      syncJupyterLabTheme: this._applicationState.syncJupyterLabTheme,
-      frontEndMode: this._applicationState.frontEndMode,
-      checkForUpdatesAutomatically:
-        this._applicationState.checkForUpdatesAutomatically !== false,
-      installUpdatesAutomatically:
-        this._applicationState.installUpdatesAutomatically !== false
+      theme: userSettings.getValue(SettingType.theme),
+      syncJupyterLabTheme: userSettings.getValue(
+        SettingType.syncJupyterLabTheme
+      ),
+      frontEndMode: userSettings.getValue(SettingType.frontEndMode),
+      checkForUpdatesAutomatically: userSettings.getValue(
+        SettingType.checkForUpdatesAutomatically
+      ),
+      installUpdatesAutomatically: userSettings.getValue(
+        SettingType.installUpdatesAutomatically
+      )
     });
 
     this._preferencesDialog = dialog;
@@ -866,16 +662,6 @@ export class JupyterApplication implements IApplication, IStatefulService {
       });
   }
 
-  private _appStateDB = new ElectronStateDB({
-    namespace: 'jupyterlab-desktop-data'
-  });
-
-  private _appState: Promise<JSONObject>;
-
-  private _applicationState: JupyterApplication.IState;
-
-  private _services: IStatefulService[] = [];
-
   private _closing: IClosingService[] = [];
 
   /**
@@ -886,23 +672,6 @@ export class JupyterApplication implements IApplication, IStatefulService {
   private _serverPageConfigSet = false;
   private _serverConfigDialog: ServerConfigDialog;
   private _preferencesDialog: PreferencesDialog;
-}
-
-export namespace JupyterApplication {
-  export const APP_STATE_NAMESPACE = 'jupyterlab-desktop';
-
-  export interface IState extends JSONObject {
-    checkForUpdatesAutomatically?: boolean;
-    installUpdatesAutomatically?: boolean;
-    pythonPath?: string;
-    condaRootPath?: string;
-    remoteURL?: string;
-    persistSessionData?: boolean;
-    clearSessionDataOnNextLaunch?: boolean;
-    theme: 'system' | 'light' | 'dark';
-    syncJupyterLabTheme: boolean;
-    frontEndMode: 'web-app' | 'client-app';
-  }
 }
 
 let service: IService = {
