@@ -3,7 +3,9 @@
 
 import * as path from 'path';
 import * as fs from 'fs';
-import { getUserDataDir, getUserHomeDir } from './utils';
+import { getUserDataDir, getUserHomeDir, isDevMode } from './utils';
+
+const DEFAULT_WORKING_DIR = '$HOME';
 
 export function resolveWorkingDirectory(workingDirectory: string): string {
   const home = getUserHomeDir();
@@ -95,11 +97,9 @@ export class UserSettings {
 
       theme: new Setting<ThemeType>('system', { wsOverridable: true }),
       syncJupyterLabTheme: new Setting<boolean>(true, { wsOverridable: true }),
-      frontEndMode: new Setting<FrontEndMode>('web-app', {
-        wsOverridable: true
-      }),
+      frontEndMode: new Setting<FrontEndMode>('web-app'),
 
-      defaultWorkingDirectory: new Setting<string>('$HOME'),
+      defaultWorkingDirectory: new Setting<string>(DEFAULT_WORKING_DIR),
       pythonPath: new Setting<string>('', { wsOverridable: true })
     };
 
@@ -122,12 +122,12 @@ export class UserSettings {
       return;
     }
     const data = fs.readFileSync(userSettingsPath);
-    const userSettingsData = JSON.parse(data.toString());
+    const jsonData = JSON.parse(data.toString());
 
     for (let key in SettingType) {
-      if (key in userSettingsData) {
+      if (key in jsonData) {
         const setting = this._settings[key];
-        setting.value = userSettingsData[key];
+        setting.value = jsonData[key];
       }
     }
   }
@@ -186,14 +186,14 @@ export class WorkspaceSettings extends UserSettings {
       return;
     }
     const data = fs.readFileSync(wsSettingsPath);
-    const wsSettingsData = JSON.parse(data.toString());
+    const jsonData = JSON.parse(data.toString());
 
     for (let key in SettingType) {
-      if (key in wsSettingsData) {
+      if (key in jsonData) {
         const userSetting = this._settings[key];
         if (userSetting.wsOverridable) {
           this._wsSettings[key] = Object.assign({}, userSetting);
-          this._wsSettings[key].value = wsSettingsData[key];
+          this._wsSettings[key].value = jsonData[key];
         }
       }
     }
@@ -266,22 +266,26 @@ export class ApplicationData {
 
     this.read();
 
-    const sessionConfig = SessionConfig.createLocal();
+    const createNewSession = this.sessions.length === 0 || (process.argv.length > 1 && !isDevMode());
 
-    // handle opening file or directory with command-line arguments
-    if (process.argv.length > 1) {
-      const openPath = path.resolve(process.argv[1]);
+    if (createNewSession) {
+      const sessionConfig = SessionConfig.createLocal();
 
-      if (fs.existsSync(openPath)) {
-        if (fs.lstatSync(openPath).isDirectory()) {
-          sessionConfig.workingDirectory = openPath;
-        } else {
-          sessionConfig.workingDirectory = path.dirname(openPath);
+      // handle opening file or directory with command-line arguments
+      if (process.argv.length > 1) {
+        const openPath = path.resolve(process.argv[1]);
+  
+        if (fs.existsSync(openPath)) {
+          if (fs.lstatSync(openPath).isDirectory()) {
+            sessionConfig.workingDirectory = openPath;
+          } else {
+            sessionConfig.workingDirectory = path.dirname(openPath);
+          }
         }
       }
+  
+      this.sessions.push(sessionConfig);
     }
-
-    this.sessions.push(sessionConfig);
   }
 
   static getSingleton() {
@@ -293,11 +297,43 @@ export class ApplicationData {
   }
 
   read() {
-    //
+    const appDataPath = this._getAppDataPath();
+    if (!fs.existsSync(appDataPath)) {
+      return;
+    }
+    const data = fs.readFileSync(appDataPath);
+    const jsonData = JSON.parse(data.toString());
+
+    if ('condaRootPath' in jsonData) {
+      this.condaRootPath = jsonData.condaRootPath;
+    }
+
+    this.sessions = [];
+
+    if ('sessions' in jsonData && Array.isArray(jsonData.sessions)) {
+      for (let session of jsonData.sessions) {
+        const sessionConfig = new SessionConfig();
+        sessionConfig.deserialize(session);
+        this.sessions.push(sessionConfig);
+      }
+    }
   }
 
   save() {
-    //
+    const appDataPath = this._getAppDataPath();
+    const appDataJSON: { [key: string]: any } = {};
+
+    if (this.condaRootPath !== '') {
+      appDataJSON.condaRootPath = this.condaRootPath;
+    }
+
+    appDataJSON.sessions = [];
+
+    for (let sessionConfig of this.sessions) {
+      appDataJSON.sessions.push(sessionConfig.serialize());
+    }
+
+    fs.writeFileSync(appDataPath, JSON.stringify(appDataJSON, null, 2));
   }
 
   getSessionConfig(): SessionConfig {
@@ -308,8 +344,13 @@ export class ApplicationData {
     this.sessions[0] = config;
   }
 
+  private _getAppDataPath(): string {
+    const userDataDir = getUserDataDir();
+    return path.join(userDataDir, 'app-data.json');
+  }
+
+  condaRootPath: string = '';
   sessions: SessionConfig[] = [];
-  condaRootPath: string;
 
   recentSessions: ISessionIdentifier[];
   recentPythonPaths: string[];
@@ -323,11 +364,11 @@ export class SessionConfig implements ISessionData, IWindowData {
   height: number = 600;
   remoteURL: string = '';
   persistSessionData: boolean = true;
-  workingDirectory: string = '$HOME';
+  workingDirectory: string = DEFAULT_WORKING_DIR;
   filesToOpen: string[] = [];
   pythonPath: string = '';
   clearSessionDataOnNextLaunch: boolean = false;
-  lastOpened: Date;
+  lastOpened: Date = new Date();
 
   url: URL;
   token: string;
@@ -382,6 +423,90 @@ export class SessionConfig implements ISessionData, IWindowData {
         this.filesToOpen = [relPath];
       }
     }
+  }
+
+  deserialize(jsonData: any) {
+    if ('x' in jsonData) {
+      this.x = jsonData.x;
+    }
+    if ('y' in jsonData) {
+      this.y = jsonData.y;
+    }
+    if ('width' in jsonData) {
+      this.width = jsonData.width;
+    }
+    if ('height' in jsonData) {
+      this.height = jsonData.height;
+    }
+    if ('lastOpened' in jsonData) {
+      this.lastOpened = new Date(jsonData.lastOpened);
+    }
+    if ('remoteURL' in jsonData) {
+      this.remoteURL = jsonData.remoteURL;
+    }
+    if ('persistSessionData' in jsonData) {
+      this.persistSessionData = jsonData.persistSessionData;
+    }
+    if ('workingDirectory' in jsonData) {
+      this.workingDirectory = jsonData.workingDirectory;
+    }
+    if ('filesToOpen' in jsonData) {
+      this.filesToOpen = [...jsonData.filesToOpen];
+    }
+    if ('pythonPath' in jsonData) {
+      this.pythonPath = jsonData.pythonPath;
+    }
+    if ('clearSessionDataOnNextLaunch' in jsonData) {
+      this.clearSessionDataOnNextLaunch = jsonData.clearSessionDataOnNextLaunch;
+    }
+    if ('pageConfig' in jsonData) {
+      this.pageConfig = JSON.parse(JSON.stringify(jsonData.pageConfig));
+    }
+  }
+
+  serialize(): any {
+    const jsonData: any = {
+      x: this.x,
+      y: this.y,
+      width: this.width,
+      height: this.height,
+      lastOpened: this.lastOpened.toISOString(),
+    };
+
+    if (this.remoteURL !== '') {
+      jsonData.remoteURL = this.remoteURL;
+    }
+
+    if (this.persistSessionData === false) {
+      jsonData.persistSessionData = this.persistSessionData;
+    }
+
+    if (this.workingDirectory !== DEFAULT_WORKING_DIR) {
+      jsonData.workingDirectory = this.workingDirectory;
+    }
+
+    if (this.filesToOpen.length > 0) {
+      jsonData.filesToOpen = [...this.filesToOpen];
+    }
+
+    if (this.pythonPath !== '') {
+      jsonData.pythonPath = this.pythonPath;
+    }
+
+    if (this.clearSessionDataOnNextLaunch === true) {
+      jsonData.clearSessionDataOnNextLaunch = this.clearSessionDataOnNextLaunch;
+    }
+
+    // if local server and JupyterLab UI is in client-app mode
+    if (this.pageConfig &&
+      this.remoteURL === '' &&
+      userSettings.getValue(SettingType.frontEndMode) === 'client-app') {
+      const pageConfig = JSON.parse(JSON.stringify(this.pageConfig));
+      delete pageConfig['token'];
+      jsonData.pageConfig = pageConfig;
+    }
+
+    return jsonData;
   }
 }
 

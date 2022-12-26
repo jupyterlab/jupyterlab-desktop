@@ -87,6 +87,7 @@ export class MainWindow {
     this._labView = labView;
 
     this._window.on('resize', () => {
+      this._updateSessionWindowInfo();
       this._resizeViews();
     });
     this._window.on('maximize', () => {
@@ -97,6 +98,9 @@ export class MainWindow {
     });
     this._window.on('restore', () => {
       this._resizeViewsDelayed();
+    });
+    this._window.on('moved', () => {
+      this._updateSessionWindowInfo();
     });
 
     this._resizeViews();
@@ -147,6 +151,15 @@ export class MainWindow {
       this._titleBarView.view.webContents.invalidate();
       this._labView.view.webContents.invalidate();
     }, 200);
+  }
+
+  private _updateSessionWindowInfo() {
+    const [x, y] = this._window.getPosition();
+    const [width, height] = this._window.getSize();
+    this._sessionConfig.width = width;
+    this._sessionConfig.height = height;
+    this._sessionConfig.x = x;
+    this._sessionConfig.y = y;
   }
 
   private _sessionConfig: SessionConfig;

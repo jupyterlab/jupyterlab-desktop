@@ -32,10 +32,6 @@ export function getUserHomeDir(): string {
   return app.getPath('home');
 }
 
-export function getAppDataDir(): string {
-  return app.getPath('appData');
-}
-
 export function getUserDataDir(): string {
   const userDataDir = app.getPath('userData');
 
