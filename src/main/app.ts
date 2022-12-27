@@ -13,8 +13,6 @@ import {
   shell
 } from 'electron';
 
-import { IService } from './main';
-
 import log from 'electron-log';
 
 import { IPythonEnvironment } from './tokens';
@@ -24,12 +22,10 @@ import * as yaml from 'js-yaml';
 import * as semver from 'semver';
 import * as path from 'path';
 import * as fs from 'fs';
-import { AddressInfo, createServer } from 'net';
-import { randomBytes } from 'crypto';
 
 import { clearSession, getAppDir, getUserDataDir, isDarkTheme } from './utils';
 import { execFile } from 'child_process';
-import { JupyterServer, waitUntilServerIsUp } from './server';
+import { JupyterServer } from './server';
 import { connectAndGetServerInfo, IJupyterServerInfo } from './connect';
 import { UpdateDialog } from './updatedialog/updatedialog';
 import { PreferencesDialog } from './preferencesdialog/preferencesdialog';
@@ -37,40 +33,9 @@ import { ServerConfigDialog } from './serverconfigdialog/serverconfigdialog';
 import { AboutDialog } from './aboutdialog/aboutdialog';
 import { appData, SettingType, userSettings } from './settings';
 
-async function getFreePort(): Promise<number> {
-  return new Promise<number>(resolve => {
-    const getPort = () => {
-      const server = createServer(socket => {
-        socket.write('Echo server\r\n');
-        socket.pipe(socket);
-      });
-
-      server.on('error', function (e) {
-        getPort();
-      });
-      server.on('listening', function (e: any) {
-        const port = (server.address() as AddressInfo).port;
-        server.close();
-
-        resolve(port);
-      });
-
-      server.listen(0, '127.0.0.1');
-    };
-
-    getPort();
-  });
-}
-
 export interface IApplication {
   registerClosingService: (service: IClosingService) => void;
-
   getPythonEnvironment(): Promise<IPythonEnvironment>;
-
-  setCondaRootPath(condaRootPath: string): void;
-
-  getCondaRootPath(): Promise<string>;
-
   getServerInfo(): Promise<JupyterServer.IInfo>;
   pageConfigSet: Promise<boolean>;
 }
@@ -138,66 +103,11 @@ export class JupyterApplication implements IApplication {
         }, 5000);
       }
     }
-
-    if (sessionConfig.remoteURL === '') {
-      getFreePort().then(port => {
-        sessionConfig.token = randomBytes(24).toString('hex');
-        sessionConfig.url = new URL(
-          `http://localhost:${port}/lab?token=${sessionConfig.token}`
-        );
-        this._serverInfoStateSet = true;
-
-        waitUntilServerIsUp(sessionConfig.url).then(() => {
-          connectAndGetServerInfo(sessionConfig.url.href, { showDialog: false })
-            .then(serverInfo => {
-              sessionConfig.pageConfig = serverInfo.pageConfig;
-              sessionConfig.cookies = serverInfo.cookies;
-              this._serverPageConfigSet = true;
-            })
-            .catch(() => {
-              this._showServerConfigDialog('change');
-            });
-        });
-      });
-    } else {
-      // reset the flag
-      // sessionConfig.clearSessionDataOnNextLaunch = false;
-      try {
-        sessionConfig.url = new URL(sessionConfig.remoteURL);
-        sessionConfig.token = sessionConfig.url.searchParams.get('token');
-        connectAndGetServerInfo(sessionConfig.url.href, { showDialog: true })
-          .then(serverInfo => {
-            sessionConfig.pageConfig = serverInfo.pageConfig;
-            sessionConfig.cookies = serverInfo.cookies;
-            this._serverInfoStateSet = true;
-            this._serverPageConfigSet = true;
-          })
-          .catch(() => {
-            this._showServerConfigDialog('remote-connection-failure');
-          });
-      } catch (error) {
-        this._showServerConfigDialog('remote-connection-failure');
-      }
-    }
   }
 
   getPythonEnvironment(): Promise<IPythonEnvironment> {
     return new Promise<IPythonEnvironment>((resolve, _reject) => {
-      // this._appState.then((state: JSONObject) => {
       resolve(this._registry.getCurrentPythonEnvironment());
-      // });
-    });
-  }
-
-  setCondaRootPath(condaRootPath: string): void {
-    appData.condaRootPath = condaRootPath;
-  }
-
-  getCondaRootPath(): Promise<string> {
-    return new Promise<string>((resolve, _reject) => {
-      // this._appState.then((state: JSONObject) => {
-      resolve(appData.condaRootPath);
-      // });
     });
   }
 
@@ -207,8 +117,10 @@ export class JupyterApplication implements IApplication {
         const sessionConfig = appData.getSessionConfig();
         resolve({
           type: sessionConfig.isRemote ? 'remote' : 'local',
-          url: `${sessionConfig.url.protocol}//${sessionConfig.url.host}${sessionConfig.url.pathname}`,
+          url: sessionConfig.url,
+          port: parseInt(sessionConfig.url.port),
           token: sessionConfig.token,
+          workingDirectory: sessionConfig.resolvedWorkingDirectory,
           environment: undefined,
           pageConfig: sessionConfig.pageConfig
         });
@@ -675,12 +587,3 @@ export class JupyterApplication implements IApplication {
   private _serverConfigDialog: ServerConfigDialog;
   private _preferencesDialog: PreferencesDialog;
 }
-
-let service: IService = {
-  requirements: ['IRegistry'],
-  provides: 'IApplication',
-  activate: (registry: IRegistry): IApplication => {
-    return new JupyterApplication(registry);
-  }
-};
-export default service;

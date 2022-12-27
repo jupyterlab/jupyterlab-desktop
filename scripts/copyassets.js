@@ -56,6 +56,10 @@ function copyAssests() {
     path.join(srcDir, 'assets', 'icon.svg'),
     path.join(dest, '../app-assets', 'icon.svg')
   );
+  fs.copySync(
+    path.join(srcDir, 'assets', 'jupyterlab-wordmark.svg'),
+    path.join(dest, '../app-assets', 'jupyterlab-wordmark.svg')
+  );
 
   const toolkitPath = path.join(
     '../node_modules',

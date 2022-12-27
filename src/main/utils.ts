@@ -4,6 +4,7 @@
 import * as path from 'path';
 import * as fs from 'fs';
 import log from 'electron-log';
+import { AddressInfo, createServer } from 'net';
 import { app, nativeTheme } from 'electron';
 import { IPythonEnvironment } from './tokens';
 
@@ -84,5 +85,30 @@ export function clearSession(session: Electron.Session): Promise<void> {
     } catch (error) {
       reject();
     }
+  });
+}
+
+export async function getFreePort(): Promise<number> {
+  return new Promise<number>(resolve => {
+    const getPort = () => {
+      const server = createServer(socket => {
+        socket.write('Echo server\r\n');
+        socket.pipe(socket);
+      });
+
+      server.on('error', function (e) {
+        getPort();
+      });
+      server.on('listening', function (e: any) {
+        const port = (server.address() as AddressInfo).port;
+        server.close();
+
+        resolve(port);
+      });
+
+      server.listen(0, '127.0.0.1');
+    };
+
+    getPort();
   });
 }

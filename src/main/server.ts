@@ -1,12 +1,10 @@
 import { ChildProcess, execFile } from 'child_process';
 
-import { IService } from './main';
-
 import { IRegistry } from './registry';
 
 import { dialog } from 'electron';
 
-import { IApplication, IClosingService } from './app';
+import { IClosingService } from './app';
 
 import { ArrayExt } from '@lumino/algorithm';
 
@@ -18,8 +16,14 @@ import * as path from 'path';
 import { request as httpRequest } from 'http';
 import { request as httpsRequest } from 'https';
 import { IEnvironmentType, IPythonEnvironment } from './tokens';
-import { getEnvironmentPath, getSchemasDir, getUserDataDir } from './utils';
-import { appData } from './settings';
+import {
+  getEnvironmentPath,
+  getFreePort,
+  getSchemasDir,
+  getUserDataDir
+} from './utils';
+import { appData, userSettings } from './settings';
+import { randomBytes } from 'crypto';
 
 const SERVER_LAUNCH_TIMEOUT = 30000; // milliseconds
 const SERVER_RESTART_LIMIT = 3; // max server restarts
@@ -41,11 +45,11 @@ function createTempFile(
 function createLaunchScript(
   environment: IPythonEnvironment,
   baseCondaPath: string,
-  schemasDir: string
+  schemasDir: string,
+  port: number
 ): string {
   const isWin = process.platform === 'win32';
   const envPath = getEnvironmentPath(environment);
-  const sessionConfig = appData.getSessionConfig();
 
   // note: traitlets<5.0 require fully specified arguments to
   // be followed by equals sign without a space; this can be
@@ -59,7 +63,7 @@ function createLaunchScript(
     `--LabServerApp.schemas_dir="${schemasDir}"`,
     // do not use any config file
     '--JupyterApp.config_file_name=""',
-    `--ServerApp.port=${sessionConfig.url.port}`,
+    `--ServerApp.port=${port}`,
     // use our token rather than any pre-configured password
     '--ServerApp.password=""',
     '--ServerApp.allow_origin="*"',
@@ -145,13 +149,9 @@ export async function waitUntilServerIsUp(url: URL): Promise<boolean> {
 }
 
 export class JupyterServer {
-  constructor(
-    options: JupyterServer.IOptions,
-    app: IApplication,
-    registry: IRegistry
-  ) {
+  constructor(options: JupyterServer.IOptions, registry: IRegistry) {
+    this._options = options;
     this._info.environment = options.environment;
-    this._app = app;
     this._registry = registry;
   }
 
@@ -170,7 +170,6 @@ export class JupyterServer {
       return this._startServer;
     }
     let started = false;
-    const sessionConfig = appData.getSessionConfig();
 
     this._startServer = new Promise<JupyterServer.IInfo>(
       // eslint-disable-next-line no-async-promise-executor
@@ -184,14 +183,18 @@ export class JupyterServer {
           });
           reject();
         }
-        this._info.url = `${sessionConfig.url.protocol}//${sessionConfig.url.host}`;
-        this._info.token = sessionConfig.token;
+        this._info.port = this._options.port || (await getFreePort());
+        this._info.token =
+          this._options.token || randomBytes(24).toString('hex');
+        this._info.url = new URL(
+          `http://localhost:${this._info.port}/lab?token=${this._info.token}`
+        );
 
         let baseCondaPath: string = '';
         if (this._info.environment.type === IEnvironmentType.CondaRoot) {
           baseCondaPath = getEnvironmentPath(this._info.environment);
         } else if (this._info.environment.type === IEnvironmentType.CondaEnv) {
-          const baseCondaPathSet = await this._app.getCondaRootPath();
+          const baseCondaPathSet = appData.condaRootPath;
           if (baseCondaPathSet && fs.existsSync(baseCondaPathSet)) {
             baseCondaPath = baseCondaPathSet;
           } else {
@@ -199,7 +202,7 @@ export class JupyterServer {
             for (const environment of environments) {
               if (environment.type === IEnvironmentType.CondaRoot) {
                 baseCondaPath = getEnvironmentPath(environment);
-                this._app.setCondaRootPath(baseCondaPath);
+                appData.condaRootPath = baseCondaPath;
                 break;
               }
             }
@@ -239,7 +242,7 @@ export class JupyterServer {
                 reject(new Error('Invalid base conda environment'));
                 return;
               }
-              this._app.setCondaRootPath(baseCondaPath);
+              appData.condaRootPath = baseCondaPath;
             } else {
               reject(new Error('Failed to activate conda environment'));
               return;
@@ -250,22 +253,28 @@ export class JupyterServer {
         const launchScriptPath = createLaunchScript(
           this._info.environment,
           baseCondaPath,
-          getSchemasDir()
+          getSchemasDir(),
+          this._info.port
         );
 
+        const workingDir =
+          this._options.workingDirectory ||
+          userSettings.resolvedWorkingDirectory;
+        this._info.workingDirectory = workingDir;
+
         this._nbServer = execFile(launchScriptPath, {
-          cwd: sessionConfig.resolvedWorkingDirectory,
+          cwd: workingDir,
           shell: isWin ? 'cmd.exe' : '/bin/bash',
           env: {
             ...process.env,
-            JUPYTER_TOKEN: sessionConfig.token,
+            JUPYTER_TOKEN: this._info.token,
             JUPYTER_CONFIG_DIR:
               process.env.JLAB_DESKTOP_CONFIG_DIR || getUserDataDir()
           }
         });
 
         Promise.race([
-          waitUntilServerIsUp(sessionConfig.url),
+          waitUntilServerIsUp(this._info.url),
           waitForDuration(SERVER_LAUNCH_TIMEOUT)
         ]).then((up: boolean) => {
           if (up) {
@@ -360,6 +369,24 @@ export class JupyterServer {
     return this._stopServer;
   }
 
+  get started(): Promise<boolean> {
+    return new Promise<boolean>(resolve => {
+      const checkStartServerPromise = () => {
+        if (this._startServer) {
+          this._startServer.then(() => {
+            resolve(true);
+          });
+        } else {
+          setTimeout(() => {
+            checkStartServerPromise();
+          }, 100);
+        }
+      };
+
+      checkStartServerPromise();
+    });
+  }
+
   private _serverStartFailed(): void {
     this._cleanupListeners();
     // Server didn't start, resolve stop promise
@@ -372,14 +399,13 @@ export class JupyterServer {
   }
 
   private _shutdownServer(): Promise<void> {
-    const sessionConfig = appData.getSessionConfig();
     return new Promise<void>((resolve, reject) => {
       const req = httpRequest(
-        `http://localhost:${sessionConfig.url.port}/api/shutdown?_xsrf=${sessionConfig.token}`,
+        `${this._info.url.origin}/api/shutdown?_xsrf=${this._info.token}`,
         {
           method: 'POST',
           headers: {
-            Authorization: `token ${sessionConfig.token}`
+            Authorization: `token ${this._info.token}`
           }
         },
         r => {
@@ -406,15 +432,19 @@ export class JupyterServer {
 
   private _startServer: Promise<JupyterServer.IInfo> = null;
 
+  private _options: JupyterServer.IOptions;
+
   private _info: JupyterServer.IInfo = {
     type: 'local',
     url: null,
+    port: null,
     token: null,
+    workingDirectory: null,
     environment: null,
     version: null
   };
 
-  private _app: IApplication;
+  // private _app: IApplication;
   private _registry: IRegistry;
   private _stopping: boolean = false;
   private _restartCount: number = 0;
@@ -422,14 +452,19 @@ export class JupyterServer {
 
 export namespace JupyterServer {
   export interface IOptions {
-    environment: IPythonEnvironment;
+    port?: number;
+    token?: string;
+    workingDirectory?: string;
+    environment?: IPythonEnvironment;
   }
 
   export interface IInfo {
     type: 'local' | 'remote';
-    url: string;
+    url: URL;
+    port: number;
     token: string;
     environment: IPythonEnvironment;
+    workingDirectory: string;
     version?: string;
     pageConfig?: any;
   }
@@ -448,8 +483,8 @@ export interface IServerFactory {
    * @return the factory item.
    */
   createFreeServer: (
-    opts: JupyterServer.IOptions
-  ) => JupyterServerFactory.IFactoryItem;
+    opts?: JupyterServer.IOptions
+  ) => Promise<JupyterServerFactory.IFactoryItem>;
 
   /**
    * Create a Jupyter server.
@@ -463,7 +498,8 @@ export interface IServerFactory {
    * @return the factory item.
    */
   createServer: (
-    opts: JupyterServer.IOptions
+    opts: JupyterServer.IOptions,
+    forceNewServer?: boolean
   ) => Promise<JupyterServerFactory.IFactoryItem>;
 
   /**
@@ -490,10 +526,9 @@ export namespace IServerFactory {
 }
 
 export class JupyterServerFactory implements IServerFactory, IClosingService {
-  constructor(app: IApplication, registry: IRegistry) {
-    this._app = app;
+  constructor(registry: IRegistry) {
     this._registry = registry;
-    app.registerClosingService(this);
+    // app.registerClosingService(this);
   }
 
   /**
@@ -507,29 +542,22 @@ export class JupyterServerFactory implements IServerFactory, IClosingService {
    *
    * @return the factory item.
    */
-  createFreeServer(
-    opts: JupyterServer.IOptions
-  ): JupyterServerFactory.IFactoryItem {
+  async createFreeServer(
+    opts?: JupyterServer.IOptions
+  ): Promise<JupyterServerFactory.IFactoryItem> {
     let item: JupyterServerFactory.IFactoryItem;
-    let env: Promise<IPythonEnvironment>;
+    let env: IPythonEnvironment;
 
-    if (!opts.environment) {
-      env = this._registry.getDefaultEnvironment();
+    if (!opts?.environment) {
+      env = await this._registry.getDefaultEnvironment();
     } else {
-      env = Promise.resolve(opts.environment);
+      env = opts?.environment;
     }
 
-    env
-      .then(env => {
-        opts.environment = env;
-        item = this._createServer(opts);
+    opts = { ...opts, ...{ environment: env } };
+    item = this._createServer(opts);
+    item.server.start();
 
-        return item.server.start();
-      })
-      .catch((e: Error) => {
-        // The server failed to start, remove it from the factory.
-        log.warn(e);
-      });
     return item;
   }
 
@@ -542,39 +570,29 @@ export class JupyterServerFactory implements IServerFactory, IClosingService {
    * @param opts the Jupyter server options.
    * @param forceNewServer force the creation of a new server over a free server.
    */
-  createServer(
-    opts: JupyterServer.IOptions,
+  async createServer(
+    opts?: JupyterServer.IOptions,
     forceNewServer?: boolean
   ): Promise<JupyterServerFactory.IFactoryItem> {
-    let server: JupyterServerFactory.IFactoryItem;
-    let env: Promise<IPythonEnvironment>;
+    let item: JupyterServerFactory.IFactoryItem;
+    let env: IPythonEnvironment;
 
-    if (!opts.environment) {
-      env = this._registry.getDefaultEnvironment();
+    if (!opts?.environment) {
+      env = await this._registry.getDefaultEnvironment();
     } else {
-      env = Promise.resolve(opts.environment);
+      env = opts?.environment;
     }
 
-    return env
-      .then(env => {
-        if (forceNewServer) {
-          server = this._createServer({ environment: env });
-        } else {
-          server =
-            this._findUnusedServer({ environment: env }, !opts.environment) ||
-            this._createServer({ environment: env });
-        }
-        server.used = true;
+    opts = { ...opts, ...{ environment: env } };
 
-        return server.server.start();
-      })
-      .then((data: JupyterServer.IInfo) => {
-        return Promise.resolve(server);
-      })
-      .catch(e => {
-        this._removeFailedServer(server.factoryId);
-        return Promise.reject(e);
-      });
+    item = this._findUnusedServer(opts) || this._createServer(opts);
+    item.used = true;
+
+    item.server.start();
+
+    // this._removeFailedServer(item.factoryId);
+
+    return item;
   }
 
   /**
@@ -646,7 +664,7 @@ export class JupyterServerFactory implements IServerFactory, IClosingService {
   ): JupyterServerFactory.IFactoryItem {
     let item: JupyterServerFactory.IFactoryItem = {
       factoryId: this._nextId++,
-      server: new JupyterServer(opts, this._app, this._registry),
+      server: new JupyterServer(opts, this._registry),
       closing: null,
       used: false
     };
@@ -656,35 +674,31 @@ export class JupyterServerFactory implements IServerFactory, IClosingService {
   }
 
   private _findUnusedServer(
-    opts: JupyterServer.IOptions,
-    usedDefault: boolean
+    opts: JupyterServer.IOptions
   ): JupyterServerFactory.IFactoryItem | null {
+    const workingDir =
+      opts.workingDirectory || userSettings.resolvedWorkingDirectory;
     let result = ArrayExt.findFirstValue(
       this._servers,
       (server: JupyterServerFactory.IFactoryItem, idx: number) => {
         return (
           !server.used &&
-          opts.environment.path === server.server.info.environment.path
+          server.server.info.workingDirectory === workingDir &&
+          server.server.info.environment.path === opts.environment.path
         );
       }
     );
 
-    if (!result && usedDefault) {
-      result = ArrayExt.findFirstValue(this._servers, server => {
-        return !server.used;
-      });
-    }
-
     return result;
   }
 
-  private _removeFailedServer(factoryId: number): void {
-    let idx = this._getServerIdx(factoryId);
-    if (idx < 0) {
-      return;
-    }
-    ArrayExt.removeAt(this._servers, idx);
-  }
+  // private _removeFailedServer(factoryId: number): void {
+  //   let idx = this._getServerIdx(factoryId);
+  //   if (idx < 0) {
+  //     return;
+  //   }
+  //   ArrayExt.removeAt(this._servers, idx);
+  // }
 
   private _getServerIdx(factoryId: number): number {
     return ArrayExt.findFirstIndex(
@@ -702,7 +716,7 @@ export class JupyterServerFactory implements IServerFactory, IClosingService {
 
   private _nextId: number = 1;
 
-  private _app: IApplication;
+  // private _app: IApplication;
 
   private _registry: IRegistry;
 }
@@ -734,13 +748,3 @@ export namespace JupyterServerFactory {
     server: JupyterServer;
   }
 }
-
-let service: IService = {
-  requirements: ['IRegistry', 'IApplication'],
-  provides: 'IServerFactory',
-  activate: (registry: IRegistry, app: IApplication): IServerFactory => {
-    return new JupyterServerFactory(app, registry);
-  },
-  autostart: true
-};
-export default service;

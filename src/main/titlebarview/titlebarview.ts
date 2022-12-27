@@ -43,5 +43,9 @@ export class TitleBarView {
     );
   }
 
+  showServerStatus(show: boolean) {
+    this._view.webContents.send('show-server-status', show);
+  }
+
   private _view: BrowserView;
 }

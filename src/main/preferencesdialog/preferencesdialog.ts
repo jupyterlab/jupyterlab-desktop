@@ -5,6 +5,7 @@ import * as ejs from 'ejs';
 import { BrowserWindow } from 'electron';
 import * as path from 'path';
 import { ThemedWindow } from '../dialog/themedwindow';
+import { FrontEndMode, ThemeType } from '../settings';
 
 export class PreferencesDialog {
   constructor(options: PreferencesDialog.IOptions) {
@@ -170,9 +171,9 @@ export class PreferencesDialog {
 
 export namespace PreferencesDialog {
   export interface IOptions {
-    theme: 'system' | 'light' | 'dark';
+    theme: ThemeType;
     syncJupyterLabTheme: boolean;
-    frontEndMode: 'web-app' | 'client-app';
+    frontEndMode: FrontEndMode;
     checkForUpdatesAutomatically: boolean;
     installUpdatesAutomatically: boolean;
   }

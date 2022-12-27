@@ -1,22 +1,48 @@
 // Copyright (c) Jupyter Development Team.
 // Distributed under the terms of the Modified BSD License.
 
-import { BrowserWindow } from 'electron';
+import { BrowserView, BrowserWindow, dialog, ipcMain } from 'electron';
+import { WelcomeView } from '../welcomeview/welcomeview';
 import { LabView } from '../labview/labview';
-import { SessionConfig, SettingType, WorkspaceSettings } from '../settings';
+import {
+  DEFAULT_WIN_HEIGHT,
+  DEFAULT_WIN_WIDTH,
+  DEFAULT_WORKING_DIR,
+  SessionConfig,
+  SettingType,
+  WorkspaceSettings
+} from '../settings';
 import { TitleBarView } from '../titlebarview/titlebarview';
 import { DarkThemeBGColor, isDarkTheme, LightThemeBGColor } from '../utils';
+import { JupyterServerFactory } from '../server';
+import { IRegistry } from '../registry';
+import * as fs from 'fs';
+import * as path from 'path';
+
+export enum ContentViewType {
+  Welcome = 'welcome',
+  Lab = 'lab'
+}
 
 export class MainWindow {
-  constructor(config: SessionConfig) {
-    this._sessionConfig = config;
-    const wsSettings = new WorkspaceSettings(config.workingDirectory);
+  constructor(options: MainWindow.IOptions) {
+    this._registry = options.registry;
+    this._contentViewType = options.contentView;
+    this._sessionConfig = options.sessionConfig;
+    const wsSettings = new WorkspaceSettings(
+      this._sessionConfig?.workingDirectory || DEFAULT_WORKING_DIR
+    );
+
+    const x = this._sessionConfig?.x || 0;
+    const y = this._sessionConfig?.y || 0;
+    const width = this._sessionConfig?.width || DEFAULT_WIN_WIDTH;
+    const height = this._sessionConfig?.height || DEFAULT_WIN_HEIGHT;
 
     this._window = new BrowserWindow({
-      width: this._sessionConfig.width,
-      height: this._sessionConfig.height,
-      x: this._sessionConfig.x,
-      y: this._sessionConfig.y,
+      x,
+      y,
+      width,
+      height,
       minWidth: 400,
       minHeight: 300,
       show: true,
@@ -34,8 +60,8 @@ export class MainWindow {
     this._window.setMenuBarVisibility(false);
 
     if (
-      this._sessionConfig.x !== undefined &&
-      this._sessionConfig.y !== undefined
+      this._sessionConfig?.x !== undefined &&
+      this._sessionConfig?.y !== undefined
     ) {
       this._window.setBounds({
         x: this._sessionConfig.x,
@@ -46,6 +72,94 @@ export class MainWindow {
     } else {
       this._window.center();
     }
+
+    this.serverFactory.createFreeServer();
+
+    ipcMain.on(
+      'create-new-session',
+      async (event, type: 'notebook' | 'blank') => {
+        if (event.sender !== this.contentView.webContents) {
+          return;
+        }
+
+        const sessionConfig = new SessionConfig();
+
+        const loadLabView = () => {
+          this._sessionConfig = sessionConfig;
+          this._contentViewType = ContentViewType.Lab;
+          this._updateContentView();
+          this._resizeViews();
+        };
+
+        if (type === 'notebook' || type === 'blank') {
+          const factoryItem = await this.serverFactory.createServer();
+          await factoryItem.server.started;
+          const serverInfo = factoryItem.server.info;
+          sessionConfig.token = serverInfo.token;
+          sessionConfig.url = serverInfo.url;
+          loadLabView();
+          if (type === 'notebook') {
+            this.labView.labUIReady.then(() => {
+              this.labView.newNotebook();
+            });
+          }
+        }
+      }
+    );
+
+    ipcMain.on('open-file-or-folder', async event => {
+      if (event.sender !== this.contentView.webContents) {
+        return;
+      }
+
+      const loadLabView = (sessionConfig: SessionConfig) => {
+        this._sessionConfig = sessionConfig;
+        this._contentViewType = ContentViewType.Lab;
+        this._updateContentView();
+        this._resizeViews();
+      };
+
+      const { filePaths } = await dialog.showOpenDialog({
+        properties: [
+          'openFile',
+          'openDirectory',
+          'showHiddenFiles',
+          'noResolveAliases'
+        ],
+        buttonLabel: 'Open'
+      });
+      if (filePaths.length > 0) {
+        const selectedPath = filePaths[0];
+        const stat = fs.lstatSync(selectedPath);
+        let sessionConfig: SessionConfig;
+        if (stat.isFile()) {
+          const workingDir = path.dirname(selectedPath);
+          sessionConfig = SessionConfig.createLocal(workingDir, selectedPath);
+        } else if (stat.isDirectory()) {
+          sessionConfig = SessionConfig.createLocal(selectedPath);
+        }
+
+        const factoryItem = await this.serverFactory.createFreeServer({
+          workingDirectory: sessionConfig.workingDirectory
+        });
+        await factoryItem.server.started;
+        const serverInfo = factoryItem.server.info;
+        sessionConfig.token = serverInfo.token;
+        sessionConfig.url = serverInfo.url;
+        loadLabView(sessionConfig);
+        if (stat.isFile()) {
+          this.labView.labUIReady.then(() => {
+            this.labView.openFiles();
+          });
+        }
+      }
+    });
+
+    ipcMain.on('connect-to-remote-session', event => {
+      if (event.sender !== this.contentView.webContents) {
+        return;
+      }
+    });
   }
 
   get window(): BrowserWindow {
@@ -53,25 +167,9 @@ export class MainWindow {
   }
 
   load() {
-    const labView = new LabView(this, this._sessionConfig);
-
     const titleBarView = new TitleBarView();
     this._window.addBrowserView(titleBarView.view);
     titleBarView.view.setBounds({ x: 0, y: 0, width: 1200, height: 100 });
-
-    this._window.addBrowserView(labView.view);
-    labView.view.setBounds({ x: 0, y: 100, width: 1200, height: 700 });
-
-    // transfer focus to labView
-    this._window.webContents.on('focus', () => {
-      labView.view.webContents.focus();
-    });
-    titleBarView.view.webContents.on('focus', () => {
-      labView.view.webContents.focus();
-    });
-    labView.view.webContents.on('did-finish-load', () => {
-      labView.view.webContents.focus();
-    });
 
     this._window.on('focus', () => {
       titleBarView.activate();
@@ -81,10 +179,9 @@ export class MainWindow {
     });
 
     titleBarView.load();
-    labView.load();
-
     this._titleBarView = titleBarView;
-    this._labView = labView;
+
+    this._updateContentView();
 
     this._window.on('resize', () => {
       this._updateSessionWindowInfo();
@@ -104,11 +201,49 @@ export class MainWindow {
     });
 
     this._resizeViews();
+  }
+
+  private _loadWelcomeView() {
+    const welcomeView = new WelcomeView(this);
+    this._window.addBrowserView(welcomeView.view);
+    welcomeView.view.setBounds({ x: 0, y: 100, width: 1200, height: 700 });
+
+    welcomeView.load();
+
+    this._welcomeView = welcomeView;
+  }
+
+  private _loadLabView() {
+    const labView = new LabView(this, this._sessionConfig);
+    this._window.addBrowserView(labView.view);
+
+    // transfer focus to labView
+    this._window.webContents.on('focus', () => {
+      labView.view.webContents.focus();
+    });
+    this._titleBarView.view.webContents.on('focus', () => {
+      labView.view.webContents.focus();
+    });
+    labView.view.webContents.on('did-finish-load', () => {
+      labView.view.webContents.focus();
+    });
+
+    labView.load();
+
+    this._labView = labView;
 
     this.labView.view.webContents.on('page-title-updated', (event, title) => {
       this.titleBarView.setTitle(title);
       this._window.setTitle(title);
     });
+
+    // if (this._sessionConfig.isRemote) {
+    //   this._titleBarView.showServerStatus(true);
+    // } else {
+    //   this._labView.serverReady.then(() => {
+    //     this._titleBarView.showServerStatus(true);
+    //   })
+    // }
   }
 
   get titleBarView(): TitleBarView {
@@ -117,6 +252,39 @@ export class MainWindow {
 
   get labView(): LabView {
     return this._labView;
+  }
+
+  get contentView(): BrowserView {
+    if (this._contentViewType === ContentViewType.Welcome) {
+      return this._welcomeView.view;
+    } else {
+      return this._labView.view;
+    }
+  }
+
+  get serverFactory(): JupyterServerFactory {
+    if (!MainWindow._serverFactory) {
+      MainWindow._serverFactory = new JupyterServerFactory(this._registry);
+    }
+
+    return MainWindow._serverFactory;
+  }
+
+  private _updateContentView() {
+    if (this._contentViewType === ContentViewType.Welcome) {
+      this._titleBarView.showServerStatus(false);
+      if (this._labView) {
+        this._window.removeBrowserView(this._labView.view);
+        this._labView = null;
+      }
+      this._loadWelcomeView();
+    } else {
+      if (this._welcomeView) {
+        this._window.removeBrowserView(this._welcomeView.view);
+        this._welcomeView = null;
+      }
+      this._loadLabView();
+    }
   }
 
   private _resizeViewsDelayed() {
@@ -137,7 +305,7 @@ export class MainWindow {
       width: width - 2 * padding,
       height: titleBarHeight - padding
     });
-    this._labView.view.setBounds({
+    this.contentView.setBounds({
       x: 0,
       y: titleBarHeight,
       width: width,
@@ -149,11 +317,14 @@ export class MainWindow {
     // check if fixed in newer versions
     setTimeout(() => {
       this._titleBarView.view.webContents.invalidate();
-      this._labView.view.webContents.invalidate();
+      this.contentView.webContents.invalidate();
     }, 200);
   }
 
   private _updateSessionWindowInfo() {
+    if (!this._sessionConfig) {
+      return;
+    }
     const [x, y] = this._window.getPosition();
     const [width, height] = this._window.getSize();
     this._sessionConfig.width = width;
@@ -162,8 +333,20 @@ export class MainWindow {
     this._sessionConfig.y = y;
   }
 
-  private _sessionConfig: SessionConfig;
+  private _sessionConfig: SessionConfig | undefined;
   private _window: BrowserWindow;
   private _titleBarView: TitleBarView;
+  private _welcomeView: WelcomeView;
   private _labView: LabView;
+  private _contentViewType: ContentViewType = ContentViewType.Welcome;
+  private _registry: IRegistry;
+  private static _serverFactory: JupyterServerFactory;
+}
+
+export namespace MainWindow {
+  export interface IOptions {
+    registry: IRegistry;
+    contentView: ContentViewType;
+    sessionConfig?: SessionConfig;
+  }
 }

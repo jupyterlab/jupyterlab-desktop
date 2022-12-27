@@ -50,7 +50,7 @@ Distributed under the terms of the Modified BSD License.
       }
       #server-button {
         -webkit-app-region: no-drag;
-        display: flex;
+        display: none;
         padding-right: 5px;
         color: #606060;
       }
@@ -225,6 +225,14 @@ Distributed under the terms of the Modified BSD License.
         }
       });
 
+      window.electronAPI.onShowServerStatus((show) => {
+        serverButton.style.display = show ? 'flex' : 'none';
+
+        if (show) {
+          updateServerStatus();
+        }
+      });
+
       menuButton.onclick = () => {
         window.electronAPI.showAppContextMenu();
       };
@@ -269,15 +277,19 @@ Distributed under the terms of the Modified BSD License.
         serverButton.title = `Remote server\n${url}`;
       };
 
-      window.electronAPI.getServerInfo().then(data => {
-        if (data.type === 'local') {
-          window.electronAPI.getCurrentPythonEnvironment().then(env => {
-            updateStatusItemLocal(env);
-          });
-        } else {
-          updateStatusItemRemote(data.url);
-        }
-      });
+      const updateServerStatus = () => {
+        window.electronAPI.getServerInfo().then(data => {
+          if (data.type === 'local') {
+            window.electronAPI.getCurrentPythonEnvironment().then(env => {
+              updateStatusItemLocal(env);
+            });
+          } else {
+            updateStatusItemRemote(data.url);
+          }
+        });
+      };
+
+      updateServerStatus();
     </script>
   </body>
 </html>

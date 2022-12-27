@@ -1,7 +1,5 @@
 import { execFile, ExecFileOptions, execFileSync } from 'child_process';
 
-import { IService } from './main';
-
 import { basename, join, normalize } from 'path';
 
 import * as path from 'path';
@@ -1187,13 +1185,3 @@ export namespace Registry {
 
   export const NO_MODULE_SENTINEL = 'NO MODULE OR VERSION FOUND';
 }
-
-let service: IService = {
-  requirements: [],
-  provides: 'IRegistry',
-  activate: (): IRegistry => {
-    return new Registry();
-  },
-  autostart: true
-};
-export default service;

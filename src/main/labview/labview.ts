@@ -19,6 +19,7 @@ import { isDarkTheme } from '../utils';
 import { MainWindow } from '../mainwindow/mainwindow';
 import {
   appData,
+  FrontEndMode,
   SessionConfig,
   SettingType,
   WorkspaceSettings
@@ -39,11 +40,11 @@ const templateAssetPaths = new Map([
 ]);
 
 export class LabView {
-  constructor(parent: MainWindow, config: SessionConfig) {
+  constructor(parent: MainWindow, sessionConfig: SessionConfig) {
     this._parent = parent;
-    this._sessionConfig = config;
-    this._wsSettings = new WorkspaceSettings(config.workingDirectory);
-    this._jlabBaseUrl = `${config.url.protocol}//${config.url.host}${config.url.pathname}`;
+    this._sessionConfig = sessionConfig;
+    this._wsSettings = new WorkspaceSettings(sessionConfig.workingDirectory);
+    this._jlabBaseUrl = `${sessionConfig.url.protocol}//${sessionConfig.url.host}${sessionConfig.url.pathname}`;
     this._view = new BrowserView({
       webPreferences: {
         preload: path.join(__dirname, './preload.js')
@@ -52,6 +53,16 @@ export class LabView {
 
     this._registerBrowserEventHandlers();
     this._addFallbackContextMenu();
+
+    if (!this._sessionConfig.isRemote) {
+      ipcMain.once('lab-ui-ready', event => {
+        if (event.sender !== this._view.webContents) {
+          return;
+        }
+
+        this._labUIReady = true;
+      });
+    }
   }
 
   public get view(): BrowserView {
@@ -61,14 +72,17 @@ export class LabView {
   load() {
     const sessionConfig = this._sessionConfig;
 
-    if (this._wsSettings.getValue(SettingType.frontEndMode) === 'web-app') {
+    if (
+      this._wsSettings.getValue(SettingType.frontEndMode) ===
+      FrontEndMode.WebApp
+    ) {
       this._view.webContents.loadURL(sessionConfig.url.href);
     } else {
       this._view.webContents.loadURL(
         `${sessionConfig.url.protocol}//${sessionConfig.url.host}${
           sessionConfig.url.pathname
         }${DESKTOP_APP_ASSETS_PATH}/index.html?${encodeURIComponent(
-          JSON.stringify(this._sessionConfig)
+          JSON.stringify(this._sessionConfig) // ?
         )}`
       );
     }
@@ -92,10 +106,10 @@ export class LabView {
       if (relPath === '') {
         return;
       }
-  
+
       const labDir = this._sessionConfig.resolvedWorkingDirectory;
       const filePath = path.resolve(labDir, relPath);
-  
+
       try {
         const stats = fs.lstatSync(filePath);
         if (stats.isFile()) {
@@ -114,6 +128,49 @@ export class LabView {
       } catch (error) {
         log.error(`Failed to open file at path: ${path}. Error: `, error);
       }
+    });
+  }
+
+  async newNotebook() {
+    try {
+      await this._view.webContents.executeJavaScript(`
+        {
+          const lab = window.jupyterapp || window.jupyterlab;
+          if (lab) {
+            const commands = lab.commands;
+            commands.execute('docmanager:new-untitled', {
+              type: 'notebook'
+            }).then((model) => {
+              if (model != undefined) {
+                commands.execute('docmanager:open', {
+                  path: model.path,
+                  factory: 'Notebook',
+                  kernel: { name: 'python3' }
+                });
+              }
+            });
+          }
+        }
+        0; // response
+      `);
+    } catch (error) {
+      log.error(`Failed to create new notebook. Error: `, error);
+    }
+  }
+
+  get labUIReady(): Promise<boolean> {
+    return new Promise<boolean>(resolve => {
+      const checkIfReady = () => {
+        if (this._labUIReady) {
+          resolve(true);
+        } else {
+          setTimeout(() => {
+            checkIfReady();
+          }, 100);
+        }
+      };
+
+      checkIfReady();
     });
   }
 
@@ -187,7 +244,10 @@ export class LabView {
     );
 
     if (this._wsSettings.getValue(SettingType.syncJupyterLabTheme)) {
-      ipcMain.once('lab-ui-ready', () => {
+      ipcMain.once('lab-ui-ready', event => {
+        if (event.sender !== this._view.webContents) {
+          return;
+        }
         this._setJupyterLabTheme(this._wsSettings.getValue(SettingType.theme));
       });
     }
@@ -198,7 +258,9 @@ export class LabView {
       }
     });
 
-    if (this._wsSettings.getValue(SettingType.frontEndMode) == 'web-app') {
+    if (
+      this._wsSettings.getValue(SettingType.frontEndMode) == FrontEndMode.WebApp
+    ) {
       this._registerWebAppFrontEndHandlers();
     } else {
       this._registerClientAppFrontEndHandlers();
@@ -438,4 +500,7 @@ export class LabView {
   private _cookies: Map<string, string> = new Map();
   private _jlabBaseUrl: string;
   private _wsSettings: WorkspaceSettings;
+  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+  // @ts-ignore
+  private _labUIReady = false;
 }

@@ -2,9 +2,11 @@ const { contextBridge, ipcRenderer } = require('electron');
 
 type SetTitleListener = (title: string) => void;
 type SetActiveListener = (active: boolean) => void;
+type ShowServerStatusListener = (show: boolean) => void;
 
 let onSetTitleListener: SetTitleListener;
 let onSetActiveListener: SetActiveListener;
+let onShowServerStatusListener: ShowServerStatusListener;
 
 contextBridge.exposeInMainWorld('electronAPI', {
   getAppConfig: () => {
@@ -44,6 +46,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   },
   onSetActive: (callback: SetActiveListener) => {
     onSetActiveListener = callback;
+  },
+  onShowServerStatus: (callback: ShowServerStatusListener) => {
+    onShowServerStatusListener = callback;
   }
 });
 
@@ -56,6 +61,12 @@ ipcRenderer.on('set-title', (event, title) => {
 ipcRenderer.on('set-active', (event, active) => {
   if (onSetActiveListener) {
     onSetActiveListener(active);
+  }
+});
+
+ipcRenderer.on('show-server-status', (event, show) => {
+  if (onShowServerStatusListener) {
+    onShowServerStatusListener(show);
   }
 });
 

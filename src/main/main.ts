@@ -1,13 +1,20 @@
 import { app, Menu, MenuItem } from 'electron';
-
-const Bottle = require('bottlejs');
 import log from 'electron-log';
 import * as yargs from 'yargs';
 import * as path from 'path';
 import * as fs from 'fs';
 import { getAppDir, isDevMode } from './utils';
 import { execSync } from 'child_process';
-import { appData } from './settings';
+import {
+  appData,
+  SessionConfig,
+  SettingType,
+  StartupMode,
+  userSettings
+} from './settings';
+import { ContentViewType, MainWindow } from './mainwindow/mainwindow';
+import { JupyterApplication } from './app';
+import { Registry } from './registry';
 
 /**
  *  * On Mac OSX the PATH env variable a packaged app gets does not
@@ -99,19 +106,6 @@ export interface IService {
   autostart?: boolean;
 }
 
-/**
- * Services required by this application.
- */
-const services = [
-  './app',
-  './sessions',
-  './server',
-  './shortcuts',
-  './registry'
-].map((service: string) => {
-  return require(service).default;
-});
-
 const thisYear = new Date().getFullYear();
 
 app.setAboutPanelOptions({
@@ -186,6 +180,40 @@ function setApplicationMenu() {
   Menu.setApplicationMenu(menu);
 }
 
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore
+let jupyterApp;
+const registry = new Registry();
+
+function startup() {
+  const startupMode = userSettings.getValue(
+    SettingType.startupMode
+  ) as StartupMode;
+  if (startupMode === StartupMode.WelcomePage) {
+    const window = new MainWindow({
+      registry,
+      contentView: ContentViewType.Welcome
+    });
+    window.load();
+  } else if (startupMode === StartupMode.LastSessions) {
+    const sessionConfig = appData.getSessionConfig();
+    const window = new MainWindow({
+      registry,
+      contentView: ContentViewType.Lab,
+      sessionConfig
+    });
+    window.load();
+  } else {
+    const sessionConfig = SessionConfig.createLocal();
+    const window = new MainWindow({
+      registry,
+      contentView: ContentViewType.Lab,
+      sessionConfig
+    });
+    window.load();
+  }
+}
+
 /**
  * Load all services when the electron app is
  * ready.
@@ -196,25 +224,15 @@ app.on('ready', () => {
   handOverArguments()
     .then(() => {
       setupJLabCommand();
-      let serviceManager = new Bottle();
-      let autostarts: string[] = [];
-      services.forEach((s: IService) => {
-        serviceManager.factory(s.provides, (container: any) => {
-          let args = s.requirements.map((r: string) => {
-            return container[r];
-          });
-          return s.activate(...args);
-        });
-        if (s.autostart) {
-          autostarts.push(s.provides);
-        }
-      });
-      serviceManager.digest(autostarts);
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      jupyterApp = new JupyterApplication(registry);
     })
     .catch(e => {
       log.error(e);
       app.quit();
     });
+
+  startup();
 });
 
 /**

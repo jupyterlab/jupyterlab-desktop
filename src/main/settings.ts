@@ -5,7 +5,9 @@ import * as path from 'path';
 import * as fs from 'fs';
 import { getUserDataDir, getUserHomeDir, isDevMode } from './utils';
 
-const DEFAULT_WORKING_DIR = '$HOME';
+export const DEFAULT_WORKING_DIR = '$HOME';
+export const DEFAULT_WIN_WIDTH = 1024;
+export const DEFAULT_WIN_HEIGHT = 768;
 
 export function resolveWorkingDirectory(workingDirectory: string): string {
   const home = getUserHomeDir();
@@ -58,8 +60,22 @@ export namespace Setting {
   }
 }
 
-export type ThemeType = 'system' | 'light' | 'dark';
-export type FrontEndMode = 'web-app' | 'client-app';
+export enum ThemeType {
+  System = 'system',
+  Light = 'light',
+  Dark = 'dark'
+}
+
+export enum FrontEndMode {
+  WebApp = 'web-app',
+  ClientApp = 'client-app'
+}
+
+export enum StartupMode {
+  WelcomePage = 'WelcomePage',
+  LastSessions = 'LastSessions',
+  NewLocalSession = 'NewLocalSession'
+}
 
 export interface IWindowData {
   x: number;
@@ -86,7 +102,9 @@ export enum SettingType {
   frontEndMode = 'frontEndMode',
 
   defaultWorkingDirectory = 'defaultWorkingDirectory',
-  pythonPath = 'pythonPath'
+  pythonPath = 'pythonPath',
+
+  startupMode = 'startupMode'
 }
 
 export class UserSettings {
@@ -95,12 +113,14 @@ export class UserSettings {
       checkForUpdatesAutomatically: new Setting<boolean>(true),
       installUpdatesAutomatically: new Setting<boolean>(true),
 
-      theme: new Setting<ThemeType>('system', { wsOverridable: true }),
+      theme: new Setting<ThemeType>(ThemeType.System, { wsOverridable: true }),
       syncJupyterLabTheme: new Setting<boolean>(true, { wsOverridable: true }),
-      frontEndMode: new Setting<FrontEndMode>('web-app'),
+      frontEndMode: new Setting<FrontEndMode>(FrontEndMode.WebApp),
 
       defaultWorkingDirectory: new Setting<string>(DEFAULT_WORKING_DIR),
-      pythonPath: new Setting<string>('', { wsOverridable: true })
+      pythonPath: new Setting<string>('', { wsOverridable: true }),
+
+      startupMode: new Setting<StartupMode>(StartupMode.WelcomePage)
     };
 
     if (readSettings) {
@@ -144,6 +164,12 @@ export class UserSettings {
     }
 
     fs.writeFileSync(userSettingsPath, JSON.stringify(userSettings, null, 2));
+  }
+
+  get resolvedWorkingDirectory(): string {
+    return resolveWorkingDirectory(
+      this._settings[SettingType.defaultWorkingDirectory].value
+    );
   }
 
   private _getUserSettingsPath(): string {
@@ -266,7 +292,8 @@ export class ApplicationData {
 
     this.read();
 
-    const createNewSession = this.sessions.length === 0 || (process.argv.length > 1 && !isDevMode());
+    const createNewSession =
+      this.sessions.length === 0 || (process.argv.length > 1 && !isDevMode());
 
     if (createNewSession) {
       const sessionConfig = SessionConfig.createLocal();
@@ -274,7 +301,7 @@ export class ApplicationData {
       // handle opening file or directory with command-line arguments
       if (process.argv.length > 1) {
         const openPath = path.resolve(process.argv[1]);
-  
+
         if (fs.existsSync(openPath)) {
           if (fs.lstatSync(openPath).isDirectory()) {
             sessionConfig.workingDirectory = openPath;
@@ -283,7 +310,7 @@ export class ApplicationData {
           }
         }
       }
-  
+
       this.sessions.push(sessionConfig);
     }
   }
@@ -360,8 +387,8 @@ export class ApplicationData {
 export class SessionConfig implements ISessionData, IWindowData {
   x: number = 0;
   y: number = 0;
-  width: number = 800;
-  height: number = 600;
+  width: number = DEFAULT_WIN_WIDTH;
+  height: number = DEFAULT_WIN_HEIGHT;
   remoteURL: string = '';
   persistSessionData: boolean = true;
   workingDirectory: string = DEFAULT_WORKING_DIR;
@@ -470,7 +497,7 @@ export class SessionConfig implements ISessionData, IWindowData {
       y: this.y,
       width: this.width,
       height: this.height,
-      lastOpened: this.lastOpened.toISOString(),
+      lastOpened: this.lastOpened.toISOString()
     };
 
     if (this.remoteURL !== '') {
@@ -498,9 +525,11 @@ export class SessionConfig implements ISessionData, IWindowData {
     }
 
     // if local server and JupyterLab UI is in client-app mode
-    if (this.pageConfig &&
+    if (
+      this.pageConfig &&
       this.remoteURL === '' &&
-      userSettings.getValue(SettingType.frontEndMode) === 'client-app') {
+      userSettings.getValue(SettingType.frontEndMode) === FrontEndMode.ClientApp
+    ) {
       const pageConfig = JSON.parse(JSON.stringify(this.pageConfig));
       delete pageConfig['token'];
       jsonData.pageConfig = pageConfig;
