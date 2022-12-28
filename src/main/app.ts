@@ -1,17 +1,7 @@
 // Copyright (c) Jupyter Development Team.
 // Distributed under the terms of the Modified BSD License.
 
-import {
-  app,
-  autoUpdater,
-  BrowserWindow,
-  dialog,
-  ipcMain,
-  Menu,
-  MenuItemConstructorOptions,
-  session,
-  shell
-} from 'electron';
+import { app, autoUpdater, dialog, ipcMain, session, shell } from 'electron';
 
 import log from 'electron-log';
 
@@ -27,7 +17,6 @@ import { execFile } from 'child_process';
 import { JupyterServerFactory } from './server';
 import { connectAndGetServerInfo, IJupyterServerInfo } from './connect';
 import { UpdateDialog } from './updatedialog/updatedialog';
-import { PreferencesDialog } from './preferencesdialog/preferencesdialog';
 import { ServerConfigDialog } from './serverconfigdialog/serverconfigdialog';
 import { AboutDialog } from './aboutdialog/aboutdialog';
 import {
@@ -40,7 +29,12 @@ import {
 import { IDisposable } from './disposable';
 import { ContentViewType, MainWindow } from './mainwindow/mainwindow';
 
-export class JupyterApplication implements IDisposable {
+export interface IApplication {
+  checkForUpdates(showDialog: 'on-new-version' | 'always'): void;
+  showAboutDialog(): void;
+}
+
+export class JupyterApplication implements IApplication, IDisposable {
   /**
    * Construct the Jupyter application
    */
@@ -85,7 +79,7 @@ export class JupyterApplication implements IDisposable {
 
       if (checkDirectly) {
         setTimeout(() => {
-          this._checkForUpdates('on-new-version');
+          this.checkForUpdates('on-new-version');
         }, 5000);
       }
     }
@@ -99,6 +93,7 @@ export class JupyterApplication implements IDisposable {
     ) as StartupMode;
     if (startupMode === StartupMode.WelcomePage) {
       const window = new MainWindow({
+        app: this,
         registry: this._registry,
         serverFactory: this._serverFactory,
         contentView: ContentViewType.Welcome
@@ -108,6 +103,7 @@ export class JupyterApplication implements IDisposable {
     } else if (startupMode === StartupMode.LastSessions) {
       const sessionConfig = appData.getSessionConfig();
       const window = new MainWindow({
+        app: this,
         registry: this._registry,
         serverFactory: this._serverFactory,
         contentView: ContentViewType.Lab,
@@ -118,6 +114,7 @@ export class JupyterApplication implements IDisposable {
     } else {
       const sessionConfig = SessionConfig.createLocal();
       const window = new MainWindow({
+        app: this,
         registry: this._registry,
         serverFactory: this._serverFactory,
         contentView: ContentViewType.Lab,
@@ -187,10 +184,6 @@ export class JupyterApplication implements IDisposable {
       userSettings.save();
 
       this._quit();
-    });
-
-    app.on('browser-window-focus', (_event: Event, window: BrowserWindow) => {
-      this._window = window;
     });
 
     ipcMain.on('set-check-for-updates-automatically', (_event, autoUpdate) => {
@@ -359,42 +352,7 @@ export class JupyterApplication implements IDisposable {
     });
 
     ipcMain.on('check-for-updates', _event => {
-      this._checkForUpdates('always');
-    });
-
-    ipcMain.on('show-app-context-menu', event => {
-      const template: MenuItemConstructorOptions[] = [
-        {
-          label: 'Preferences',
-          click: () => {
-            this._showPreferencesDialog();
-          }
-        },
-        {
-          label: 'Check for updates…',
-          click: () => {
-            this._checkForUpdates('always');
-          }
-        },
-        {
-          label: 'Open Developer Tools',
-          click: () => {
-            this._openDevTools();
-          }
-        },
-        { type: 'separator' },
-        {
-          label: 'About',
-          click: () => {
-            this._showAboutDialog();
-          }
-        }
-      ];
-
-      const menu = Menu.buildFromTemplate(template);
-      menu.popup({
-        window: BrowserWindow.fromWebContents(event.sender)
-      });
+      this.checkForUpdates('always');
     });
 
     ipcMain.handle('is-dark-theme', event => {
@@ -439,14 +397,14 @@ export class JupyterApplication implements IDisposable {
 
     this._serverConfigDialog = dialog;
 
-    dialog.window.on('close', () => {
+    dialog.window.on('closed', () => {
       this._serverConfigDialog = null;
     });
 
     dialog.load();
   }
 
-  private _checkForUpdates(showDialog: 'on-new-version' | 'always') {
+  checkForUpdates(showDialog: 'on-new-version' | 'always') {
     fetch(
       'https://github.com/jupyterlab/jupyterlab-desktop/releases/latest/download/latest.yml'
     )
@@ -478,42 +436,7 @@ export class JupyterApplication implements IDisposable {
       });
   }
 
-  private _openDevTools() {
-    this._window.getBrowserViews().forEach(view => {
-      view.webContents.openDevTools();
-    });
-  }
-
-  private _showPreferencesDialog() {
-    if (this._preferencesDialog) {
-      this._preferencesDialog.window.focus();
-      return;
-    }
-
-    const dialog = new PreferencesDialog({
-      theme: userSettings.getValue(SettingType.theme),
-      syncJupyterLabTheme: userSettings.getValue(
-        SettingType.syncJupyterLabTheme
-      ),
-      frontEndMode: userSettings.getValue(SettingType.frontEndMode),
-      checkForUpdatesAutomatically: userSettings.getValue(
-        SettingType.checkForUpdatesAutomatically
-      ),
-      installUpdatesAutomatically: userSettings.getValue(
-        SettingType.installUpdatesAutomatically
-      )
-    });
-
-    this._preferencesDialog = dialog;
-
-    dialog.window.on('close', () => {
-      this._preferencesDialog = null;
-    });
-
-    dialog.load();
-  }
-
-  private _showAboutDialog() {
+  showAboutDialog() {
     const dialog = new AboutDialog();
     dialog.load();
   }
@@ -535,9 +458,7 @@ export class JupyterApplication implements IDisposable {
   /**
    * The most recently focused window
    */
-  private _window: Electron.BrowserWindow;
   private _serverConfigDialog: ServerConfigDialog;
-  private _preferencesDialog: PreferencesDialog;
   private _disposePromise: Promise<void>;
   private _mainWindow: MainWindow;
 }
