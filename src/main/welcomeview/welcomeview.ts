@@ -1,11 +1,18 @@
 // Copyright (c) Jupyter Development Team.
 // Distributed under the terms of the Modified BSD License.
 
-import { BrowserView } from 'electron';
+import { BrowserView, ipcMain, shell } from 'electron';
 import { MainWindow } from '../mainwindow/mainwindow';
 import { DarkThemeBGColor, LightThemeBGColor } from '../utils';
 import * as path from 'path';
 import * as fs from 'fs';
+import fetch from 'node-fetch';
+const { XMLParser } = require('fast-xml-parser');
+
+interface INewsItem {
+  title: string;
+  link: string;
+}
 
 export class WelcomeView {
   constructor(parent: MainWindow) {
@@ -91,6 +98,14 @@ export class WelcomeView {
               flex-grow: 1;
               row-gap: 5px;
             }
+            .news-list-col {
+              display: flex;
+              flex-direction: column;
+              row-gap: 5px;
+            }
+            .news-col-footer {
+              margin-top: 5px;
+            }
             .row-title {
               font-weight: bold;
               margin-bottom: 5px;
@@ -107,6 +122,12 @@ export class WelcomeView {
             }
             .app-ui-dark a:hover {
               color: #eeeeee;
+            }
+            .more-row a {
+              color: #202020;
+            }
+            .app-ui-dark .more-row a {
+              color: #f0f0f0;
             }
             .jupyterlab-wordmark svg {
               width: 300px;
@@ -174,40 +195,65 @@ export class WelcomeView {
 
               <div class="col news-col">
                 <div class="row row-title">
-                  News
+                  Jupyter News
                 </div>
-                <div class="row">
-                  <a href="javascript:void(0)" onclick='handleNewsClick(this);'>Introducing Jupyter Scheduler</a>
+
+                <div id="news-list" class="news-list-col">
+                ${
+                  // populate news list from cache
+                  WelcomeView._newsList
+                    .map((news: INewsItem) => {
+                      return `<div class="row">
+                        <a href="javascript:void(0)" onclick=\'handleNewsClick("${news.link}");\'>${news.title}</a>
+                      </div>`;
+                    })
+                    .join('')
+                }
                 </div>
-                <div class="row">
-                  <a href="javascript:void(0)" onclick='handleNewsClick(this);'>JupyterLab Desktop — 2022 recap</a>
+
+                <div class="row more-row news-col-footer">
+                  <a href="javascript:void(0)" onclick='handleNewsClick("https://blog.jupyter.org");'>Jupyter Blog</a>
                 </div>
-                <div class="row">
-                  <a href="javascript:void(0)" onclick='handleNewsClick(this);'>Jupyter Community Workshop: The notebook file format</a>
-                </div>
-                <div class="row">
-                  <a href="javascript:void(0)" onclick='handleNewsClick(this);'>Introducing JupyterHub’s Outreachy interns! — December 2022 Cohort</a>
-                </div>
-                <div class="row">
-                  <a href="javascript:void(0)" onclick='handleNewsClick(this);'>Jupyter Server 2.0 is released!</a>
-                </div>
-                <div class="row">
-                  <a href="javascript:void(0)" onclick='handleNewsClick(this);'>More...</a>
-                </div>
-                
               </div>
             </div>
           </div>
           </div>
 
           <script>
+          const newsListContainer = document.getElementById('news-list');
+          
+          window.electronAPI.onSetNewsList((newsList) => {
+            // clear list
+            while (newsListContainer.firstChild) {
+              newsListContainer.firstChild.remove();
+            }
+
+            const fragment = new DocumentFragment();
+            for (const news of newsList) {
+              const newsRow = document.createElement('div');
+              newsRow.innerHTML = \`
+                <div class="row">
+                  <a href="javascript:void(0)" onclick=\'handleNewsClick("\$\{news.link\}");\'>\$\{news.title\}</a>
+                </div>\`;
+              fragment.append(newsRow);
+            }
+
+            newsListContainer.append(fragment);
+          });
+
           function handleNewSessionClick(type) {
             window.electronAPI.newSession(type);
+          }
+
+          function handleNewsClick(newsLink) {
+            window.electronAPI.openNewsLink(newsLink);
           }
           </script>
         </body>
       </html>
       `;
+
+    this._registerListeners();
   }
 
   get view(): BrowserView {
@@ -218,6 +264,57 @@ export class WelcomeView {
     this._view.webContents.loadURL(
       `data:text/html;charset=utf-8,${encodeURIComponent(this._pageSource)}`
     );
+    this._updateNewsList();
+  }
+
+  private _registerListeners() {
+    ipcMain.on('open-news-link', (event, link) => {
+      if (event.sender !== this._view.webContents) {
+        return;
+      }
+
+      try {
+        const url = new URL(decodeURIComponent(link));
+        if (url.protocol === 'https:' || url.protocol === 'http:') {
+          shell.openExternal(url.href);
+        }
+      } catch (error) {
+        console.error('Invalid news URL');
+      }
+    });
+  }
+
+  private _updateNewsList() {
+    const newsFeedUrl = 'https://blog.jupyter.org/feed';
+    const maxNewsToShow = 10;
+
+    fetch(newsFeedUrl)
+      .then(async response => {
+        try {
+          const data = await response.text();
+          const parser = new XMLParser();
+          const feed = parser.parse(data);
+          const newsList: INewsItem[] = [];
+          for (const item of feed.rss.channel.item) {
+            newsList.push({
+              title: item.title,
+              link: encodeURIComponent(item.link)
+            });
+            if (newsList.length === maxNewsToShow) {
+              break;
+            }
+          }
+
+          this._view.webContents.send('set-news-list', newsList);
+
+          WelcomeView._newsList = newsList;
+        } catch (error) {
+          console.error('Failed to parse news list:', error);
+        }
+      })
+      .catch(error => {
+        console.error('Failed to fetch news list:', error);
+      });
   }
 
   // eslint-disable-next-line @typescript-eslint/ban-ts-comment
@@ -225,4 +322,5 @@ export class WelcomeView {
   private _parent: MainWindow;
   private _view: BrowserView;
   private _pageSource: string;
+  static _newsList: INewsItem[] = [];
 }
