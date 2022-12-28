@@ -14,19 +14,19 @@ import {
 } from '../settings';
 import { TitleBarView } from '../titlebarview/titlebarview';
 import { DarkThemeBGColor, isDarkTheme, LightThemeBGColor } from '../utils';
-import { JupyterServerFactory } from '../server';
-import { IRegistry } from '../registry';
+import { IServerFactory, JupyterServerFactory } from '../server';
 import * as fs from 'fs';
 import * as path from 'path';
+import { IDisposable } from '../disposable';
 
 export enum ContentViewType {
   Welcome = 'welcome',
   Lab = 'lab'
 }
 
-export class MainWindow {
+export class MainWindow implements IDisposable {
   constructor(options: MainWindow.IOptions) {
-    this._registry = options.registry;
+    this._serverFactory = options.serverFactory;
     this._contentViewType = options.contentView;
     this._sessionConfig = options.sessionConfig;
     const wsSettings = new WorkspaceSettings(
@@ -73,8 +73,6 @@ export class MainWindow {
       this._window.center();
     }
 
-    this.serverFactory.createFreeServer();
-
     ipcMain.on(
       'create-new-session',
       async (event, type: 'notebook' | 'blank') => {
@@ -92,9 +90,10 @@ export class MainWindow {
         };
 
         if (type === 'notebook' || type === 'blank') {
-          const factoryItem = await this.serverFactory.createServer();
-          await factoryItem.server.started;
-          const serverInfo = factoryItem.server.info;
+          const server = await this.serverFactory.createServer();
+          this._server = server;
+          await server.server.started;
+          const serverInfo = server.server.info;
           sessionConfig.token = serverInfo.token;
           sessionConfig.url = serverInfo.url;
           loadLabView();
@@ -139,11 +138,12 @@ export class MainWindow {
           sessionConfig = SessionConfig.createLocal(selectedPath);
         }
 
-        const factoryItem = await this.serverFactory.createFreeServer({
+        const server = await this.serverFactory.createFreeServer({
           workingDirectory: sessionConfig.workingDirectory
         });
-        await factoryItem.server.started;
-        const serverInfo = factoryItem.server.info;
+        this._server = server;
+        await server.server.started;
+        const serverInfo = server.server.info;
         sessionConfig.token = serverInfo.token;
         sessionConfig.url = serverInfo.url;
         loadLabView(sessionConfig);
@@ -203,6 +203,14 @@ export class MainWindow {
     this._resizeViews();
   }
 
+  dispose(): Promise<void> {
+    if (!this._server?.server) {
+      return Promise.resolve();
+    }
+
+    return this._server.server.stop();
+  }
+
   private _loadWelcomeView() {
     const welcomeView = new WelcomeView(this);
     this._window.addBrowserView(welcomeView.view);
@@ -237,13 +245,13 @@ export class MainWindow {
       this._window.setTitle(title);
     });
 
-    // if (this._sessionConfig.isRemote) {
-    //   this._titleBarView.showServerStatus(true);
-    // } else {
-    //   this._labView.serverReady.then(() => {
-    //     this._titleBarView.showServerStatus(true);
-    //   })
-    // }
+    if (this._sessionConfig.isRemote) {
+      this._titleBarView.showServerStatus(true);
+    } else {
+      this._labView.labUIReady.then(() => {
+        this._titleBarView.showServerStatus(true);
+      });
+    }
   }
 
   get titleBarView(): TitleBarView {
@@ -262,12 +270,8 @@ export class MainWindow {
     }
   }
 
-  get serverFactory(): JupyterServerFactory {
-    if (!MainWindow._serverFactory) {
-      MainWindow._serverFactory = new JupyterServerFactory(this._registry);
-    }
-
-    return MainWindow._serverFactory;
+  get serverFactory(): IServerFactory {
+    return this._serverFactory;
   }
 
   private _updateContentView() {
@@ -339,13 +343,13 @@ export class MainWindow {
   private _welcomeView: WelcomeView;
   private _labView: LabView;
   private _contentViewType: ContentViewType = ContentViewType.Welcome;
-  private _registry: IRegistry;
-  private static _serverFactory: JupyterServerFactory;
+  private _serverFactory: IServerFactory;
+  private _server: JupyterServerFactory.IFactoryItem;
 }
 
 export namespace MainWindow {
   export interface IOptions {
-    registry: IRegistry;
+    serverFactory: IServerFactory;
     contentView: ContentViewType;
     sessionConfig?: SessionConfig;
   }

@@ -4,8 +4,6 @@ import { IRegistry } from './registry';
 
 import { dialog } from 'electron';
 
-import { IClosingService } from './app';
-
 import { ArrayExt } from '@lumino/algorithm';
 
 import log from 'electron-log';
@@ -24,6 +22,7 @@ import {
 } from './utils';
 import { appData, userSettings } from './settings';
 import { randomBytes } from 'crypto';
+import { IDisposable } from './disposable';
 
 const SERVER_LAUNCH_TIMEOUT = 30000; // milliseconds
 const SERVER_RESTART_LIMIT = 3; // max server restarts
@@ -498,7 +497,7 @@ export interface IServerFactory {
    * @return the factory item.
    */
   createServer: (
-    opts: JupyterServer.IOptions,
+    opts?: JupyterServer.IOptions,
     forceNewServer?: boolean
   ) => Promise<JupyterServerFactory.IFactoryItem>;
 
@@ -525,10 +524,9 @@ export namespace IServerFactory {
   }
 }
 
-export class JupyterServerFactory implements IServerFactory, IClosingService {
+export class JupyterServerFactory implements IServerFactory, IDisposable {
   constructor(registry: IRegistry) {
     this._registry = registry;
-    // app.registerClosingService(this);
   }
 
   /**
@@ -642,12 +640,12 @@ export class JupyterServerFactory implements IServerFactory, IClosingService {
     return Promise.all(stopPromises);
   }
 
-  /**
-   * Closes all servers and cleans up any remaining listeners
-   * @return promise that is fulfilled when the server factory is ready to quit
-   */
-  finished(): Promise<void> {
-    let promise = new Promise<void>((resolve, reject) => {
+  dispose(): Promise<void> {
+    if (this._disposePromise) {
+      return this._disposePromise;
+    }
+
+    this._disposePromise = new Promise<void>((resolve, reject) => {
       this.killAllServers()
         .then(() => {
           resolve();
@@ -656,7 +654,8 @@ export class JupyterServerFactory implements IServerFactory, IClosingService {
           reject();
         });
     });
-    return promise;
+
+    return this._disposePromise;
   }
 
   private _createServer(
@@ -719,6 +718,7 @@ export class JupyterServerFactory implements IServerFactory, IClosingService {
   // private _app: IApplication;
 
   private _registry: IRegistry;
+  private _disposePromise: Promise<void>;
 }
 
 export namespace JupyterServerFactory {

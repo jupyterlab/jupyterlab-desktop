@@ -5,16 +5,8 @@ import * as path from 'path';
 import * as fs from 'fs';
 import { getAppDir, isDevMode } from './utils';
 import { execSync } from 'child_process';
-import {
-  appData,
-  SessionConfig,
-  SettingType,
-  StartupMode,
-  userSettings
-} from './settings';
-import { ContentViewType, MainWindow } from './mainwindow/mainwindow';
+import { appData } from './settings';
 import { JupyterApplication } from './app';
-import { Registry } from './registry';
 
 /**
  *  * On Mac OSX the PATH env variable a packaged app gets does not
@@ -183,36 +175,6 @@ function setApplicationMenu() {
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore
 let jupyterApp;
-const registry = new Registry();
-
-function startup() {
-  const startupMode = userSettings.getValue(
-    SettingType.startupMode
-  ) as StartupMode;
-  if (startupMode === StartupMode.WelcomePage) {
-    const window = new MainWindow({
-      registry,
-      contentView: ContentViewType.Welcome
-    });
-    window.load();
-  } else if (startupMode === StartupMode.LastSessions) {
-    const sessionConfig = appData.getSessionConfig();
-    const window = new MainWindow({
-      registry,
-      contentView: ContentViewType.Lab,
-      sessionConfig
-    });
-    window.load();
-  } else {
-    const sessionConfig = SessionConfig.createLocal();
-    const window = new MainWindow({
-      registry,
-      contentView: ContentViewType.Lab,
-      sessionConfig
-    });
-    window.load();
-  }
-}
 
 /**
  * Load all services when the electron app is
@@ -225,14 +187,12 @@ app.on('ready', () => {
     .then(() => {
       setupJLabCommand();
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      jupyterApp = new JupyterApplication(registry);
+      jupyterApp = new JupyterApplication();
     })
     .catch(e => {
       log.error(e);
       app.quit();
     });
-
-  startup();
 });
 
 /**

@@ -16,7 +16,7 @@ import {
 import log from 'electron-log';
 
 import { IPythonEnvironment } from './tokens';
-import { IRegistry } from './registry';
+import { IRegistry, Registry } from './registry';
 import fetch from 'node-fetch';
 import * as yaml from 'js-yaml';
 import * as semver from 'semver';
@@ -25,43 +25,36 @@ import * as fs from 'fs';
 
 import { clearSession, getAppDir, getUserDataDir, isDarkTheme } from './utils';
 import { execFile } from 'child_process';
-import { JupyterServer } from './server';
+import { JupyterServer, JupyterServerFactory } from './server';
 import { connectAndGetServerInfo, IJupyterServerInfo } from './connect';
 import { UpdateDialog } from './updatedialog/updatedialog';
 import { PreferencesDialog } from './preferencesdialog/preferencesdialog';
 import { ServerConfigDialog } from './serverconfigdialog/serverconfigdialog';
 import { AboutDialog } from './aboutdialog/aboutdialog';
-import { appData, SettingType, userSettings } from './settings';
+import {
+  appData,
+  SessionConfig,
+  SettingType,
+  StartupMode,
+  userSettings
+} from './settings';
+import { IDisposable } from './disposable';
+import { ContentViewType, MainWindow } from './mainwindow/mainwindow';
 
 export interface IApplication {
-  registerClosingService: (service: IClosingService) => void;
   getPythonEnvironment(): Promise<IPythonEnvironment>;
   getServerInfo(): Promise<JupyterServer.IInfo>;
   pageConfigSet: Promise<boolean>;
 }
 
-/**
- * A service that has to complete some task on application exit
- */
-export interface IClosingService {
-  /**
-   * Called before the application exits and after the states are saved.
-   * Service resolves the promise upon a successful cleanup.
-   *
-   * @return promise that is fulfilled when the service is ready to quit
-   */
-  finished(): Promise<void>;
-}
-
-export class JupyterApplication implements IApplication {
-  readonly id = 'JupyterLabDesktop';
-  private _registry: IRegistry;
-
+export class JupyterApplication implements IApplication, IDisposable {
   /**
    * Construct the Jupyter application
    */
-  constructor(registry: IRegistry) {
-    this._registry = registry;
+  constructor() {
+    this._registry = new Registry();
+    this._serverFactory = new JupyterServerFactory(this._registry);
+    this._serverFactory.createFreeServer();
     this._registerListeners();
 
     const sessionConfig = appData.getSessionConfig();
@@ -102,6 +95,40 @@ export class JupyterApplication implements IApplication {
           this._checkForUpdates('on-new-version');
         }, 5000);
       }
+    }
+
+    this.startup();
+  }
+
+  startup() {
+    const startupMode = userSettings.getValue(
+      SettingType.startupMode
+    ) as StartupMode;
+    if (startupMode === StartupMode.WelcomePage) {
+      const window = new MainWindow({
+        serverFactory: this._serverFactory,
+        contentView: ContentViewType.Welcome
+      });
+      window.load();
+      this._mainWindow = window;
+    } else if (startupMode === StartupMode.LastSessions) {
+      const sessionConfig = appData.getSessionConfig();
+      const window = new MainWindow({
+        serverFactory: this._serverFactory,
+        contentView: ContentViewType.Lab,
+        sessionConfig
+      });
+      window.load();
+      this._mainWindow = window;
+    } else {
+      const sessionConfig = SessionConfig.createLocal();
+      const window = new MainWindow({
+        serverFactory: this._serverFactory,
+        contentView: ContentViewType.Lab,
+        sessionConfig
+      });
+      window.load();
+      this._mainWindow = window;
     }
   }
 
@@ -156,8 +183,21 @@ export class JupyterApplication implements IApplication {
     });
   }
 
-  registerClosingService(service: IClosingService): void {
-    this._closing.push(service);
+  dispose(): Promise<void> {
+    if (this._disposePromise) {
+      return this._disposePromise;
+    }
+
+    this._disposePromise = new Promise<void>((resolve, reject) => {
+      Promise.all([
+        this._mainWindow.dispose(),
+        this._serverFactory.dispose()
+      ]).then(() => {
+        resolve();
+      });
+    });
+
+    return this._disposePromise;
   }
 
   private _setupAutoUpdater() {
@@ -562,11 +602,7 @@ export class JupyterApplication implements IApplication {
   }
 
   private _quit(): void {
-    let closing: Promise<void>[] = this._closing.map((s: IClosingService) => {
-      return s.finished();
-    });
-
-    Promise.all(closing)
+    this.dispose()
       .then(() => {
         process.exit();
       })
@@ -576,8 +612,9 @@ export class JupyterApplication implements IApplication {
       });
   }
 
-  private _closing: IClosingService[] = [];
-
+  readonly id = 'JupyterLabDesktop';
+  private _registry: IRegistry;
+  private _serverFactory: JupyterServerFactory;
   /**
    * The most recently focused window
    */
@@ -586,4 +623,6 @@ export class JupyterApplication implements IApplication {
   private _serverPageConfigSet = false;
   private _serverConfigDialog: ServerConfigDialog;
   private _preferencesDialog: PreferencesDialog;
+  private _disposePromise: Promise<void>;
+  private _mainWindow: MainWindow;
 }
