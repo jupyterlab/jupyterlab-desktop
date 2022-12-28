@@ -15,9 +15,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
   isDarkTheme: () => {
     return ipcRenderer.invoke('is-dark-theme');
   },
-  closeWindow: () => {
-    ipcRenderer.send('close-active-window');
-  },
   selectPythonPath: () => {
     ipcRenderer.send('select-python-path');
   },

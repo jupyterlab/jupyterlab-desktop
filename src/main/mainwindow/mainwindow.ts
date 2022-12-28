@@ -14,10 +14,12 @@ import {
 } from '../settings';
 import { TitleBarView } from '../titlebarview/titlebarview';
 import { DarkThemeBGColor, isDarkTheme, LightThemeBGColor } from '../utils';
-import { IServerFactory, JupyterServerFactory } from '../server';
+import { IServerFactory, JupyterServer, JupyterServerFactory } from '../server';
 import * as fs from 'fs';
 import * as path from 'path';
 import { IDisposable } from '../disposable';
+import { IPythonEnvironment } from '../tokens';
+import { IRegistry } from '../registry';
 
 export enum ContentViewType {
   Welcome = 'welcome',
@@ -26,10 +28,11 @@ export enum ContentViewType {
 
 export class MainWindow implements IDisposable {
   constructor(options: MainWindow.IOptions) {
+    this._registry = options.registry;
     this._serverFactory = options.serverFactory;
     this._contentViewType = options.contentView;
     this._sessionConfig = options.sessionConfig;
-    const wsSettings = new WorkspaceSettings(
+    this._wsSettings = new WorkspaceSettings(
       this._sessionConfig?.workingDirectory || DEFAULT_WORKING_DIR
     );
 
@@ -49,7 +52,7 @@ export class MainWindow implements IDisposable {
       title: 'JupyterLab',
       titleBarStyle: 'hidden',
       frame: process.platform === 'darwin',
-      backgroundColor: isDarkTheme(wsSettings.getValue(SettingType.theme))
+      backgroundColor: isDarkTheme(this._wsSettings.getValue(SettingType.theme))
         ? DarkThemeBGColor
         : LightThemeBGColor,
       webPreferences: {
@@ -73,93 +76,7 @@ export class MainWindow implements IDisposable {
       this._window.center();
     }
 
-    ipcMain.on(
-      'create-new-session',
-      async (event, type: 'notebook' | 'blank') => {
-        if (event.sender !== this.contentView.webContents) {
-          return;
-        }
-
-        const sessionConfig = new SessionConfig();
-
-        const loadLabView = () => {
-          this._sessionConfig = sessionConfig;
-          this._contentViewType = ContentViewType.Lab;
-          this._updateContentView();
-          this._resizeViews();
-        };
-
-        if (type === 'notebook' || type === 'blank') {
-          const server = await this.serverFactory.createServer();
-          this._server = server;
-          await server.server.started;
-          const serverInfo = server.server.info;
-          sessionConfig.token = serverInfo.token;
-          sessionConfig.url = serverInfo.url;
-          loadLabView();
-          if (type === 'notebook') {
-            this.labView.labUIReady.then(() => {
-              this.labView.newNotebook();
-            });
-          }
-        }
-      }
-    );
-
-    ipcMain.on('open-file-or-folder', async event => {
-      if (event.sender !== this.contentView.webContents) {
-        return;
-      }
-
-      const loadLabView = (sessionConfig: SessionConfig) => {
-        this._sessionConfig = sessionConfig;
-        this._contentViewType = ContentViewType.Lab;
-        this._updateContentView();
-        this._resizeViews();
-      };
-
-      const { filePaths } = await dialog.showOpenDialog({
-        properties: [
-          'openFile',
-          'openDirectory',
-          'showHiddenFiles',
-          'noResolveAliases'
-        ],
-        buttonLabel: 'Open'
-      });
-      if (filePaths.length > 0) {
-        const selectedPath = filePaths[0];
-        const stat = fs.lstatSync(selectedPath);
-        let sessionConfig: SessionConfig;
-        if (stat.isFile()) {
-          const workingDir = path.dirname(selectedPath);
-          sessionConfig = SessionConfig.createLocal(workingDir, selectedPath);
-        } else if (stat.isDirectory()) {
-          sessionConfig = SessionConfig.createLocal(selectedPath);
-        }
-
-        const server = await this.serverFactory.createFreeServer({
-          workingDirectory: sessionConfig.workingDirectory
-        });
-        this._server = server;
-        await server.server.started;
-        const serverInfo = server.server.info;
-        sessionConfig.token = serverInfo.token;
-        sessionConfig.url = serverInfo.url;
-        loadLabView(sessionConfig);
-        if (stat.isFile()) {
-          this.labView.labUIReady.then(() => {
-            this.labView.openFiles();
-          });
-        }
-      }
-    });
-
-    ipcMain.on('connect-to-remote-session', event => {
-      if (event.sender !== this.contentView.webContents) {
-        return;
-      }
-    });
+    this._registerListeners();
   }
 
   get window(): BrowserWindow {
@@ -274,6 +191,159 @@ export class MainWindow implements IDisposable {
     return this._serverFactory;
   }
 
+  get registry(): IRegistry {
+    return this._registry;
+  }
+
+  private _registerListeners() {
+    ipcMain.on('minimize-window', event => {
+      if (event.sender !== this._titleBarView.view.webContents) {
+        return;
+      }
+      this._window.minimize();
+    });
+
+    ipcMain.on('maximize-window', event => {
+      if (event.sender !== this._titleBarView.view.webContents) {
+        return;
+      }
+      this._window.maximize();
+    });
+
+    ipcMain.on('restore-window', event => {
+      if (event.sender !== this._titleBarView.view.webContents) {
+        return;
+      }
+      this._window.unmaximize();
+    });
+
+    ipcMain.on('close-window', event => {
+      if (event.sender !== this._titleBarView.view.webContents) {
+        return;
+      }
+      this._window.close();
+    });
+
+    ipcMain.handle('get-server-info', event => {
+      if (
+        !(
+          event.sender === this._titleBarView.view.webContents ||
+          event.sender === this._titleBarView.view.webContents
+        )
+      ) {
+        return;
+      }
+      return this.getServerInfo();
+    });
+
+    ipcMain.handle('get-current-python-environment', event => {
+      if (event.sender !== this._titleBarView.view.webContents) {
+        return;
+      }
+      return this.getPythonEnvironment();
+    });
+
+    ipcMain.on(
+      'create-new-session',
+      async (event, type: 'notebook' | 'blank') => {
+        if (event.sender !== this.contentView.webContents) {
+          return;
+        }
+
+        const sessionConfig = new SessionConfig();
+
+        const loadLabView = () => {
+          this._sessionConfig = sessionConfig;
+          this._contentViewType = ContentViewType.Lab;
+          this._updateContentView();
+          this._resizeViews();
+        };
+
+        if (type === 'notebook' || type === 'blank') {
+          const server = await this.serverFactory.createServer();
+          this._server = server;
+          await server.server.started;
+          const serverInfo = server.server.info;
+          sessionConfig.token = serverInfo.token;
+          sessionConfig.url = serverInfo.url;
+          loadLabView();
+          if (type === 'notebook') {
+            this.labView.labUIReady.then(() => {
+              this.labView.newNotebook();
+            });
+          }
+        }
+      }
+    );
+
+    ipcMain.on('open-file-or-folder', async event => {
+      if (event.sender !== this.contentView.webContents) {
+        return;
+      }
+
+      const loadLabView = (sessionConfig: SessionConfig) => {
+        this._sessionConfig = sessionConfig;
+        this._contentViewType = ContentViewType.Lab;
+        this._updateContentView();
+        this._resizeViews();
+      };
+
+      const { filePaths } = await dialog.showOpenDialog({
+        properties: [
+          'openFile',
+          'openDirectory',
+          'showHiddenFiles',
+          'noResolveAliases'
+        ],
+        buttonLabel: 'Open'
+      });
+      if (filePaths.length > 0) {
+        const selectedPath = filePaths[0];
+        const stat = fs.lstatSync(selectedPath);
+        let sessionConfig: SessionConfig;
+        if (stat.isFile()) {
+          const workingDir = path.dirname(selectedPath);
+          sessionConfig = SessionConfig.createLocal(workingDir, selectedPath);
+        } else if (stat.isDirectory()) {
+          sessionConfig = SessionConfig.createLocal(selectedPath);
+        }
+
+        const server = await this.serverFactory.createFreeServer({
+          workingDirectory: sessionConfig.workingDirectory
+        });
+        this._server = server;
+        await server.server.started;
+        const serverInfo = server.server.info;
+        sessionConfig.token = serverInfo.token;
+        sessionConfig.url = serverInfo.url;
+        loadLabView(sessionConfig);
+        if (stat.isFile()) {
+          this.labView.labUIReady.then(() => {
+            this.labView.openFiles();
+          });
+        }
+      }
+    });
+
+    ipcMain.on('connect-to-remote-session', event => {
+      if (event.sender !== this.contentView.webContents) {
+        return;
+      }
+    });
+  }
+
+  getPythonEnvironment(): IPythonEnvironment {
+    if (this._server?.server) {
+      return this._server?.server.info.environment;
+    }
+  }
+
+  getServerInfo(): JupyterServer.IInfo {
+    if (this._server?.server) {
+      return this._server?.server.info;
+    }
+  }
+
   private _updateContentView() {
     if (this._contentViewType === ContentViewType.Welcome) {
       this._titleBarView.showServerStatus(false);
@@ -337,6 +407,7 @@ export class MainWindow implements IDisposable {
     this._sessionConfig.y = y;
   }
 
+  private _wsSettings: WorkspaceSettings;
   private _sessionConfig: SessionConfig | undefined;
   private _window: BrowserWindow;
   private _titleBarView: TitleBarView;
@@ -344,12 +415,14 @@ export class MainWindow implements IDisposable {
   private _labView: LabView;
   private _contentViewType: ContentViewType = ContentViewType.Welcome;
   private _serverFactory: IServerFactory;
+  private _registry: IRegistry;
   private _server: JupyterServerFactory.IFactoryItem;
 }
 
 export namespace MainWindow {
   export interface IOptions {
     serverFactory: IServerFactory;
+    registry: IRegistry;
     contentView: ContentViewType;
     sessionConfig?: SessionConfig;
   }

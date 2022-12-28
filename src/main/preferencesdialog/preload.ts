@@ -9,9 +9,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
   isDarkTheme: () => {
     return ipcRenderer.invoke('is-dark-theme');
   },
-  closeWindow: () => {
-    ipcRenderer.send('close-active-window');
-  },
   restartApp: () => {
     ipcRenderer.send('restart-app');
   },

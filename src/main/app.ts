@@ -15,7 +15,6 @@ import {
 
 import log from 'electron-log';
 
-import { IPythonEnvironment } from './tokens';
 import { IRegistry, Registry } from './registry';
 import fetch from 'node-fetch';
 import * as yaml from 'js-yaml';
@@ -25,7 +24,7 @@ import * as fs from 'fs';
 
 import { clearSession, getAppDir, getUserDataDir, isDarkTheme } from './utils';
 import { execFile } from 'child_process';
-import { JupyterServer, JupyterServerFactory } from './server';
+import { JupyterServerFactory } from './server';
 import { connectAndGetServerInfo, IJupyterServerInfo } from './connect';
 import { UpdateDialog } from './updatedialog/updatedialog';
 import { PreferencesDialog } from './preferencesdialog/preferencesdialog';
@@ -41,13 +40,7 @@ import {
 import { IDisposable } from './disposable';
 import { ContentViewType, MainWindow } from './mainwindow/mainwindow';
 
-export interface IApplication {
-  getPythonEnvironment(): Promise<IPythonEnvironment>;
-  getServerInfo(): Promise<JupyterServer.IInfo>;
-  pageConfigSet: Promise<boolean>;
-}
-
-export class JupyterApplication implements IApplication, IDisposable {
+export class JupyterApplication implements IDisposable {
   /**
    * Construct the Jupyter application
    */
@@ -106,6 +99,7 @@ export class JupyterApplication implements IApplication, IDisposable {
     ) as StartupMode;
     if (startupMode === StartupMode.WelcomePage) {
       const window = new MainWindow({
+        registry: this._registry,
         serverFactory: this._serverFactory,
         contentView: ContentViewType.Welcome
       });
@@ -114,6 +108,7 @@ export class JupyterApplication implements IApplication, IDisposable {
     } else if (startupMode === StartupMode.LastSessions) {
       const sessionConfig = appData.getSessionConfig();
       const window = new MainWindow({
+        registry: this._registry,
         serverFactory: this._serverFactory,
         contentView: ContentViewType.Lab,
         sessionConfig
@@ -123,6 +118,7 @@ export class JupyterApplication implements IApplication, IDisposable {
     } else {
       const sessionConfig = SessionConfig.createLocal();
       const window = new MainWindow({
+        registry: this._registry,
         serverFactory: this._serverFactory,
         contentView: ContentViewType.Lab,
         sessionConfig
@@ -130,57 +126,6 @@ export class JupyterApplication implements IApplication, IDisposable {
       window.load();
       this._mainWindow = window;
     }
-  }
-
-  getPythonEnvironment(): Promise<IPythonEnvironment> {
-    return new Promise<IPythonEnvironment>((resolve, _reject) => {
-      resolve(this._registry.getCurrentPythonEnvironment());
-    });
-  }
-
-  getServerInfo(): Promise<JupyterServer.IInfo> {
-    return new Promise<JupyterServer.IInfo>(resolve => {
-      const resolveInfo = () => {
-        const sessionConfig = appData.getSessionConfig();
-        resolve({
-          type: sessionConfig.isRemote ? 'remote' : 'local',
-          url: sessionConfig.url,
-          port: parseInt(sessionConfig.url.port),
-          token: sessionConfig.token,
-          workingDirectory: sessionConfig.resolvedWorkingDirectory,
-          environment: undefined,
-          pageConfig: sessionConfig.pageConfig
-        });
-      };
-
-      if (this._serverInfoStateSet) {
-        resolveInfo();
-        return;
-      }
-
-      const timer = setInterval(() => {
-        if (this._serverInfoStateSet) {
-          clearInterval(timer);
-          resolveInfo();
-        }
-      }, 200);
-    });
-  }
-
-  get pageConfigSet(): Promise<boolean> {
-    return new Promise<boolean>(resolve => {
-      if (this._serverPageConfigSet) {
-        resolve(true);
-        return;
-      }
-
-      const timer = setInterval(() => {
-        if (this._serverPageConfigSet) {
-          clearInterval(timer);
-          resolve(true);
-        }
-      }, 200);
-    });
   }
 
   dispose(): Promise<void> {
@@ -340,14 +285,6 @@ export class JupyterApplication implements IApplication, IDisposable {
       });
     });
 
-    ipcMain.handle('get-server-info', event => {
-      return this.getServerInfo();
-    });
-
-    ipcMain.handle('get-current-python-environment', event => {
-      return this.getPythonEnvironment();
-    });
-
     ipcMain.handle('validate-python-path', (event, path) => {
       return this._registry.validatePythonEnvironmentAtPath(path);
     });
@@ -458,26 +395,6 @@ export class JupyterApplication implements IApplication, IDisposable {
       menu.popup({
         window: BrowserWindow.fromWebContents(event.sender)
       });
-    });
-
-    ipcMain.on('close-active-window', event => {
-      const window = BrowserWindow.fromWebContents(event.sender);
-      window.close();
-    });
-
-    ipcMain.on('minimize-window', event => {
-      const window = BrowserWindow.fromWebContents(event.sender);
-      window.minimize();
-    });
-
-    ipcMain.on('maximize-window', event => {
-      const window = BrowserWindow.fromWebContents(event.sender);
-      window.maximize();
-    });
-
-    ipcMain.on('restore-window', event => {
-      const window = BrowserWindow.fromWebContents(event.sender);
-      window.unmaximize();
     });
 
     ipcMain.handle('is-dark-theme', event => {
@@ -619,8 +536,6 @@ export class JupyterApplication implements IApplication, IDisposable {
    * The most recently focused window
    */
   private _window: Electron.BrowserWindow;
-  private _serverInfoStateSet = false;
-  private _serverPageConfigSet = false;
   private _serverConfigDialog: ServerConfigDialog;
   private _preferencesDialog: PreferencesDialog;
   private _disposePromise: Promise<void>;

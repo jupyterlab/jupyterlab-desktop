@@ -279,6 +279,9 @@ Distributed under the terms of the Modified BSD License.
 
       const updateServerStatus = () => {
         window.electronAPI.getServerInfo().then(data => {
+          if (!data) {
+            return;
+          }
           if (data.type === 'local') {
             window.electronAPI.getCurrentPythonEnvironment().then(env => {
               updateStatusItemLocal(env);
