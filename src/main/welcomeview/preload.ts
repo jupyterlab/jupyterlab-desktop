@@ -13,11 +13,17 @@ contextBridge.exposeInMainWorld('electronAPI', {
   isDarkTheme: () => {
     return ipcRenderer.invoke('is-dark-theme');
   },
-  newSession: (type: 'notebook' | 'blank' | 'open' | 'remote') => {
+  newSession: (
+    type: 'notebook' | 'blank' | 'open' | 'open-file' | 'open-folder' | 'remote'
+  ) => {
     if (type === 'notebook' || type === 'blank') {
       ipcRenderer.send('create-new-session', type);
     } else if (type === 'open') {
       ipcRenderer.send('open-file-or-folder');
+    } else if (type === 'open-file') {
+      ipcRenderer.send('open-file');
+    } else if (type === 'open-folder') {
+      ipcRenderer.send('open-folder');
     } else if (type === 'remote') {
       ipcRenderer.send('connect-to-remote-session');
     }

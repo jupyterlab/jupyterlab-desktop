@@ -292,48 +292,23 @@ export class MainWindow implements IDisposable {
         return;
       }
 
-      const loadLabView = (sessionConfig: SessionConfig) => {
-        this._sessionConfig = sessionConfig;
-        this._contentViewType = ContentViewType.Lab;
-        this._updateContentView();
-        this._resizeViews();
-      };
+      this._handleFileOrFolderOpenSession('either');
+    });
 
-      const { filePaths } = await dialog.showOpenDialog({
-        properties: [
-          'openFile',
-          'openDirectory',
-          'showHiddenFiles',
-          'noResolveAliases'
-        ],
-        buttonLabel: 'Open'
-      });
-      if (filePaths.length > 0) {
-        const selectedPath = filePaths[0];
-        const stat = fs.lstatSync(selectedPath);
-        let sessionConfig: SessionConfig;
-        if (stat.isFile()) {
-          const workingDir = path.dirname(selectedPath);
-          sessionConfig = SessionConfig.createLocal(workingDir, selectedPath);
-        } else if (stat.isDirectory()) {
-          sessionConfig = SessionConfig.createLocal(selectedPath);
-        }
-
-        const server = await this.serverFactory.createFreeServer({
-          workingDirectory: sessionConfig.workingDirectory
-        });
-        this._server = server;
-        await server.server.started;
-        const serverInfo = server.server.info;
-        sessionConfig.token = serverInfo.token;
-        sessionConfig.url = serverInfo.url;
-        loadLabView(sessionConfig);
-        if (stat.isFile()) {
-          this.labView.labUIReady.then(() => {
-            this.labView.openFiles();
-          });
-        }
+    ipcMain.on('open-file', async event => {
+      if (event.sender !== this.contentView.webContents) {
+        return;
       }
+
+      this._handleFileOrFolderOpenSession('file');
+    });
+
+    ipcMain.on('open-folder', async event => {
+      if (event.sender !== this.contentView.webContents) {
+        return;
+      }
+
+      this._handleFileOrFolderOpenSession('folder');
     });
 
     ipcMain.on('connect-to-remote-session', event => {
@@ -518,6 +493,60 @@ export class MainWindow implements IDisposable {
       });
     } else {
       showWelcome();
+    }
+  }
+
+  private async _handleFileOrFolderOpenSession(
+    type: 'file' | 'folder' | 'either'
+  ) {
+    const loadLabView = (sessionConfig: SessionConfig) => {
+      this._sessionConfig = sessionConfig;
+      this._contentViewType = ContentViewType.Lab;
+      this._updateContentView();
+      this._resizeViews();
+    };
+
+    const openProperties = ['showHiddenFiles', 'noResolveAliases'];
+
+    if (type === 'either' || type === 'file') {
+      openProperties.push('openFile');
+    }
+
+    if (type === 'either' || type === 'folder') {
+      openProperties.push('openDirectory');
+    }
+
+    const { filePaths } = await dialog.showOpenDialog({
+      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+      // @ts-ignore
+      properties: openProperties,
+      buttonLabel: 'Open'
+    });
+    if (filePaths.length > 0) {
+      const selectedPath = filePaths[0];
+      const stat = fs.lstatSync(selectedPath);
+      let sessionConfig: SessionConfig;
+      if (stat.isFile()) {
+        const workingDir = path.dirname(selectedPath);
+        sessionConfig = SessionConfig.createLocal(workingDir, selectedPath);
+      } else if (stat.isDirectory()) {
+        sessionConfig = SessionConfig.createLocal(selectedPath);
+      }
+
+      const server = await this.serverFactory.createFreeServer({
+        workingDirectory: sessionConfig.workingDirectory
+      });
+      this._server = server;
+      await server.server.started;
+      const serverInfo = server.server.info;
+      sessionConfig.token = serverInfo.token;
+      sessionConfig.url = serverInfo.url;
+      loadLabView(sessionConfig);
+      if (stat.isFile()) {
+        this.labView.labUIReady.then(() => {
+          this.labView.openFiles();
+        });
+      }
     }
   }
 

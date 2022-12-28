@@ -83,7 +83,7 @@ export class WelcomeView {
               font-size: 30px;
             }
             .start-recent-col {
-              flex-basis: 50%;
+              flex-basis: 40%;
               flex-grow: 1;
               row-gap: 40px;
             }
@@ -94,7 +94,7 @@ export class WelcomeView {
               row-gap: 5px;
             }
             .news-col {
-              flex-basis: 50%;
+              flex-basis: 60%;
               flex-grow: 1;
               row-gap: 5px;
             }
@@ -172,9 +172,18 @@ export class WelcomeView {
                   <div class="row">
                     <a href="javascript:void(0)" title="Launch new JupyterLab session in the default working directory" onclick="handleNewSessionClick('blank');">New session...</a>
                   </div>
-                  <div class="row">
-                    <a href="javascript:void(0)" title="Open a notebook or folder in JupyterLab" onclick="handleNewSessionClick('open');">Open...</a>
-                  </div>
+                  ${
+                    process.platform === 'darwin'
+                      ? `<div class="row">
+                      <a href="javascript:void(0)" title="Open a notebook or folder in JupyterLab" onclick="handleNewSessionClick('open');">Open...</a>
+                    </div>`
+                      : `<div class="row">
+                      <a href="javascript:void(0)" title="Open a notebook or file in JupyterLab" onclick="handleNewSessionClick('open-file');">Open File...</a>
+                    </div>
+                    <div class="row">
+                      <a href="javascript:void(0)" title="Open a folder in JupyterLab" onclick="handleNewSessionClick('open-folder');">Open Folder...</a>
+                    </div>`
+                  }
                   <div class="row">
                     <a href="javascript:void(0)" title="Connect to a remote JupyterLab server" onclick="handleNewSessionClick('remote');">New remote session...</a>
                   </div>
