@@ -234,9 +234,14 @@ export class PreferencesDialog {
                 bundledEnvWarningContainer.style.display = 'flex';
               }
 
+              function hideBundledEnvWarning() {
+                bundledEnvWarningContainer.style.display = 'none';
+              }
+
               function handleInstallBundledEv() {
                 showProgress('Installing environment', true);
                 applyButton.setAttribute('disabled', 'disabled');
+                installBundledEnvButton.setAttribute('disabled', 'disabled');
                 window.electronAPI.installBundledPythonEnv();
               }
 
@@ -250,14 +255,16 @@ export class PreferencesDialog {
                 const message = result === 'CANCELLED' ?
                   'Installation cancelled!' :
                   result === 'FAILURE' ?
-                    'Failed to install the environment!' : '';
+                    'Failed to install the environment!' : 'Installation succeeded';
                 showProgress(message, false);
-                const disableButtons = result === 'SUCCESS';
-                if (disableButtons) {
-                  applyButton.setAttribute('disabled', 'disabled');
-                } else {
-                  applyButton.removeAttribute('disabled');
+
+                if (result === 'SUCCESS') {
+                  bundledEnvRadio.removeAttribute('disabled');
+                  hideBundledEnvWarning();
                 }
+
+                installBundledEnvButton.removeAttribute('disabled');
+                applyButton.removeAttribute('disabled');
               });
 
               window.electronAPI.onWorkingDirectorySelected((path) => {
