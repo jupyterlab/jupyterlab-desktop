@@ -290,6 +290,11 @@ export class LabView {
   private _registerWebAppFrontEndHandlers() {
     this._view.webContents.on('dom-ready', () => {
       this._view.webContents.executeJavaScript(`
+        // disable splash animation
+        const style = document.createElement('style');
+        style.textContent = '#jupyterlab-splash { display: none !important; }';
+        document.head.append(style);
+
         async function getLab() {
           return new Promise((resolve) => {
             const checkLab = () => {
