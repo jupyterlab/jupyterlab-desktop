@@ -31,7 +31,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.send('install-bundled-python-env');
   },
   setPythonPath: (path: string) => {
-    ipcRenderer.send('set-python-path', path);
+    ipcRenderer.send('set-default-python-path', path);
   },
   validatePythonPath: (path: string) => {
     return ipcRenderer.invoke('validate-python-path', path);

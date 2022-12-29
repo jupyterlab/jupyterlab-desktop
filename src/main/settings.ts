@@ -9,16 +9,22 @@ export const DEFAULT_WORKING_DIR = '$HOME';
 export const DEFAULT_WIN_WIDTH = 1024;
 export const DEFAULT_WIN_HEIGHT = 768;
 
-export function resolveWorkingDirectory(workingDirectory: string): string {
+export function resolveWorkingDirectory(
+  workingDirectory: string,
+  resetIfInvalid: boolean = true
+): string {
   const home = getUserHomeDir();
   let resolved = workingDirectory.replace('$HOME', home);
-  const stat = fs.lstatSync(resolved);
 
-  if (stat.isDirectory()) {
-    return resolved;
-  } else {
-    return home;
+  if (resetIfInvalid) {
+    const stat = fs.lstatSync(resolved);
+
+    if (!stat.isDirectory()) {
+      resolved = home;
+    }
   }
+
+  return resolved;
 }
 
 export class Setting<T> {

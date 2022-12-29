@@ -62,6 +62,47 @@ export function getEnvironmentPath(environment: IPythonEnvironment): string {
   return envPath;
 }
 
+export function getBundledPythonInstallDir(): string {
+  // this directory path cannot have any spaces since
+  // conda constructor cannot install to such paths
+  const installDir =
+    process.platform === 'darwin'
+      ? path.normalize(path.join(app.getPath('home'), 'Library', app.getName()))
+      : app.getPath('userData');
+
+  if (!fs.existsSync(installDir)) {
+    try {
+      fs.mkdirSync(installDir, { recursive: true });
+    } catch (error) {
+      log.error(error);
+    }
+  }
+
+  return installDir;
+}
+
+export function getBundledPythonEnvPath(): string {
+  const userDataDir = getBundledPythonInstallDir();
+  let envPath = path.join(userDataDir, 'jlab_server');
+
+  return envPath;
+}
+
+export function getBundledPythonPath(): string {
+  const platform = process.platform;
+  let envPath = getBundledPythonEnvPath();
+  if (platform !== 'win32') {
+    envPath = path.join(envPath, 'bin');
+  }
+
+  const bundledPythonPath = path.join(
+    envPath,
+    `python${platform === 'win32' ? '.exe' : ''}`
+  );
+
+  return bundledPythonPath;
+}
+
 export function isDarkTheme(themeType: string) {
   if (themeType === 'light') {
     return false;

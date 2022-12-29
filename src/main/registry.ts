@@ -18,7 +18,8 @@ import {
   IPythonEnvironment,
   IVersionContainer
 } from './tokens';
-import { getUserDataDir } from './utils';
+import { getBundledPythonEnvPath, getBundledPythonPath } from './utils';
+import { SettingType, userSettings } from './settings';
 
 const envInfoPyCode = fs
   .readFileSync(path.join(__dirname, 'env_info.py'))
@@ -43,8 +44,6 @@ export interface IRegistry {
   addEnvironment: (path: string) => Promise<IPythonEnvironment>;
 
   getUserJupyterPath: () => Promise<IPythonEnvironment>;
-
-  getBundledPythonPath: () => string;
 
   validatePythonEnvironmentAtPath: (path: string) => boolean;
 
@@ -135,7 +134,20 @@ export class Registry implements IRegistry {
         });
     } else {
       this._condaEnvironments = this._loadCondaEnvironments();
-      this._registryBuilt = Promise.resolve();
+
+      this._registryBuilt = new Promise<void>(resolve => {
+        const bundledPythonPath = getBundledPythonPath();
+        let pythonPath = userSettings.getValue(SettingType.pythonPath);
+        if (pythonPath === '') {
+          pythonPath = bundledPythonPath;
+        }
+
+        if (this.validatePythonEnvironmentAtPath(pythonPath)) {
+          this.setDefaultPythonPath(pythonPath);
+        }
+
+        resolve();
+      });
     }
   }
 
@@ -387,21 +399,6 @@ export class Registry implements IRegistry {
     return this._default;
   }
 
-  getBundledPythonPath(): string {
-    const platform = process.platform;
-    const userDataDir = getUserDataDir();
-    let envPath = join(userDataDir, 'jlab_server');
-    if (platform !== 'win32') {
-      envPath = join(envPath, 'bin');
-    }
-    const bundledPythonPath = join(
-      envPath,
-      `python${platform === 'win32' ? '.exe' : ''}`
-    );
-
-    return bundledPythonPath;
-  }
-
   getAdditionalPathIncludesForPythonPath(pythonPath: string): string {
     const platform = process.platform;
 
@@ -515,7 +512,7 @@ export class Registry implements IRegistry {
     let allCondas = [pathCondas, commonCondas];
 
     // add bundled conda env to the list of base conda envs
-    const bundledEnvPath = path.join(getUserDataDir(), 'jlab_server');
+    const bundledEnvPath = getBundledPythonEnvPath();
     if (fs.existsSync(path.join(bundledEnvPath, 'condabin'))) {
       allCondas.unshift(Promise.resolve([bundledEnvPath]));
     }

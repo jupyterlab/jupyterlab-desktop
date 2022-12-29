@@ -12,7 +12,13 @@ import * as semver from 'semver';
 import * as path from 'path';
 import * as fs from 'fs';
 
-import { clearSession, getAppDir, getUserDataDir, isDarkTheme } from './utils';
+import {
+  clearSession,
+  getAppDir,
+  getBundledPythonEnvPath,
+  getBundledPythonPath,
+  isDarkTheme
+} from './utils';
 import { execFile } from 'child_process';
 import { JupyterServerFactory } from './server';
 import { connectAndGetServerInfo, IJupyterServerInfo } from './connect';
@@ -21,6 +27,7 @@ import { ServerConfigDialog } from './serverconfigdialog/serverconfigdialog';
 import { AboutDialog } from './aboutdialog/aboutdialog';
 import {
   appData,
+  resolveWorkingDirectory,
   SessionConfig,
   SettingType,
   StartupMode,
@@ -43,27 +50,6 @@ export class JupyterApplication implements IApplication, IDisposable {
     this._serverFactory = new JupyterServerFactory(this._registry);
     this._serverFactory.createFreeServer();
     this._registerListeners();
-
-    const sessionConfig = appData.getSessionConfig();
-
-    const bundledPythonPath = this._registry.getBundledPythonPath();
-    let pythonPath = sessionConfig.pythonPath;
-    if (pythonPath === '') {
-      pythonPath = bundledPythonPath;
-    }
-
-    if (sessionConfig.remoteURL === '') {
-      const useBundledPythonPath = pythonPath === bundledPythonPath;
-
-      if (this._registry.validatePythonEnvironmentAtPath(pythonPath)) {
-        this._registry.setDefaultPythonPath(pythonPath);
-        sessionConfig.pythonPath = pythonPath;
-      } else {
-        this._showServerConfigDialog(
-          useBundledPythonPath ? 'invalid-bundled-env' : 'invalid-env'
-        );
-      }
-    }
 
     if (
       userSettings.getValue(SettingType.checkForUpdatesAutomatically) !== false
@@ -207,6 +193,42 @@ export class JupyterApplication implements IApplication, IDisposable {
       shell.openExternal('https://jupyter.org/about.html');
     });
 
+    ipcMain.on('select-working-directory', event => {
+      const currentPath = userSettings.resolvedWorkingDirectory;
+
+      dialog
+        .showOpenDialog({
+          properties: ['openDirectory', 'showHiddenFiles', 'noResolveAliases'],
+          buttonLabel: 'Choose',
+          defaultPath: currentPath
+        })
+        .then(({ filePaths }) => {
+          if (filePaths.length > 0) {
+            event.sender.send('working-directory-selected', filePaths[0]);
+          }
+        });
+    });
+
+    ipcMain.on('set-default-working-directory', (event, path: string) => {
+      try {
+        path = resolveWorkingDirectory(path, false);
+        const stat = fs.lstatSync(path);
+        if (stat.isDirectory()) {
+          userSettings.setValue(SettingType.defaultWorkingDirectory, path);
+          event.sender.send('set-default-working-directory-result', 'SUCCESS');
+        } else {
+          event.sender.send(
+            'set-default-working-directory-result',
+            'INVALID-PATH'
+          );
+          console.error('Failed to set working directory');
+        }
+      } catch (error) {
+        event.sender.send('set-default-working-directory-result', 'FAILURE');
+        console.error('Failed to set working directory');
+      }
+    });
+
     ipcMain.on('select-python-path', event => {
       const currentEnv = this._registry.getCurrentPythonEnvironment();
 
@@ -233,8 +255,7 @@ export class JupyterApplication implements IApplication, IDisposable {
         : platform === 'darwin'
         ? `${appDir}/env_installer/JupyterLabDesktopAppServer-${appVersion}-MacOSX-x86_64.sh`
         : `${appDir}/env_installer/JupyterLabDesktopAppServer-${appVersion}-Linux-x86_64.sh`;
-      const userDataDir = getUserDataDir();
-      const installPath = path.join(userDataDir, 'jlab_server');
+      const installPath = getBundledPythonEnvPath();
 
       if (fs.existsSync(installPath)) {
         const choice = dialog.showMessageBoxSync({
@@ -264,8 +285,6 @@ export class JupyterApplication implements IApplication, IDisposable {
       installerProc.on('exit', (exitCode: number) => {
         if (exitCode === 0) {
           event.sender.send('install-bundled-python-env-result', 'SUCCESS');
-          app.relaunch();
-          app.quit();
         } else {
           event.sender.send('install-bundled-python-env-result', 'FAILURE');
           log.error(new Error(`Installer Exit: ${exitCode}`));
@@ -316,11 +335,8 @@ export class JupyterApplication implements IApplication, IDisposable {
       dialog.showMessageBox({ message, type: 'error' });
     });
 
-    ipcMain.on('set-python-path', (event, path) => {
-      appData.getSessionConfig().remoteURL = '';
-      appData.getSessionConfig().pythonPath = path;
-      app.relaunch();
-      app.quit();
+    ipcMain.on('set-default-python-path', (event, path) => {
+      userSettings.setValue(SettingType.pythonPath, path);
     });
 
     ipcMain.on('set-remote-server-url', (event, url, persistSessionData) => {
@@ -330,8 +346,6 @@ export class JupyterApplication implements IApplication, IDisposable {
 
       appData.getSessionConfig().remoteURL = url;
       appData.getSessionConfig().persistSessionData = persistSessionData;
-      app.relaunch();
-      app.quit();
     });
 
     ipcMain.on('set-theme', (_event, theme) => {
@@ -388,7 +402,7 @@ export class JupyterApplication implements IApplication, IDisposable {
 
     const dialog = new ServerConfigDialog({
       reason,
-      bundledPythonPath: this._registry.getBundledPythonPath(),
+      bundledPythonPath: getBundledPythonPath(),
       pythonPath: sessionConfig.pythonPath,
       remoteURL: sessionConfig.remoteURL,
       persistSessionData: sessionConfig.persistSessionData,

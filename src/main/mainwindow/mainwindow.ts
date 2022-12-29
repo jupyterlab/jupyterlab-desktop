@@ -17,6 +17,7 @@ import {
   DEFAULT_WORKING_DIR,
   SessionConfig,
   SettingType,
+  userSettings,
   WorkspaceSettings
 } from '../settings';
 import { TitleBarView } from '../titlebarview/titlebarview';
@@ -467,7 +468,11 @@ export class MainWindow implements IDisposable {
       ),
       installUpdatesAutomatically: settings.getValue(
         SettingType.installUpdatesAutomatically
-      )
+      ),
+      defaultWorkingDirectory: userSettings.getValue(
+        SettingType.defaultWorkingDirectory
+      ),
+      defaultPythonPath: userSettings.getValue(SettingType.pythonPath)
     });
 
     this._preferencesDialog = dialog;

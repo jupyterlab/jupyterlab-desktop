@@ -7,7 +7,7 @@ import { DarkThemeBGColor, LightThemeBGColor } from '../utils';
 import * as path from 'path';
 import * as fs from 'fs';
 import fetch from 'node-fetch';
-const { XMLParser } = require('fast-xml-parser');
+import { XMLParser } from 'fast-xml-parser';
 
 interface INewsItem {
   title: string;
