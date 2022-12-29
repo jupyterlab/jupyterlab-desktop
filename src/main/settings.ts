@@ -290,6 +290,11 @@ export interface ISessionIdentifier {
   remoteURL: string;
 }
 
+export interface IRecentRemoteURL {
+  url: string;
+  date: Date;
+}
+
 let _appDataSingleton: ApplicationData;
 
 export class ApplicationData {
@@ -346,12 +351,28 @@ export class ApplicationData {
     this.sessions = [];
 
     if ('sessions' in jsonData && Array.isArray(jsonData.sessions)) {
-      for (let session of jsonData.sessions) {
+      for (const session of jsonData.sessions) {
         const sessionConfig = new SessionConfig();
         sessionConfig.deserialize(session);
         this.sessions.push(sessionConfig);
       }
     }
+
+    this.recentRemoteURLs = [];
+
+    if (
+      'recentRemoteURLs' in jsonData &&
+      Array.isArray(jsonData.recentRemoteURLs)
+    ) {
+      for (const remoteURL of jsonData.recentRemoteURLs) {
+        this.recentRemoteURLs.push({
+          url: remoteURL.url,
+          date: new Date(remoteURL.date)
+        });
+      }
+    }
+
+    this._sortRecentRemoteURLs();
   }
 
   save() {
@@ -364,8 +385,17 @@ export class ApplicationData {
 
     appDataJSON.sessions = [];
 
-    for (let sessionConfig of this.sessions) {
+    for (const sessionConfig of this.sessions) {
       appDataJSON.sessions.push(sessionConfig.serialize());
+    }
+
+    appDataJSON.recentRemoteURLs = [];
+
+    for (const remoteUrl of this.recentRemoteURLs) {
+      appDataJSON.recentRemoteURLs.push({
+        url: remoteUrl.url,
+        date: remoteUrl.date.toISOString()
+      });
     }
 
     fs.writeFileSync(appDataPath, JSON.stringify(appDataJSON, null, 2));
@@ -379,13 +409,37 @@ export class ApplicationData {
     this.sessions[0] = config;
   }
 
+  addRemoteURLToRecents(url: string) {
+    const existing = this.recentRemoteURLs.find(value => {
+      return value.url === url;
+    });
+
+    const now = new Date();
+
+    if (existing) {
+      existing.date = now;
+    } else {
+      this.recentRemoteURLs.push({
+        url,
+        date: now
+      });
+    }
+  }
+
   private _getAppDataPath(): string {
     const userDataDir = getUserDataDir();
     return path.join(userDataDir, 'app-data.json');
   }
 
+  private _sortRecentRemoteURLs() {
+    this.recentRemoteURLs.sort((lhs, rhs) => {
+      return rhs.date.valueOf() - lhs.date.valueOf();
+    });
+  }
+
   condaRootPath: string = '';
   sessions: SessionConfig[] = [];
+  recentRemoteURLs: IRecentRemoteURL[] = [];
 
   recentSessions: ISessionIdentifier[];
   recentPythonPaths: string[];

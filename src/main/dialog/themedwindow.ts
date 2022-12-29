@@ -9,6 +9,8 @@ import { DarkThemeBGColor, LightThemeBGColor } from '../utils';
 export class ThemedWindow {
   constructor(options: ThemedWindow.IWindowOptions) {
     this._window = new BrowserWindow({
+      parent: options.parent,
+      modal: options.modal,
       title: options.title,
       width: options.width,
       height: options.height,
@@ -129,6 +131,8 @@ export class ThemedWindow {
 
 export namespace ThemedWindow {
   export interface IWindowOptions {
+    parent?: BrowserWindow;
+    modal?: boolean;
     title: string;
     width: number;
     height: number;

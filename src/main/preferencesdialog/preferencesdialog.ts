@@ -136,8 +136,8 @@ export class PreferencesDialog {
             <jp-tab id="tab-general">
               General
             </jp-tab>
-            <jp-tab id="tab-local-server">
-              Local Server
+            <jp-tab id="tab-server">
+              Server
             </jp-tab>
             <jp-tab id="tab-updates">
               Updates
@@ -175,9 +175,9 @@ export class PreferencesDialog {
               </script>
             </jp-tab-panel>
 
-            <jp-tab-panel id="tab-local-server">
+            <jp-tab-panel id="tab-server">
               <div class="row" style="line-height: 30px;">
-                <b>Default Working Directory</b>
+                <label>Default working directory</label>
               </div>
               <div class="row">
                 <div style="flex-grow: 1;">
@@ -190,7 +190,7 @@ export class PreferencesDialog {
 
               <div id="content-local-server" class="server-type-content">
                 <div class="row" style="line-height: 30px;">
-                  <b>Default Python Environment</b>
+                  <label>Default Python environment</label>
                 </div>
                 <div style="display: flex; flex-direction: column; row-gap: 5px;">
                   <div id="bundled-env-warning"><span id="bundled-env-warning-message"></span><jp-button id='install-bundled-env' onclick='handleInstallBundledEv(this);'>Install</jp-button><jp-button id='update-bundled-env' onclick='handleUpdateBundledEv(this);'>Update</jp-button></div>

@@ -12,6 +12,7 @@ import {
 import { WelcomeView } from '../welcomeview/welcomeview';
 import { LabView } from '../labview/labview';
 import {
+  appData,
   DEFAULT_WIN_HEIGHT,
   DEFAULT_WIN_WIDTH,
   DEFAULT_WORKING_DIR,
@@ -22,18 +23,32 @@ import {
 } from '../settings';
 import { TitleBarView } from '../titlebarview/titlebarview';
 import { DarkThemeBGColor, isDarkTheme, LightThemeBGColor } from '../utils';
-import { IServerFactory, JupyterServer, JupyterServerFactory } from '../server';
+import { IServerFactory, JupyterServerFactory } from '../server';
 import * as fs from 'fs';
 import * as path from 'path';
 import { IDisposable } from '../disposable';
-import { IPythonEnvironment } from '../tokens';
+import { IPythonEnvironment, IVersionContainer } from '../tokens';
 import { IRegistry } from '../registry';
 import { IApplication } from '../app';
 import { PreferencesDialog } from '../preferencesdialog/preferencesdialog';
+import { RemoteServerSelectDialog } from '../remoteserverselectdialog/remoteserverselectdialog';
+import { connectAndGetServerInfo } from '../connect';
 
 export enum ContentViewType {
   Welcome = 'welcome',
   Lab = 'lab'
+}
+
+interface IServerInfo {
+  type: 'local' | 'remote';
+  url?: string;
+  persistSessionData?: boolean;
+  environment?: {
+    name?: string;
+    path?: string;
+    versions?: IVersionContainer;
+  };
+  workingDirectory?: string;
 }
 
 const titleBarHeight = 29;
@@ -264,7 +279,7 @@ export class MainWindow implements IDisposable {
       if (
         !(
           event.sender === this._titleBarView.view.webContents ||
-          event.sender === this._titleBarView.view.webContents
+          event.sender === this._labView.view.webContents
         )
       ) {
         return;
@@ -329,11 +344,29 @@ export class MainWindow implements IDisposable {
       this._handleFileOrFolderOpenSession('folder');
     });
 
-    ipcMain.on('connect-to-remote-session', event => {
+    ipcMain.on('create-new-remote-session', event => {
       if (event.sender !== this.contentView.webContents) {
         return;
       }
+
+      this._selectRemoteServerUrl();
     });
+
+    ipcMain.on(
+      'set-remote-server-options',
+      (event, remoteUrl: string, persistSessionData: boolean) => {
+        if (
+          event.sender !== this._remoteServerSelectDialog.window.webContents
+        ) {
+          return;
+        }
+
+        this._remoteServerSelectDialog.window.close();
+        this._remoteServerSelectDialog = null;
+
+        this._createSessionForRemoteUrl(remoteUrl, persistSessionData);
+      }
+    );
 
     ipcMain.on('show-app-context-menu', event => {
       if (event.sender !== this._titleBarView.view.webContents) {
@@ -393,9 +426,30 @@ export class MainWindow implements IDisposable {
     }
   }
 
-  getServerInfo(): JupyterServer.IInfo {
-    if (this._server?.server) {
-      return this._server?.server.info;
+  getServerInfo(): IServerInfo {
+    if (this._contentViewType !== ContentViewType.Lab) {
+      return null;
+    }
+
+    if (this._sessionConfig?.remoteURL) {
+      return {
+        type: 'remote',
+        url: this._sessionConfig.remoteURL,
+        persistSessionData: this._sessionConfig.persistSessionData
+      };
+    } else {
+      if (this._server?.server) {
+        const info = this._server?.server.info;
+        return {
+          type: 'local',
+          environment: {
+            name: info.environment.name,
+            path: info.environment.path,
+            versions: info.environment.versions
+          },
+          workingDirectory: info.workingDirectory
+        };
+      }
     }
   }
 
@@ -502,6 +556,61 @@ export class MainWindow implements IDisposable {
     dialog.load();
   }
 
+  private _selectRemoteServerUrl() {
+    this._remoteServerSelectDialog = new RemoteServerSelectDialog({
+      parent: this._window,
+      modal: true,
+      remoteURL: '',
+      persistSessionData: true
+    });
+
+    this._remoteServerSelectDialog.load();
+  }
+
+  private _createSessionForRemoteUrl(
+    remoteURL: string,
+    persistSessionData: boolean
+  ) {
+    try {
+      const url = new URL(remoteURL);
+      connectAndGetServerInfo(remoteURL, { showDialog: true })
+        .then(serverInfo => {
+          const token = url.searchParams.get('token');
+          const pageConfig = serverInfo.pageConfig;
+          const cookies = serverInfo.cookies;
+
+          this._sessionConfig = SessionConfig.createRemote(
+            remoteURL,
+            persistSessionData
+          );
+          const sessionConfig = this._sessionConfig;
+          sessionConfig.url = url;
+          sessionConfig.token = token;
+          sessionConfig.pageConfig = pageConfig;
+          sessionConfig.cookies = cookies;
+
+          appData.addRemoteURLToRecents(remoteURL);
+
+          this._contentViewType = ContentViewType.Lab;
+          this._updateContentView();
+          this._resizeViews();
+        })
+        .catch(error => {
+          dialog.showMessageBox({
+            message: 'Failed to connect!',
+            detail: error.message,
+            type: 'error'
+          });
+        });
+    } catch (error) {
+      dialog.showMessageBox({
+        message: 'Failed to connect!',
+        detail: error.message,
+        type: 'error'
+      });
+    }
+  }
+
   private _closeSession() {
     const showWelcome = () => {
       this._contentViewType = ContentViewType.Welcome;
@@ -585,6 +694,7 @@ export class MainWindow implements IDisposable {
   private _registry: IRegistry;
   private _server: JupyterServerFactory.IFactoryItem;
   private _preferencesDialog: PreferencesDialog;
+  private _remoteServerSelectDialog: RemoteServerSelectDialog;
 }
 
 export namespace MainWindow {

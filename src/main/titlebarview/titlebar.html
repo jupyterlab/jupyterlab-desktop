@@ -275,7 +275,7 @@ Distributed under the terms of the Modified BSD License.
 
       const updateStatusItemRemote = (serverInfo) => {
         serverLabel.innerText = 'Remote';
-        serverButton.title = `Remote server\n${serverInfo.url}`;
+        serverButton.title = `Remote server\n${serverInfo.url}\nSession data ${serverInfo.persistSessionData ? '': 'not '}persisted`;
       };
 
       const updateServerStatus = () => {

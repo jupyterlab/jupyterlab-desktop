@@ -25,7 +25,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
     } else if (type === 'open-folder') {
       ipcRenderer.send('open-folder');
     } else if (type === 'remote') {
-      ipcRenderer.send('connect-to-remote-session');
+      ipcRenderer.send('create-new-remote-session');
     }
   },
   openNewsLink: (newsLink: string) => {
