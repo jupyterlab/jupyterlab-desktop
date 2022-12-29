@@ -211,8 +211,8 @@ export class JupyterApplication implements IApplication, IDisposable {
 
     ipcMain.on('set-default-working-directory', (event, path: string) => {
       try {
-        path = resolveWorkingDirectory(path, false);
-        const stat = fs.lstatSync(path);
+        const resolved = resolveWorkingDirectory(path, false);
+        const stat = fs.lstatSync(resolved);
         if (stat.isDirectory()) {
           userSettings.setValue(SettingType.defaultWorkingDirectory, path);
           event.sender.send('set-default-working-directory-result', 'SUCCESS');
