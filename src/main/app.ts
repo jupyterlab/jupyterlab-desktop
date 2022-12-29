@@ -77,12 +77,15 @@ export class JupyterApplication implements IApplication, IDisposable {
     const startupMode = userSettings.getValue(
       SettingType.startupMode
     ) as StartupMode;
-    if (startupMode === StartupMode.WelcomePage) {
+
+    if (startupMode === StartupMode.NewLocalSession) {
+      const sessionConfig = SessionConfig.createLocal();
       const window = new MainWindow({
         app: this,
         registry: this._registry,
         serverFactory: this._serverFactory,
-        contentView: ContentViewType.Welcome
+        contentView: ContentViewType.Lab,
+        sessionConfig
       });
       window.load();
       this._mainWindow = window;
@@ -98,13 +101,11 @@ export class JupyterApplication implements IApplication, IDisposable {
       window.load();
       this._mainWindow = window;
     } else {
-      const sessionConfig = SessionConfig.createLocal();
       const window = new MainWindow({
         app: this,
         registry: this._registry,
         serverFactory: this._serverFactory,
-        contentView: ContentViewType.Lab,
-        sessionConfig
+        contentView: ContentViewType.Welcome
       });
       window.load();
       this._mainWindow = window;
@@ -346,6 +347,10 @@ export class JupyterApplication implements IApplication, IDisposable {
 
       appData.getSessionConfig().remoteURL = url;
       appData.getSessionConfig().persistSessionData = persistSessionData;
+    });
+
+    ipcMain.on('set-startup-mode', (_event, mode) => {
+      userSettings.setValue(SettingType.startupMode, mode);
     });
 
     ipcMain.on('set-theme', (_event, theme) => {

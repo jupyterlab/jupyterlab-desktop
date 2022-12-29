@@ -32,14 +32,17 @@ contextBridge.exposeInMainWorld('electronAPI', {
   launchInstallerDownloadPage: () => {
     ipcRenderer.send('launch-installer-download-page');
   },
+  setStartupMode: (mode: string) => {
+    ipcRenderer.send('set-startup-mode', mode);
+  },
   setTheme: (theme: string) => {
     ipcRenderer.send('set-theme', theme);
   },
-  setShowNewsFeed: (show: string) => {
-    ipcRenderer.send('set-show-news-theme', show);
-  },
   setSyncJupyterLabTheme: (sync: boolean) => {
     ipcRenderer.send('set-sync-jupyterlab-theme', sync);
+  },
+  setShowNewsFeed: (show: string) => {
+    ipcRenderer.send('set-show-news-theme', show);
   },
   setFrontEndMode: (mode: string) => {
     ipcRenderer.send('set-frontend-mode', mode);

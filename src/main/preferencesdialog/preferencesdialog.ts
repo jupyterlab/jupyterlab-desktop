@@ -6,7 +6,7 @@ import { BrowserWindow } from 'electron';
 import * as path from 'path';
 import * as fs from 'fs';
 import { ThemedWindow } from '../dialog/themedwindow';
-import { FrontEndMode, ThemeType } from '../settings';
+import { FrontEndMode, StartupMode, ThemeType } from '../settings';
 import { getBundledPythonPath } from '../utils';
 
 export class PreferencesDialog {
@@ -19,6 +19,7 @@ export class PreferencesDialog {
     });
 
     const {
+      startupMode,
       theme,
       syncJupyterLabTheme,
       showNewsFeed,
@@ -132,8 +133,8 @@ export class PreferencesDialog {
       <div id="container">
         <div id="content-area">
           <jp-tabs id="category-tabs" false="" orientation="vertical">
-            <jp-tab id="tab-appearance">
-              Appearance
+            <jp-tab id="tab-general">
+              General
             </jp-tab>
             <jp-tab id="tab-local-server">
               Local Server
@@ -141,8 +142,15 @@ export class PreferencesDialog {
             <jp-tab id="tab-updates">
               Updates
             </jp-tab>
-          
-            <jp-tab-panel id="tab-appearance">
+
+            <jp-tab-panel id="tab-general">
+              <jp-radio-group orientation="horizontal">
+                <label slot="label">On startup</label>
+                <jp-radio name="startup-mode" value="welcome-page" <%= startupMode === 'welcome-page' ? 'checked' : '' %>>Show welcome page</jp-radio>
+                <jp-radio name="startup-mode" value="new-local-session" <%= startupMode === 'new-local-session' ? 'checked' : '' %>>Start new session</jp-radio>
+                <jp-radio name="startup-mode" value="restore-sessions" <%= startupMode === 'restore-sessions' ? 'checked' : '' %>>Restore last session</jp-radio>
+              </jp-radio-group>
+              
               <jp-radio-group orientation="horizontal">
                 <label slot="label">Theme</label>
                 <jp-radio name="theme" value="light" <%= theme === 'light' ? 'checked' : '' %>>Light</jp-radio>
@@ -343,6 +351,8 @@ export class PreferencesDialog {
         }
 
         function handleApply() {
+          const startupMode = document.querySelector('jp-radio[name="startup-mode"].checked').value;
+          window.electronAPI.setStartupMode(startupMode);
           const theme = document.querySelector('jp-radio[name="theme"].checked').value;
           window.electronAPI.setTheme(theme);
           window.electronAPI.setSyncJupyterLabTheme(syncJupyterLabThemeCheckbox.checked);
@@ -374,6 +384,7 @@ export class PreferencesDialog {
       </script>
     `;
     this._pageBody = ejs.render(template, {
+      startupMode,
       theme,
       syncJupyterLabTheme,
       showNewsFeed,
@@ -402,6 +413,7 @@ export class PreferencesDialog {
 
 export namespace PreferencesDialog {
   export interface IOptions {
+    startupMode: StartupMode;
     theme: ThemeType;
     syncJupyterLabTheme: boolean;
     showNewsFeed: boolean;

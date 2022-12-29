@@ -36,6 +36,8 @@ export enum ContentViewType {
   Lab = 'lab'
 }
 
+const titleBarHeight = 29;
+
 export class MainWindow implements IDisposable {
   constructor(options: MainWindow.IOptions) {
     this._app = options.app;
@@ -95,10 +97,26 @@ export class MainWindow implements IDisposable {
     return this._window;
   }
 
+  private async _createServerForSession() {
+    const server = await this.serverFactory.createFreeServer({
+      workingDirectory: this._sessionConfig.resolvedWorkingDirectory
+    });
+    this._server = server;
+    await server.server.started;
+    const serverInfo = server.server.info;
+    this._sessionConfig.token = serverInfo.token;
+    this._sessionConfig.url = serverInfo.url;
+  }
+
   load() {
     const titleBarView = new TitleBarView();
     this._window.addBrowserView(titleBarView.view);
-    titleBarView.view.setBounds({ x: 0, y: 0, width: 1200, height: 100 });
+    titleBarView.view.setBounds({
+      x: 0,
+      y: 0,
+      width: 1200,
+      height: titleBarHeight
+    });
 
     this._window.on('focus', () => {
       titleBarView.activate();
@@ -110,7 +128,15 @@ export class MainWindow implements IDisposable {
     titleBarView.load();
     this._titleBarView = titleBarView;
 
-    this._updateContentView();
+    if (this._contentViewType === ContentViewType.Lab) {
+      this._createServerForSession().then(() => {
+        this._updateContentView();
+        this._resizeViews();
+      });
+    } else {
+      this._updateContentView();
+      this._resizeViews();
+    }
 
     this._window.on('resize', () => {
       this._updateSessionWindowInfo();
@@ -128,8 +154,6 @@ export class MainWindow implements IDisposable {
     this._window.on('moved', () => {
       this._updateSessionWindowInfo();
     });
-
-    this._resizeViews();
   }
 
   dispose(): Promise<void> {
@@ -407,7 +431,6 @@ export class MainWindow implements IDisposable {
   }
 
   private _resizeViews() {
-    const titleBarHeight = 29;
     const { width, height } = this._window.getContentBounds();
     // add padding to allow resizing around title bar
     const padding = process.platform === 'darwin' ? 0 : 1;
@@ -460,6 +483,7 @@ export class MainWindow implements IDisposable {
     const settings = this._wsSettings;
 
     const dialog = new PreferencesDialog({
+      startupMode: settings.getValue(SettingType.startupMode),
       theme: settings.getValue(SettingType.theme),
       syncJupyterLabTheme: settings.getValue(SettingType.syncJupyterLabTheme),
       showNewsFeed: settings.getValue(SettingType.showNewsFeed),

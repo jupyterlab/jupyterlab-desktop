@@ -78,9 +78,9 @@ export enum FrontEndMode {
 }
 
 export enum StartupMode {
-  WelcomePage = 'WelcomePage',
-  LastSessions = 'LastSessions',
-  NewLocalSession = 'NewLocalSession'
+  WelcomePage = 'welcome-page',
+  NewLocalSession = 'new-local-session',
+  LastSessions = 'restore-sessions'
 }
 
 export interface IWindowData {
