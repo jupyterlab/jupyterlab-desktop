@@ -462,6 +462,7 @@ export class MainWindow implements IDisposable {
     const dialog = new PreferencesDialog({
       theme: settings.getValue(SettingType.theme),
       syncJupyterLabTheme: settings.getValue(SettingType.syncJupyterLabTheme),
+      showNewsFeed: settings.getValue(SettingType.showNewsFeed),
       frontEndMode: settings.getValue(SettingType.frontEndMode),
       checkForUpdatesAutomatically: settings.getValue(
         SettingType.checkForUpdatesAutomatically

@@ -105,6 +105,7 @@ export enum SettingType {
 
   theme = 'theme',
   syncJupyterLabTheme = 'syncJupyterLabTheme',
+  showNewsFeed = 'showNewsFeed',
   frontEndMode = 'frontEndMode',
 
   defaultWorkingDirectory = 'defaultWorkingDirectory',
@@ -118,6 +119,7 @@ export class UserSettings {
     this._settings = {
       checkForUpdatesAutomatically: new Setting<boolean>(true),
       installUpdatesAutomatically: new Setting<boolean>(true),
+      showNewsFeed: new Setting<boolean>(true),
 
       theme: new Setting<ThemeType>(ThemeType.System, { wsOverridable: true }),
       syncJupyterLabTheme: new Setting<boolean>(true, { wsOverridable: true }),

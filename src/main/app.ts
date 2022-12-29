@@ -356,6 +356,10 @@ export class JupyterApplication implements IApplication, IDisposable {
       userSettings.setValue(SettingType.syncJupyterLabTheme, sync);
     });
 
+    ipcMain.on('set-show-news-theme', (_event, show) => {
+      userSettings.setValue(SettingType.showNewsFeed, show);
+    });
+
     ipcMain.on('set-frontend-mode', (_event, mode) => {
       userSettings.setValue(SettingType.frontEndMode, mode);
     });

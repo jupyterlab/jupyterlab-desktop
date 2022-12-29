@@ -8,6 +8,7 @@ import * as path from 'path';
 import * as fs from 'fs';
 import fetch from 'node-fetch';
 import { XMLParser } from 'fast-xml-parser';
+import { SettingType, userSettings } from '../settings';
 
 interface INewsItem {
   title: string;
@@ -273,7 +274,10 @@ export class WelcomeView {
     this._view.webContents.loadURL(
       `data:text/html;charset=utf-8,${encodeURIComponent(this._pageSource)}`
     );
-    this._updateNewsList();
+
+    if (userSettings.getValue(SettingType.showNewsFeed)) {
+      this._updateNewsList();
+    }
   }
 
   private _registerListeners() {

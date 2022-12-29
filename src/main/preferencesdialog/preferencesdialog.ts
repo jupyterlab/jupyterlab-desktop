@@ -21,6 +21,7 @@ export class PreferencesDialog {
     const {
       theme,
       syncJupyterLabTheme,
+      showNewsFeed,
       frontEndMode,
       checkForUpdatesAutomatically,
       defaultWorkingDirectory
@@ -122,6 +123,11 @@ export class PreferencesDialog {
       .progress-animation {
         margin-right: 5px; visibility: hidden;
       }
+      #news-feed-settings {
+        display: flex;
+        flex-direction: column;
+        margin: 10px 0;
+      }
       </style>
       <div id="container">
         <div id="content-area">
@@ -144,6 +150,11 @@ export class PreferencesDialog {
                 <jp-radio name="theme" value="system" <%= theme === 'system' ? 'checked' : '' %>>System</jp-radio>
               </jp-radio-group>
               <jp-checkbox id='checkbox-sync-jupyterlab-theme' type='checkbox' <%= syncJupyterLabTheme ? 'checked' : '' %>>Sync JupyterLab theme</jp-checkbox>
+
+              <div id="news-feed-settings">
+                <label slot="label">News Feed</label>
+                <jp-checkbox id='checkbox-show-news-feed' type='checkbox' <%= showNewsFeed ? 'checked' : '' %> onchange='handleAutoCheckForUpdates(this);'>Show news feed on welcome page</jp-checkbox>
+              </div>
 
               <jp-radio-group orientation="horizontal">
                 <label slot="label">JupyterLab UI mode</label>
@@ -335,6 +346,8 @@ export class PreferencesDialog {
           const theme = document.querySelector('jp-radio[name="theme"].checked').value;
           window.electronAPI.setTheme(theme);
           window.electronAPI.setSyncJupyterLabTheme(syncJupyterLabThemeCheckbox.checked);
+          const showNewsFeedCheckbox = document.getElementById('checkbox-show-news-feed');
+          window.electronAPI.setShowNewsFeed(showNewsFeedCheckbox.checked);
           const frontEndMode = document.querySelector('jp-radio[name="frontend-mode"].checked').value;
           window.electronAPI.setFrontEndMode(frontEndMode);
           window.electronAPI.setCheckForUpdatesAutomatically(autoUpdateCheckCheckbox.checked);
@@ -363,6 +376,7 @@ export class PreferencesDialog {
     this._pageBody = ejs.render(template, {
       theme,
       syncJupyterLabTheme,
+      showNewsFeed,
       checkForUpdatesAutomatically,
       installUpdatesAutomaticallyEnabled,
       installUpdatesAutomatically,
@@ -390,6 +404,7 @@ export namespace PreferencesDialog {
   export interface IOptions {
     theme: ThemeType;
     syncJupyterLabTheme: boolean;
+    showNewsFeed: boolean;
     frontEndMode: FrontEndMode;
     checkForUpdatesAutomatically: boolean;
     installUpdatesAutomatically: boolean;
