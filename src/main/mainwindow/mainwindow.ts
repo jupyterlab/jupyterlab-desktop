@@ -272,13 +272,6 @@ export class MainWindow implements IDisposable {
       return this.getServerInfo();
     });
 
-    ipcMain.handle('get-current-python-environment', event => {
-      if (event.sender !== this._titleBarView.view.webContents) {
-        return;
-      }
-      return this.getPythonEnvironment();
-    });
-
     ipcMain.on(
       'create-new-session',
       async (event, type: 'notebook' | 'blank') => {

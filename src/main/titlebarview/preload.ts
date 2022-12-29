@@ -35,9 +35,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getServerInfo: () => {
     return ipcRenderer.invoke('get-server-info');
   },
-  getCurrentPythonEnvironment: () => {
-    return ipcRenderer.invoke('get-current-python-environment');
-  },
   showServerConfigDialog: () => {
     ipcRenderer.send('show-server-config-dialog');
   },

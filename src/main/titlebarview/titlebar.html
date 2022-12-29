@@ -261,33 +261,32 @@ Distributed under the terms of the Modified BSD License.
         window.electronAPI.showServerConfigDialog();
       };
 
-      const updateStatusItemLocal = (env) => {
+      const updateStatusItemLocal = (serverInfo) => {
+        const env = serverInfo.environment;
         serverLabel.innerText = `Local (${env.name})`;
         let packages = [];
         for (const name in env.versions) {
           packages.push(`${name}: ${env.versions[name]}`);
         }
-        serverButton.title = `Local server\n${env.name}\n${
+        serverButton.title = `Local server\nroot:${serverInfo.workingDirectory}\n${env.name}\n${
           env.path
         }\n${packages.join(', ')}`;
       };
 
-      const updateStatusItemRemote = (url) => {
+      const updateStatusItemRemote = (serverInfo) => {
         serverLabel.innerText = 'Remote';
-        serverButton.title = `Remote server\n${url}`;
+        serverButton.title = `Remote server\n${serverInfo.url}`;
       };
 
       const updateServerStatus = () => {
-        window.electronAPI.getServerInfo().then(data => {
-          if (!data) {
+        window.electronAPI.getServerInfo().then(serverInfo => {
+          if (!serverInfo) {
             return;
           }
-          if (data.type === 'local') {
-            window.electronAPI.getCurrentPythonEnvironment().then(env => {
-              updateStatusItemLocal(env);
-            });
+          if (serverInfo.type === 'local') {
+            updateStatusItemLocal(serverInfo);
           } else {
-            updateStatusItemRemote(data.url);
+            updateStatusItemRemote(serverInfo);
           }
         });
       };
