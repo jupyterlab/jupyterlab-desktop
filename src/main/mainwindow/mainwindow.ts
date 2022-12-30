@@ -22,17 +22,27 @@ import {
   WorkspaceSettings
 } from '../settings';
 import { TitleBarView } from '../titlebarview/titlebarview';
-import { DarkThemeBGColor, isDarkTheme, LightThemeBGColor } from '../utils';
+import {
+  DarkThemeBGColor,
+  getBundledPythonPath,
+  isDarkTheme,
+  LightThemeBGColor
+} from '../utils';
 import { IServerFactory, JupyterServerFactory } from '../server';
 import * as fs from 'fs';
 import * as path from 'path';
 import { IDisposable } from '../disposable';
-import { IPythonEnvironment, IVersionContainer } from '../tokens';
+import {
+  IEnvironmentType,
+  IPythonEnvironment,
+  IVersionContainer
+} from '../tokens';
 import { IRegistry } from '../registry';
 import { IApplication } from '../app';
 import { PreferencesDialog } from '../preferencesdialog/preferencesdialog';
 import { RemoteServerSelectDialog } from '../remoteserverselectdialog/remoteserverselectdialog';
 import { connectAndGetServerInfo } from '../connect';
+import { PythonEnvironmentSelectPopup } from '../pythonenvselectpopup/pythonenvselectpopup';
 
 export enum ContentViewType {
   Welcome = 'welcome',
@@ -208,6 +218,10 @@ export class MainWindow implements IDisposable {
 
     this._labView = labView;
 
+    this._labView.view.webContents.on('focus', () => {
+      this._closeEnvSelectPopup();
+    });
+
     this.labView.view.webContents.on('page-title-updated', (event, title) => {
       this.titleBarView.setTitle(title);
       this._window.setTitle(title);
@@ -367,6 +381,79 @@ export class MainWindow implements IDisposable {
         this._createSessionForRemoteUrl(remoteUrl, persistSessionData);
       }
     );
+
+    ipcMain.on('show-env-select-popup', event => {
+      if (event.sender !== this._titleBarView.view.webContents) {
+        return;
+      }
+
+      this._showEnvSelectPopup();
+    });
+
+    ipcMain.on('close-env-select-popup', event => {
+      if (
+        !(
+          this._envSelectPopup &&
+          event.sender === this._envSelectPopup.view.view.webContents
+        )
+      ) {
+        return;
+      }
+
+      this._closeEnvSelectPopup();
+    });
+
+    ipcMain.on('set-python-path', async (event, path) => {
+      if (event.sender !== this._envSelectPopup.view.view.webContents) {
+        return;
+      }
+
+      this._wsSettings.setValue(SettingType.pythonPath, path);
+      this._sessionConfig.pythonPath = path;
+
+      this._closeEnvSelectPopup();
+
+      this._closeSession();
+
+      const loadLabView = () => {
+        this._contentViewType = ContentViewType.Lab;
+        this._updateContentView();
+        this._resizeViews();
+      };
+
+      this._server.server.stop().then(async () => {
+        const sessionConfig = this._sessionConfig;
+        const server = await this.serverFactory.createServer({
+          workingDirectory: sessionConfig.resolvedWorkingDirectory,
+          environment: {
+            path: path,
+            name: 'user-selected',
+            type: IEnvironmentType.CondaEnv,
+            versions: {},
+            default: false
+          }
+        });
+        this._server = server;
+        await server.server.started;
+        const serverInfo = server.server.info;
+        sessionConfig.token = serverInfo.token;
+        sessionConfig.url = serverInfo.url;
+        loadLabView();
+      });
+    });
+
+    ipcMain.on('env-select-popup-height-updated', async (event, height) => {
+      if (
+        !(
+          this._envSelectPopup &&
+          event.sender === this._envSelectPopup.view.view.webContents
+        )
+      ) {
+        return;
+      }
+
+      this._positionEnvSelectPopup(height);
+    });
 
     ipcMain.on('show-app-context-menu', event => {
       if (event.sender !== this._titleBarView.view.webContents) {
@@ -567,6 +654,48 @@ export class MainWindow implements IDisposable {
     this._remoteServerSelectDialog.load();
   }
 
+  private _showEnvSelectPopup() {
+    this._closeEnvSelectPopup();
+
+    this.registry.getCondaEnvironments().then((envs: IPythonEnvironment[]) => {
+      this._envSelectPopup = new PythonEnvironmentSelectPopup({
+        isDarkTheme: isDarkTheme(this._wsSettings.getValue(SettingType.theme)),
+        currentPythonPath: this._sessionConfig.pythonPath,
+        bundledPythonPath: getBundledPythonPath(),
+        envs
+      });
+
+      this._window.addBrowserView(this._envSelectPopup.view.view);
+
+      this._positionEnvSelectPopup();
+
+      this._envSelectPopup.load();
+      this._envSelectPopup.view.view.webContents.focus();
+    });
+  }
+
+  private _positionEnvSelectPopup(height?: number) {
+    const titleBarRect = this._titleBarView.view.getBounds();
+    const popupWidth = 600;
+    const defaultPopupHeight = 300;
+    const paddingRight = process.platform === 'darwin' ? 33 : 127;
+
+    this._envSelectPopup.view.view.setBounds({
+      x: titleBarRect.width - paddingRight - popupWidth,
+      y: titleBarRect.height,
+      width: popupWidth,
+      height: Math.min(height || defaultPopupHeight, defaultPopupHeight)
+    });
+  }
+
+  private _closeEnvSelectPopup() {
+    if (!this._envSelectPopup) {
+      return;
+    }
+    this._window.removeBrowserView(this._envSelectPopup.view.view);
+    this._envSelectPopup = null;
+  }
+
   private _createSessionForRemoteUrl(
     remoteURL: string,
     persistSessionData: boolean
@@ -695,6 +824,7 @@ export class MainWindow implements IDisposable {
   private _server: JupyterServerFactory.IFactoryItem;
   private _preferencesDialog: PreferencesDialog;
   private _remoteServerSelectDialog: RemoteServerSelectDialog;
+  private _envSelectPopup: PythonEnvironmentSelectPopup;
 }
 
 export namespace MainWindow {

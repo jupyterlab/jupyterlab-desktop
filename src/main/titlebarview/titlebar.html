@@ -129,12 +129,12 @@ Distributed under the terms of the Modified BSD License.
 
       .control-box-button:hover,
       #menu-button:hover,
-      #server-button:hover {
+      #server-button:not(.disabled):hover {
         background-color: #c1c1c1;
       }
       .app-ui-dark .control-box-button:hover,
       .app-ui-dark #menu-button:hover,
-      .app-ui-dark #server-button:hover {
+      .app-ui-dark #server-button:not(.disabled):hover {
         background-color: #505050;
       }
 
@@ -258,7 +258,9 @@ Distributed under the terms of the Modified BSD License.
       };
 
       serverButton.onclick = () => {
-        window.electronAPI.showServerConfigDialog();
+        if (!serverButton.classList.contains('disabled')) {
+          window.electronAPI.showEnvSelectPopup();
+        }
       };
 
       const updateStatusItemLocal = (serverInfo) => {
@@ -271,11 +273,13 @@ Distributed under the terms of the Modified BSD License.
         serverButton.title = `Local server\nroot:${serverInfo.workingDirectory}\n${env.name}\n${
           env.path
         }\n${packages.join(', ')}`;
+        serverButton.classList.remove('disabled');
       };
 
       const updateStatusItemRemote = (serverInfo) => {
         serverLabel.innerText = 'Remote';
         serverButton.title = `Remote server\n${serverInfo.url}\nSession data ${serverInfo.persistSessionData ? '': 'not '}persisted`;
+        serverButton.classList.add('disabled');
       };
 
       const updateServerStatus = () => {

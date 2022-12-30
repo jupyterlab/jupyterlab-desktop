@@ -35,8 +35,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getServerInfo: () => {
     return ipcRenderer.invoke('get-server-info');
   },
-  showServerConfigDialog: () => {
-    ipcRenderer.send('show-server-config-dialog');
+  showEnvSelectPopup: () => {
+    ipcRenderer.send('show-env-select-popup');
   },
   onSetTitle: (callback: SetTitleListener) => {
     onSetTitleListener = callback;

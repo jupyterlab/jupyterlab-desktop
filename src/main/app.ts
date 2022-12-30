@@ -16,14 +16,12 @@ import {
   clearSession,
   getAppDir,
   getBundledPythonEnvPath,
-  getBundledPythonPath,
   isDarkTheme
 } from './utils';
 import { execFile } from 'child_process';
 import { JupyterServerFactory } from './server';
 import { connectAndGetServerInfo, IJupyterServerInfo } from './connect';
 import { UpdateDialog } from './updatedialog/updatedialog';
-import { ServerConfigDialog } from './serverconfigdialog/serverconfigdialog';
 import { AboutDialog } from './aboutdialog/aboutdialog';
 import {
   appData,
@@ -381,48 +379,12 @@ export class JupyterApplication implements IApplication, IDisposable {
     ipcMain.handle('is-dark-theme', event => {
       return isDarkTheme(userSettings.getValue(SettingType.theme));
     });
-
-    ipcMain.on('show-server-config-dialog', event => {
-      this._showServerConfigDialog();
-    });
   }
 
   private _showUpdateDialog(
     type: 'updates-available' | 'error' | 'no-updates'
   ) {
     const dialog = new UpdateDialog({ type });
-
-    dialog.load();
-  }
-
-  private _showServerConfigDialog(
-    reason:
-      | 'change'
-      | 'invalid-bundled-env'
-      | 'invalid-env'
-      | 'remote-connection-failure' = 'change'
-  ) {
-    if (this._serverConfigDialog) {
-      this._serverConfigDialog.window.focus();
-      return;
-    }
-
-    const sessionConfig = appData.getSessionConfig();
-
-    const dialog = new ServerConfigDialog({
-      reason,
-      bundledPythonPath: getBundledPythonPath(),
-      pythonPath: sessionConfig.pythonPath,
-      remoteURL: sessionConfig.remoteURL,
-      persistSessionData: sessionConfig.persistSessionData,
-      envRequirements: this._registry.getRequirements()
-    });
-
-    this._serverConfigDialog = dialog;
-
-    dialog.window.on('closed', () => {
-      this._serverConfigDialog = null;
-    });
 
     dialog.load();
   }
@@ -481,7 +443,6 @@ export class JupyterApplication implements IApplication, IDisposable {
   /**
    * The most recently focused window
    */
-  private _serverConfigDialog: ServerConfigDialog;
   private _disposePromise: Promise<void>;
   private _mainWindow: MainWindow;
 }
