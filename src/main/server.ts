@@ -20,7 +20,7 @@ import {
   getSchemasDir,
   getUserDataDir
 } from './utils';
-import { appData, userSettings } from './settings';
+import { appData, FrontEndMode, SettingType, userSettings } from './settings';
 import { randomBytes } from 'crypto';
 import { IDisposable } from './disposable';
 
@@ -53,13 +53,12 @@ function createLaunchScript(
   // note: traitlets<5.0 require fully specified arguments to
   // be followed by equals sign without a space; this can be
   // removed once jupyter_server requires traitlets>5.0
-  const launchCmd = [
+  const launchArgs = [
     'python',
     '-m',
     'jupyterlab',
     '--no-browser',
     '--expose-app-in-browser',
-    `--LabServerApp.schemas_dir="${schemasDir}"`,
     // do not use any config file
     '--JupyterApp.config_file_name=""',
     `--ServerApp.port=${port}`,
@@ -68,7 +67,15 @@ function createLaunchScript(
     '--ServerApp.allow_origin="*"',
     // enable hidden files (let user decide whether to display them)
     '--ContentsManager.allow_hidden=True'
-  ].join(' ');
+  ];
+
+  if (
+    userSettings.getValue(SettingType.frontEndMode) === FrontEndMode.ClientApp
+  ) {
+    launchArgs.push(`--LabServerApp.schemas_dir="${schemasDir}"`);
+  }
+
+  const launchCmd = launchArgs.join(' ');
 
   let script: string;
   const isConda =
