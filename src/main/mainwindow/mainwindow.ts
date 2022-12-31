@@ -814,7 +814,8 @@ export class MainWindow implements IDisposable {
 
           appData.addRemoteURLToRecents(remoteURL);
           appData.addSessionToRecents({
-            remoteURL
+            remoteURL,
+            persistSessionData
           });
 
           this._contentViewType = ContentViewType.Lab;
@@ -841,7 +842,10 @@ export class MainWindow implements IDisposable {
     const recentSession = appData.recentSessions[sessionIndex];
 
     if (recentSession.remoteURL) {
-      this._createSessionForRemoteUrl(recentSession.remoteURL, true);
+      this._createSessionForRemoteUrl(
+        recentSession.remoteURL,
+        recentSession.persistSessionData
+      );
     } else {
       this._createSessionForLocal(
         recentSession.workingDirectory,

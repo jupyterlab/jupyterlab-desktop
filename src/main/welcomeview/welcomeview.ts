@@ -36,23 +36,25 @@ export class WelcomeView {
     for (const recentSession of appData.recentSessions) {
       let sessionItem = '';
       let sessionDetail = '';
-      let title = '';
+      let tooltip = '';
       let parent = '';
       if (recentSession.remoteURL) {
         const url = new URL(recentSession.remoteURL);
         sessionItem = url.origin;
-        title = recentSession.remoteURL;
+        tooltip = `${recentSession.remoteURL}\nSession data ${
+          recentSession.persistSessionData ? '' : 'not '
+        }persisted`;
         sessionDetail = 'remote';
       } else {
         // local
         if (recentSession.filesToOpen.length > 0) {
           sessionItem = path.basename(recentSession.filesToOpen[0]);
-          title = recentSession.filesToOpen[0];
+          tooltip = recentSession.filesToOpen[0];
           parent = recentSession.workingDirectory;
         } else {
           sessionItem = path.basename(recentSession.workingDirectory);
           parent = path.dirname(recentSession.workingDirectory);
-          title = recentSession.workingDirectory;
+          tooltip = recentSession.workingDirectory;
         }
 
         if (parent.startsWith(home)) {
@@ -64,7 +66,7 @@ export class WelcomeView {
       }
 
       recentSessionSection += `<div class="row">
-          <a href="javascript:void(0)" onclick='handleRecentSessionClick(${recentSessionCount});' title="${title}">${sessionItem}</a><span class="recent-session-detail">${sessionDetail}</span>
+          <a href="javascript:void(0)" onclick='handleRecentSessionClick(${recentSessionCount});' title="${tooltip}">${sessionItem}</a><span class="recent-session-detail">${sessionDetail}</span>
         </div>`;
 
       recentSessionCount++;

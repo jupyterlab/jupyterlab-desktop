@@ -8,6 +8,7 @@ import { getUserDataDir, getUserHomeDir, isDevMode } from './utils';
 export const DEFAULT_WORKING_DIR = '$HOME';
 export const DEFAULT_WIN_WIDTH = 1024;
 export const DEFAULT_WIN_HEIGHT = 768;
+const MAX_RECENT_SESSIONS = 20;
 
 export function resolveWorkingDirectory(
   workingDirectory: string,
@@ -287,6 +288,7 @@ export interface IRecentSession {
   workingDirectory?: string;
   filesToOpen?: string[];
   remoteURL?: string;
+  persistSessionData?: boolean;
   date?: Date;
 }
 
@@ -374,6 +376,7 @@ export class ApplicationData {
           workingDirectory: recentSession.workingDirectory,
           filesToOpen: [...recentSession.filesToOpen],
           remoteURL: recentSession.remoteURL,
+          persistSessionData: recentSession.persistSessionData,
           date: new Date(recentSession.date)
         });
       }
@@ -419,6 +422,7 @@ export class ApplicationData {
         workingDirectory: recentSession.workingDirectory,
         filesToOpen: [...recentSession.filesToOpen],
         remoteURL: recentSession.remoteURL,
+        persistSessionData: recentSession.persistSessionData,
         date: recentSession.date.toISOString()
       });
     }
@@ -475,7 +479,8 @@ export class ApplicationData {
     const isRemote = session.remoteURL !== undefined;
     const existing = this.recentSessions.find(item => {
       return isRemote
-        ? session.remoteURL === item.remoteURL
+        ? session.remoteURL === item.remoteURL &&
+            session.persistSessionData === item.persistSessionData
         : session.workingDirectory === item.workingDirectory &&
             filesToOpenCompare(session.filesToOpen, item.filesToOpen);
     });
@@ -493,11 +498,16 @@ export class ApplicationData {
         workingDirectory: session.workingDirectory,
         filesToOpen: filesToOpen,
         remoteURL: session.remoteURL,
+        persistSessionData: session.persistSessionData,
         date: now
       });
     }
 
     this._sortRecentItems(this.recentSessions);
+
+    if (this.recentSessions.length > MAX_RECENT_SESSIONS) {
+      this.recentSessions.length = MAX_RECENT_SESSIONS;
+    }
   }
 
   private _getAppDataPath(): string {
