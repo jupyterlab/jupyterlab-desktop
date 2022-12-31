@@ -1,0 +1,16 @@
+version: 2
+updates:
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    ignore:
+      # we have our custom bot for updating jupyterlab dependencies when needed
+      - dependency-name: "@jupyterlab/*"
+  - package-ecosystem: "pip"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    ignore:
+      # we have our custom bot for updating jupyterlab dependencies when needed
+      - dependency-name: "jupyterlab*"
