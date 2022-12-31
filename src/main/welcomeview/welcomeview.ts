@@ -30,9 +30,9 @@ export class WelcomeView {
     );
 
     const home = getUserHomeDir();
-
     let recentSessionCount = 0;
     let recentSessionSection = '';
+
     for (const recentSession of appData.recentSessions) {
       let sessionItem = '';
       let sessionDetail = '';
@@ -73,6 +73,11 @@ export class WelcomeView {
       if (recentSessionCount === 5) {
         break;
       }
+    }
+
+    if (recentSessionSection === '') {
+      recentSessionSection =
+        '<div class="no-recent-message">No history yet</div>';
     }
 
     this._pageSource = `
@@ -184,6 +189,12 @@ export class WelcomeView {
             }
             .recent-session-detail {
               padding-left: 10px;
+            }
+            .no-recent-message {
+              color: #777777;
+            }
+            .app-ui-dark .no-recent-message {
+              color: #999999;
             }
           </style>
           <script>
