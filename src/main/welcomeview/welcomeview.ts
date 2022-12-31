@@ -135,7 +135,7 @@ export class WelcomeView {
               font-size: 30px;
             }
             .start-recent-col {
-              flex-basis: 40%;
+              flex-basis: 50%;
               flex-grow: 1;
               row-gap: 40px;
             }
@@ -146,7 +146,7 @@ export class WelcomeView {
               row-gap: 5px;
             }
             .news-col {
-              flex-basis: 60%;
+              flex-basis: 50%;
               flex-grow: 1;
               row-gap: 5px;
             }

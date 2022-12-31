@@ -1,7 +1,7 @@
 // Copyright (c) Jupyter Development Team.
 // Distributed under the terms of the Modified BSD License.
 
-import { app, autoUpdater, dialog, ipcMain, session, shell } from 'electron';
+import { app, autoUpdater, dialog, ipcMain, shell } from 'electron';
 
 import log from 'electron-log';
 
@@ -12,12 +12,7 @@ import * as semver from 'semver';
 import * as path from 'path';
 import * as fs from 'fs';
 
-import {
-  clearSession,
-  getAppDir,
-  getBundledPythonEnvPath,
-  isDarkTheme
-} from './utils';
+import { getAppDir, getBundledPythonEnvPath, isDarkTheme } from './utils';
 import { execFile } from 'child_process';
 import { JupyterServerFactory } from './server';
 import { connectAndGetServerInfo, IJupyterServerInfo } from './connect';
@@ -153,10 +148,6 @@ export class JupyterApplication implements IApplication, IDisposable {
 
   private _validateRemoteServerUrl(url: string): Promise<IJupyterServerInfo> {
     return connectAndGetServerInfo(url, { showDialog: true, incognito: true });
-  }
-
-  private _clearSessionData(): Promise<void> {
-    return clearSession(session.defaultSession);
   }
 
   /**
@@ -312,18 +303,6 @@ export class JupyterApplication implements IApplication, IDisposable {
       });
     });
 
-    ipcMain.handle('clear-session-data', event => {
-      return new Promise<any>((resolve, reject) => {
-        this._clearSessionData()
-          .then(() => {
-            resolve({ result: 'success' });
-          })
-          .catch(error => {
-            resolve({ result: 'error', error: error.message });
-          });
-      });
-    });
-
     ipcMain.on('show-invalid-python-path-message', (event, path) => {
       const requirements = this._registry.getRequirements();
       const reqVersions = requirements.map(
@@ -336,15 +315,6 @@ export class JupyterApplication implements IApplication, IDisposable {
 
     ipcMain.on('set-default-python-path', (event, path) => {
       userSettings.setValue(SettingType.pythonPath, path);
-    });
-
-    ipcMain.on('set-remote-server-url', (event, url, persistSessionData) => {
-      if (appData.getSessionConfig().remoteURL !== url) {
-        appData.getSessionConfig().clearSessionDataOnNextLaunch = true;
-      }
-
-      appData.getSessionConfig().remoteURL = url;
-      appData.getSessionConfig().persistSessionData = persistSessionData;
     });
 
     ipcMain.on('set-startup-mode', (_event, mode) => {

@@ -23,6 +23,7 @@ import {
 } from '../settings';
 import { TitleBarView } from '../titlebarview/titlebarview';
 import {
+  clearSession,
   DarkThemeBGColor,
   getBundledPythonPath,
   isDarkTheme,
@@ -188,16 +189,24 @@ export class MainWindow implements IDisposable {
   }
 
   private _disposeSession(): Promise<void> {
-    if (!this._server?.server) {
-      return Promise.resolve();
-    }
+    if (this._sessionConfig?.isRemote) {
+      if (!this._sessionConfig.persistSessionData) {
+        return clearSession(this._labView.view.webContents.session);
+      } else {
+        return Promise.resolve();
+      }
+    } else {
+      if (!this._server?.server) {
+        return Promise.resolve();
+      }
 
-    return new Promise<void>(resolve => {
-      this._server.server.stop().then(() => {
-        this._server = null;
-        resolve();
+      return new Promise<void>(resolve => {
+        this._server.server.stop().then(() => {
+          this._server = null;
+          resolve();
+        });
       });
-    });
+    }
   }
 
   dispose(): Promise<void> {

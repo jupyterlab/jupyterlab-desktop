@@ -163,11 +163,8 @@ export async function connectAndGetServerInfo(
     window.center();
 
     const sessionConfig = appData.getSessionConfig();
-    const clearUserSession =
-      !sessionConfig.persistSessionData ||
-      sessionConfig.clearSessionDataOnNextLaunch;
 
-    if (clearUserSession) {
+    if (!sessionConfig.persistSessionData) {
       clearSession(window.webContents.session).then(() => {
         window.loadURL(url);
       });

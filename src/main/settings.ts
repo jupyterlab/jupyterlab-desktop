@@ -97,7 +97,6 @@ export interface ISessionData {
   filesToOpen: string[];
   pythonPath: string;
   persistSessionData: boolean;
-  clearSessionDataOnNextLaunch: boolean;
 }
 
 export enum SettingType {
@@ -540,7 +539,6 @@ export class SessionConfig implements ISessionData, IWindowData {
   workingDirectory: string = DEFAULT_WORKING_DIR;
   filesToOpen: string[] = [];
   pythonPath: string = '';
-  clearSessionDataOnNextLaunch: boolean = false;
   lastOpened: Date = new Date();
 
   url: URL;
@@ -629,9 +627,6 @@ export class SessionConfig implements ISessionData, IWindowData {
     if ('pythonPath' in jsonData) {
       this.pythonPath = jsonData.pythonPath;
     }
-    if ('clearSessionDataOnNextLaunch' in jsonData) {
-      this.clearSessionDataOnNextLaunch = jsonData.clearSessionDataOnNextLaunch;
-    }
     if ('pageConfig' in jsonData) {
       this.pageConfig = JSON.parse(JSON.stringify(jsonData.pageConfig));
     }
@@ -664,10 +659,6 @@ export class SessionConfig implements ISessionData, IWindowData {
 
     if (this.pythonPath !== '') {
       jsonData.pythonPath = this.pythonPath;
-    }
-
-    if (this.clearSessionDataOnNextLaunch === true) {
-      jsonData.clearSessionDataOnNextLaunch = this.clearSessionDataOnNextLaunch;
     }
 
     // if local server and JupyterLab UI is in client-app mode

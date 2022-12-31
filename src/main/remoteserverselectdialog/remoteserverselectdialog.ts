@@ -27,7 +27,6 @@ export class RemoteServerSelectDialog {
         .row.error {color: rgb(231, 92, 88);}
         .radio-row {align-items: center;}
         #server-url { outline: none; height: 40px; }
-        #server-url:invalid { border-color: red; }
         input {
           color-scheme: light;
         }
