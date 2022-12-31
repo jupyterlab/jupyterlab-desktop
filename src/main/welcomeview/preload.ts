@@ -28,6 +28,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
       ipcRenderer.send('create-new-remote-session');
     }
   },
+  openRecentSession(sessionIndex: number) {
+    ipcRenderer.send('open-recent-session', sessionIndex);
+  },
   openNewsLink: (newsLink: string) => {
     ipcRenderer.send('open-news-link', newsLink);
   },

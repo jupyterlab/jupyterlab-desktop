@@ -283,15 +283,20 @@ export class WorkspaceSettings extends UserSettings {
   private _wsSettings: { [key: string]: Setting<any> } = {};
 }
 
-export interface ISessionIdentifier {
-  workingDirectory: string;
-  fileToOpen: string;
-
-  remoteURL: string;
+export interface IRecentSession {
+  workingDirectory?: string;
+  filesToOpen?: string[];
+  remoteURL?: string;
+  date?: Date;
 }
 
 export interface IRecentRemoteURL {
   url: string;
+  date: Date;
+}
+
+export interface IRecentPythonPath {
+  path: string;
   date: Date;
 }
 
@@ -358,6 +363,24 @@ export class ApplicationData {
       }
     }
 
+    this.recentSessions = [];
+
+    if (
+      'recentSessions' in jsonData &&
+      Array.isArray(jsonData.recentSessions)
+    ) {
+      for (const recentSession of jsonData.recentSessions) {
+        this.recentSessions.push({
+          workingDirectory: recentSession.workingDirectory,
+          filesToOpen: [...recentSession.filesToOpen],
+          remoteURL: recentSession.remoteURL,
+          date: new Date(recentSession.date)
+        });
+      }
+    }
+
+    this._sortRecentItems(this.recentSessions);
+
     this.recentRemoteURLs = [];
 
     if (
@@ -372,7 +395,7 @@ export class ApplicationData {
       }
     }
 
-    this._sortRecentRemoteURLs();
+    this._sortRecentItems(this.recentRemoteURLs);
   }
 
   save() {
@@ -387,6 +410,17 @@ export class ApplicationData {
 
     for (const sessionConfig of this.sessions) {
       appDataJSON.sessions.push(sessionConfig.serialize());
+    }
+
+    appDataJSON.recentSessions = [];
+
+    for (const recentSession of this.recentSessions) {
+      appDataJSON.recentSessions.push({
+        workingDirectory: recentSession.workingDirectory,
+        filesToOpen: [...recentSession.filesToOpen],
+        remoteURL: recentSession.remoteURL,
+        date: recentSession.date.toISOString()
+      });
     }
 
     appDataJSON.recentRemoteURLs = [];
@@ -426,13 +460,53 @@ export class ApplicationData {
     }
   }
 
+  addSessionToRecents(session: IRecentSession) {
+    const filesToOpenCompare = (lhs: string[], rhs: string[]): boolean => {
+      return (
+        Array.isArray(lhs) &&
+        Array.isArray(rhs) &&
+        lhs.length === rhs.length &&
+        lhs.every((element, index) => {
+          return element === rhs[index];
+        })
+      );
+    };
+
+    const isRemote = session.remoteURL !== undefined;
+    const existing = this.recentSessions.find(item => {
+      return isRemote
+        ? session.remoteURL === item.remoteURL
+        : session.workingDirectory === item.workingDirectory &&
+            filesToOpenCompare(session.filesToOpen, item.filesToOpen);
+    });
+
+    const now = new Date();
+
+    if (existing) {
+      existing.date = now;
+    } else {
+      let filesToOpen = [...(session.filesToOpen || [])];
+      filesToOpen = filesToOpen.map(filePath =>
+        path.join(session.workingDirectory, filePath)
+      );
+      this.recentSessions.push({
+        workingDirectory: session.workingDirectory,
+        filesToOpen: filesToOpen,
+        remoteURL: session.remoteURL,
+        date: now
+      });
+    }
+
+    this._sortRecentItems(this.recentSessions);
+  }
+
   private _getAppDataPath(): string {
     const userDataDir = getUserDataDir();
     return path.join(userDataDir, 'app-data.json');
   }
 
-  private _sortRecentRemoteURLs() {
-    this.recentRemoteURLs.sort((lhs, rhs) => {
+  private _sortRecentItems(items: { date?: Date }[]) {
+    items.sort((lhs, rhs) => {
       return rhs.date.valueOf() - lhs.date.valueOf();
     });
   }
@@ -440,9 +514,9 @@ export class ApplicationData {
   condaRootPath: string = '';
   sessions: SessionConfig[] = [];
   recentRemoteURLs: IRecentRemoteURL[] = [];
+  recentSessions: IRecentSession[] = [];
+  recentPythonPaths: IRecentPythonPath[] = [];
 
-  recentSessions: ISessionIdentifier[];
-  recentPythonPaths: string[];
   recentWorkingDirs: string[];
 }
 

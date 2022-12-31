@@ -132,6 +132,11 @@ export class MainWindow implements IDisposable {
     const serverInfo = server.server.info;
     this._sessionConfig.token = serverInfo.token;
     this._sessionConfig.url = serverInfo.url;
+
+    appData.addSessionToRecents({
+      workingDirectory: this._sessionConfig.resolvedWorkingDirectory,
+      filesToOpen: [...this._sessionConfig.filesToOpen]
+    });
   }
 
   load() {
@@ -187,11 +192,11 @@ export class MainWindow implements IDisposable {
       return Promise.resolve();
     }
 
-    return new Promise<void>((resolve) => {
-      this._server.server.stop().then(() =>{
+    return new Promise<void>(resolve => {
+      this._server.server.stop().then(() => {
         this._server = null;
         resolve();
-      })
+      });
     });
   }
 
@@ -200,10 +205,10 @@ export class MainWindow implements IDisposable {
       return this._disposePromise;
     }
 
-    this._disposePromise = new Promise<void>((resolve) => {
+    this._disposePromise = new Promise<void>(resolve => {
       this._disposeSession().then(() => {
         this._disposePromise = null;
-        resolve();  
+        resolve();
       });
     });
 
@@ -355,6 +360,10 @@ export class MainWindow implements IDisposable {
               this.labView.newNotebook();
             });
           }
+          appData.addSessionToRecents({
+            workingDirectory: sessionConfig.resolvedWorkingDirectory,
+            filesToOpen: [...sessionConfig.filesToOpen]
+          });
         }
       }
     );
@@ -406,6 +415,14 @@ export class MainWindow implements IDisposable {
         this._createSessionForRemoteUrl(remoteUrl, persistSessionData);
       }
     );
+
+    ipcMain.on('open-recent-session', (event, sessionIndex: number) => {
+      if (event.sender !== this._welcomeView.view.webContents) {
+        return;
+      }
+
+      this._createSessionForRecent(sessionIndex);
+    });
 
     ipcMain.on('show-env-select-popup', event => {
       if (event.sender !== this._titleBarView.view.webContents) {
@@ -712,7 +729,10 @@ export class MainWindow implements IDisposable {
     const titleBarRect = this._titleBarView.view.getBounds();
     const popupWidth = 600;
     const paddingRight = process.platform === 'darwin' ? 33 : 127;
-    const newHeight = Math.min(height || this._envSelectPopupHeight, defaultEnvSelectPopupHeight);
+    const newHeight = Math.min(
+      height || this._envSelectPopupHeight,
+      defaultEnvSelectPopupHeight
+    );
     this._envSelectPopupHeight = newHeight;
 
     this._envSelectPopup.view.view.setBounds({
@@ -729,6 +749,45 @@ export class MainWindow implements IDisposable {
     }
     this._window.removeBrowserView(this._envSelectPopup.view.view);
     this._envSelectPopup = null;
+  }
+
+  private async _createSessionForLocal(
+    workingDirectory?: string,
+    fileToOpen?: string
+  ) {
+    const loadLabView = (sessionConfig: SessionConfig) => {
+      this._sessionConfig = sessionConfig;
+      this._contentViewType = ContentViewType.Lab;
+      this._updateContentView();
+      this._resizeViews();
+    };
+
+    const sessionConfig = SessionConfig.createLocal(
+      workingDirectory,
+      fileToOpen
+    );
+
+    const server = await this.serverFactory.createFreeServer({
+      workingDirectory: sessionConfig.workingDirectory
+    });
+    this._server = server;
+    await server.server.started;
+    const serverInfo = server.server.info;
+    sessionConfig.token = serverInfo.token;
+    sessionConfig.url = serverInfo.url;
+
+    loadLabView(sessionConfig);
+
+    if (fileToOpen) {
+      this.labView.labUIReady.then(() => {
+        this.labView.openFiles();
+      });
+    }
+
+    appData.addSessionToRecents({
+      workingDirectory: sessionConfig.resolvedWorkingDirectory,
+      filesToOpen: [...sessionConfig.filesToOpen]
+    });
   }
 
   private _createSessionForRemoteUrl(
@@ -754,6 +813,9 @@ export class MainWindow implements IDisposable {
           sessionConfig.cookies = cookies;
 
           appData.addRemoteURLToRecents(remoteURL);
+          appData.addSessionToRecents({
+            remoteURL
+          });
 
           this._contentViewType = ContentViewType.Lab;
           this._updateContentView();
@@ -775,6 +837,19 @@ export class MainWindow implements IDisposable {
     }
   }
 
+  private _createSessionForRecent(sessionIndex: number) {
+    const recentSession = appData.recentSessions[sessionIndex];
+
+    if (recentSession.remoteURL) {
+      this._createSessionForRemoteUrl(recentSession.remoteURL, true);
+    } else {
+      this._createSessionForLocal(
+        recentSession.workingDirectory,
+        recentSession.filesToOpen?.[0]
+      );
+    }
+  }
+
   private _closeSession() {
     const showWelcome = () => {
       this._contentViewType = ContentViewType.Welcome;
@@ -790,13 +865,6 @@ export class MainWindow implements IDisposable {
   private async _handleFileOrFolderOpenSession(
     type: 'file' | 'folder' | 'either'
   ) {
-    const loadLabView = (sessionConfig: SessionConfig) => {
-      this._sessionConfig = sessionConfig;
-      this._contentViewType = ContentViewType.Lab;
-      this._updateContentView();
-      this._resizeViews();
-    };
-
     const openProperties = ['showHiddenFiles', 'noResolveAliases'];
 
     if (type === 'either' || type === 'file') {
@@ -816,27 +884,12 @@ export class MainWindow implements IDisposable {
     if (filePaths.length > 0) {
       const selectedPath = filePaths[0];
       const stat = fs.lstatSync(selectedPath);
-      let sessionConfig: SessionConfig;
+
       if (stat.isFile()) {
         const workingDir = path.dirname(selectedPath);
-        sessionConfig = SessionConfig.createLocal(workingDir, selectedPath);
+        this._createSessionForLocal(workingDir, selectedPath);
       } else if (stat.isDirectory()) {
-        sessionConfig = SessionConfig.createLocal(selectedPath);
-      }
-
-      const server = await this.serverFactory.createFreeServer({
-        workingDirectory: sessionConfig.workingDirectory
-      });
-      this._server = server;
-      await server.server.started;
-      const serverInfo = server.server.info;
-      sessionConfig.token = serverInfo.token;
-      sessionConfig.url = serverInfo.url;
-      loadLabView(sessionConfig);
-      if (stat.isFile()) {
-        this.labView.labUIReady.then(() => {
-          this.labView.openFiles();
-        });
+        this._createSessionForLocal(selectedPath);
       }
     }
   }

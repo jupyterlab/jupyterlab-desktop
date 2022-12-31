@@ -3,12 +3,12 @@
 
 import { BrowserView, ipcMain, shell } from 'electron';
 import { MainWindow } from '../mainwindow/mainwindow';
-import { DarkThemeBGColor, LightThemeBGColor } from '../utils';
+import { DarkThemeBGColor, getUserHomeDir, LightThemeBGColor } from '../utils';
 import * as path from 'path';
 import * as fs from 'fs';
 import fetch from 'node-fetch';
 import { XMLParser } from 'fast-xml-parser';
-import { SettingType, userSettings } from '../settings';
+import { appData, SettingType, userSettings } from '../settings';
 
 interface INewsItem {
   title: string;
@@ -28,6 +28,50 @@ export class WelcomeView {
     const jupyterlabWordmarkSrc = fs.readFileSync(
       path.join(__dirname, '../../../app-assets/jupyterlab-wordmark.svg')
     );
+
+    const home = getUserHomeDir();
+
+    let recentSessionCount = 0;
+    let recentSessionSection = '';
+    for (const recentSession of appData.recentSessions) {
+      let sessionItem = '';
+      let sessionDetail = '';
+      let title = '';
+      let parent = '';
+      if (recentSession.remoteURL) {
+        const url = new URL(recentSession.remoteURL);
+        sessionItem = url.origin;
+        title = recentSession.remoteURL;
+        sessionDetail = 'remote';
+      } else {
+        // local
+        if (recentSession.filesToOpen.length > 0) {
+          sessionItem = path.basename(recentSession.filesToOpen[0]);
+          title = recentSession.filesToOpen[0];
+          parent = recentSession.workingDirectory;
+        } else {
+          sessionItem = path.basename(recentSession.workingDirectory);
+          parent = path.dirname(recentSession.workingDirectory);
+          title = recentSession.workingDirectory;
+        }
+
+        if (parent.startsWith(home)) {
+          const relative = path.relative(home, parent);
+          sessionDetail = `~${path.sep}${relative}`;
+        } else {
+          sessionDetail = parent;
+        }
+      }
+
+      recentSessionSection += `<div class="row">
+          <a href="javascript:void(0)" onclick='handleRecentSessionClick(${recentSessionCount});' title="${title}">${sessionItem}</a><span class="recent-session-detail">${sessionDetail}</span>
+        </div>`;
+
+      recentSessionCount++;
+      if (recentSessionCount === 5) {
+        break;
+      }
+    }
 
     this._pageSource = `
       <!DOCTYPE html>
@@ -136,6 +180,9 @@ export class WelcomeView {
             .jupyterlab-wordmark .jp-icon2 {
               fill: #888888;
             }
+            .recent-session-detail {
+              padding-left: 10px;
+            }
           </style>
           <script>
             document.addEventListener("DOMContentLoaded", async () => {
@@ -194,12 +241,7 @@ export class WelcomeView {
                   <div class="row row-title">
                     Recent
                   </div>
-                  <div class="row">
-                    <a href="javascript:void(0)" onclick='handleRecentClick(this);'>../test</a>
-                  </div>
-                  <div class="row">
-                    <a href="javascript:void(0)" onclick='handleRecentClick(this);'>./another.ipynb </a>
-                  </div>
+                  ${recentSessionSection}
                 </div>
               </div>
 
@@ -253,6 +295,10 @@ export class WelcomeView {
 
           function handleNewSessionClick(type) {
             window.electronAPI.newSession(type);
+          }
+
+          function handleRecentSessionClick(sessionIndex) {
+            window.electronAPI.openRecentSession(sessionIndex);
           }
 
           function handleNewsClick(newsLink) {
