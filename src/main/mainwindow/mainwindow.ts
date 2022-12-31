@@ -433,6 +433,14 @@ export class MainWindow implements IDisposable {
       this._createSessionForRecent(sessionIndex);
     });
 
+    ipcMain.on('open-dropped-files', (event, fileOrFolders: string[]) => {
+      if (event.sender !== this._welcomeView.view.webContents) {
+        return;
+      }
+
+      this._handleOpenFilesOrFolders(fileOrFolders);
+    });
+
     ipcMain.on('show-env-select-popup', event => {
       if (event.sender !== this._titleBarView.view.webContents) {
         return;
@@ -760,9 +768,42 @@ export class MainWindow implements IDisposable {
     this._envSelectPopup = null;
   }
 
+  private async _handleOpenFilesOrFolders(fileOrFolders?: string[]) {
+    const folders: string[] = [];
+    const files: string[] = [];
+
+    fileOrFolders.forEach(filePath => {
+      try {
+        const stat = fs.lstatSync(filePath);
+
+        if (stat.isFile()) {
+          files.push(filePath);
+        } else if (stat.isDirectory()) {
+          folders.push(filePath);
+        }
+      } catch (error) {
+        console.error('Failed to get info for dropped files');
+      }
+    });
+
+    if (files.length > 0) {
+      const workingDir = path.dirname(files[0]);
+      const sameWorkingDirFiles = files
+        .filter(file => {
+          return file.startsWith(workingDir);
+        })
+        .map(file => {
+          return path.relative(workingDir, file);
+        });
+      this._createSessionForLocal(workingDir, sameWorkingDirFiles);
+    } else if (folders.length > 0) {
+      this._createSessionForLocal(folders[0]);
+    }
+  }
+
   private async _createSessionForLocal(
     workingDirectory?: string,
-    fileToOpen?: string
+    filesToOpen?: string[]
   ) {
     const loadLabView = (sessionConfig: SessionConfig) => {
       this._sessionConfig = sessionConfig;
@@ -773,7 +814,7 @@ export class MainWindow implements IDisposable {
 
     const sessionConfig = SessionConfig.createLocal(
       workingDirectory,
-      fileToOpen
+      filesToOpen
     );
 
     const server = await this.serverFactory.createFreeServer({
@@ -787,7 +828,7 @@ export class MainWindow implements IDisposable {
 
     loadLabView(sessionConfig);
 
-    if (fileToOpen) {
+    if (filesToOpen) {
       this.labView.labUIReady.then(() => {
         this.labView.openFiles();
       });
@@ -858,7 +899,7 @@ export class MainWindow implements IDisposable {
     } else {
       this._createSessionForLocal(
         recentSession.workingDirectory,
-        recentSession.filesToOpen?.[0]
+        recentSession.filesToOpen
       );
     }
   }
@@ -881,7 +922,7 @@ export class MainWindow implements IDisposable {
     const openProperties = ['showHiddenFiles', 'noResolveAliases'];
 
     if (type === 'either' || type === 'file') {
-      openProperties.push('openFile');
+      openProperties.push('openFile', 'multiSelections');
     }
 
     if (type === 'either' || type === 'folder') {
@@ -895,15 +936,7 @@ export class MainWindow implements IDisposable {
       buttonLabel: 'Open'
     });
     if (filePaths.length > 0) {
-      const selectedPath = filePaths[0];
-      const stat = fs.lstatSync(selectedPath);
-
-      if (stat.isFile()) {
-        const workingDir = path.dirname(selectedPath);
-        this._createSessionForLocal(workingDir, selectedPath);
-      } else if (stat.isDirectory()) {
-        this._createSessionForLocal(selectedPath);
-      }
+      this._handleOpenFilesOrFolders(filePaths);
     }
   }
 

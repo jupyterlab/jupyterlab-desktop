@@ -31,6 +31,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   openRecentSession(sessionIndex: number) {
     ipcRenderer.send('open-recent-session', sessionIndex);
   },
+  openDroppedFiles(files: string[]) {
+    ipcRenderer.send('open-dropped-files', files);
+  },
   openNewsLink: (newsLink: string) => {
     ipcRenderer.send('open-news-link', newsLink);
   },

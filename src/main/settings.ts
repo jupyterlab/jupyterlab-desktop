@@ -490,9 +490,6 @@ export class ApplicationData {
       existing.date = now;
     } else {
       let filesToOpen = [...(session.filesToOpen || [])];
-      filesToOpen = filesToOpen.map(filePath =>
-        path.join(session.workingDirectory, filePath)
-      );
       this.recentSessions.push({
         workingDirectory: session.workingDirectory,
         filesToOpen: filesToOpen,
@@ -548,15 +545,15 @@ export class SessionConfig implements ISessionData, IWindowData {
 
   static createLocal(
     workingDirectory?: string,
-    fileToOpen?: string,
+    filesToOpen?: string[],
     pythonPath?: string
   ): SessionConfig {
     const sessionConfig = new SessionConfig();
     sessionConfig.workingDirectory =
       workingDirectory ||
       userSettings.getValue(SettingType.defaultWorkingDirectory);
-    if (fileToOpen) {
-      sessionConfig.setFileToOpen(fileToOpen);
+    if (filesToOpen) {
+      sessionConfig.setFilesToOpen(filesToOpen);
     }
     sessionConfig.pythonPath =
       pythonPath || userSettings.getValue(SettingType.pythonPath);
@@ -583,15 +580,16 @@ export class SessionConfig implements ISessionData, IWindowData {
     return resolveWorkingDirectory(this.workingDirectory);
   }
 
-  setFileToOpen(filePath: string) {
-    const stats = fs.lstatSync(filePath);
-    if (stats.isFile()) {
-      const workingDir = this.resolvedWorkingDirectory;
-      if (filePath.startsWith(workingDir)) {
-        let relPath = filePath.substring(workingDir.length);
-        const winConvert = relPath.split('\\').join('/');
-        relPath = winConvert.replace('/', '');
-        this.filesToOpen = [relPath];
+  setFilesToOpen(filePaths: string[]) {
+    this.filesToOpen = [];
+
+    const workingDir = this.resolvedWorkingDirectory;
+
+    for (const filePath of filePaths) {
+      const fullPath = path.join(workingDir, filePath);
+      const stats = fs.lstatSync(fullPath);
+      if (stats.isFile()) {
+        this.filesToOpen.push(filePath);
       }
     }
   }

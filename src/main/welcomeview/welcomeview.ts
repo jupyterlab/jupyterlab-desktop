@@ -306,6 +306,23 @@ export class WelcomeView {
             newsListContainer.append(fragment);
           });
 
+          document.addEventListener('dragover', (event) => {
+            event.preventDefault();
+            event.stopPropagation();
+          });
+          
+          document.addEventListener('drop', (event) => {
+            event.preventDefault();
+            event.stopPropagation();
+        
+            const files = [];
+            for (const file of event.dataTransfer.files) {
+              files.push(file.path);
+            }
+
+            window.electronAPI.openDroppedFiles(files);
+          });
+
           function handleNewSessionClick(type) {
             window.electronAPI.newSession(type);
           }
