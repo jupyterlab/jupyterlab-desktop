@@ -62,6 +62,7 @@ interface IServerInfo {
 }
 
 const titleBarHeight = 29;
+const defaultEnvSelectPopupHeight = 300;
 
 export class MainWindow implements IDisposable {
   constructor(options: MainWindow.IOptions) {
@@ -452,7 +453,7 @@ export class MainWindow implements IDisposable {
         return;
       }
 
-      this._positionEnvSelectPopup(height);
+      this._resizeEnvSelectPopup(height);
     });
 
     ipcMain.on('show-app-context-menu', event => {
@@ -581,12 +582,17 @@ export class MainWindow implements IDisposable {
       height: height - titleBarHeight
     });
 
+    this._resizeEnvSelectPopup();
+
     // invalidate to trigger repaint
     // TODO: on linux, electron 22 does not repaint properly after resize
     // check if fixed in newer versions
     setTimeout(() => {
       this._titleBarView.view.webContents.invalidate();
       this.contentView.webContents.invalidate();
+      if (this._envSelectPopup) {
+        this._envSelectPopup.view.view.webContents.invalidate();
+      }
     }, 200);
   }
 
@@ -667,24 +673,29 @@ export class MainWindow implements IDisposable {
 
       this._window.addBrowserView(this._envSelectPopup.view.view);
 
-      this._positionEnvSelectPopup();
+      this._resizeEnvSelectPopup();
 
       this._envSelectPopup.load();
       this._envSelectPopup.view.view.webContents.focus();
     });
   }
 
-  private _positionEnvSelectPopup(height?: number) {
+  private _resizeEnvSelectPopup(height?: number) {
+    if (!this._envSelectPopup) {
+      return;
+    }
+
     const titleBarRect = this._titleBarView.view.getBounds();
     const popupWidth = 600;
-    const defaultPopupHeight = 300;
     const paddingRight = process.platform === 'darwin' ? 33 : 127;
+    const newHeight = Math.min(height || this._envSelectPopupHeight, defaultEnvSelectPopupHeight);
+    this._envSelectPopupHeight = newHeight;
 
     this._envSelectPopup.view.view.setBounds({
       x: titleBarRect.width - paddingRight - popupWidth,
       y: titleBarRect.height,
       width: popupWidth,
-      height: Math.min(height || defaultPopupHeight, defaultPopupHeight)
+      height: newHeight
     });
   }
 
@@ -825,6 +836,7 @@ export class MainWindow implements IDisposable {
   private _preferencesDialog: PreferencesDialog;
   private _remoteServerSelectDialog: RemoteServerSelectDialog;
   private _envSelectPopup: PythonEnvironmentSelectPopup;
+  private _envSelectPopupHeight: number = defaultEnvSelectPopupHeight;
 }
 
 export namespace MainWindow {

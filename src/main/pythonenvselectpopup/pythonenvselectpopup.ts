@@ -180,7 +180,7 @@ export class PythonEnvironmentSelectPopup {
         window.addEventListener('load', () => {
           // shorten browser view height if larger than required
           setTimeout(() => {
-            const totalHeight = pythonPathInput.getBoundingClientRect().height + envListMenu.getBoundingClientRect().height + 5 + 10;
+            const totalHeight = pythonPathInput.getBoundingClientRect().height + envListMenu.getBoundingClientRect().height + 5 + 10 + 1;
             window.electronAPI.envSelectPopupHeightUpdated(totalHeight);
           }, 100);
         });
