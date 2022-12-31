@@ -182,12 +182,32 @@ export class MainWindow implements IDisposable {
     });
   }
 
-  dispose(): Promise<void> {
+  private _disposeSession(): Promise<void> {
     if (!this._server?.server) {
       return Promise.resolve();
     }
 
-    return this._server.server.stop();
+    return new Promise<void>((resolve) => {
+      this._server.server.stop().then(() =>{
+        this._server = null;
+        resolve();
+      })
+    });
+  }
+
+  dispose(): Promise<void> {
+    if (this._disposePromise) {
+      return this._disposePromise;
+    }
+
+    this._disposePromise = new Promise<void>((resolve) => {
+      this._disposeSession().then(() => {
+        this._disposePromise = null;
+        resolve();  
+      });
+    });
+
+    return this._disposePromise;
   }
 
   private _loadWelcomeView() {
@@ -262,6 +282,10 @@ export class MainWindow implements IDisposable {
   }
 
   private _registerListeners() {
+    this._window.on('close', () => {
+      this.dispose();
+    });
+
     ipcMain.on('minimize-window', event => {
       if (event.sender !== this._titleBarView.view.webContents) {
         return;
@@ -758,14 +782,9 @@ export class MainWindow implements IDisposable {
       this._resizeViews();
     };
 
-    if (this._server?.server) {
-      this._server?.server.stop().then(() => {
-        this._server = undefined;
-        showWelcome();
-      });
-    } else {
+    this._disposeSession().then(() => {
       showWelcome();
-    }
+    });
   }
 
   private async _handleFileOrFolderOpenSession(
@@ -837,6 +856,7 @@ export class MainWindow implements IDisposable {
   private _remoteServerSelectDialog: RemoteServerSelectDialog;
   private _envSelectPopup: PythonEnvironmentSelectPopup;
   private _envSelectPopupHeight: number = defaultEnvSelectPopupHeight;
+  private _disposePromise: Promise<void>;
 }
 
 export namespace MainWindow {
