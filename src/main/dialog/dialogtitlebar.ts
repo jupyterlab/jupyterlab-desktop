@@ -47,7 +47,7 @@ class JupyterLabDialogTitleBar extends HTMLElement {
         font-size: 13px;
       }
 
-      .titlebar.app-ui-dark {
+      :host(.app-ui-dark) .titlebar {
         background-color: #424242;
         color: #ffffff;
       }
@@ -63,14 +63,14 @@ class JupyterLabDialogTitleBar extends HTMLElement {
         color: #5a5a5a;
         padding: 0 5px;
       }
-      .app-ui-dark .close-button {
+      :host(.app-ui-dark) .close-button {
         color: #bdbdbd;
       }
 
       .close-button:hover {
         background-color: #c1c1c1;
       }
-      .app-ui-dark .close-button:hover {
+      :host(.app-ui-dark) .close-button:hover {
         background-color: #505050;
       }
       
@@ -84,13 +84,6 @@ class JupyterLabDialogTitleBar extends HTMLElement {
 
     shadow.appendChild(style);
     shadow.appendChild(wrapper);
-    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-    // @ts-ignore
-    window.electronAPI?.isDarkTheme().then(dark => {
-      if (dark) {
-        wrapper.classList.add('app-ui-dark');
-      }
-    });
     wrapper.appendChild(titleEl);
     wrapper.appendChild(closeButton);
   }

@@ -17,7 +17,6 @@ import { execFile } from 'child_process';
 import { JupyterServerFactory } from './server';
 import { connectAndGetServerInfo, IJupyterServerInfo } from './connect';
 import { UpdateDialog } from './updatedialog/updatedialog';
-import { AboutDialog } from './aboutdialog/aboutdialog';
 import {
   appData,
   resolveWorkingDirectory,
@@ -31,7 +30,6 @@ import { ContentViewType, MainWindow } from './mainwindow/mainwindow';
 
 export interface IApplication {
   checkForUpdates(showDialog: 'on-new-version' | 'always'): void;
-  showAboutDialog(): void;
 }
 
 export class JupyterApplication implements IApplication, IDisposable {
@@ -354,7 +352,10 @@ export class JupyterApplication implements IApplication, IDisposable {
   private _showUpdateDialog(
     type: 'updates-available' | 'error' | 'no-updates'
   ) {
-    const dialog = new UpdateDialog({ type });
+    const dialog = new UpdateDialog({
+      isDarkTheme: isDarkTheme(userSettings.getValue(SettingType.theme)),
+      type
+    });
 
     dialog.load();
   }
@@ -389,11 +390,6 @@ export class JupyterApplication implements IApplication, IDisposable {
         }
         console.error('Failed to check for updates:', error);
       });
-  }
-
-  showAboutDialog() {
-    const dialog = new AboutDialog();
-    dialog.load();
   }
 
   private _quit(): void {

@@ -32,13 +32,13 @@ export class ThemedView {
       .toString();
     toolkitJsSrc = `
       ${toolkitJsSrc};
-      (async () => {
+      {
         const darkTheme = ${this._isDarkTheme.toString()};
         document.body.dataset.jpThemeLight = !darkTheme;
         document.body.dataset.jpThemeName = 'jlab-desktop-theme';
         provideJupyterDesignSystem().register(allComponents);
         addJupyterLabThemeChangeListener();
-      })();
+      };
     `;
 
     const pageSource = `

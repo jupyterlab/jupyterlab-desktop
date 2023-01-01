@@ -2,7 +2,6 @@
 // Distributed under the terms of the Modified BSD License.
 
 import { BrowserView, ipcMain, shell } from 'electron';
-import { MainWindow } from '../mainwindow/mainwindow';
 import { DarkThemeBGColor, getUserHomeDir, LightThemeBGColor } from '../utils';
 import * as path from 'path';
 import * as fs from 'fs';
@@ -16,14 +15,18 @@ interface INewsItem {
 }
 
 export class WelcomeView {
-  constructor(parent: MainWindow) {
-    this._parent = parent;
+  constructor(options: WelcomeView.IOptions) {
+    this._isDarkTheme = options.isDarkTheme;
     this._view = new BrowserView({
       webPreferences: {
         preload: path.join(__dirname, './preload.js'),
         devTools: process.env.NODE_ENV === 'development'
       }
     });
+
+    this._view.setBackgroundColor(
+      this._isDarkTheme ? DarkThemeBGColor : LightThemeBGColor
+    );
 
     const jupyterlabWordmarkSrc = fs.readFileSync(
       path.join(__dirname, '../../../app-assets/jupyterlab-wordmark.svg')
@@ -198,19 +201,15 @@ export class WelcomeView {
             }
           </style>
           <script>
-            document.addEventListener("DOMContentLoaded", async () => {
-              const appConfig = window.electronAPI.getAppConfig();
-              const platform = appConfig.platform;
+            document.addEventListener("DOMContentLoaded", () => {
+              const platform = "${process.platform}";
               document.body.dataset.appPlatform = platform;
               document.body.classList.add('app-ui-' + platform);
-              if (await window.electronAPI.isDarkTheme()) {
-                document.body.classList.add('app-ui-dark');
-              }
             });
           </script>
         </head>
       
-        <body>
+        <body class="${this._isDarkTheme ? 'app-ui-dark' : ''}">
           <div class="body-container">
           <div class="container">
             <div class="row title-row">
@@ -406,10 +405,14 @@ export class WelcomeView {
       });
   }
 
-  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-  // @ts-ignore
-  private _parent: MainWindow;
+  private _isDarkTheme: boolean;
   private _view: BrowserView;
   private _pageSource: string;
   static _newsList: INewsItem[] = [];
+}
+
+export namespace WelcomeView {
+  export interface IOptions {
+    isDarkTheme: boolean;
+  }
 }

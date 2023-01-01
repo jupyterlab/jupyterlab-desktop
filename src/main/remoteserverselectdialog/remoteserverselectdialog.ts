@@ -10,6 +10,7 @@ import { appData } from '../settings';
 export class RemoteServerSelectDialog {
   constructor(options: RemoteServerSelectDialog.IOptions) {
     this._window = new ThemedWindow({
+      isDarkTheme: options.isDarkTheme,
       parent: options.parent,
       modal: options.modal,
       title: 'Remote Server Connection',
@@ -100,6 +101,7 @@ export class RemoteServerSelectDialog {
 
 export namespace RemoteServerSelectDialog {
   export interface IOptions {
+    isDarkTheme: boolean;
     parent?: BrowserWindow;
     modal?: boolean;
     remoteURL: string;

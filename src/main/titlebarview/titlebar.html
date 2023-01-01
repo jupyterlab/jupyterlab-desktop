@@ -144,18 +144,14 @@ Distributed under the terms of the Modified BSD License.
     </style>
     <script>
       document.addEventListener("DOMContentLoaded", async () => {
-        const appConfig = window.electronAPI.getAppConfig();
-        const platform = appConfig.platform;
+        const platform = "<%- platform %>";
         document.body.dataset.appPlatform = platform;
         document.body.classList.add(`app-ui-${platform}`);
-        if (await window.electronAPI.isDarkTheme()) {
-          document.body.classList.add('app-ui-dark');
-        }
       });
     </script>
   </head>
 
-  <body class="active">
+  <body class="active <%- isDarkTheme ? 'app-ui-dark' : '' %>">
     <div class="titlebar">
       <div id="app-title" class="app-title">JupyterLab</div>
       <div id="right-widgets">

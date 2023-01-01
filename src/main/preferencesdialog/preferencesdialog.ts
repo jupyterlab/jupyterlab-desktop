@@ -12,6 +12,7 @@ import { getBundledPythonPath } from '../utils';
 export class PreferencesDialog {
   constructor(options: PreferencesDialog.IOptions) {
     this._window = new ThemedWindow({
+      isDarkTheme: options.isDarkTheme,
       title: 'Preferences',
       width: 700,
       height: 400,
@@ -413,6 +414,7 @@ export class PreferencesDialog {
 
 export namespace PreferencesDialog {
   export interface IOptions {
+    isDarkTheme: boolean;
     startupMode: StartupMode;
     theme: ThemeType;
     syncJupyterLabTheme: boolean;

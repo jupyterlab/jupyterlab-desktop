@@ -15,7 +15,7 @@ import { request as httpsRequest } from 'https';
 import * as path from 'path';
 import * as fs from 'fs';
 import * as ejs from 'ejs';
-import { isDarkTheme } from '../utils';
+import { DarkThemeBGColor, isDarkTheme, LightThemeBGColor } from '../utils';
 import { MainWindow } from '../mainwindow/mainwindow';
 import {
   appData,
@@ -40,9 +40,10 @@ const templateAssetPaths = new Map([
 ]);
 
 export class LabView {
-  constructor(parent: MainWindow, sessionConfig: SessionConfig) {
-    this._parent = parent;
-    this._sessionConfig = sessionConfig;
+  constructor(options: LabView.IOptions) {
+    this._parent = options.parent;
+    this._sessionConfig = options.sessionConfig;
+    const sessionConfig = this._sessionConfig;
     this._wsSettings = new WorkspaceSettings(sessionConfig.workingDirectory);
     this._jlabBaseUrl = `${sessionConfig.url.protocol}//${sessionConfig.url.host}${sessionConfig.url.pathname}`;
     this._view = new BrowserView({
@@ -50,6 +51,10 @@ export class LabView {
         preload: path.join(__dirname, './preload.js')
       }
     });
+
+    this._view.setBackgroundColor(
+      options.isDarkTheme ? DarkThemeBGColor : LightThemeBGColor
+    );
 
     this._registerBrowserEventHandlers();
     this._addFallbackContextMenu();
@@ -508,4 +513,12 @@ export class LabView {
   // eslint-disable-next-line @typescript-eslint/ban-ts-comment
   // @ts-ignore
   private _labUIReady = false;
+}
+
+export namespace LabView {
+  export interface IOptions {
+    isDarkTheme: boolean;
+    parent: MainWindow;
+    sessionConfig: SessionConfig;
+  }
 }

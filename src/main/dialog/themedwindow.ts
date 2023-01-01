@@ -7,7 +7,8 @@ import * as path from 'path';
 import { DarkThemeBGColor, LightThemeBGColor } from '../utils';
 
 export class ThemedWindow {
-  constructor(options: ThemedWindow.IWindowOptions) {
+  constructor(options: ThemedWindow.IOptions) {
+    this._isDarkTheme = options.isDarkTheme;
     this._window = new BrowserWindow({
       parent: options.parent,
       modal: options.modal,
@@ -18,6 +19,7 @@ export class ThemedWindow {
       resizable: options.resizable !== false,
       titleBarStyle: 'hidden',
       frame: process.platform === 'darwin',
+      backgroundColor: this._isDarkTheme ? DarkThemeBGColor : LightThemeBGColor,
       webPreferences: {
         preload: options.preload || path.join(__dirname, './preload.js')
       }
@@ -30,10 +32,7 @@ export class ThemedWindow {
     this._window.setMenuBarVisibility(false);
 
     this._window.webContents.on('did-finish-load', () => {
-      // wait for CSS to apply
-      setTimeout(() => {
-        this._window.show();
-      }, 200);
+      this._window.show();
     });
   }
 
@@ -49,16 +48,13 @@ export class ThemedWindow {
       .toString();
     toolkitJsSrc = `
       ${toolkitJsSrc};
-      (async () => {
-        const darkTheme = await window.electronAPI.isDarkTheme();
+      {
+        const darkTheme = ${this._isDarkTheme.toString()};
         document.body.dataset.jpThemeLight = !darkTheme;
         document.body.dataset.jpThemeName = 'jlab-desktop-theme';
         provideJupyterDesignSystem().register(allComponents);
         addJupyterLabThemeChangeListener();
-        if (darkTheme) {
-          document.body.classList.add('app-ui-dark');
-        }
-      })();
+      }
     `;
     const titlebarJsSrc = fs.readFileSync(
       path.join(__dirname, './dialogtitlebar.js')
@@ -95,6 +91,7 @@ export class ThemedWindow {
             height: 100%;
           }
           .jlab-dialog-body {
+            visibility: hidden;
             flex-grow: 1;
             padding: 10px;
             overflow-y: auto;
@@ -104,17 +101,23 @@ export class ThemedWindow {
           <script type="module">${titlebarJsSrc}</script>
           <script>
             document.addEventListener("DOMContentLoaded", () => {
-              const appConfig = window.electronAPI.getAppConfig();
-              const platform = appConfig.platform;
+              const platform = "${process.platform}";
               document.body.dataset.appPlatform = platform;
               document.body.classList.add('app-ui-' + platform);
             });
+            window.addEventListener('load', () => {
+              document.getElementById('jlab-dialog-body').style.visibility = 'visible';
+            });
           </script>
         </head>
-        <body>
+        <body class="${this._isDarkTheme ? 'app-ui-dark' : ''}">
           <div class="page-container">
-            <jlab-dialog-titlebar id="title-bar" data-title="${this._window.title}"></jlab-dialog-titlebar>
-            <div class="jlab-dialog-body">
+            <jlab-dialog-titlebar id="title-bar" data-title="${
+              this._window.title
+            }" class="${
+      this._isDarkTheme ? 'app-ui-dark' : ''
+    }"></jlab-dialog-titlebar>
+            <div id="jlab-dialog-body" class="jlab-dialog-body">
             ${bodyHtml}
             </div>
           </div>
@@ -126,11 +129,13 @@ export class ThemedWindow {
     );
   }
 
+  private _isDarkTheme: boolean;
   private _window: BrowserWindow;
 }
 
 export namespace ThemedWindow {
-  export interface IWindowOptions {
+  export interface IOptions {
+    isDarkTheme: boolean;
     parent?: BrowserWindow;
     modal?: boolean;
     title: string;

@@ -44,6 +44,7 @@ import { PreferencesDialog } from '../preferencesdialog/preferencesdialog';
 import { RemoteServerSelectDialog } from '../remoteserverselectdialog/remoteserverselectdialog';
 import { connectAndGetServerInfo } from '../connect';
 import { PythonEnvironmentSelectPopup } from '../pythonenvselectpopup/pythonenvselectpopup';
+import { AboutDialog } from '../aboutdialog/aboutdialog';
 
 export enum ContentViewType {
   Welcome = 'welcome',
@@ -75,6 +76,9 @@ export class MainWindow implements IDisposable {
     this._wsSettings = new WorkspaceSettings(
       this._sessionConfig?.workingDirectory || DEFAULT_WORKING_DIR
     );
+    this._isDarkTheme = isDarkTheme(
+      this._wsSettings.getValue(SettingType.theme)
+    );
 
     const x = this._sessionConfig?.x || 0;
     const y = this._sessionConfig?.y || 0;
@@ -92,9 +96,7 @@ export class MainWindow implements IDisposable {
       title: 'JupyterLab',
       titleBarStyle: 'hidden',
       frame: process.platform === 'darwin',
-      backgroundColor: isDarkTheme(this._wsSettings.getValue(SettingType.theme))
-        ? DarkThemeBGColor
-        : LightThemeBGColor,
+      backgroundColor: this._isDarkTheme ? DarkThemeBGColor : LightThemeBGColor,
       webPreferences: {
         devTools: false
       }
@@ -141,7 +143,7 @@ export class MainWindow implements IDisposable {
   }
 
   load() {
-    const titleBarView = new TitleBarView();
+    const titleBarView = new TitleBarView({ isDarkTheme: this._isDarkTheme });
     this._window.addBrowserView(titleBarView.view);
     titleBarView.view.setBounds({
       x: 0,
@@ -225,7 +227,7 @@ export class MainWindow implements IDisposable {
   }
 
   private _loadWelcomeView() {
-    const welcomeView = new WelcomeView(this);
+    const welcomeView = new WelcomeView({ isDarkTheme: this._isDarkTheme });
     this._window.addBrowserView(welcomeView.view);
     welcomeView.view.setBounds({ x: 0, y: 100, width: 1200, height: 700 });
 
@@ -235,7 +237,11 @@ export class MainWindow implements IDisposable {
   }
 
   private _loadLabView() {
-    const labView = new LabView(this, this._sessionConfig);
+    const labView = new LabView({
+      isDarkTheme: this._isDarkTheme,
+      parent: this,
+      sessionConfig: this._sessionConfig
+    });
     this._window.addBrowserView(labView.view);
 
     // transfer focus to labView
@@ -542,7 +548,7 @@ export class MainWindow implements IDisposable {
         {
           label: 'About',
           click: () => {
-            this._app.showAboutDialog();
+            this._showAboutDialog();
           }
         }
       ];
@@ -681,6 +687,7 @@ export class MainWindow implements IDisposable {
     const settings = this._wsSettings;
 
     const dialog = new PreferencesDialog({
+      isDarkTheme: this._isDarkTheme,
       startupMode: settings.getValue(SettingType.startupMode),
       theme: settings.getValue(SettingType.theme),
       syncJupyterLabTheme: settings.getValue(SettingType.syncJupyterLabTheme),
@@ -709,6 +716,7 @@ export class MainWindow implements IDisposable {
 
   private _selectRemoteServerUrl() {
     this._remoteServerSelectDialog = new RemoteServerSelectDialog({
+      isDarkTheme: this._isDarkTheme,
       parent: this._window,
       modal: true,
       remoteURL: '',
@@ -718,12 +726,17 @@ export class MainWindow implements IDisposable {
     this._remoteServerSelectDialog.load();
   }
 
+  private _showAboutDialog() {
+    const dialog = new AboutDialog({ isDarkTheme: this._isDarkTheme });
+    dialog.load();
+  }
+
   private _showEnvSelectPopup() {
     this._closeEnvSelectPopup();
 
     this.registry.getCondaEnvironments().then((envs: IPythonEnvironment[]) => {
       this._envSelectPopup = new PythonEnvironmentSelectPopup({
-        isDarkTheme: isDarkTheme(this._wsSettings.getValue(SettingType.theme)),
+        isDarkTheme: this._isDarkTheme,
         currentPythonPath: this._sessionConfig.pythonPath,
         bundledPythonPath: getBundledPythonPath(),
         envs
@@ -941,6 +954,7 @@ export class MainWindow implements IDisposable {
   }
 
   private _wsSettings: WorkspaceSettings;
+  private _isDarkTheme: boolean;
   private _sessionConfig: SessionConfig | undefined;
   private _window: BrowserWindow;
   private _titleBarView: TitleBarView;
