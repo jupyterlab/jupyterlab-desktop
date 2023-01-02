@@ -14,6 +14,7 @@ interface INewsItem {
   link: string;
 }
 
+const maxRecentItems = 5;
 const notebookIcon = `<svg xmlns="http://www.w3.org/2000/svg" width="16" viewBox="0 0 22 22">
 <g class="jp-icon-warn0 jp-icon-selectable" fill="#EF6C00">
   <path d="M18.7 3.3v15.4H3.3V3.3h15.4m1.5-1.5H1.8v18.3h18.3l.1-18.3z"/>
@@ -68,7 +69,7 @@ export class WelcomeView {
         // local
         if (recentSession.filesToOpen.length > 0) {
           sessionItem = path.basename(recentSession.filesToOpen[0]);
-          tooltip = recentSession.filesToOpen[0];
+          tooltip = recentSession.filesToOpen.join(', ');
           parent = recentSession.workingDirectory;
         } else {
           sessionItem = path.basename(recentSession.workingDirectory);
@@ -84,14 +85,11 @@ export class WelcomeView {
         }
       }
 
-      recentSessionSection += `<div class="row">
+      recentSessionSection += `<div class="row recent-session-row">
           <a href="javascript:void(0)" onclick='handleRecentSessionClick(${recentSessionCount});' title="${tooltip}">${sessionItem}</a><span class="recent-session-detail" title="${sessionDetail}">${sessionDetail}</span>
         </div>`;
 
       recentSessionCount++;
-      if (recentSessionCount === 5) {
-        break;
-      }
     }
 
     if (recentSessionSection === '') {
@@ -159,17 +157,32 @@ export class WelcomeView {
               width: 40%;
               flex-basis: 40%;
               flex-grow: 1;
-              row-gap: 40px;
             }
             .news-list-hidden .start-recent-col {
               width: 60%;
               flex-basis: 60%;
             }
             .start-col {
+              margin-bottom: 40px;
               row-gap: 2px;
             }
             .recent-col {
               row-gap: 5px;
+              max-height: 200px;
+              overflow-y: auto;
+            }
+            .recent-col .row-title {
+              position: sticky;
+              top: 0;
+              background: ${LightThemeBGColor};
+            }
+            .app-ui-dark .recent-col .row-title {
+              background: ${DarkThemeBGColor};
+            }
+            .recents-collapsed .recent-col > div:nth-child(n+${
+              maxRecentItems + 2
+            }).recent-session-row {
+              display: none;
             }
             .news-col {
               width: 40%;
@@ -275,7 +288,7 @@ export class WelcomeView {
       
         <body class="${this._isDarkTheme ? 'app-ui-dark' : ''} ${
       showNewsFeed ? '' : 'news-list-hidden'
-    }">
+    } ${recentSessionCount > maxRecentItems ? 'recents-collapsed' : ''}">
           <div class="body-container">
           <div class="container">
             <div class="row app-title-row">
@@ -341,6 +354,18 @@ export class WelcomeView {
                   </div>
                   ${recentSessionSection}
                 </div>
+                ${
+                  recentSessionCount > maxRecentItems
+                    ? `
+                  <div class="col recent-expander-col">
+                    <div class="row action-row more-row news-col-footer">
+                      <a id="expand-collapse-recents" href="javascript:void(0)" onclick='handleExpandCollapseRecents();'>
+                        More...
+                      </a>
+                    </div>
+                  </div>`
+                    : ''
+                }
               </div>
 
               <div class="col news-col">
@@ -421,6 +446,19 @@ export class WelcomeView {
 
           function handleNewsClick(newsLink) {
             window.electronAPI.openNewsLink(newsLink);
+          }
+
+          function handleExpandCollapseRecents() {
+            const expandCollapseButton = document.getElementById("expand-collapse-recents");
+            const bodyClassList = document.body.classList;
+            const isCollapsed = bodyClassList.contains("recents-collapsed");
+            if (isCollapsed) {
+              bodyClassList.remove("recents-collapsed");
+              expandCollapseButton.innerText = "Less...";
+            } else {
+              bodyClassList.add("recents-collapsed");
+              expandCollapseButton.innerText = "More...";
+            }
           }
           </script>
         </body>
