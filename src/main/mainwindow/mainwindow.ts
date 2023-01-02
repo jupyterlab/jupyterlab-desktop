@@ -641,6 +641,9 @@ export class MainWindow implements IDisposable {
         this._labView = null;
       }
       this._loadWelcomeView();
+
+      this.titleBarView.setTitle('Welcome');
+      this._window.setTitle('Welcome');
     } else {
       if (this._welcomeView) {
         this._window.removeBrowserView(this._welcomeView.view);
