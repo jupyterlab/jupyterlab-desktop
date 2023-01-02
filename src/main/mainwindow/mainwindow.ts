@@ -120,7 +120,7 @@ export class MainWindow implements IDisposable {
         width: this._sessionConfig.width
       });
     }
-    
+
     if (options.center !== false) {
       this._window.center();
     }
