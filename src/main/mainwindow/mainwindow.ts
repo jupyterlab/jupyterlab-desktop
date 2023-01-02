@@ -472,7 +472,7 @@ export class MainWindow implements IDisposable {
         return;
       }
 
-      this._handleOpenFilesOrFolders(fileOrFolders);
+      this.handleOpenFilesOrFolders(fileOrFolders);
     });
 
     ipcMain.on('show-env-select-popup', event => {
@@ -809,12 +809,14 @@ export class MainWindow implements IDisposable {
     this._envSelectPopup = null;
   }
 
-  private async _handleOpenFilesOrFolders(fileOrFolders?: string[]) {
+  handleOpenFilesOrFolders(fileOrFolders?: string[]) {
     const sessionConfig = SessionConfig.createLocalForFilesOrFolders(
       fileOrFolders
     );
     if (sessionConfig) {
-      this._createSessionForConfig(sessionConfig);
+      this._disposeSession().then(() => {
+        this._createSessionForConfig(sessionConfig);
+      });
     }
   }
 
@@ -984,7 +986,7 @@ export class MainWindow implements IDisposable {
       buttonLabel: 'Open'
     });
     if (filePaths.length > 0) {
-      this._handleOpenFilesOrFolders(filePaths);
+      this.handleOpenFilesOrFolders(filePaths);
     }
   }
 

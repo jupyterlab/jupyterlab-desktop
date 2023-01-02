@@ -6,6 +6,8 @@ import { getAppDir, isDevMode } from './utils';
 import { execSync } from 'child_process';
 import { ICLIArguments, JupyterApplication } from './app';
 
+let jupyterApp: JupyterApplication;
+
 /**
  *  * On Mac OSX the PATH env variable a packaged app gets does not
  * contain all the information that is usually set in .bashrc, .bash_profile, etc.
@@ -106,18 +108,26 @@ app.setAboutPanelOptions({
   copyright: `© 2015-${thisYear}  Project Jupyter Contributors`
 });
 
-// when a file is double clicked this method is called,
-// whether the app was open previously or not
-app.on('open-file', (event: Electron.Event, _path: string) => {
-  const appJustLaunched = app.isReady();
+// when a file is double clicked or dropped on the app icon on OS,
+// this method is called
+app.on('open-file', (event: Electron.Event, filePath: string) => {
+  event.preventDefault();
 
   app.whenReady().then(() => {
-    console.log(`open-file ready ${_path}`);
+    let fileOrFolders: string[] = [];
 
-    if (appJustLaunched) {
-      // create new sesssion
-    } else {
-      // find a session, or prompt to create new session
+    try {
+      if (process.platform === 'win32') {
+        fileOrFolders = process.argv.slice(1);
+      } else {
+        fileOrFolders = [filePath];
+      }
+    } catch (error) {
+      console.error('Failed to open files', error);
+    }
+
+    if (fileOrFolders.length > 0) {
+      jupyterApp.handleOpenFilesOrFolders(fileOrFolders);
     }
   });
 });
@@ -180,10 +190,6 @@ function setApplicationMenu() {
   });
   Menu.setApplicationMenu(menu);
 }
-
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-// @ts-ignore
-let jupyterApp;
 
 /**
  * Load all services when the electron app is

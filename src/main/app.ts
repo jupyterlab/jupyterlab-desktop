@@ -200,6 +200,10 @@ export class JupyterApplication implements IApplication, IDisposable {
     }
   }
 
+  handleOpenFilesOrFolders(fileOrFolders?: string[]) {
+    this._mainWindow.handleOpenFilesOrFolders(fileOrFolders);
+  }
+
   dispose(): Promise<void> {
     if (this._disposePromise) {
       return this._disposePromise;
