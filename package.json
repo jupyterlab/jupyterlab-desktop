@@ -151,7 +151,7 @@
     "@types/react": "~17.0.2",
     "@types/react-dom": "^17.0.1",
     "@types/semver": "^7.3.4",
-    "@types/yargs": "^16.0.0",
+    "@types/yargs": "^17.0.18",
     "@typescript-eslint/eslint-plugin": "~5.28.0",
     "@typescript-eslint/parser": "~5.28.0",
     "@yarnpkg/lockfile": "~1.1.0",
@@ -291,7 +291,7 @@
     "update-electron-app": "^2.0.1",
     "which": "^2.0.2",
     "winreg": "^1.2.4",
-    "yargs": "^16.2.0"
+    "yargs": "^17.6.2"
   },
   "resolutions": {
     "@jupyterlab/application": "~3.5.2",

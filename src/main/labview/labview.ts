@@ -18,7 +18,6 @@ import * as ejs from 'ejs';
 import { DarkThemeBGColor, isDarkTheme, LightThemeBGColor } from '../utils';
 import { MainWindow } from '../mainwindow/mainwindow';
 import {
-  appData,
   FrontEndMode,
   SessionConfig,
   SettingType,
@@ -31,9 +30,9 @@ const DESKTOP_APP_ASSETS_PATH = 'desktop-app-assets';
 const templateAssetPaths = new Map([
   [
     'index.html',
-    () => {
+    (sessionConfig: SessionConfig) => {
       return {
-        pageConfig: JSON.stringify(appData.getSessionConfig().pageConfig)
+        pageConfig: JSON.stringify(sessionConfig.pageConfig)
       };
     }
   ]
@@ -330,7 +329,7 @@ export class LabView {
   }
 
   private _registerClientAppFrontEndHandlers() {
-    const sessionConfig = appData.getSessionConfig();
+    const sessionConfig = this._sessionConfig;
     this._view.webContents.session.protocol.interceptBufferProtocol(
       'http',
       this._handleInterceptBufferProtocol.bind(this)
@@ -401,7 +400,7 @@ export class LabView {
         assetContent = Buffer.from(
           ejs.render(
             assetContent.toString(),
-            templateAssetPaths.get(assetPath)()
+            templateAssetPaths.get(assetPath)(this._sessionConfig)
           )
         );
       }
@@ -414,7 +413,7 @@ export class LabView {
     req: Electron.ProtocolRequest,
     callback: (response: Buffer | Electron.ProtocolResponse) => void
   ): void {
-    const sessionConfig = appData.getSessionConfig();
+    const sessionConfig = this._sessionConfig;
     const headers: any = {
       ...req.headers,
       Referer: req.referrer,
@@ -429,7 +428,7 @@ export class LabView {
     ) {
       let cookieArray: string[] = [];
       if (sessionConfig.cookies) {
-        sessionConfig.cookies.forEach(cookie => {
+        sessionConfig.cookies.forEach((cookie: any) => {
           if (cookie.domain === sessionConfig.url.hostname) {
             cookieArray.push(`${cookie.name}=${cookie.value}`);
             if (cookie.name === '_xsrf') {

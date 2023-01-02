@@ -29,9 +29,7 @@ import {
   isDarkTheme,
   LightThemeBGColor
 } from '../utils';
-import { IServerFactory, JupyterServerFactory } from '../server';
-import * as fs from 'fs';
-import * as path from 'path';
+import { IServerFactory, JupyterServer, JupyterServerFactory } from '../server';
 import { IDisposable } from '../disposable';
 import {
   IEnvironmentType,
@@ -76,6 +74,13 @@ export class MainWindow implements IDisposable {
     this._wsSettings = new WorkspaceSettings(
       this._sessionConfig?.workingDirectory || DEFAULT_WORKING_DIR
     );
+    // if a python path was specified, set it as workspace setting
+    if (this._sessionConfig.pythonPath) {
+      this._wsSettings.setValue(
+        SettingType.pythonPath,
+        this._sessionConfig.pythonPath
+      );
+    }
     this._isDarkTheme = isDarkTheme(
       this._wsSettings.getValue(SettingType.theme)
     );
@@ -127,9 +132,23 @@ export class MainWindow implements IDisposable {
   }
 
   private async _createServerForSession() {
-    const server = await this.serverFactory.createFreeServer({
+    const serverOptions: JupyterServer.IOptions = {
       workingDirectory: this._sessionConfig.resolvedWorkingDirectory
-    });
+    };
+
+    const pythonPath = this._wsSettings.getValue(SettingType.pythonPath);
+
+    if (pythonPath) {
+      serverOptions.environment = {
+        path: pythonPath,
+        name: 'cli-env',
+        type: IEnvironmentType.PATH,
+        versions: {},
+        default: false
+      };
+    }
+
+    const server = await this.serverFactory.createFreeServer(serverOptions);
     this._server = server;
     await server.server.started;
     const serverInfo = server.server.info;
@@ -165,6 +184,11 @@ export class MainWindow implements IDisposable {
     if (this._contentViewType === ContentViewType.Lab) {
       this._createServerForSession().then(() => {
         this._updateContentView();
+        if (this._sessionConfig.filesToOpen.length > 0) {
+          this._labView.labUIReady.then(() => {
+            this._labView.openFiles();
+          });
+        }
         this._resizeViews();
       });
     } else {
@@ -191,6 +215,8 @@ export class MainWindow implements IDisposable {
   }
 
   private _disposeSession(): Promise<void> {
+    this._wsSettings.save();
+
     if (this._sessionConfig?.isRemote) {
       if (!this._sessionConfig.persistSessionData) {
         return clearSession(this._labView.view.webContents.session);
@@ -782,36 +808,43 @@ export class MainWindow implements IDisposable {
   }
 
   private async _handleOpenFilesOrFolders(fileOrFolders?: string[]) {
-    const folders: string[] = [];
-    const files: string[] = [];
-
-    fileOrFolders.forEach(filePath => {
-      try {
-        const stat = fs.lstatSync(filePath);
-
-        if (stat.isFile()) {
-          files.push(filePath);
-        } else if (stat.isDirectory()) {
-          folders.push(filePath);
-        }
-      } catch (error) {
-        console.error('Failed to get info for dropped files');
-      }
-    });
-
-    if (files.length > 0) {
-      const workingDir = path.dirname(files[0]);
-      const sameWorkingDirFiles = files
-        .filter(file => {
-          return file.startsWith(workingDir);
-        })
-        .map(file => {
-          return path.relative(workingDir, file);
-        });
-      this._createSessionForLocal(workingDir, sameWorkingDirFiles);
-    } else if (folders.length > 0) {
-      this._createSessionForLocal(folders[0]);
+    const sessionConfig = SessionConfig.createLocalForFilesOrFolders(
+      fileOrFolders
+    );
+    if (sessionConfig) {
+      this._createSessionForConfig(sessionConfig);
     }
+  }
+
+  private async _createSessionForConfig(sessionConfig: SessionConfig) {
+    const loadLabView = (sessionConfig: SessionConfig) => {
+      this._sessionConfig = sessionConfig;
+      this._contentViewType = ContentViewType.Lab;
+      this._updateContentView();
+      this._resizeViews();
+    };
+
+    const server = await this.serverFactory.createFreeServer({
+      workingDirectory: sessionConfig.workingDirectory
+    });
+    this._server = server;
+    await server.server.started;
+    const serverInfo = server.server.info;
+    sessionConfig.token = serverInfo.token;
+    sessionConfig.url = serverInfo.url;
+
+    loadLabView(sessionConfig);
+
+    if (sessionConfig.filesToOpen) {
+      this.labView.labUIReady.then(() => {
+        this.labView.openFiles();
+      });
+    }
+
+    appData.addSessionToRecents({
+      workingDirectory: sessionConfig.resolvedWorkingDirectory,
+      filesToOpen: [...sessionConfig.filesToOpen]
+    });
   }
 
   private async _createSessionForLocal(

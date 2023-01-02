@@ -32,11 +32,21 @@ export interface IApplication {
   checkForUpdates(showDialog: 'on-new-version' | 'always'): void;
 }
 
+export interface ICLIArguments {
+  _: (string | number)[];
+  // eslint-disable-next-line id-match
+  $0: string;
+  [x: string]: unknown;
+  pythonPath: string | unknown;
+  workingDir: string | unknown;
+}
+
 export class JupyterApplication implements IApplication, IDisposable {
   /**
    * Construct the Jupyter application
    */
-  constructor() {
+  constructor(cliArgs: ICLIArguments) {
+    this._cliArgs = cliArgs;
     this._registry = new Registry();
     this._serverFactory = new JupyterServerFactory(this._registry);
     this._serverFactory.createFreeServer();
@@ -64,13 +74,77 @@ export class JupyterApplication implements IApplication, IDisposable {
     this.startup();
   }
 
+  private _sessionConfigFromArgs() {
+    let workingDir = this._cliArgs.workingDir;
+    let fileOrFolders: string[] = [];
+    let pythonPath = '';
+
+    try {
+      let skipFilePaths = false;
+      if (workingDir) {
+        workingDir = path.resolve(workingDir as string);
+        if (!fs.existsSync(workingDir as string)) {
+          workingDir = null;
+          skipFilePaths = true;
+        }
+      }
+
+      if (!skipFilePaths) {
+        for (let filePath of this._cliArgs._) {
+          if (workingDir) {
+            filePath = path.resolve(workingDir as string, filePath.toString());
+            if (fs.existsSync(filePath)) {
+              const relPath = path.relative(workingDir as string, filePath);
+              fileOrFolders.push(relPath);
+            }
+          } else {
+            filePath = path.resolve(filePath.toString());
+            fileOrFolders.push(filePath);
+          }
+        }
+      }
+
+      if (this._cliArgs.pythonPath) {
+        pythonPath = path.resolve(this._cliArgs.pythonPath as string);
+        if (!fs.existsSync(pythonPath)) {
+          pythonPath = '';
+        }
+      }
+    } catch (error) {
+      return;
+    }
+
+    if (workingDir) {
+      const sessionConfig = SessionConfig.createLocal(
+        workingDir as string,
+        fileOrFolders
+      );
+      if (pythonPath) {
+        sessionConfig.pythonPath = pythonPath;
+      }
+
+      return sessionConfig;
+    } else {
+      const sessionConfig = SessionConfig.createLocalForFilesOrFolders(
+        fileOrFolders
+      );
+      if (pythonPath) {
+        sessionConfig.pythonPath = pythonPath;
+      }
+
+      return sessionConfig;
+    }
+  }
+
   startup() {
     const startupMode = userSettings.getValue(
       SettingType.startupMode
     ) as StartupMode;
 
-    if (startupMode === StartupMode.NewLocalSession) {
-      const sessionConfig = SessionConfig.createLocal();
+    // if launching from CLI, parse settings
+    const sessionConfig = this._sessionConfigFromArgs();
+
+    if (sessionConfig) {
       const window = new MainWindow({
         app: this,
         registry: this._registry,
@@ -80,8 +154,30 @@ export class JupyterApplication implements IApplication, IDisposable {
       });
       window.load();
       this._mainWindow = window;
-    } else if (startupMode === StartupMode.LastSessions) {
-      const sessionConfig = appData.getSessionConfig();
+
+      return;
+    }
+
+    if (
+      startupMode === StartupMode.LastSessions &&
+      appData.sessions.length > 0
+    ) {
+      const sessionConfig = appData.sessions[0];
+      const window = new MainWindow({
+        app: this,
+        registry: this._registry,
+        serverFactory: this._serverFactory,
+        contentView: ContentViewType.Lab,
+        sessionConfig
+      });
+      window.load();
+      this._mainWindow = window;
+
+      return;
+    }
+
+    if (startupMode === StartupMode.NewLocalSession) {
+      const sessionConfig = SessionConfig.createLocal();
       const window = new MainWindow({
         app: this,
         registry: this._registry,
@@ -404,6 +500,7 @@ export class JupyterApplication implements IApplication, IDisposable {
   }
 
   readonly id = 'JupyterLabDesktop';
+  private _cliArgs: ICLIArguments;
   private _registry: IRegistry;
   private _serverFactory: JupyterServerFactory;
   /**

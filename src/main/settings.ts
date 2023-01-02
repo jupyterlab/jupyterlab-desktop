@@ -3,7 +3,7 @@
 
 import * as path from 'path';
 import * as fs from 'fs';
-import { getUserDataDir, getUserHomeDir, isDevMode } from './utils';
+import { getUserDataDir, getUserHomeDir } from './utils';
 
 export const DEFAULT_WORKING_DIR = '$HOME';
 export const DEFAULT_WIN_WIDTH = 1024;
@@ -238,9 +238,10 @@ export class WorkspaceSettings extends UserSettings {
     const wsSettings: { [key: string]: any } = {};
 
     for (let key in SettingType) {
-      const setting = this._settings[key];
+      const setting = this._wsSettings[key];
       if (
-        setting.wsOverridable &&
+        setting &&
+        this._settings[key].wsOverridable &&
         this._isDifferentThanUserSetting(key as SettingType)
       ) {
         wsSettings[key] = setting.value;
@@ -263,7 +264,7 @@ export class WorkspaceSettings extends UserSettings {
     if (
       setting in this._settings &&
       setting in this._wsSettings &&
-      this._settings[setting].value === this._wsSettings[setting].value
+      this._settings[setting].value !== this._wsSettings[setting].value
     ) {
       return true;
     }
@@ -310,28 +311,6 @@ export class ApplicationData {
     }
 
     this.read();
-
-    const createNewSession =
-      this.sessions.length === 0 || (process.argv.length > 1 && !isDevMode());
-
-    if (createNewSession) {
-      const sessionConfig = SessionConfig.createLocal();
-
-      // handle opening file or directory with command-line arguments
-      if (process.argv.length > 1) {
-        const openPath = path.resolve(process.argv[1]);
-
-        if (fs.existsSync(openPath)) {
-          if (fs.lstatSync(openPath).isDirectory()) {
-            sessionConfig.workingDirectory = openPath;
-          } else {
-            sessionConfig.workingDirectory = path.dirname(openPath);
-          }
-        }
-      }
-
-      this.sessions.push(sessionConfig);
-    }
   }
 
   static getSingleton() {
@@ -436,14 +415,6 @@ export class ApplicationData {
     }
 
     fs.writeFileSync(appDataPath, JSON.stringify(appDataJSON, null, 2));
-  }
-
-  getSessionConfig(): SessionConfig {
-    return this.sessions[0];
-  }
-
-  setSessionConfig(config: SessionConfig) {
-    this.sessions[0] = config;
   }
 
   addRemoteURLToRecents(url: string) {
@@ -559,6 +530,39 @@ export class SessionConfig implements ISessionData, IWindowData {
       pythonPath || userSettings.getValue(SettingType.pythonPath);
 
     return sessionConfig;
+  }
+
+  static createLocalForFilesOrFolders(fileOrFolders?: string[]) {
+    const folders: string[] = [];
+    const files: string[] = [];
+
+    fileOrFolders.forEach(filePath => {
+      try {
+        const stat = fs.lstatSync(filePath);
+
+        if (stat.isFile()) {
+          files.push(filePath);
+        } else if (stat.isDirectory()) {
+          folders.push(filePath);
+        }
+      } catch (error) {
+        console.error('Failed to get info for selected files');
+      }
+    });
+
+    if (files.length > 0) {
+      const workingDir = path.dirname(files[0]);
+      const sameWorkingDirFiles = files
+        .filter(file => {
+          return file.startsWith(workingDir);
+        })
+        .map(file => {
+          return path.relative(workingDir, file);
+        });
+      return SessionConfig.createLocal(workingDir, sameWorkingDirFiles);
+    } else if (folders.length > 0) {
+      return SessionConfig.createLocal(folders[0]);
+    }
   }
 
   static createRemote(

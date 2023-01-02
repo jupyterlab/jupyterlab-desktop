@@ -2,7 +2,6 @@
 // Distributed under the terms of the Modified BSD License.
 
 import { BrowserWindow, Cookie } from 'electron';
-import { appData } from './settings';
 import { clearSession } from './utils';
 
 export let connectWindow: BrowserWindow;
@@ -162,14 +161,6 @@ export async function connectAndGetServerInfo(
     window.setMenuBarVisibility(false);
     window.center();
 
-    const sessionConfig = appData.getSessionConfig();
-
-    if (!sessionConfig.persistSessionData) {
-      clearSession(window.webContents.session).then(() => {
-        window.loadURL(url);
-      });
-    } else {
-      window.loadURL(url);
-    }
+    window.loadURL(url);
   });
 }

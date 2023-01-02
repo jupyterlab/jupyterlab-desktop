@@ -1,12 +1,10 @@
 import { app, Menu, MenuItem } from 'electron';
-import log from 'electron-log';
-import * as yargs from 'yargs';
-import * as path from 'path';
+import log, { LevelOption } from 'electron-log';
+import yargs from 'yargs/yargs';
 import * as fs from 'fs';
 import { getAppDir, isDevMode } from './utils';
 import { execSync } from 'child_process';
-import { appData } from './settings';
-import { JupyterApplication } from './app';
+import { ICLIArguments, JupyterApplication } from './app';
 
 /**
  *  * On Mac OSX the PATH env variable a packaged app gets does not
@@ -15,49 +13,49 @@ import { JupyterApplication } from './app';
  */
 require('fix-path')();
 
-let argv = yargs
-  .option('v', {
-    alias: 'verbose',
-    count: true,
-    type: 'boolean',
-    describe: 'verbose output to terminal'
+const argv = yargs(process.argv.slice(isDevMode() ? 2 : 1))
+  .usage('jlab [options] folder/file paths')
+  .example('jlab', 'Launch in default working directory')
+  .example('jlab .', 'Launch in current directory')
+  .example('jlab /data/nb/test.ipynb', 'Launch in /data/nb and open test.ipynb')
+  .example('jlab /data/nb', 'Launch in /data/nb')
+  .example(
+    'jlab --working-dir /data/nb test.ipynb sub/test2.ipynb',
+    'Launch in /data/nb and open /data/nb/test.ipynb and /data/nb/sub/test2.ipynb'
+  )
+  .option('python-path', {
+    describe: 'Python path',
+    type: 'string'
   })
-  .help().argv;
+  .option('working-dir', {
+    describe: 'Working directory',
+    type: 'string'
+  })
+  .option('log-level', {
+    describe: 'Log level',
+    choices: ['error', 'warn', 'info', 'verbose', 'debug'],
+    default: 'debug'
+  })
+  .help('h')
+  .alias({
+    h: 'help'
+  })
+  .parseSync();
 
-/**
- * Enabled separate logging for development and packaged environments.
- * Also override console methods so that future addition will route to
- * using this package.
- */
-let adjustedVerbose = parseInt((argv.verbose as unknown) as string) - 2;
 if (isDevMode()) {
-  if (adjustedVerbose === 0) {
-    log.transports.console.level = 'info';
-  } else if (adjustedVerbose === 1) {
-    log.transports.console.level = 'verbose';
-  } else if (adjustedVerbose >= 2) {
-    log.transports.console.level = 'debug';
-  }
-
+  log.transports.console.level = argv.logLevel as LevelOption;
   log.transports.file.level = false;
 
   log.info('In development mode');
   log.info(`Logging to console at '${log.transports.console.level}' level`);
 } else {
-  if (adjustedVerbose === 0) {
-    log.transports.file.level = 'info';
-  } else if (adjustedVerbose === 1) {
-    log.transports.file.level = 'verbose';
-  } else if (adjustedVerbose >= 2) {
-    log.transports.file.level = 'debug';
-  }
-
+  log.transports.file.level = argv.logLevel as LevelOption;
   log.transports.console.level = false;
 
   log.info('In production mode');
   log.info(
-    `Logging to file (${log.transports.file.findLogPath()}) at '${
-      log.transports.console.level
+    `Logging to file (${log.transports.file.getFile().path}) at '${
+      log.transports.file.level
     }' level`
   );
 }
@@ -108,9 +106,20 @@ app.setAboutPanelOptions({
   copyright: `© 2015-${thisYear}  Project Jupyter Contributors`
 });
 
+// when a file is double clicked this method is called,
+// whether the app was open previously or not
 app.on('open-file', (event: Electron.Event, _path: string) => {
-  const sessionConfig = appData.getSessionConfig();
-  sessionConfig.workingDirectory = path.dirname(_path);
+  const appJustLaunched = app.isReady();
+
+  app.whenReady().then(() => {
+    console.log(`open-file ready ${_path}`);
+
+    if (appJustLaunched) {
+      // create new sesssion
+    } else {
+      // find a session, or prompt to create new session
+    }
+  });
 });
 
 function setupJLabCommand() {
@@ -187,7 +196,7 @@ app.on('ready', () => {
     .then(() => {
       setupJLabCommand();
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      jupyterApp = new JupyterApplication();
+      jupyterApp = new JupyterApplication((argv as unknown) as ICLIArguments);
     })
     .catch(e => {
       log.error(e);
