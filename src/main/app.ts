@@ -168,7 +168,8 @@ export class JupyterApplication implements IApplication, IDisposable {
         registry: this._registry,
         serverFactory: this._serverFactory,
         contentView: ContentViewType.Lab,
-        sessionConfig
+        sessionConfig,
+        center: false
       });
       window.load();
       this._mainWindow = window;

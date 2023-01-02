@@ -75,7 +75,7 @@ export class MainWindow implements IDisposable {
       this._sessionConfig?.workingDirectory || DEFAULT_WORKING_DIR
     );
     // if a python path was specified, set it as workspace setting
-    if (this._sessionConfig.pythonPath) {
+    if (this._sessionConfig?.pythonPath) {
       this._wsSettings.setValue(
         SettingType.pythonPath,
         this._sessionConfig.pythonPath
@@ -119,7 +119,9 @@ export class MainWindow implements IDisposable {
         height: this._sessionConfig.height,
         width: this._sessionConfig.width
       });
-    } else {
+    }
+    
+    if (options.center !== false) {
       this._window.center();
     }
     this._window.show();
@@ -1012,5 +1014,6 @@ export namespace MainWindow {
     registry: IRegistry;
     contentView: ContentViewType;
     sessionConfig?: SessionConfig;
+    center?: boolean;
   }
 }
