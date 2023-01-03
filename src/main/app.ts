@@ -114,6 +114,10 @@ export class JupyterApplication implements IApplication, IDisposable {
       return;
     }
 
+    if (!(workingDir || fileOrFolders.length > 0 || pythonPath)) {
+      return;
+    }
+
     if (workingDir) {
       const sessionConfig = SessionConfig.createLocal(
         workingDir as string,
@@ -125,9 +129,10 @@ export class JupyterApplication implements IApplication, IDisposable {
 
       return sessionConfig;
     } else {
-      const sessionConfig = SessionConfig.createLocalForFilesOrFolders(
-        fileOrFolders
-      );
+      const sessionConfig =
+        fileOrFolders.length > 0
+          ? SessionConfig.createLocalForFilesOrFolders(fileOrFolders)
+          : SessionConfig.createLocal();
       if (pythonPath) {
         sessionConfig.pythonPath = pythonPath;
       }
