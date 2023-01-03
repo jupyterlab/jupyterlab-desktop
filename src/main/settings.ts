@@ -4,6 +4,7 @@
 import * as path from 'path';
 import * as fs from 'fs';
 import { getUserDataDir, getUserHomeDir } from './utils';
+import { IPythonEnvironment } from './tokens';
 
 export const DEFAULT_WORKING_DIR = '$HOME';
 export const DEFAULT_WIN_WIDTH = 1024;
@@ -297,11 +298,6 @@ export interface IRecentRemoteURL {
   date: Date;
 }
 
-export interface IRecentPythonPath {
-  path: string;
-  date: Date;
-}
-
 let _appDataSingleton: ApplicationData;
 
 export class ApplicationData {
@@ -376,6 +372,22 @@ export class ApplicationData {
       }
     }
 
+    this.pythonEnvCache = [];
+
+    if (
+      'pythonEnvCache' in jsonData &&
+      Array.isArray(jsonData.pythonEnvCache)
+    ) {
+      for (const pythonEnv of jsonData.pythonEnvCache) {
+        this.pythonEnvCache.push({
+          name: pythonEnv.name,
+          path: pythonEnv.path,
+          type: pythonEnv.type,
+          versions: { ...pythonEnv.versions }
+        });
+      }
+    }
+
     this._sortRecentItems(this.recentRemoteURLs);
   }
 
@@ -411,6 +423,17 @@ export class ApplicationData {
       appDataJSON.recentRemoteURLs.push({
         url: remoteUrl.url,
         date: remoteUrl.date.toISOString()
+      });
+    }
+
+    appDataJSON.pythonEnvCache = [];
+
+    for (const pythonEnv of this.pythonEnvCache) {
+      appDataJSON.pythonEnvCache.push({
+        name: pythonEnv.name,
+        path: pythonEnv.path,
+        type: pythonEnv.type,
+        versions: { ...pythonEnv.versions }
       });
     }
 
@@ -492,7 +515,7 @@ export class ApplicationData {
   sessions: SessionConfig[] = [];
   recentRemoteURLs: IRecentRemoteURL[] = [];
   recentSessions: IRecentSession[] = [];
-  recentPythonPaths: IRecentPythonPath[] = [];
+  pythonEnvCache: IPythonEnvironment[] = [];
 
   recentWorkingDirs: string[];
 }

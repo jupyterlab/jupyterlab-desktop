@@ -204,7 +204,7 @@ export class JupyterServer {
           if (baseCondaPathSet && fs.existsSync(baseCondaPathSet)) {
             baseCondaPath = baseCondaPathSet;
           } else {
-            const environments = await this._registry.getCondaEnvironments();
+            const environments = await this._registry.getEnvironmentList();
             for (const environment of environments) {
               if (environment.type === IEnvironmentType.CondaRoot) {
                 baseCondaPath = getEnvironmentPath(environment);

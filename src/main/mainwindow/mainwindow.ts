@@ -31,11 +31,7 @@ import {
 } from '../utils';
 import { IServerFactory, JupyterServer, JupyterServerFactory } from '../server';
 import { IDisposable } from '../disposable';
-import {
-  IEnvironmentType,
-  IPythonEnvironment,
-  IVersionContainer
-} from '../tokens';
+import { IPythonEnvironment, IVersionContainer } from '../tokens';
 import { IRegistry } from '../registry';
 import { IApplication } from '../app';
 import { PreferencesDialog } from '../preferencesdialog/preferencesdialog';
@@ -141,13 +137,7 @@ export class MainWindow implements IDisposable {
     const pythonPath = this._wsSettings.getValue(SettingType.pythonPath);
 
     if (pythonPath) {
-      serverOptions.environment = {
-        path: pythonPath,
-        name: 'cli-env',
-        type: IEnvironmentType.PATH,
-        versions: {},
-        default: false
-      };
+      serverOptions.environment = this._registry.getEnvironmentInfo(pythonPath);
     }
 
     const server = await this.serverFactory.createFreeServer(serverOptions);
@@ -516,15 +506,10 @@ export class MainWindow implements IDisposable {
 
       this._server.server.stop().then(async () => {
         const sessionConfig = this._sessionConfig;
+        const env = this._registry.getEnvironmentInfo(path);
         const server = await this.serverFactory.createServer({
           workingDirectory: sessionConfig.resolvedWorkingDirectory,
-          environment: {
-            path: path,
-            name: 'user-selected',
-            type: IEnvironmentType.CondaEnv,
-            versions: {},
-            default: false
-          }
+          environment: env
         });
         this._server = server;
         await server.server.started;
@@ -765,7 +750,7 @@ export class MainWindow implements IDisposable {
   private _showEnvSelectPopup() {
     this._closeEnvSelectPopup();
 
-    this.registry.getCondaEnvironments().then((envs: IPythonEnvironment[]) => {
+    this.registry.getEnvironmentList().then((envs: IPythonEnvironment[]) => {
       this._envSelectPopup = new PythonEnvironmentSelectPopup({
         isDarkTheme: this._isDarkTheme,
         currentPythonPath: this._sessionConfig.pythonPath,
@@ -797,10 +782,10 @@ export class MainWindow implements IDisposable {
     this._envSelectPopupHeight = newHeight;
 
     this._envSelectPopup.view.view.setBounds({
-      x: titleBarRect.width - paddingRight - popupWidth,
-      y: titleBarRect.height,
+      x: Math.round(titleBarRect.width - paddingRight - popupWidth),
+      y: Math.round(titleBarRect.height),
       width: popupWidth,
-      height: newHeight
+      height: Math.round(newHeight)
     });
   }
 

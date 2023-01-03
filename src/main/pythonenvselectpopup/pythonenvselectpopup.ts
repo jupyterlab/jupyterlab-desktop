@@ -25,8 +25,7 @@ export class PythonEnvironmentSelectPopup {
         path: bundledPythonPath,
         name: 'jlab_server',
         type: IEnvironmentType.CondaRoot,
-        versions: {},
-        default: false
+        versions: {}
       });
     }
 
@@ -35,8 +34,7 @@ export class PythonEnvironmentSelectPopup {
         path: currentPythonPath,
         name: 'current',
         type: IEnvironmentType.CondaRoot,
-        versions: {},
-        default: false
+        versions: {}
       });
     }
 
