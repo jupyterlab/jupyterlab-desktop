@@ -91,41 +91,33 @@ export class Registry implements IRegistry {
     }
 
     this._registryBuilt = Promise.all<IPythonEnvironment[]>(allEnvironments)
-      .then(environments => {
-        let flattenedEnvs: IPythonEnvironment[] = Array.prototype.concat.apply(
+      .then(async environments => {
+        const flattenedEnvs: IPythonEnvironment[] = Array.prototype.concat.apply(
           [],
           environments
         );
-        let uniqueEnvs = this._getUniqueObjects(flattenedEnvs, env => {
+        const uniqueEnvs = this._getUniqueObjects(flattenedEnvs, env => {
           return env.path;
         });
-
-        return this._filterPromises(uniqueEnvs, value => {
+        const existingEnvs = await this._filterPromises(uniqueEnvs, value => {
           return this._pathExists(value.path);
-        }).then(existingEnvs => {
-          let updatedEnvs = this._updatePythonEnvironmentsWithRequirementVersions(
-            uniqueEnvs,
-            this._requirements
-          );
-          return updatedEnvs.then(envs => {
-            let filteredEnvs = this._filterPythonEnvironmentsByRequirements(
-              envs,
-              this._requirements
-            );
-            this._sortEnvironments(filteredEnvs, this._requirements);
-
-            if (!this._default) {
-              this._setDefaultEnvironment(filteredEnvs[0]);
-            }
-            this._environments = this._environments.concat(filteredEnvs);
-
-            this._resolvedEnvironments = this._environments;
-
-            appData.pythonEnvCache = this._resolvedEnvironments;
-
-            return;
-          });
         });
+        const updatedEnvs = await this._updatePythonEnvironmentsWithRequirementVersions(
+          existingEnvs,
+          this._requirements
+        );
+        const filteredEnvs = this._filterPythonEnvironmentsByRequirements(
+          updatedEnvs,
+          this._requirements
+        );
+        this._sortEnvironments(filteredEnvs, this._requirements);
+        if (!this._default && filteredEnvs.length > 0) {
+          this._setDefaultEnvironment(filteredEnvs[0]);
+        }
+        this._environments = this._environments.concat(filteredEnvs);
+        this._resolvedEnvironments = this._environments;
+        appData.pythonEnvCache = this._resolvedEnvironments;
+        return;
       })
       .catch(reason => {
         if (reason.fileName || reason.lineNumber) {
@@ -142,7 +134,6 @@ export class Registry implements IRegistry {
             `Registry building failed! ${reason.name}: ${reason.message}`
           );
         }
-        // this._setDefaultEnvironment(undefined);
       });
   }
 
@@ -155,23 +146,22 @@ export class Registry implements IRegistry {
     if (this._default) {
       return Promise.resolve(this._default);
     } else {
-      Promise.reject(new Error(`No default environment found!`));
+      return new Promise((resolve, reject) => {
+        this._registryBuilt
+          .then(() => {
+            if (this._default) {
+              resolve(this._default);
+            } else {
+              reject(new Error(`No default environment found!`));
+            }
+          })
+          .catch(reason => {
+            reject(
+              new Error(`Default environment could not be obtained: ${reason}`)
+            );
+          });
+      });
     }
-    // return new Promise((resolve, reject) => {
-    //   this._registryBuilt
-    //     .then(() => {
-    //       if (this._default) {
-    //         resolve(this._default);
-    //       } else {
-    //         reject(new Error(`No default environment found!`));
-    //       }
-    //     })
-    //     .catch(reason => {
-    //       reject(
-    //         new Error(`Default environment could not be obtained: ${reason}`)
-    //       );
-    //     });
-    // });
   }
 
   getEnvironmentByPath(pathToMatch: string): Promise<IPythonEnvironment> {
@@ -204,23 +194,25 @@ export class Registry implements IRegistry {
    * @returns a promise that resolves to a complete list of environments
    */
   getEnvironmentList(): Promise<IPythonEnvironment[]> {
-    return Promise.resolve(this._resolvedEnvironments);
-
-    // return new Promise((resolve, reject) => {
-    //   this._registryBuilt
-    //     .then(() => {
-    //       if (this._environments) {
-    //         resolve(this._environments);
-    //       } else {
-    //         reject(new Error(`No environment list found!`));
-    //       }
-    //     })
-    //     .catch(reason => {
-    //       reject(
-    //         new Error(`Environment list could not be obtained: ${reason}`)
-    //       );
-    //     });
-    // });
+    if (this._resolvedEnvironments.length > 0) {
+      return Promise.resolve(this._resolvedEnvironments);
+    } else {
+      return new Promise((resolve, reject) => {
+        this._registryBuilt
+          .then(() => {
+            if (this._environments) {
+              resolve(this._environments);
+            } else {
+              reject(new Error(`No environment list found!`));
+            }
+          })
+          .catch(reason => {
+            reject(
+              new Error(`Environment list could not be obtained: ${reason}`)
+            );
+          });
+      });
+    }
   }
 
   /**
