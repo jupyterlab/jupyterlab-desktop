@@ -330,7 +330,6 @@ export class ApplicationData {
     }
 
     this.sessions = [];
-
     if ('sessions' in jsonData && Array.isArray(jsonData.sessions)) {
       for (const session of jsonData.sessions) {
         const sessionConfig = new SessionConfig();
@@ -340,7 +339,6 @@ export class ApplicationData {
     }
 
     this.recentSessions = [];
-
     if (
       'recentSessions' in jsonData &&
       Array.isArray(jsonData.recentSessions)
@@ -355,11 +353,9 @@ export class ApplicationData {
         });
       }
     }
-
     this._sortRecentItems(this.recentSessions);
 
     this.recentRemoteURLs = [];
-
     if (
       'recentRemoteURLs' in jsonData &&
       Array.isArray(jsonData.recentRemoteURLs)
@@ -371,15 +367,15 @@ export class ApplicationData {
         });
       }
     }
+    this._sortRecentItems(this.recentRemoteURLs);
 
-    this.pythonEnvCache = [];
-
+    this.discoveredPythonEnvs = [];
     if (
-      'pythonEnvCache' in jsonData &&
-      Array.isArray(jsonData.pythonEnvCache)
+      'discoveredPythonEnvs' in jsonData &&
+      Array.isArray(jsonData.discoveredPythonEnvs)
     ) {
-      for (const pythonEnv of jsonData.pythonEnvCache) {
-        this.pythonEnvCache.push({
+      for (const pythonEnv of jsonData.discoveredPythonEnvs) {
+        this.discoveredPythonEnvs.push({
           name: pythonEnv.name,
           path: pythonEnv.path,
           type: pythonEnv.type,
@@ -388,7 +384,20 @@ export class ApplicationData {
       }
     }
 
-    this._sortRecentItems(this.recentRemoteURLs);
+    this.userSetPythonEnvs = [];
+    if (
+      'userSetPythonEnvs' in jsonData &&
+      Array.isArray(jsonData.userSetPythonEnvs)
+    ) {
+      for (const pythonEnv of jsonData.userSetPythonEnvs) {
+        this.userSetPythonEnvs.push({
+          name: pythonEnv.name,
+          path: pythonEnv.path,
+          type: pythonEnv.type,
+          versions: { ...pythonEnv.versions }
+        });
+      }
+    }
   }
 
   save() {
@@ -400,13 +409,11 @@ export class ApplicationData {
     }
 
     appDataJSON.sessions = [];
-
     for (const sessionConfig of this.sessions) {
       appDataJSON.sessions.push(sessionConfig.serialize());
     }
 
     appDataJSON.recentSessions = [];
-
     for (const recentSession of this.recentSessions) {
       appDataJSON.recentSessions.push({
         workingDirectory: recentSession.workingDirectory,
@@ -418,7 +425,6 @@ export class ApplicationData {
     }
 
     appDataJSON.recentRemoteURLs = [];
-
     for (const remoteUrl of this.recentRemoteURLs) {
       appDataJSON.recentRemoteURLs.push({
         url: remoteUrl.url,
@@ -426,10 +432,19 @@ export class ApplicationData {
       });
     }
 
-    appDataJSON.pythonEnvCache = [];
+    appDataJSON.discoveredPythonEnvs = [];
+    for (const pythonEnv of this.discoveredPythonEnvs) {
+      appDataJSON.discoveredPythonEnvs.push({
+        name: pythonEnv.name,
+        path: pythonEnv.path,
+        type: pythonEnv.type,
+        versions: { ...pythonEnv.versions }
+      });
+    }
 
-    for (const pythonEnv of this.pythonEnvCache) {
-      appDataJSON.pythonEnvCache.push({
+    appDataJSON.userSetPythonEnvs = [];
+    for (const pythonEnv of this.userSetPythonEnvs) {
+      appDataJSON.userSetPythonEnvs.push({
         name: pythonEnv.name,
         path: pythonEnv.path,
         type: pythonEnv.type,
@@ -515,7 +530,9 @@ export class ApplicationData {
   sessions: SessionConfig[] = [];
   recentRemoteURLs: IRecentRemoteURL[] = [];
   recentSessions: IRecentSession[] = [];
-  pythonEnvCache: IPythonEnvironment[] = [];
+
+  discoveredPythonEnvs: IPythonEnvironment[] = [];
+  userSetPythonEnvs: IPythonEnvironment[] = [];
 
   recentWorkingDirs: string[];
 }

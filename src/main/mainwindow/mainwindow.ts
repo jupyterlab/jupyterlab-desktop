@@ -70,13 +70,21 @@ export class MainWindow implements IDisposable {
     this._wsSettings = new WorkspaceSettings(
       this._sessionConfig?.workingDirectory || DEFAULT_WORKING_DIR
     );
-    // if a python path was specified, set it as workspace setting
-    if (this._sessionConfig?.pythonPath) {
+
+    // if a python path was specified together with working directory,
+    // then set it as workspace setting
+    const savePythonPathToWS =
+      this._sessionConfig?.pythonPath &&
+      this._app.cliArgs &&
+      (this._app.cliArgs.workingDir || this._app.cliArgs._.length > 0);
+
+    if (savePythonPathToWS) {
       this._wsSettings.setValue(
         SettingType.pythonPath,
         this._sessionConfig.pythonPath
       );
     }
+
     this._isDarkTheme = isDarkTheme(
       this._wsSettings.getValue(SettingType.theme)
     );
@@ -137,10 +145,12 @@ export class MainWindow implements IDisposable {
     const pythonPath = this._wsSettings.getValue(SettingType.pythonPath);
 
     if (pythonPath) {
-      serverOptions.environment = this._registry.getEnvironmentInfo(pythonPath);
+      serverOptions.environment = this._registry.getEnvironmentByPath(
+        pythonPath
+      );
     }
 
-    const server = await this.serverFactory.createFreeServer(serverOptions);
+    const server = await this.serverFactory.createServer(serverOptions);
     this._server = server;
     await server.server.started;
     const serverInfo = server.server.info;
@@ -159,7 +169,7 @@ export class MainWindow implements IDisposable {
     titleBarView.view.setBounds({
       x: 0,
       y: 0,
-      width: 1200,
+      width: DEFAULT_WIN_WIDTH,
       height: titleBarHeight
     });
 
@@ -183,6 +193,7 @@ export class MainWindow implements IDisposable {
         }
         this._resizeViews();
       });
+      this._resizeViews();
     } else {
       this._updateContentView();
       this._resizeViews();
@@ -247,7 +258,12 @@ export class MainWindow implements IDisposable {
   private _loadWelcomeView() {
     const welcomeView = new WelcomeView({ isDarkTheme: this._isDarkTheme });
     this._window.addBrowserView(welcomeView.view);
-    welcomeView.view.setBounds({ x: 0, y: 100, width: 1200, height: 700 });
+    welcomeView.view.setBounds({
+      x: 0,
+      y: titleBarHeight,
+      width: DEFAULT_WIN_WIDTH,
+      height: DEFAULT_WIN_HEIGHT
+    });
 
     welcomeView.load();
 
@@ -305,9 +321,9 @@ export class MainWindow implements IDisposable {
 
   get contentView(): BrowserView {
     if (this._contentViewType === ContentViewType.Welcome) {
-      return this._welcomeView.view;
+      return this._welcomeView?.view;
     } else {
-      return this._labView.view;
+      return this._labView?.view;
     }
   }
 
@@ -371,22 +387,17 @@ export class MainWindow implements IDisposable {
           return;
         }
 
-        const sessionConfig = new SessionConfig();
-
         const loadLabView = () => {
-          this._sessionConfig = sessionConfig;
           this._contentViewType = ContentViewType.Lab;
           this._updateContentView();
           this._resizeViews();
         };
 
         if (type === 'notebook' || type === 'blank') {
-          const server = await this.serverFactory.createServer();
-          this._server = server;
-          await server.server.started;
-          const serverInfo = server.server.info;
-          sessionConfig.token = serverInfo.token;
-          sessionConfig.url = serverInfo.url;
+          const sessionConfig = new SessionConfig();
+          this._sessionConfig = sessionConfig;
+          await this._createServerForSession();
+
           loadLabView();
           if (type === 'notebook') {
             this.labView.labUIReady.then(() => {
@@ -491,6 +502,8 @@ export class MainWindow implements IDisposable {
         return;
       }
 
+      const env = this._registry.addEnvironment(path);
+
       this._wsSettings.setValue(SettingType.pythonPath, path);
       this._sessionConfig.pythonPath = path;
 
@@ -506,7 +519,6 @@ export class MainWindow implements IDisposable {
 
       this._server.server.stop().then(async () => {
         const sessionConfig = this._sessionConfig;
-        const env = this._registry.getEnvironmentInfo(path);
         const server = await this.serverFactory.createServer({
           workingDirectory: sessionConfig.resolvedWorkingDirectory,
           environment: env
@@ -655,7 +667,7 @@ export class MainWindow implements IDisposable {
       width: width - 2 * padding,
       height: titleBarHeight - padding
     });
-    this.contentView.setBounds({
+    this.contentView?.setBounds({
       x: 0,
       y: titleBarHeight,
       width: width,
@@ -669,7 +681,7 @@ export class MainWindow implements IDisposable {
     // check if fixed in newer versions
     setTimeout(() => {
       this._titleBarView.view.webContents.invalidate();
-      this.contentView.webContents.invalidate();
+      this.contentView?.webContents.invalidate();
       if (this._envSelectPopup) {
         this._envSelectPopup.view.view.webContents.invalidate();
       }
@@ -816,7 +828,7 @@ export class MainWindow implements IDisposable {
       this._resizeViews();
     };
 
-    const server = await this.serverFactory.createFreeServer({
+    const server = await this.serverFactory.createServer({
       workingDirectory: sessionConfig.workingDirectory
     });
     this._server = server;
@@ -855,7 +867,7 @@ export class MainWindow implements IDisposable {
       filesToOpen
     );
 
-    const server = await this.serverFactory.createFreeServer({
+    const server = await this.serverFactory.createServer({
       workingDirectory: sessionConfig.workingDirectory
     });
     this._server = server;
@@ -964,7 +976,7 @@ export class MainWindow implements IDisposable {
     }
 
     if (type === 'either' || type === 'folder') {
-      openProperties.push('openDirectory');
+      openProperties.push('openDirectory', 'createDirectory');
     }
 
     const { filePaths } = await dialog.showOpenDialog({

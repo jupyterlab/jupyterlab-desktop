@@ -1,7 +1,23 @@
-import os, sys, json
+import os, sys, json, platform, importlib
 
 env_type = 'system'
 env_name = 'python'
+python_version = platform.python_version()
+
+requirements = [
+  'jupyterlab'
+]
+
+versions = {
+  "python": python_version
+}
+
+for requirement in requirements:
+  try:
+    module = importlib.import_module(requirement)
+    versions[requirement] = module.__version__
+  except ImportError:
+    versions[requirement] = 'NOT-FOUND'
 
 if (getattr(sys, "base_prefix", None) or getattr(sys, "real_prefix", None) or sys.prefix) != sys.prefix:
   env_type = 'venv'
@@ -13,4 +29,4 @@ if env_type != 'venv' and os.path.exists(os.path.join(sys.prefix, "conda-meta"))
 if env_type != 'system':
   env_name = os.path.basename(sys.prefix)
 
-print(json.dumps({"type" : env_type, "name": env_name}))
+print(json.dumps({"type" : env_type, "name": env_name, "versions" : versions}))

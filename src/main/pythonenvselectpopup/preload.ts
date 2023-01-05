@@ -13,8 +13,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   isDarkTheme: () => {
     return ipcRenderer.invoke('is-dark-theme');
   },
-  browsePythonPath: () => {
-    ipcRenderer.send('select-python-path');
+  browsePythonPath: (currentPath: string) => {
+    ipcRenderer.send('select-python-path', currentPath);
   },
   setPythonPath: (path: string) => {
     ipcRenderer.send('set-python-path', path);

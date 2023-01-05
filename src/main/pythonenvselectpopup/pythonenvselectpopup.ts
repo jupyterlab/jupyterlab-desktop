@@ -123,7 +123,7 @@ export class PythonEnvironmentSelectPopup {
         }
 
         function handleBrowsePythonPath(el) {
-          window.electronAPI.browsePythonPath();
+          window.electronAPI.browsePythonPath(pythonPathInput.value);
         }
 
         function updateActiveItem() {

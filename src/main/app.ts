@@ -12,7 +12,12 @@ import * as semver from 'semver';
 import * as path from 'path';
 import * as fs from 'fs';
 
-import { getAppDir, getBundledPythonEnvPath, isDarkTheme } from './utils';
+import {
+  getAppDir,
+  getBundledPythonEnvPath,
+  getBundledPythonPath,
+  isDarkTheme
+} from './utils';
 import { execFile } from 'child_process';
 import { JupyterServerFactory } from './server';
 import { connectAndGetServerInfo, IJupyterServerInfo } from './connect';
@@ -30,6 +35,7 @@ import { ContentViewType, MainWindow } from './mainwindow/mainwindow';
 
 export interface IApplication {
   checkForUpdates(showDialog: 'on-new-version' | 'always'): void;
+  cliArgs: ICLIArguments;
 }
 
 export interface ICLIArguments {
@@ -49,6 +55,7 @@ export class JupyterApplication implements IApplication, IDisposable {
     this._cliArgs = cliArgs;
     this._registry = new Registry();
     this._serverFactory = new JupyterServerFactory(this._registry);
+    // create a server in advance
     this._serverFactory.createFreeServer();
     this._registerListeners();
 
@@ -72,6 +79,10 @@ export class JupyterApplication implements IApplication, IDisposable {
     }
 
     this.startup();
+  }
+
+  get cliArgs(): ICLIArguments {
+    return this._cliArgs;
   }
 
   private _sessionConfigFromArgs() {
@@ -323,14 +334,19 @@ export class JupyterApplication implements IApplication, IDisposable {
       }
     });
 
-    ipcMain.on('select-python-path', event => {
-      const currentEnv = this._registry.getCurrentPythonEnvironment();
+    ipcMain.on('select-python-path', (event, currentPath) => {
+      if (!currentPath) {
+        currentPath = userSettings.getValue(SettingType.pythonPath);
+        if (currentPath === '') {
+          currentPath = getBundledPythonPath();
+        }
+      }
 
       dialog
         .showOpenDialog({
           properties: ['openFile', 'showHiddenFiles', 'noResolveAliases'],
           buttonLabel: 'Use Path',
-          defaultPath: currentEnv ? path.dirname(currentEnv.path) : undefined
+          defaultPath: currentPath
         })
         .then(({ filePaths }) => {
           if (filePaths.length > 0) {
