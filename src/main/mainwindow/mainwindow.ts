@@ -393,22 +393,23 @@ export class MainWindow implements IDisposable {
           this._resizeViews();
         };
 
-        if (type === 'notebook' || type === 'blank') {
-          const sessionConfig = new SessionConfig();
-          this._sessionConfig = sessionConfig;
-          await this._createServerForSession();
+        const sessionConfig = new SessionConfig();
+        this._sessionConfig = sessionConfig;
+        this._wsSettings = new WorkspaceSettings(
+          sessionConfig.workingDirectory || DEFAULT_WORKING_DIR
+        );
+        await this._createServerForSession();
 
-          loadLabView();
-          if (type === 'notebook') {
-            this.labView.labUIReady.then(() => {
-              this.labView.newNotebook();
-            });
-          }
-          appData.addSessionToRecents({
-            workingDirectory: sessionConfig.resolvedWorkingDirectory,
-            filesToOpen: [...sessionConfig.filesToOpen]
+        loadLabView();
+        if (type === 'notebook') {
+          this.labView.labUIReady.then(() => {
+            this.labView.newNotebook();
           });
         }
+        appData.addSessionToRecents({
+          workingDirectory: sessionConfig.resolvedWorkingDirectory,
+          filesToOpen: [...sessionConfig.filesToOpen]
+        });
       }
     );
 
@@ -815,6 +816,9 @@ export class MainWindow implements IDisposable {
     );
     if (sessionConfig) {
       this._disposeSession().then(() => {
+        this._wsSettings = new WorkspaceSettings(
+          sessionConfig.workingDirectory || DEFAULT_WORKING_DIR
+        );
         this._createSessionForConfig(sessionConfig);
       });
     }
@@ -867,9 +871,23 @@ export class MainWindow implements IDisposable {
       filesToOpen
     );
 
-    const server = await this.serverFactory.createServer({
-      workingDirectory: sessionConfig.workingDirectory
-    });
+    this._wsSettings = new WorkspaceSettings(
+      sessionConfig.workingDirectory || DEFAULT_WORKING_DIR
+    );
+
+    const serverOptions: JupyterServer.IOptions = {
+      workingDirectory: sessionConfig.resolvedWorkingDirectory
+    };
+
+    const pythonPath = this._wsSettings.getValue(SettingType.pythonPath);
+
+    if (pythonPath) {
+      serverOptions.environment = this._registry.getEnvironmentByPath(
+        pythonPath
+      );
+    }
+
+    const server = await this.serverFactory.createServer(serverOptions);
     this._server = server;
     await server.server.started;
     const serverInfo = server.server.info;
