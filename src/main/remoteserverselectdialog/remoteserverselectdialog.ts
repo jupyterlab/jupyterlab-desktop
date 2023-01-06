@@ -13,13 +13,16 @@ export class RemoteServerSelectDialog {
       isDarkTheme: options.isDarkTheme,
       parent: options.parent,
       modal: options.modal,
-      title: 'Remote Server Connection',
+      title: 'Connect to existing JupyterLab Server',
       width: 700,
       height: 400,
       preload: path.join(__dirname, './preload.js')
     });
 
-    const remoteServerUrl = options.remoteURL;
+    const recentServers = appData.recentRemoteURLs;
+    const localServers = options.runningServers.map(server => {
+      return { url: server };
+    });
     const persistSessionData = options.persistSessionData;
 
     const template = `
@@ -34,6 +37,28 @@ export class RemoteServerSelectDialog {
         .app-ui-dark input {
           color-scheme: dark;
         }
+        #server-list {
+          max-width: 100%;
+          width: 100%;
+        }
+        jp-menu {
+          background: none;
+        }
+        jp-menu-item.category {
+          color: #777777;
+          cursor: default;
+          opacity: 1;
+          font-weight: bold;
+        }
+        .app-ui-dark jp-menu-item.category {
+          color: #bbbbbb;
+        }
+        jp-menu-item.category:hover {
+          background: none;
+        }
+        jp-menu-item:not(.category) {
+          padding-left: 5px;
+        }
         .footer-row {
           margin-bottom: 5px;
           height: 40px;
@@ -42,47 +67,58 @@ export class RemoteServerSelectDialog {
         }
       </style>
       <div style="height: 100%; display: flex; flex-direction: column; row-gap: 5px;">
-        <div style="flex-grow: 1; overflow-y: auto;">
-          <div>
-            <div class="row" style="line-height: 30px;">
-              <b>Server URL</b>
-            </div>
-            <div class="row">
-              <div style="flex-grow: 1;">
-                <input type="url" pattern="https?://.*/lab.*" id="server-url" value="<%= remoteServerUrl %>" list="recent-remote-servers" placeholder="https://example.org/lab?token=abcde" style="width: 100%;" spellcheck="false" required title="Enter the URL of the existing JupyterLab Server including path to JupyterLab application (/lab) and the token as a query parameter."></input>
-              </div>
-              <datalist id="recent-remote-servers">
-                ${appData.recentRemoteURLs
-                  .map(value => {
-                    return `<option>${value.url}</option>`;
-                  })
-                  .join('')}
-              </datalist>
-            </div>
-            <div class="row">
-              <div>
-                <jp-checkbox type="checkbox" id="persist-session-data" <%= persistSessionData ? 'checked' : '' %> title="Persist session data including cookies and cache for the next launch. If the connected JupyterLab Server requires additional authentication such as SSO then persisting the data would allow auto re-login.">Persist session data</jp-checkbox>
-              </div>
-            </div>
+        <div>
+          <div style="display: flex; flex-direction: row; align-items: center; flex-grow: 1;">
+            <jp-text-field type="url" pattern="https?://.*/lab.*" id="server-url" placeholder="https://example.org/lab?token=abcde" style="width: 100%;" spellcheck="false" required title="Enter the URL of the existing JupyterLab Server including path to JupyterLab application (/lab) and the token as a query parameter. Hit 'Return' key to create the remote session.">
+            </jp-text-field>
           </div>
         </div>
-
-        <div class="row footer-row">
-          <jp-button id="connect" onclick='handleConnect(this);' style='margin-right: 5px;' appearance="accent">Connect</jp-button>
+        <div style="flex-grow: 1; overflow-x: hidden; overflow-y: auto;">
+          <jp-menu id="server-list">
+            <% if (recentServers.length > 0) { %>
+            <jp-menu-item class="category" disabled>Recents</jp-menu-item>
+            <% } %>
+            <% recentServers.forEach((remote, index) => { %>
+              <jp-menu-item onclick="onMenuItemClicked(this, 'recent', <%- index %>);"><%- remote.url %></jp-menu-item>
+            <% }); %>
+            <% if (localServers.length > 0) { %>
+            <jp-menu-item class="category" disabled>Local JupyterLab Servers</jp-menu-item>
+            <% } %>
+            <% localServers.forEach((remote, index) => { %>
+              <jp-menu-item onclick="onMenuItemClicked(this, 'local', <%- index %>);"><%- remote.url %></jp-menu-item>
+            <% }); %>
+          </jp-menu>
+        </div>
+        <div class="row">
+          <div>
+            <jp-checkbox type="checkbox" id="persist-session-data" <%= persistSessionData ? 'checked' : '' %> title="Persist session data including cookies and cache for the next launch. If the connected JupyterLab Server requires additional authentication such as SSO then persisting the data would allow auto re-login.">Persist session data</jp-checkbox>
+          </div>
         </div>
       </div>
 
       <script>
+        const recentServers = <%- JSON.stringify(recentServers) %>;
+        const localServers = <%- JSON.stringify(localServers) %>;
         const serverUrlInput = document.getElementById('server-url');
         const persistSessionDataCheckbox = document.getElementById('persist-session-data');
-
-        function handleConnect(el) {
-          window.electronAPI.setRemoteServerOptions(serverUrlInput.value, persistSessionDataCheckbox.checked);
+        
+        function onMenuItemClicked(el, type, index) {
+          const server = type == 'recent' ? recentServers[index] : localServers[index];
+          window.electronAPI.setRemoteServerOptions(server.url, persistSessionDataCheckbox.checked);
         }
+
+        document.addEventListener("DOMContentLoaded", () => {
+          serverUrlInput.control.onkeydown = (event) => {
+            if (event.key === "Enter") {
+              window.electronAPI.setRemoteServerOptions(serverUrlInput.value, persistSessionDataCheckbox.checked);
+            }
+          };
+        });
       </script>
         `;
     this._pageBody = ejs.render(template, {
-      remoteServerUrl,
+      recentServers,
+      localServers,
       persistSessionData
     });
   }
@@ -104,7 +140,7 @@ export namespace RemoteServerSelectDialog {
     isDarkTheme: boolean;
     parent?: BrowserWindow;
     modal?: boolean;
-    remoteURL: string;
+    runningServers: string[];
     persistSessionData: boolean;
   }
 }

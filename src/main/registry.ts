@@ -35,6 +35,7 @@ export interface IRegistry {
   getAdditionalPathIncludesForPythonPath: (pythonPath: string) => string;
   getRequirements: () => Registry.IRequirement[];
   getEnvironmentInfo(pythonPath: string): Promise<IPythonEnvironment>;
+  getRunningServerList(): Promise<string[]>;
 }
 
 export class Registry implements IRegistry {
@@ -67,7 +68,7 @@ export class Registry implements IRegistry {
     const defaultEnv = this._resolveEnvironmentSync(pythonPath);
 
     if (defaultEnv) {
-      this._default = defaultEnv;
+      this._defaultEnv = defaultEnv;
     }
 
     const pathEnvironments = this._loadPathEnvironments();
@@ -91,8 +92,8 @@ export class Registry implements IRegistry {
         );
         this._updateEnvironments();
 
-        if (!this._default && this._environments.length > 0) {
-          this._setDefaultEnvironment(this._environments[0]);
+        if (!this._defaultEnv && this._environments.length > 0) {
+          this._defaultEnv = this._environments[0];
         }
         return;
       })
@@ -174,14 +175,14 @@ export class Registry implements IRegistry {
    * @returns a promise containing the default environment
    */
   getDefaultEnvironment(): Promise<IPythonEnvironment> {
-    if (this._default) {
-      return Promise.resolve(this._default);
+    if (this._defaultEnv) {
+      return Promise.resolve(this._defaultEnv);
     } else {
       return new Promise((resolve, reject) => {
         this._registryBuilt
           .then(() => {
-            if (this._default) {
-              resolve(this._default);
+            if (this._defaultEnv) {
+              resolve(this._defaultEnv);
             } else {
               reject(new Error(`No default environment found!`));
             }
@@ -295,11 +296,11 @@ export class Registry implements IRegistry {
   }
 
   setDefaultPythonPath(path: string): void {
-    this._default = this.getEnvironmentByPath(path);
+    this._defaultEnv = this.getEnvironmentByPath(path);
   }
 
   getCurrentPythonEnvironment(): IPythonEnvironment {
-    return this._default;
+    return this._defaultEnv;
   }
 
   getAdditionalPathIncludesForPythonPath(pythonPath: string): string {
@@ -322,6 +323,50 @@ export class Registry implements IRegistry {
 
   getRequirements(): Registry.IRequirement[] {
     return this._requirements;
+  }
+
+  getRunningServerList(): Promise<string[]> {
+    return new Promise<string[]>(resolve => {
+      if (this._defaultEnv) {
+        this._runPythonModuleCommand(this._defaultEnv.path, 'jupyter', [
+          'server',
+          'list',
+          '--json'
+        ])
+          .then(output => {
+            const runningServers: string[] = [];
+            const lines = output.split('\n');
+            for (const line of lines) {
+              const jsonStart = line.indexOf('{');
+              if (jsonStart !== -1) {
+                const jsonStr = line.substring(jsonStart);
+                try {
+                  const jsonData = JSON.parse(jsonStr);
+                  runningServers.push(
+                    `${jsonData.url}lab?token=${jsonData.token}`
+                  );
+                } catch (error) {
+                  console.error(
+                    `Failed to parse running JupyterLab server list`,
+                    error
+                  );
+                }
+              }
+            }
+
+            resolve(runningServers);
+          })
+          .catch(reason => {
+            console.debug(
+              `Failed to get running JupyterLab server list`,
+              reason
+            );
+            resolve([]);
+          });
+      } else {
+        resolve([]);
+      }
+    });
   }
 
   private _updateEnvironments() {
@@ -976,14 +1021,10 @@ export class Registry implements IRegistry {
     }
   }
 
-  private _setDefaultEnvironment(newEnv: IPythonEnvironment) {
-    this._default = newEnv;
-  }
-
   private _environments: IPythonEnvironment[] = [];
   private _discoveredEnvironments: IPythonEnvironment[] = [];
   private _userSetEnvironments: IPythonEnvironment[] = [];
-  private _default: IPythonEnvironment;
+  private _defaultEnv: IPythonEnvironment;
   private _registryBuilt: Promise<void>;
   private _requirements: Registry.IRequirement[];
 }

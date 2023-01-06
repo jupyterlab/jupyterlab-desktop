@@ -16,6 +16,7 @@ import {
   DEFAULT_WIN_HEIGHT,
   DEFAULT_WIN_WIDTH,
   DEFAULT_WORKING_DIR,
+  FrontEndMode,
   SessionConfig,
   SettingType,
   userSettings,
@@ -36,7 +37,7 @@ import { IRegistry } from '../registry';
 import { IApplication } from '../app';
 import { PreferencesDialog } from '../preferencesdialog/preferencesdialog';
 import { RemoteServerSelectDialog } from '../remoteserverselectdialog/remoteserverselectdialog';
-import { connectAndGetServerInfo } from '../connect';
+import { connectAndGetServerInfo, IJupyterServerInfo } from '../connect';
 import { PythonEnvironmentSelectPopup } from '../pythonenvselectpopup/pythonenvselectpopup';
 import { AboutDialog } from '../aboutdialog/aboutdialog';
 
@@ -743,12 +744,14 @@ export class MainWindow implements IDisposable {
     dialog.load();
   }
 
-  private _selectRemoteServerUrl() {
+  private async _selectRemoteServerUrl() {
+    const runningServers = await this._registry.getRunningServerList();
+
     this._remoteServerSelectDialog = new RemoteServerSelectDialog({
       isDarkTheme: this._isDarkTheme,
       parent: this._window,
       modal: true,
-      remoteURL: '',
+      runningServers,
       persistSessionData: true
     });
 
@@ -914,7 +917,34 @@ export class MainWindow implements IDisposable {
   ) {
     try {
       const url = new URL(remoteURL);
-      connectAndGetServerInfo(remoteURL, { showDialog: true })
+      const isLocalUrl =
+        url.hostname === 'localhost' || url.hostname === '127.0.0.1';
+      const getServerInfo =
+        !isLocalUrl ||
+        userSettings.getValue(SettingType.frontEndMode) ===
+          FrontEndMode.ClientApp;
+
+      const fetchServerInfo = new Promise<IJupyterServerInfo>(
+        (resolve, reject) => {
+          if (getServerInfo) {
+            connectAndGetServerInfo(remoteURL, { showDialog: !isLocalUrl })
+              .then(serverInfo => {
+                resolve({
+                  pageConfig: serverInfo.pageConfig,
+                  cookies: serverInfo.cookies
+                });
+              })
+              .catch(reject);
+          } else {
+            resolve({
+              pageConfig: undefined,
+              cookies: []
+            });
+          }
+        }
+      );
+
+      fetchServerInfo
         .then(serverInfo => {
           const token = url.searchParams.get('token');
           const pageConfig = serverInfo.pageConfig;

@@ -16,6 +16,7 @@
     "watch": "concurrently \"yarn watch:tsc\" \"yarn watch:assets\" \"yarn watch:pack\" ",
     "build:pack": "webpack --config webpack.browser.js",
     "build": "tsc && node ./scripts/extract.js && node ./scripts/copyassets.js && yarn build:pack",
+    "build:no-pack": "tsc && node ./scripts/extract.js && node ./scripts/copyassets.js",
     "build:all": "yarn clean && yarn build && yarn start",
     "extract": "node scripts/extract.js",
     "pack": "yarn build && electron-builder --dir",

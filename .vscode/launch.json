@@ -15,6 +15,19 @@
         }
       },
       {
+        "name": "Debug Electron App without webpack",
+        "type": "node",
+        "request": "launch",
+        "cwd": "${workspaceFolder}",
+        "runtimeExecutable": "${workspaceFolder}/node_modules/.bin/electron",
+        "args" : ["."],
+        "outputCapture": "std",
+        "preLaunchTask": "npm: build:no-pack",
+        "env": {
+          "NODE_ENV": "development"
+        }
+      },
+      {
         "name": "Debug Electron App without Build",
         "type": "node",
         "request": "launch",
