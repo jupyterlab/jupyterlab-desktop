@@ -7,12 +7,7 @@ import * as path from 'path';
 import * as fs from 'fs';
 import fetch from 'node-fetch';
 import { XMLParser } from 'fast-xml-parser';
-import { appData, SettingType, userSettings } from '../settings';
-
-interface INewsItem {
-  title: string;
-  link: string;
-}
+import { appData, INewsItem, SettingType, userSettings } from '../settings';
 
 const maxRecentItems = 5;
 const notebookIcon = `<svg xmlns="http://www.w3.org/2000/svg" width="16" viewBox="0 0 22 22">
@@ -50,6 +45,11 @@ export class WelcomeView {
 
     const home = getUserHomeDir();
     const showNewsFeed = userSettings.getValue(SettingType.showNewsFeed);
+    if (showNewsFeed) {
+      // initalize from app cache
+      WelcomeView._newsList = appData.newsList;
+    }
+
     let recentSessionCount = 0;
     let recentSessionSection = '';
 
@@ -500,6 +500,10 @@ export class WelcomeView {
   }
 
   private _updateNewsList() {
+    if (WelcomeView._newsListFetched) {
+      return;
+    }
+
     const newsFeedUrl = 'https://blog.jupyter.org/feed';
     const maxNewsToShow = 10;
 
@@ -523,6 +527,10 @@ export class WelcomeView {
           this._view.webContents.send('set-news-list', newsList);
 
           WelcomeView._newsList = newsList;
+          appData.newsList = [...newsList];
+          if (newsList.length > 0) {
+            WelcomeView._newsListFetched = true;
+          }
         } catch (error) {
           console.error('Failed to parse news list:', error);
         }
@@ -536,6 +544,7 @@ export class WelcomeView {
   private _view: BrowserView;
   private _pageSource: string;
   static _newsList: INewsItem[] = [];
+  static _newsListFetched = false;
 }
 
 export namespace WelcomeView {

@@ -11,6 +11,11 @@ export const DEFAULT_WIN_WIDTH = 1024;
 export const DEFAULT_WIN_HEIGHT = 768;
 const MAX_RECENT_SESSIONS = 20;
 
+export interface INewsItem {
+  title: string;
+  link: string;
+}
+
 export function resolveWorkingDirectory(
   workingDirectory: string,
   resetIfInvalid: boolean = true
@@ -398,6 +403,16 @@ export class ApplicationData {
         });
       }
     }
+
+    this.newsList = [];
+    if ('newsList' in jsonData && Array.isArray(jsonData.newsList)) {
+      for (const newsItem of jsonData.newsList) {
+        this.newsList.push({
+          title: newsItem.title,
+          link: newsItem.link
+        });
+      }
+    }
   }
 
   save() {
@@ -449,6 +464,14 @@ export class ApplicationData {
         path: pythonEnv.path,
         type: pythonEnv.type,
         versions: { ...pythonEnv.versions }
+      });
+    }
+
+    appDataJSON.newsList = [];
+    for (const newsItem of this.newsList) {
+      appDataJSON.newsList.push({
+        title: newsItem.title,
+        link: newsItem.link
       });
     }
 
@@ -526,6 +549,7 @@ export class ApplicationData {
     });
   }
 
+  newsList: INewsItem[] = [];
   condaRootPath: string = '';
   sessions: SessionConfig[] = [];
   recentRemoteURLs: IRecentRemoteURL[] = [];
