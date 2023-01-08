@@ -40,6 +40,7 @@ import { RemoteServerSelectDialog } from '../remoteserverselectdialog/remoteserv
 import { connectAndGetServerInfo, IJupyterServerInfo } from '../connect';
 import { PythonEnvironmentSelectPopup } from '../pythonenvselectpopup/pythonenvselectpopup';
 import { AboutDialog } from '../aboutdialog/aboutdialog';
+import { ProgressView } from '../progressview/progressview';
 
 export enum ContentViewType {
   Welcome = 'welcome',
@@ -132,6 +133,8 @@ export class MainWindow implements IDisposable {
     this._window.show();
 
     this._registerListeners();
+
+    this._createProgressView();
   }
 
   get window(): BrowserWindow {
@@ -271,6 +274,35 @@ export class MainWindow implements IDisposable {
     this._welcomeView = welcomeView;
   }
 
+  private _createProgressView() {
+    const progressView = new ProgressView({ isDarkTheme: this._isDarkTheme });
+    progressView.load();
+
+    this._progressView = progressView;
+  }
+
+  private _showProgressView(message?: string, showAnimation?: boolean) {
+    if (!this._progressViewVisible) {
+      this._window.addBrowserView(this._progressView.view.view);
+      this._progressViewVisible = true;
+    }
+
+    this._resizeViews();
+
+    if (message) {
+      this._progressView.setProgress(message, showAnimation !== false);
+    }
+  }
+
+  private _setProgress(message: string, showAnimation: boolean) {
+    this._progressView.setProgress(message, showAnimation);
+  }
+
+  private _hideProgressView() {
+    this._window.removeBrowserView(this._progressView.view.view);
+    this._progressViewVisible = false;
+  }
+
   private _loadLabView() {
     const labView = new LabView({
       isDarkTheme: this._isDarkTheme,
@@ -394,6 +426,8 @@ export class MainWindow implements IDisposable {
           this._resizeViews();
         };
 
+        this._showProgressView('Creating new session');
+
         const sessionConfig = new SessionConfig();
         this._sessionConfig = sessionConfig;
         this._wsSettings = new WorkspaceSettings(
@@ -405,7 +439,10 @@ export class MainWindow implements IDisposable {
         if (type === 'notebook') {
           this.labView.labUIReady.then(() => {
             this.labView.newNotebook();
+            this._hideProgressView();
           });
+        } else {
+          this._hideProgressView();
         }
         appData.addSessionToRecents({
           workingDirectory: sessionConfig.resolvedWorkingDirectory,
@@ -504,6 +541,10 @@ export class MainWindow implements IDisposable {
         return;
       }
 
+      this._showProgressView(
+        'Relaunching using the selected Python enviroment'
+      );
+
       const env = this._registry.addEnvironment(path);
 
       this._wsSettings.setValue(SettingType.pythonPath, path);
@@ -511,15 +552,13 @@ export class MainWindow implements IDisposable {
 
       this._closeEnvSelectPopup();
 
-      this._closeSession();
-
       const loadLabView = () => {
         this._contentViewType = ContentViewType.Lab;
         this._updateContentView();
         this._resizeViews();
       };
 
-      this._server.server.stop().then(async () => {
+      this._disposeSession().then(async () => {
         const sessionConfig = this._sessionConfig;
         const server = await this.serverFactory.createServer({
           workingDirectory: sessionConfig.resolvedWorkingDirectory,
@@ -531,6 +570,8 @@ export class MainWindow implements IDisposable {
         sessionConfig.token = serverInfo.token;
         sessionConfig.url = serverInfo.url;
         loadLabView();
+
+        this._hideProgressView();
       });
     });
 
@@ -669,12 +710,17 @@ export class MainWindow implements IDisposable {
       width: width - 2 * padding,
       height: titleBarHeight - padding
     });
-    this.contentView?.setBounds({
+    const contentRect: Electron.Rectangle = {
       x: 0,
       y: titleBarHeight,
       width: width,
       height: height - titleBarHeight
-    });
+    };
+    this.contentView?.setBounds(contentRect);
+
+    if (this._progressViewVisible) {
+      this._progressView.view.view.setBounds(contentRect);
+    }
 
     this._resizeEnvSelectPopup();
 
@@ -835,6 +881,8 @@ export class MainWindow implements IDisposable {
       this._resizeViews();
     };
 
+    this._showProgressView('Creating new session');
+
     const server = await this.serverFactory.createServer({
       workingDirectory: sessionConfig.workingDirectory
     });
@@ -849,7 +897,10 @@ export class MainWindow implements IDisposable {
     if (sessionConfig.filesToOpen) {
       this.labView.labUIReady.then(() => {
         this.labView.openFiles();
+        this._hideProgressView();
       });
+    } else {
+      this._hideProgressView();
     }
 
     appData.addSessionToRecents({
@@ -873,6 +924,8 @@ export class MainWindow implements IDisposable {
       workingDirectory,
       filesToOpen
     );
+
+    this._showProgressView('Creating new session');
 
     this._wsSettings = new WorkspaceSettings(
       sessionConfig.workingDirectory || DEFAULT_WORKING_DIR
@@ -902,7 +955,10 @@ export class MainWindow implements IDisposable {
     if (filesToOpen) {
       this.labView.labUIReady.then(() => {
         this.labView.openFiles();
+        this._hideProgressView();
       });
+    } else {
+      this._hideProgressView();
     }
 
     appData.addSessionToRecents({
@@ -915,6 +971,8 @@ export class MainWindow implements IDisposable {
     remoteURL: string,
     persistSessionData: boolean
   ) {
+    this._showProgressView('Connecting to JupyterLab Server');
+
     try {
       const url = new URL(remoteURL);
       const isLocalUrl =
@@ -969,20 +1027,16 @@ export class MainWindow implements IDisposable {
           this._contentViewType = ContentViewType.Lab;
           this._updateContentView();
           this._resizeViews();
+          this._hideProgressView();
         })
         .catch(error => {
-          dialog.showMessageBox({
-            message: 'Failed to connect!',
-            detail: error.message,
-            type: 'error'
-          });
+          this._setProgress(
+            `Failed to connect! Error: ${error.message}`,
+            false
+          );
         });
     } catch (error) {
-      dialog.showMessageBox({
-        message: 'Failed to connect!',
-        detail: error.message,
-        type: 'error'
-      });
+      this._setProgress(`Failed to connect! Error: ${error.message}`, false);
     }
   }
 
@@ -1044,6 +1098,8 @@ export class MainWindow implements IDisposable {
   private _window: BrowserWindow;
   private _titleBarView: TitleBarView;
   private _welcomeView: WelcomeView;
+  private _progressView: ProgressView;
+  private _progressViewVisible: boolean = false;
   private _labView: LabView;
   private _contentViewType: ContentViewType = ContentViewType.Welcome;
   private _serverFactory: IServerFactory;

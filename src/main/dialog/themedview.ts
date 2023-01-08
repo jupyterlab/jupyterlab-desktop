@@ -77,6 +77,19 @@ export class ThemedView {
             padding: 5px;
             overflow-y: auto;
           }
+          a {
+            color: #505050;
+            outline: none;
+          }
+          a:hover {
+            color: #111111;
+          }
+          .app-ui-dark a {
+            color: #5d96ed;
+          }
+          .app-ui-dark a:hover {
+            color: #85a1cb;
+          }
           </style>
           <script type="module">${toolkitJsSrc}</script>
           <script>

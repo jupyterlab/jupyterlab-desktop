@@ -57,6 +57,10 @@ function copyAssests() {
     path.join(dest, '../app-assets', 'icon.svg')
   );
   fs.copySync(
+    path.join(srcDir, 'assets', 'progress-logo.svg'),
+    path.join(dest, '../app-assets', 'progress-logo.svg')
+  );
+  fs.copySync(
     path.join(srcDir, 'assets', 'jupyterlab-wordmark.svg'),
     path.join(dest, '../app-assets', 'jupyterlab-wordmark.svg')
   );

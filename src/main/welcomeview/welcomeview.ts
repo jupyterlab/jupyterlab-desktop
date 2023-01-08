@@ -99,12 +99,6 @@ export class WelcomeView {
 
     this._pageSource = `
       <!DOCTYPE html>
-      <!--
-      Copyright (c) Jupyter Development Team.
-      Distributed under the terms of the Modified BSD License.
-      
-      // control box SVGs from https://github.com/AlexTorresSk/custom-electron-titlebar
-      -->
       <html>
         <head>
           <meta charset="utf-8" />
