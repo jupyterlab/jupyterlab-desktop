@@ -15,7 +15,8 @@ import {
 import {
   getBundledPythonEnvPath,
   getBundledPythonPath,
-  getUserHomeDir
+  getUserHomeDir,
+  isPortInUse
 } from './utils';
 import { appData, FrontEndMode, SettingType, userSettings } from './settings';
 
@@ -333,7 +334,7 @@ export class Registry implements IRegistry {
           'list',
           '--json'
         ])
-          .then(output => {
+          .then(async output => {
             const runningServers: string[] = [];
             const lines = output.split('\n');
             for (const line of lines) {
@@ -342,9 +343,12 @@ export class Registry implements IRegistry {
                 const jsonStr = line.substring(jsonStart);
                 try {
                   const jsonData = JSON.parse(jsonStr);
-                  runningServers.push(
-                    `${jsonData.url}lab?token=${jsonData.token}`
-                  );
+                  // check if server is really up
+                  if (await isPortInUse(jsonData.port)) {
+                    runningServers.push(
+                      `${jsonData.url}lab?token=${jsonData.token}`
+                    );
+                  }
                 } catch (error) {
                   console.error(
                     `Failed to parse running JupyterLab server list`,

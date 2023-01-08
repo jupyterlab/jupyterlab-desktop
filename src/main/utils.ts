@@ -129,7 +129,22 @@ export function clearSession(session: Electron.Session): Promise<void> {
   });
 }
 
-export async function getFreePort(): Promise<number> {
+export function isPortInUse(port: number): Promise<boolean> {
+  return new Promise<boolean>((resolve, reject) => {
+    const server = createServer();
+    server.once('error', err => {
+      server.close();
+      resolve(true);
+    });
+    server.once('listening', () => {
+      server.close();
+      resolve(false);
+    });
+    server.listen(port, '127.0.0.1');
+  });
+}
+
+export function getFreePort(): Promise<number> {
   return new Promise<number>(resolve => {
     const getPort = () => {
       const server = createServer(socket => {
