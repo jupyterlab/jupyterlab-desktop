@@ -299,6 +299,10 @@ export class MainWindow implements IDisposable {
   }
 
   private _hideProgressView() {
+    if (!this._progressViewVisible) {
+      return;
+    }
+
     this._window.removeBrowserView(this._progressView.view.view);
     this._progressViewVisible = false;
   }
@@ -516,7 +520,12 @@ export class MainWindow implements IDisposable {
     });
 
     ipcMain.on('show-env-select-popup', event => {
-      if (event.sender !== this._titleBarView.view.webContents) {
+      if (
+        !(
+          event.sender === this._titleBarView.view.webContents ||
+          event.sender === this._progressView.view.view.webContents
+        )
+      ) {
         return;
       }
 
@@ -541,16 +550,26 @@ export class MainWindow implements IDisposable {
         return;
       }
 
+      this._closeEnvSelectPopup();
+
       this._showProgressView(
         'Relaunching using the selected Python enviroment'
       );
 
       const env = this._registry.addEnvironment(path);
 
+      if (!env) {
+        this._showProgressView(
+          `<div class="message-row">Error! Python environment at '${path}' is not compatible.</div>
+          <div class="message-row"><a href="javascript:void(0);" onclick="sendMessageToMain('show-env-select-popup')">Select another environment</a> <a href="javascript:void(0);" onclick="sendMessageToMain('hide-progress-view')">Cancel</a>.</div>`,
+          false
+        );
+
+        return;
+      }
+
       this._wsSettings.setValue(SettingType.pythonPath, path);
       this._sessionConfig.pythonPath = path;
-
-      this._closeEnvSelectPopup();
 
       const loadLabView = () => {
         this._contentViewType = ContentViewType.Lab;
@@ -637,6 +656,14 @@ export class MainWindow implements IDisposable {
       menu.popup({
         window: BrowserWindow.fromWebContents(event.sender)
       });
+    });
+
+    ipcMain.on('hide-progress-view', async event => {
+      if (event.sender !== this._progressView.view.view.webContents) {
+        return;
+      }
+
+      this._hideProgressView();
     });
   }
 

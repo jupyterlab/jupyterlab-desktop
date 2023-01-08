@@ -47,11 +47,17 @@ export class ProgressView {
           height: 200px;
         }
         .progress-message-row {
+          width: 100%;
           height: 30%;
+          flex-direction: column;
+          align-items: center;
         }
         #progress-message {
-          width: 100%;
+          width: 80%;
           text-align: center;
+        }
+        .message-row {
+          padding-bottom: 10px;
         }
       </style>
   

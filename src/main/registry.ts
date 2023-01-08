@@ -26,12 +26,12 @@ const envInfoPyCode = fs
 
 export interface IRegistry {
   getDefaultEnvironment: () => Promise<IPythonEnvironment>;
-  getEnvironmentByPath: (path: string) => IPythonEnvironment;
+  getEnvironmentByPath: (pythonPath: string) => IPythonEnvironment;
   getEnvironmentList: () => Promise<IPythonEnvironment[]>;
-  addEnvironment: (path: string) => IPythonEnvironment;
-  validatePythonEnvironmentAtPath: (path: string) => boolean;
+  addEnvironment: (pythonPath: string) => IPythonEnvironment;
+  validatePythonEnvironmentAtPath: (pythonPath: string) => boolean;
   validateCondaBaseEnvironmentAtPath: (envPath: string) => boolean;
-  setDefaultPythonPath: (path: string) => void;
+  setDefaultPythonPath: (pythonPath: string) => void;
   getCurrentPythonEnvironment: () => IPythonEnvironment;
   getAdditionalPathIncludesForPythonPath: (pythonPath: string) => string;
   getRequirements: () => Registry.IRequirement[];
@@ -197,8 +197,8 @@ export class Registry implements IRegistry {
     }
   }
 
-  getEnvironmentByPath(envPath: string): IPythonEnvironment {
-    return this._environments.find(env => envPath === env.path);
+  getEnvironmentByPath(pythonPath: string): IPythonEnvironment {
+    return this._environments.find(env => pythonPath === env.path);
   }
 
   /**
@@ -230,10 +230,24 @@ export class Registry implements IRegistry {
   /**
    * Create a new environment from a python executable, without waiting for the
    * entire registry to be resolved first.
-   * @param path The location of the python executable to create an environment from
+   * @param pythonPath The location of the python executable to create an environment from
    */
-  addEnvironment(path: string): IPythonEnvironment {
-    const env = this._resolveEnvironmentSync(path);
+  addEnvironment(pythonPath: string): IPythonEnvironment {
+    const inDiscoveredEnvList = this._discoveredEnvironments.find(
+      env => pythonPath === env.path
+    );
+    if (inDiscoveredEnvList) {
+      return inDiscoveredEnvList;
+    }
+
+    const inUserSetEnvList = this._userSetEnvironments.find(
+      env => pythonPath === env.path
+    );
+    if (inUserSetEnvList) {
+      return inUserSetEnvList;
+    }
+
+    const env = this._resolveEnvironmentSync(pythonPath);
     if (env) {
       this._userSetEnvironments.push(env);
       this._updateEnvironments();
@@ -241,8 +255,8 @@ export class Registry implements IRegistry {
     return env;
   }
 
-  validatePythonEnvironmentAtPath(path: string): boolean {
-    return this._resolveEnvironment(path) !== undefined;
+  validatePythonEnvironmentAtPath(pythonPath: string): boolean {
+    return this._resolveEnvironment(pythonPath) !== undefined;
   }
 
   validateCondaBaseEnvironmentAtPath(envPath: string): boolean {
@@ -296,8 +310,8 @@ export class Registry implements IRegistry {
     };
   }
 
-  setDefaultPythonPath(path: string): void {
-    this._defaultEnv = this.getEnvironmentByPath(path);
+  setDefaultPythonPath(pythonPath: string): void {
+    this._defaultEnv = this.getEnvironmentByPath(pythonPath);
   }
 
   getCurrentPythonEnvironment(): IPythonEnvironment {
