@@ -4,7 +4,7 @@
 import * as ejs from 'ejs';
 import * as path from 'path';
 import { ThemedView } from '../dialog/themedview';
-import { IEnvironmentType, IPythonEnvironment } from '../tokens';
+import { IPythonEnvironment } from '../tokens';
 
 export class PythonEnvironmentSelectPopup {
   constructor(options: PythonEnvironmentSelectView.IOptions) {
@@ -13,30 +13,8 @@ export class PythonEnvironmentSelectPopup {
       preload: path.join(__dirname, './preload.js')
     });
 
-    const envs = [...options.envs];
-    const bundledPythonPath = options.bundledPythonPath;
-    const currentPythonPath =
-      options.currentPythonPath === ''
-        ? bundledPythonPath
-        : options.currentPythonPath;
-
-    if (!envs.find(env => env.path === bundledPythonPath)) {
-      envs.unshift({
-        path: bundledPythonPath,
-        name: 'jlab_server',
-        type: IEnvironmentType.CondaRoot,
-        versions: {}
-      });
-    }
-
-    if (!envs.find(env => env.path === currentPythonPath)) {
-      envs.unshift({
-        path: currentPythonPath,
-        name: 'current',
-        type: IEnvironmentType.CondaRoot,
-        versions: {}
-      });
-    }
+    const envs = options.envs;
+    const currentPythonPath = options.currentPythonPath;
 
     const template = `
       <style>

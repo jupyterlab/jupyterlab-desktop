@@ -836,24 +836,31 @@ export class MainWindow implements IDisposable {
     dialog.load();
   }
 
-  private _showEnvSelectPopup() {
+  private async _showEnvSelectPopup() {
     this._closeEnvSelectPopup();
 
-    this.registry.getEnvironmentList().then((envs: IPythonEnvironment[]) => {
-      this._envSelectPopup = new PythonEnvironmentSelectPopup({
-        isDarkTheme: this._isDarkTheme,
-        currentPythonPath: this._sessionConfig.pythonPath,
-        bundledPythonPath: getBundledPythonPath(),
-        envs
-      });
+    const envs = await this.registry.getEnvironmentList();
+    let currentPythonPath = this._sessionConfig.pythonPath;
+    if (!currentPythonPath) {
+      const defaultEnv = await this.registry.getDefaultEnvironment();
+      if (defaultEnv) {
+        currentPythonPath = defaultEnv.path;
+      }
+    }
 
-      this._window.addBrowserView(this._envSelectPopup.view.view);
-
-      this._resizeEnvSelectPopup();
-
-      this._envSelectPopup.load();
-      this._envSelectPopup.view.view.webContents.focus();
+    this._envSelectPopup = new PythonEnvironmentSelectPopup({
+      isDarkTheme: this._isDarkTheme,
+      currentPythonPath: currentPythonPath,
+      bundledPythonPath: getBundledPythonPath(),
+      envs
     });
+
+    this._window.addBrowserView(this._envSelectPopup.view.view);
+
+    this._resizeEnvSelectPopup();
+
+    this._envSelectPopup.load();
+    this._envSelectPopup.view.view.webContents.focus();
   }
 
   private _resizeEnvSelectPopup(height?: number) {

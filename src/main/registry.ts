@@ -15,6 +15,7 @@ import {
 import {
   getBundledPythonEnvPath,
   getBundledPythonPath,
+  getEnvironmentPath,
   getUserHomeDir,
   isPortInUse
 } from './utils';
@@ -28,6 +29,7 @@ export interface IRegistry {
   getDefaultEnvironment: () => Promise<IPythonEnvironment>;
   getEnvironmentByPath: (pythonPath: string) => IPythonEnvironment;
   getEnvironmentList: () => Promise<IPythonEnvironment[]>;
+  condaRootPath: Promise<string>;
   addEnvironment: (pythonPath: string) => IPythonEnvironment;
   validatePythonEnvironmentAtPath: (pythonPath: string) => boolean;
   validateCondaBaseEnvironmentAtPath: (envPath: string) => boolean;
@@ -70,6 +72,30 @@ export class Registry implements IRegistry {
 
     if (defaultEnv) {
       this._defaultEnv = defaultEnv;
+      if (
+        defaultEnv.type === IEnvironmentType.CondaRoot &&
+        !this._condaRootPath
+      ) {
+        this.setCondaRootPath(getEnvironmentPath(defaultEnv));
+      }
+    }
+
+    if (!this._condaRootPath && appData.condaRootPath) {
+      if (this.validateCondaBaseEnvironmentAtPath(appData.condaRootPath)) {
+        this.setCondaRootPath(appData.condaRootPath);
+
+        // set default env from appData.condaRootPath
+        if (!this._defaultEnv) {
+          const pythonPath =
+            process.platform === 'win32'
+              ? join(appData.condaRootPath, 'python.exe')
+              : join(appData.condaRootPath, 'bin', 'python');
+          const defaultEnv = this._resolveEnvironmentSync(pythonPath);
+          if (defaultEnv) {
+            this._defaultEnv = defaultEnv;
+          }
+        }
+      }
     }
 
     const pathEnvironments = this._loadPathEnvironments();
@@ -225,6 +251,15 @@ export class Registry implements IRegistry {
           });
       });
     }
+  }
+
+  get condaRootPath(): Promise<string> {
+    return Promise.resolve(this._condaRootPath);
+  }
+
+  setCondaRootPath(rootPath: string) {
+    this._condaRootPath = rootPath;
+    appData.condaRootPath = rootPath;
   }
 
   /**
@@ -542,6 +577,10 @@ export class Registry implements IRegistry {
         type: IEnvironmentType.CondaRoot,
         versions: {}
       };
+
+      if (!this._condaRootPath) {
+        this.setCondaRootPath(condaRootPath);
+      }
 
       return newRootEnvironment;
     });
@@ -1043,6 +1082,7 @@ export class Registry implements IRegistry {
   private _discoveredEnvironments: IPythonEnvironment[] = [];
   private _userSetEnvironments: IPythonEnvironment[] = [];
   private _defaultEnv: IPythonEnvironment;
+  private _condaRootPath: string;
   private _registryBuilt: Promise<void>;
   private _requirements: Registry.IRequirement[];
 }

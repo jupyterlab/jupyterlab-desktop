@@ -197,24 +197,13 @@ export class JupyterServer {
         );
 
         let baseCondaPath: string = '';
+
         if (this._info.environment.type === IEnvironmentType.CondaRoot) {
           baseCondaPath = getEnvironmentPath(this._info.environment);
         } else if (this._info.environment.type === IEnvironmentType.CondaEnv) {
-          const baseCondaPathSet = appData.condaRootPath;
-          if (baseCondaPathSet && fs.existsSync(baseCondaPathSet)) {
-            baseCondaPath = baseCondaPathSet;
-          } else {
-            const environments = await this._registry.getEnvironmentList();
-            for (const environment of environments) {
-              if (environment.type === IEnvironmentType.CondaRoot) {
-                baseCondaPath = getEnvironmentPath(environment);
-                appData.condaRootPath = baseCondaPath;
-                break;
-              }
-            }
-          }
+          baseCondaPath = await this._registry.condaRootPath;
 
-          if (baseCondaPath === '') {
+          if (!baseCondaPath) {
             const choice = dialog.showMessageBoxSync({
               message: 'Select conda base environment',
               detail:
