@@ -111,12 +111,22 @@ export class Registry implements IRegistry {
     this._registryBuilt = Promise.all<IPythonEnvironment[]>(allEnvironments)
       .then(async environments => {
         let discoveredEnvs = [].concat(...environments);
-        discoveredEnvs = await this._resolveEnvironments(discoveredEnvs, true);
-        this._discoveredEnvironments = discoveredEnvs;
+
         this._userSetEnvironments = await this._resolveEnvironments(
           appData.userSetPythonEnvs,
           true
         );
+
+        // filter out user set environments
+        discoveredEnvs = discoveredEnvs.filter(env => {
+          return !this._userSetEnvironments.find(
+            userSetEnv => userSetEnv.path === env.path
+          );
+        });
+
+        discoveredEnvs = await this._resolveEnvironments(discoveredEnvs, true);
+        this._discoveredEnvironments = discoveredEnvs;
+
         this._updateEnvironments();
 
         if (!this._defaultEnv && this._environments.length > 0) {
@@ -424,8 +434,8 @@ export class Registry implements IRegistry {
 
   private _updateEnvironments() {
     this._environments = [
-      ...this._discoveredEnvironments,
-      ...this._userSetEnvironments
+      ...this._userSetEnvironments,
+      ...this._discoveredEnvironments
     ];
     appData.discoveredPythonEnvs = JSON.parse(
       JSON.stringify(this._discoveredEnvironments)
@@ -1024,7 +1034,7 @@ export class Registry implements IRegistry {
 
     for (let index = 0; index < requirements.length; index++) {
       let [aVersion, bVersion] = versionPairs[index];
-      let result = aVersion.localeCompare(bVersion);
+      let result = bVersion.localeCompare(aVersion);
 
       if (result !== 0) {
         return result;
