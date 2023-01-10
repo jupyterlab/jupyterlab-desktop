@@ -58,4 +58,8 @@ export interface IPythonEnvironment {
    * There will also be a version that accompanies the python executable
    */
   versions: IVersionContainer;
+  /**
+   * Default kernel name
+   */
+  defaultKernel: string;
 }

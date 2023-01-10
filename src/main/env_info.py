@@ -3,6 +3,7 @@ import os, sys, json, platform, importlib
 env_type = 'system'
 env_name = 'python'
 python_version = platform.python_version()
+default_kernel = 'python3'
 
 requirements = [
   'jupyterlab'
@@ -29,4 +30,11 @@ if env_type != 'venv' and os.path.exists(os.path.join(sys.prefix, "conda-meta"))
 if env_type != 'system':
   env_name = os.path.basename(sys.prefix)
 
-print(json.dumps({"type" : env_type, "name": env_name, "versions" : versions}))
+try:
+  import jupyter_client
+  mkm = jupyter_client.multikernelmanager.MultiKernelManager()
+  default_kernel = mkm.default_kernel_name
+except:
+  pass
+
+print(json.dumps({"type" : env_type, "name": env_name, "versions" : versions, "defaultKernel": default_kernel}))

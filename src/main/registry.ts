@@ -332,7 +332,8 @@ export class Registry implements IRegistry {
       path: pythonPath,
       type: envType,
       name: envName,
-      versions: envInfo.versions
+      versions: envInfo.versions,
+      defaultKernel: envInfo.defaultKernel
     };
   }
 
@@ -351,7 +352,8 @@ export class Registry implements IRegistry {
       path: pythonPath,
       type: envType,
       name: envName,
-      versions: envInfo.versions
+      versions: envInfo.versions,
+      defaultKernel: envInfo.defaultKernel
     };
   }
 
@@ -472,7 +474,8 @@ export class Registry implements IRegistry {
         name: `${basename(pythonPath)}-${index}`,
         path: pythonPath,
         type: IEnvironmentType.Path,
-        versions: {}
+        versions: {},
+        defaultKernel: 'python3'
       };
 
       return newPythonEnvironment;
@@ -585,7 +588,8 @@ export class Registry implements IRegistry {
         name: basename(condaRootPath),
         path: path,
         type: IEnvironmentType.CondaRoot,
-        versions: {}
+        versions: {},
+        defaultKernel: 'python3'
       };
 
       if (!this._condaRootPath) {

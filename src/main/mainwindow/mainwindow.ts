@@ -56,6 +56,7 @@ interface IServerInfo {
     versions?: IVersionContainer;
   };
   workingDirectory?: string;
+  defaultKernel?: string;
 }
 
 const titleBarHeight = 29;
@@ -159,6 +160,7 @@ export class MainWindow implements IDisposable {
     const serverInfo = server.server.info;
     this._sessionConfig.token = serverInfo.token;
     this._sessionConfig.url = serverInfo.url;
+    this._sessionConfig.defaultKernel = serverInfo.environment.defaultKernel;
 
     appData.addSessionToRecents({
       workingDirectory: this._sessionConfig.resolvedWorkingDirectory,
@@ -620,6 +622,7 @@ export class MainWindow implements IDisposable {
         const serverInfo = server.server.info;
         sessionConfig.token = serverInfo.token;
         sessionConfig.url = serverInfo.url;
+        sessionConfig.defaultKernel = serverInfo.environment.defaultKernel;
         loadLabView();
 
         this._hideProgressView();
@@ -745,7 +748,8 @@ export class MainWindow implements IDisposable {
             path: info.environment.path,
             versions: info.environment.versions
           },
-          workingDirectory: info.workingDirectory
+          workingDirectory: info.workingDirectory,
+          defaultKernel: info.environment.defaultKernel
         };
       }
     }
@@ -995,6 +999,7 @@ export class MainWindow implements IDisposable {
     const serverInfo = server.server.info;
     sessionConfig.token = serverInfo.token;
     sessionConfig.url = serverInfo.url;
+    sessionConfig.defaultKernel = serverInfo.environment.defaultKernel;
 
     loadLabView(sessionConfig);
 
@@ -1053,6 +1058,7 @@ export class MainWindow implements IDisposable {
     const serverInfo = server.server.info;
     sessionConfig.token = serverInfo.token;
     sessionConfig.url = serverInfo.url;
+    sessionConfig.defaultKernel = serverInfo.environment.defaultKernel;
 
     loadLabView(sessionConfig);
 

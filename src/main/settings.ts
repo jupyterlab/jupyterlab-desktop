@@ -384,7 +384,8 @@ export class ApplicationData {
           name: pythonEnv.name,
           path: pythonEnv.path,
           type: pythonEnv.type,
-          versions: { ...pythonEnv.versions }
+          versions: { ...pythonEnv.versions },
+          defaultKernel: 'python3'
         });
       }
     }
@@ -399,7 +400,8 @@ export class ApplicationData {
           name: pythonEnv.name,
           path: pythonEnv.path,
           type: pythonEnv.type,
-          versions: { ...pythonEnv.versions }
+          versions: { ...pythonEnv.versions },
+          defaultKernel: 'python3'
         });
       }
     }
@@ -571,6 +573,7 @@ export class SessionConfig implements ISessionData, IWindowData {
   workingDirectory: string = DEFAULT_WORKING_DIR;
   filesToOpen: string[] = [];
   pythonPath: string = '';
+  defaultKernel: string = '';
   lastOpened: Date = new Date();
 
   url: URL;

@@ -163,7 +163,7 @@ export class LabView {
                 commands.execute('docmanager:open', {
                   path: model.path,
                   factory: 'Notebook',
-                  kernel: { name: 'python3' }
+                  kernel: { name: '${this._sessionConfig.defaultKernel}' }
                 });
               }
             });
