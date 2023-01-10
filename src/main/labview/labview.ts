@@ -24,6 +24,11 @@ import {
   WorkspaceSettings
 } from '../settings';
 
+export type ILoadErrorCallback = (
+  errorCode: number,
+  errorDescription: string
+) => void;
+
 const DESKTOP_APP_ASSETS_PATH = 'desktop-app-assets';
 
 // file name to variables map
@@ -73,8 +78,17 @@ export class LabView {
     return this._view;
   }
 
-  load() {
+  load(errorCallback?: ILoadErrorCallback) {
     const sessionConfig = this._sessionConfig;
+
+    this._view.webContents.once(
+      'did-fail-load',
+      (event: Electron.Event, errorCode: number, errorDescription: string) => {
+        if (errorCallback) {
+          errorCallback(errorCode, errorDescription);
+        }
+      }
+    );
 
     if (
       this._wsSettings.getValue(SettingType.frontEndMode) ===

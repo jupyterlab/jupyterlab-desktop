@@ -356,6 +356,7 @@ export class JupyterApplication implements IApplication, IDisposable {
     });
 
     ipcMain.on('install-bundled-python-env', event => {
+      event.sender.send('install-bundled-python-env-status', 'STARTED');
       const platform = process.platform;
       const isWin = platform === 'win32';
       const appDir = getAppDir();
@@ -380,7 +381,7 @@ export class JupyterApplication implements IApplication, IDisposable {
         if (choice === 0) {
           fs.rmdirSync(installPath, { recursive: true });
         } else {
-          event.sender.send('install-bundled-python-env-result', 'CANCELLED');
+          event.sender.send('install-bundled-python-env-status', 'CANCELLED');
           return;
         }
       }
@@ -394,15 +395,24 @@ export class JupyterApplication implements IApplication, IDisposable {
 
       installerProc.on('exit', (exitCode: number) => {
         if (exitCode === 0) {
-          event.sender.send('install-bundled-python-env-result', 'SUCCESS');
+          event.sender.send('install-bundled-python-env-status', 'SUCCESS');
         } else {
-          event.sender.send('install-bundled-python-env-result', 'FAILURE');
-          log.error(new Error(`Installer Exit: ${exitCode}`));
+          const message = `Installer Exit: ${exitCode}`;
+          event.sender.send(
+            'install-bundled-python-env-status',
+            'FAILURE',
+            message
+          );
+          log.error(new Error(message));
         }
       });
 
       installerProc.on('error', (err: Error) => {
-        event.sender.send('install-bundled-python-env-result', 'FAILURE');
+        event.sender.send(
+          'install-bundled-python-env-status',
+          'FAILURE',
+          err.message
+        );
         log.error(err);
       });
     });

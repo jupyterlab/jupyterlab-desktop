@@ -52,9 +52,16 @@ export class ProgressView {
           flex-direction: column;
           align-items: center;
         }
-        #progress-message {
+        #progress-title, #progress-detail {
           width: 80%;
           text-align: center;
+        }
+        #progress-title {
+          margin-bottom: 15px;
+          font-weight: bold;
+        }
+        #progress-detail {
+          font-size: 14px;
         }
         .message-row {
           padding-bottom: 10px;
@@ -66,26 +73,58 @@ export class ProgressView {
           <div id="progress-logo" class="progress-logo animated">${progressLogo}</div>
         </div>
         <div class="row progress-message-row">
-          <div id="progress-message"></div>
+          <div id="progress-title"></div>
+          <div id="progress-detail"></div>
         </div>
       </div>
 
       <script>
       const progressSvg = document.querySelector('#progress-logo svg');
-      const progressMessage = document.getElementById('progress-message');
+      const progressTitle = document.getElementById('progress-title');
+      const progressDetail = document.getElementById('progress-detail');
 
       function sendMessageToMain(message, ...args) {
         window.electronAPI.sendMessageToMain(message, ...args);
       }
 
-      window.electronAPI.onShowProgress((message, showAnimation) => {
-        progressMessage.innerHTML = message;
+      function showProgress(title, detail, showAnimation) {
+        progressTitle.innerHTML = title || '';
+        progressDetail.innerHTML = detail || '';
+
         if (showAnimation) {
           progressSvg.unpauseAnimations();
         } else {
           progressSvg.pauseAnimations();
         }
+      }
+
+      window.electronAPI.onShowProgress((title, detail, showAnimation) => {
+        showProgress(title, detail, showAnimation);
       });
+
+      window.electronAPI.onInstallBundledPythonEnvStatus((status, detail) => {
+        const message = status === 'STARTED' ?
+          'Installing' :
+          status === 'CANCELLED' ?
+          'Installation cancelled!' :
+          status === 'FAILURE' ?
+            'Failed to install!' :
+          status === 'SUCCESS' ? 'Installation succeeded' : '';
+        let html = \`<div class="message-row">\$\{message\}</div>\`;
+        if (detail) {
+          html += \`<div class="message-row">\$\{detail\}</div>\`;
+        }
+        const showAnimation = status === 'STARTED';
+        
+        showProgress('Python Environment Install', html, showAnimation);
+
+        if (status === 'SUCCESS') {
+          setTimeout(() => {
+            sendMessageToMain('show-welcome-view')
+          }, 2000);
+        }
+      });
+      
       </script>
     `;
 
@@ -106,9 +145,14 @@ export class ProgressView {
     this._view.loadViewContent(this._pageBody);
   }
 
-  setProgress(message: string, showAnimation: boolean) {
+  setProgress(title: string, detail: string, showAnimation: boolean) {
     this._viewReady.then(() => {
-      this._view.view.webContents.send('show-progress', message, showAnimation);
+      this._view.view.webContents.send(
+        'show-progress',
+        title,
+        detail,
+        showAnimation
+      );
     });
   }
 

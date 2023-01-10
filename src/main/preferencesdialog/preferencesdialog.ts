@@ -144,7 +144,7 @@ export class PreferencesDialog {
               Updates
             </jp-tab>
 
-            <jp-tab-panel id="tab-general">
+            <jp-tab-panel id="tab-panel-general">
               <jp-radio-group orientation="horizontal">
                 <label slot="label">On startup</label>
                 <jp-radio name="startup-mode" value="welcome-page" <%= startupMode === 'welcome-page' ? 'checked' : '' %>>Show welcome page</jp-radio>
@@ -176,7 +176,7 @@ export class PreferencesDialog {
               </script>
             </jp-tab-panel>
 
-            <jp-tab-panel id="tab-server">
+            <jp-tab-panel id="tab-panel-server">
               <div class="row" style="line-height: 30px;">
                 <label>Default working directory</label>
               </div>
@@ -259,7 +259,6 @@ export class PreferencesDialog {
               }
 
               function handleInstallBundledEv() {
-                showProgress('Installing environment', true);
                 applyButton.setAttribute('disabled', 'disabled');
                 installBundledEnvButton.setAttribute('disabled', 'disabled');
                 window.electronAPI.installBundledPythonEnv();
@@ -271,14 +270,20 @@ export class PreferencesDialog {
                 window.electronAPI.updateBundledPythonEnv();
               }
 
-              window.electronAPI.onInstallBundledPythonEnvResult((result) => {
-                const message = result === 'CANCELLED' ?
+              window.electronAPI.onInstallBundledPythonEnvStatus((status) => {
+                const message = status === 'STARTED' ?
+                  'Installing Python environment' :
+                  status === 'CANCELLED' ?
                   'Installation cancelled!' :
-                  result === 'FAILURE' ?
-                    'Failed to install the environment!' : 'Installation succeeded';
-                showProgress(message, false);
+                  status === 'FAILURE' ?
+                    'Failed to install the environment!' :
+                  status === 'SUCCESS' ? 'Installation succeeded' : '';
+                
+                const animate = status === 'STARTED';
 
-                if (result === 'SUCCESS') {
+                showProgress(message, animate);
+
+                if (status === 'SUCCESS') {
                   bundledEnvRadio.removeAttribute('disabled');
                   hideBundledEnvWarning();
                 }
@@ -300,7 +305,7 @@ export class PreferencesDialog {
               </script>
             </jp-tab-panel>
 
-            <jp-tab-panel id="tab-updates">
+            <jp-tab-panel id="tab-panel-updates">
               <jp-checkbox id='checkbox-update-check' type='checkbox' <%= checkForUpdatesAutomatically ? 'checked' : '' %> onchange='handleAutoCheckForUpdates(this);'>Check for updates automatically</jp-checkbox>
               <jp-checkbox id='checkbox-update-install' type='checkbox' <%= installUpdatesAutomatically ? 'checked' : '' %> <%= installUpdatesAutomaticallyEnabled ? '' : 'disabled' %>>Download and install updates automatically</jp-checkbox>
 
@@ -382,6 +387,17 @@ export class PreferencesDialog {
 
           window.electronAPI.restartApp();
         }
+
+        ${
+          options.activateTab
+            ? `
+          document.addEventListener("DOMContentLoaded", () => {
+            document.getElementById('tab-${options.activateTab}').click();
+          });
+        `
+            : ''
+        }
+        
       </script>
     `;
     this._pageBody = ejs.render(template, {
@@ -413,6 +429,12 @@ export class PreferencesDialog {
 }
 
 export namespace PreferencesDialog {
+  export enum Tab {
+    General = 'general',
+    Server = 'server',
+    Updates = 'updates'
+  }
+
   export interface IOptions {
     isDarkTheme: boolean;
     startupMode: StartupMode;
@@ -424,5 +446,6 @@ export namespace PreferencesDialog {
     installUpdatesAutomatically: boolean;
     defaultWorkingDirectory: string;
     defaultPythonPath: string;
+    activateTab?: Tab;
   }
 }

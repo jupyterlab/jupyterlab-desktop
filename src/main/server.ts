@@ -1,13 +1,8 @@
 import { ChildProcess, execFile } from 'child_process';
-
 import { IRegistry } from './registry';
-
 import { dialog } from 'electron';
-
 import { ArrayExt } from '@lumino/algorithm';
-
 import log from 'electron-log';
-
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
@@ -183,11 +178,8 @@ export class JupyterServer {
         const isWin = process.platform === 'win32';
         const pythonPath = this._info.environment.path;
         if (!fs.existsSync(pythonPath)) {
-          dialog.showMessageBox({
-            message: `Environment not found at: ${pythonPath}`,
-            type: 'error'
-          });
-          reject();
+          reject(`Error: Environment not found at: ${pythonPath}`);
+          return;
         }
         this._info.port = this._options.port || (await getFreePort());
         this._info.token =
@@ -214,7 +206,7 @@ export class JupyterServer {
               cancelId: 1
             });
             if (choice == 1) {
-              reject(new Error('Failed to activate conda environment'));
+              reject('Failed to activate conda environment');
               return;
             }
 
@@ -234,12 +226,12 @@ export class JupyterServer {
                   baseCondaPath
                 )
               ) {
-                reject(new Error('Invalid base conda environment'));
+                reject('Invalid base conda environment');
                 return;
               }
               appData.condaRootPath = baseCondaPath;
             } else {
-              reject(new Error('Failed to activate conda environment'));
+              reject('Failed to activate conda environment');
               return;
             }
           }
@@ -365,12 +357,14 @@ export class JupyterServer {
   }
 
   get started(): Promise<boolean> {
-    return new Promise<boolean>(resolve => {
+    return new Promise<boolean>((resolve, reject) => {
       const checkStartServerPromise = () => {
         if (this._startServer) {
-          this._startServer.then(() => {
-            resolve(true);
-          });
+          this._startServer
+            .then(() => {
+              resolve(true);
+            })
+            .catch(reject);
         } else {
           setTimeout(() => {
             checkStartServerPromise();
@@ -493,8 +487,7 @@ export interface IServerFactory {
    * @return the factory item.
    */
   createServer: (
-    opts?: JupyterServer.IOptions,
-    forceNewServer?: boolean
+    opts?: JupyterServer.IOptions
   ) => Promise<JupyterServerFactory.IFactoryItem>;
 
   /**
@@ -562,11 +555,9 @@ export class JupyterServerFactory implements IServerFactory, IDisposable {
    * server creation.
    *
    * @param opts the Jupyter server options.
-   * @param forceNewServer force the creation of a new server over a free server.
    */
   async createServer(
-    opts?: JupyterServer.IOptions,
-    forceNewServer?: boolean
+    opts?: JupyterServer.IOptions
   ): Promise<JupyterServerFactory.IFactoryItem> {
     let item: JupyterServerFactory.IFactoryItem;
     let env: IPythonEnvironment;

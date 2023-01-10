@@ -1,10 +1,10 @@
 const { contextBridge, ipcRenderer } = require('electron');
 
-type InstallBundledPythonEnvResultListener = (result: string) => void;
+type InstallBundledPythonEnvStatusListener = (status: string) => void;
 type CustomPythonPathSelectedListener = (path: string) => void;
 type WorkingDirectorySelectedListener = (path: string) => void;
 
-let onInstallBundledPythonEnvResultListener: InstallBundledPythonEnvResultListener;
+let onInstallBundledPythonEnvStatusListener: InstallBundledPythonEnvStatusListener;
 let onCustomPythonPathSelectedListener: CustomPythonPathSelectedListener;
 let onWorkingDirectorySelectedListener: WorkingDirectorySelectedListener;
 
@@ -62,10 +62,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
   updateBundledPythonEnv: () => {
     ipcRenderer.send('install-bundled-python-env');
   },
-  onInstallBundledPythonEnvResult: (
-    callback: InstallBundledPythonEnvResultListener
+  onInstallBundledPythonEnvStatus: (
+    callback: InstallBundledPythonEnvStatusListener
   ) => {
-    onInstallBundledPythonEnvResultListener = callback;
+    onInstallBundledPythonEnvStatusListener = callback;
   },
   selectPythonPath: () => {
     ipcRenderer.send('select-python-path');
@@ -90,9 +90,9 @@ ipcRenderer.on('working-directory-selected', (event, path) => {
   }
 });
 
-ipcRenderer.on('install-bundled-python-env-result', (event, result) => {
-  if (onInstallBundledPythonEnvResultListener) {
-    onInstallBundledPythonEnvResultListener(result);
+ipcRenderer.on('install-bundled-python-env-status', (event, result) => {
+  if (onInstallBundledPythonEnvStatusListener) {
+    onInstallBundledPythonEnvStatusListener(result);
   }
 });
 

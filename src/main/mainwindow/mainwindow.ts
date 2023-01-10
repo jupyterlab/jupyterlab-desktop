@@ -26,7 +26,6 @@ import { TitleBarView } from '../titlebarview/titlebarview';
 import {
   clearSession,
   DarkThemeBGColor,
-  getBundledPythonPath,
   isDarkTheme,
   LightThemeBGColor
 } from '../utils';
@@ -281,21 +280,24 @@ export class MainWindow implements IDisposable {
     this._progressView = progressView;
   }
 
-  private _showProgressView(message?: string, showAnimation?: boolean) {
+  private _showProgressView(
+    title: string,
+    detail?: string,
+    showAnimation?: boolean
+  ) {
     if (!this._progressViewVisible) {
       this._window.addBrowserView(this._progressView.view.view);
       this._progressViewVisible = true;
+      this._titleBarView.showServerStatus(false);
     }
 
     this._resizeViews();
 
-    if (message) {
-      this._progressView.setProgress(message, showAnimation !== false);
-    }
+    this._progressView.setProgress(title, detail, showAnimation !== false);
   }
 
-  private _setProgress(message: string, showAnimation: boolean) {
-    this._progressView.setProgress(message, showAnimation);
+  private _setProgress(title: string, detail: string, showAnimation: boolean) {
+    this._progressView.setProgress(title, detail, showAnimation);
   }
 
   private _hideProgressView() {
@@ -326,7 +328,17 @@ export class MainWindow implements IDisposable {
       labView.view.webContents.focus();
     });
 
-    labView.load();
+    labView.load((errorCode: number, errorDescription: string) => {
+      this._showProgressView(
+        'Failed to load JupyterLab',
+        `
+      <div class="message-row">Error: ${errorDescription}</div>
+        <div class="message-row">
+          <a href="javascript:void(0);" onclick="sendMessageToMain('show-welcome-view')">Go to Welcome Page</a> 
+        </div>
+      `
+      );
+    });
 
     this._labView = labView;
 
@@ -437,7 +449,26 @@ export class MainWindow implements IDisposable {
         this._wsSettings = new WorkspaceSettings(
           sessionConfig.workingDirectory || DEFAULT_WORKING_DIR
         );
-        await this._createServerForSession();
+        try {
+          await this._createServerForSession();
+        } catch (error) {
+          this._showProgressView(
+            'Failed to create session!',
+            `
+            <div class="message-row">${error}</div>
+            <div class="message-row">
+              <a href="javascript:void(0);" onclick="sendMessageToMain('show-welcome-view')">Go to Welcome Page</a>
+            </div>
+            <div class="message-row">
+              <a href="javascript:void(0);" onclick="sendMessageToMain('install-bundled-python-env')">Install / update Python environment</a>
+            </div>
+            <div class="message-row">
+              <a href="javascript:void(0);" onclick="sendMessageToMain('show-server-preferences')">Change the default Python environment</a>
+            </div>
+          `,
+            false
+          );
+        }
 
         loadLabView();
         if (type === 'notebook') {
@@ -560,6 +591,7 @@ export class MainWindow implements IDisposable {
 
       if (!env) {
         this._showProgressView(
+          'Invalid Environment',
           `<div class="message-row">Error! Python environment at '${path}' is not compatible.</div>
           <div class="message-row"><a href="javascript:void(0);" onclick="sendMessageToMain('show-env-select-popup')">Select another environment</a> <a href="javascript:void(0);" onclick="sendMessageToMain('hide-progress-view')">Cancel</a>.</div>`,
           false
@@ -640,7 +672,10 @@ export class MainWindow implements IDisposable {
         }
       ];
 
-      if (this._contentViewType === ContentViewType.Lab) {
+      if (
+        this._contentViewType === ContentViewType.Lab &&
+        !this._progressViewVisible
+      ) {
         template.unshift(
           {
             label: 'Close Session',
@@ -664,6 +699,22 @@ export class MainWindow implements IDisposable {
       }
 
       this._hideProgressView();
+    });
+
+    ipcMain.on('show-welcome-view', async event => {
+      if (event.sender !== this._progressView.view.view.webContents) {
+        return;
+      }
+
+      this._showWelcomeView();
+    });
+
+    ipcMain.on('show-server-preferences', async event => {
+      if (event.sender !== this._progressView.view.view.webContents) {
+        return;
+      }
+
+      this._showPreferencesDialog(PreferencesDialog.Tab.Server);
     });
   }
 
@@ -781,7 +832,7 @@ export class MainWindow implements IDisposable {
     });
   }
 
-  private _showPreferencesDialog() {
+  private _showPreferencesDialog(activateTab?: PreferencesDialog.Tab) {
     if (this._preferencesDialog) {
       this._preferencesDialog.window.focus();
       return;
@@ -805,7 +856,8 @@ export class MainWindow implements IDisposable {
       defaultWorkingDirectory: userSettings.getValue(
         SettingType.defaultWorkingDirectory
       ),
-      defaultPythonPath: userSettings.getValue(SettingType.pythonPath)
+      defaultPythonPath: userSettings.getValue(SettingType.pythonPath),
+      activateTab: activateTab
     });
 
     this._preferencesDialog = dialog;
@@ -851,7 +903,6 @@ export class MainWindow implements IDisposable {
     this._envSelectPopup = new PythonEnvironmentSelectPopup({
       isDarkTheme: this._isDarkTheme,
       currentPythonPath: currentPythonPath,
-      bundledPythonPath: getBundledPythonPath(),
       envs
     });
 
@@ -898,6 +949,25 @@ export class MainWindow implements IDisposable {
       fileOrFolders
     );
     if (sessionConfig) {
+      if (
+        this._sessionConfig &&
+        this._contentViewType === ContentViewType.Lab
+      ) {
+        const choice = dialog.showMessageBoxSync({
+          type: 'warning',
+          message: 'Replace existing session',
+          detail:
+            'Opening the files will close the existing JupyterLab session. Would you like to continue?',
+          buttons: ['Open', 'Cancel'],
+          defaultId: 1,
+          cancelId: 1
+        });
+
+        if (choice === 1) {
+          return;
+        }
+      }
+
       this._disposeSession().then(() => {
         this._wsSettings = new WorkspaceSettings(
           sessionConfig.workingDirectory || DEFAULT_WORKING_DIR
@@ -1065,12 +1135,21 @@ export class MainWindow implements IDisposable {
         })
         .catch(error => {
           this._setProgress(
-            `Failed to connect! Error: ${error.message}`,
+            'Connection Error',
+            `<div class="message-row">${error.message}</div>
+            <div class="message-row">
+              <a href="javascript:void(0);" onclick="sendMessageToMain('show-welcome-view')">Go to Welcome Page</a>`,
             false
           );
         });
     } catch (error) {
-      this._setProgress(`Failed to connect! Error: ${error.message}`, false);
+      this._setProgress(
+        'Connection Error',
+        `<div class="message-row">${error.message}</div>
+            <div class="message-row">
+              <a href="javascript:void(0);" onclick="sendMessageToMain('show-welcome-view')">Go to Welcome Page</a>`,
+        false
+      );
     }
   }
 
@@ -1088,6 +1167,14 @@ export class MainWindow implements IDisposable {
         recentSession.filesToOpen
       );
     }
+  }
+
+  private _showWelcomeView() {
+    this._hideProgressView();
+
+    this._contentViewType = ContentViewType.Welcome;
+    this._updateContentView();
+    this._resizeViews();
   }
 
   private _closeSession() {

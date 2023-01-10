@@ -184,7 +184,6 @@ export namespace PythonEnvironmentSelectView {
   export interface IOptions {
     isDarkTheme: boolean;
     currentPythonPath: string;
-    bundledPythonPath: string;
     envs: IPythonEnvironment[];
   }
 }

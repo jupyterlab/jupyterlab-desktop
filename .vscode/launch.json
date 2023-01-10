@@ -2,7 +2,7 @@
     "version": "0.1.0",
     "configurations": [
       {
-        "name": "Debug Electron App",
+        "name": "Debug",
         "type": "node",
         "request": "launch",
         "cwd": "${workspaceFolder}",
@@ -15,7 +15,7 @@
         }
       },
       {
-        "name": "Debug Electron App without webpack",
+        "name": "Debug without webpack",
         "type": "node",
         "request": "launch",
         "cwd": "${workspaceFolder}",
@@ -28,7 +28,7 @@
         }
       },
       {
-        "name": "Debug Electron App without Build",
+        "name": "Debug without build",
         "type": "node",
         "request": "launch",
         "cwd": "${workspaceFolder}",
