@@ -189,15 +189,26 @@ export class MainWindow implements IDisposable {
     this._titleBarView = titleBarView;
 
     if (this._contentViewType === ContentViewType.Lab) {
-      this._createServerForSession().then(() => {
-        this._updateContentView();
-        if (this._sessionConfig.filesToOpen.length > 0) {
-          this._labView.labUIReady.then(() => {
-            this._labView.openFiles();
-          });
-        }
-        this._resizeViews();
-      });
+      this._createServerForSession()
+        .then(() => {
+          this._updateContentView();
+          if (this._sessionConfig.filesToOpen.length > 0) {
+            this._labView.labUIReady.then(() => {
+              this._labView.openFiles();
+            });
+          }
+          this._resizeViews();
+        })
+        .catch(error => {
+          this._setProgress(
+            'Failed to create session',
+            `<div class="message-row">${error}</div>
+            <div class="message-row">
+              <a href="javascript:void(0);" onclick="sendMessageToMain('show-welcome-view')">Go to Welcome Page</a>
+            </div>`,
+            false
+          );
+        });
       this._resizeViews();
     } else {
       this._updateContentView();
@@ -309,6 +320,9 @@ export class MainWindow implements IDisposable {
 
     this._window.removeBrowserView(this._progressView.view.view);
     this._progressViewVisible = false;
+    this._titleBarView.showServerStatus(
+      this._contentViewType === ContentViewType.Lab
+    );
   }
 
   private _loadLabView() {
@@ -606,7 +620,8 @@ export class MainWindow implements IDisposable {
         this._showProgressView(
           'Invalid Environment',
           `<div class="message-row">Error! Python environment at '${path}' is not compatible.</div>
-          <div class="message-row"><a href="javascript:void(0);" onclick="sendMessageToMain('show-env-select-popup')">Select another environment</a> <a href="javascript:void(0);" onclick="sendMessageToMain('hide-progress-view')">Cancel</a>.</div>`,
+          <div class="message-row"><a href="javascript:void(0);" onclick="sendMessageToMain('show-env-select-popup')">Select another environment</a></div>
+          <div class="message-row"><a href="javascript:void(0);" onclick="sendMessageToMain('hide-progress-view')">Cancel</a></div>`,
           false
         );
 
@@ -623,20 +638,31 @@ export class MainWindow implements IDisposable {
       };
 
       this._disposeSession().then(async () => {
-        const sessionConfig = this._sessionConfig;
-        const server = await this.serverFactory.createServer({
-          workingDirectory: sessionConfig.resolvedWorkingDirectory,
-          environment: env
-        });
-        this._server = server;
-        await server.server.started;
-        const serverInfo = server.server.info;
-        sessionConfig.token = serverInfo.token;
-        sessionConfig.url = serverInfo.url;
-        sessionConfig.defaultKernel = serverInfo.environment.defaultKernel;
-        loadLabView();
+        try {
+          const sessionConfig = this._sessionConfig;
+          const server = await this.serverFactory.createServer({
+            workingDirectory: sessionConfig.resolvedWorkingDirectory,
+            environment: env
+          });
+          this._server = server;
+          await server.server.started;
+          const serverInfo = server.server.info;
+          sessionConfig.token = serverInfo.token;
+          sessionConfig.url = serverInfo.url;
+          sessionConfig.defaultKernel = serverInfo.environment.defaultKernel;
+          loadLabView();
 
-        this._hideProgressView();
+          this._hideProgressView();
+        } catch (error) {
+          this._setProgress(
+            'Failed to create session',
+            `<div class="message-row">${error}</div>
+            <div class="message-row">
+              <a href="javascript:void(0);" onclick="sendMessageToMain('show-welcome-view')">Go to Welcome Page</a>
+            </div>`,
+            false
+          );
+        }
       });
     });
 
@@ -987,7 +1013,16 @@ export class MainWindow implements IDisposable {
         this._wsSettings = new WorkspaceSettings(
           sessionConfig.workingDirectory || DEFAULT_WORKING_DIR
         );
-        this._createSessionForConfig(sessionConfig);
+        this._createSessionForConfig(sessionConfig).catch(error => {
+          this._setProgress(
+            'Failed to create session',
+            `<div class="message-row">${error}</div>
+            <div class="message-row">
+              <a href="javascript:void(0);" onclick="sendMessageToMain('show-welcome-view')">Go to Welcome Page</a>
+            </div>`,
+            false
+          );
+        });
       });
     }
   }
@@ -1177,7 +1212,8 @@ export class MainWindow implements IDisposable {
             'Connection Error',
             `<div class="message-row">${error.message}</div>
             <div class="message-row">
-              <a href="javascript:void(0);" onclick="sendMessageToMain('show-welcome-view')">Go to Welcome Page</a>`,
+              <a href="javascript:void(0);" onclick="sendMessageToMain('show-welcome-view')">Go to Welcome Page</a>
+            </div>`,
             false
           );
         });
@@ -1185,8 +1221,9 @@ export class MainWindow implements IDisposable {
       this._setProgress(
         'Connection Error',
         `<div class="message-row">${error.message}</div>
-            <div class="message-row">
-              <a href="javascript:void(0);" onclick="sendMessageToMain('show-welcome-view')">Go to Welcome Page</a>`,
+        <div class="message-row">
+          <a href="javascript:void(0);" onclick="sendMessageToMain('show-welcome-view')">Go to Welcome Page</a>
+        </div>`,
         false
       );
     }
@@ -1209,7 +1246,16 @@ export class MainWindow implements IDisposable {
         recentSession.filesToOpen,
         sessionIndex,
         useDefaultPythonEnv
-      );
+      ).catch(error => {
+        this._setProgress(
+          'Failed to create session',
+          `<div class="message-row">${error}</div>
+          <div class="message-row">
+            <a href="javascript:void(0);" onclick="sendMessageToMain('show-welcome-view')">Go to Welcome Page</a>
+          </div>`,
+          false
+        );
+      });
     }
   }
 

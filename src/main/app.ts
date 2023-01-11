@@ -56,7 +56,9 @@ export class JupyterApplication implements IApplication, IDisposable {
     this._registry = new Registry();
     this._serverFactory = new JupyterServerFactory(this._registry);
     // create a server in advance
-    this._serverFactory.createFreeServer();
+    this._serverFactory.createFreeServer().catch(error => {
+      console.error('Failed to create free server', error);
+    });
     this._registerListeners();
 
     if (
