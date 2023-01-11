@@ -203,9 +203,9 @@ export class MainWindow implements IDisposable {
           this._setProgress(
             'Failed to create session',
             `<div class="message-row">${error}</div>
-            <div class="message-row">
-              <a href="javascript:void(0);" onclick="sendMessageToMain('show-welcome-view')">Go to Welcome Page</a>
-            </div>`,
+          <div class="message-row">
+            <a href="javascript:void(0);" onclick="sendMessageToMain('show-welcome-view')">Go to Welcome Page</a>
+          </div>`,
             false
           );
         });
@@ -487,6 +487,8 @@ export class MainWindow implements IDisposable {
         }
 
         loadLabView();
+        appData.setLastSession(this._sessionConfig);
+
         if (type === 'notebook') {
           this.labView.labUIReady.then(() => {
             this.labView.newNotebook();
@@ -1048,6 +1050,7 @@ export class MainWindow implements IDisposable {
     sessionConfig.defaultKernel = serverInfo.environment.defaultKernel;
 
     loadLabView(sessionConfig);
+    appData.setLastSession(this._sessionConfig);
 
     if (sessionConfig.filesToOpen) {
       this.labView.labUIReady.then(() => {
@@ -1129,6 +1132,7 @@ export class MainWindow implements IDisposable {
     sessionConfig.defaultKernel = serverInfo.environment.defaultKernel;
 
     loadLabView(sessionConfig);
+    appData.setLastSession(this._sessionConfig);
 
     if (filesToOpen) {
       this.labView.labUIReady.then(() => {
@@ -1206,6 +1210,7 @@ export class MainWindow implements IDisposable {
           this._updateContentView();
           this._resizeViews();
           this._hideProgressView();
+          appData.setLastSession(this._sessionConfig);
         })
         .catch(error => {
           this._setProgress(
@@ -1275,6 +1280,7 @@ export class MainWindow implements IDisposable {
     };
 
     this._disposeSession().then(() => {
+      appData.setLastSession(null);
       showWelcome();
     });
   }

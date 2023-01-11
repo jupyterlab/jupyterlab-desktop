@@ -322,6 +322,15 @@ export class ApplicationData {
     return _appDataSingleton;
   }
 
+  setLastSession(sessionConfig: SessionConfig | null) {
+    if (sessionConfig) {
+      this.sessions.unshift(sessionConfig);
+      this.sessions.length = 1;
+    } else {
+      this.sessions = [];
+    }
+  }
+
   read() {
     const appDataPath = this._getAppDataPath();
     if (!fs.existsSync(appDataPath)) {
@@ -693,9 +702,6 @@ export class SessionConfig implements ISessionData, IWindowData {
     if ('filesToOpen' in jsonData) {
       this.filesToOpen = [...jsonData.filesToOpen];
     }
-    if ('pythonPath' in jsonData) {
-      this.pythonPath = jsonData.pythonPath;
-    }
     if ('pageConfig' in jsonData) {
       this.pageConfig = JSON.parse(JSON.stringify(jsonData.pageConfig));
     }
@@ -724,10 +730,6 @@ export class SessionConfig implements ISessionData, IWindowData {
 
     if (this.filesToOpen.length > 0) {
       jsonData.filesToOpen = [...this.filesToOpen];
-    }
-
-    if (this.pythonPath !== '') {
-      jsonData.pythonPath = this.pythonPath;
     }
 
     // if local server and JupyterLab UI is in client-app mode
