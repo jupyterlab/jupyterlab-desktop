@@ -544,6 +544,17 @@ export class MainWindow implements IDisposable {
       this._createSessionForRecent(sessionIndex);
     });
 
+    ipcMain.on(
+      'open-recent-session-with-default-env',
+      (event, sessionIndex: number) => {
+        if (event.sender !== this._progressView.view.view.webContents) {
+          return;
+        }
+
+        this._createSessionForRecent(sessionIndex, true);
+      }
+    );
+
     ipcMain.on('open-dropped-files', (event, fileOrFolders: string[]) => {
       if (event.sender !== this._welcomeView.view.webContents) {
         return;
@@ -1020,7 +1031,9 @@ export class MainWindow implements IDisposable {
 
   private async _createSessionForLocal(
     workingDirectory?: string,
-    filesToOpen?: string[]
+    filesToOpen?: string[],
+    recentSessionIndex?: number,
+    useDefaultPythonEnv?: boolean
   ) {
     const loadLabView = (sessionConfig: SessionConfig) => {
       this._sessionConfig = sessionConfig;
@@ -1044,12 +1057,32 @@ export class MainWindow implements IDisposable {
       workingDirectory: sessionConfig.resolvedWorkingDirectory
     };
 
+    if (useDefaultPythonEnv === true) {
+      this._wsSettings.setValue(SettingType.pythonPath, '');
+    }
+
     const pythonPath = this._wsSettings.getValue(SettingType.pythonPath);
 
     if (pythonPath) {
-      serverOptions.environment = this._registry.getEnvironmentByPath(
-        pythonPath
-      );
+      const env = this._registry.addEnvironment(pythonPath);
+
+      if (!env) {
+        this._showProgressView(
+          'Invalid Environment configured for workspace',
+          `<div class="message-row">Error! Python environment at '${pythonPath}' is not compatible.</div>
+          ${
+            recentSessionIndex !== undefined
+              ? `<div class="message-row"><a href="javascript:void(0);" onclick="sendMessageToMain('open-recent-session-with-default-env', ${recentSessionIndex})">Reset to default Python environment</a></div>`
+              : ''
+          }
+          <div class="message-row"><a href="javascript:void(0);" onclick="sendMessageToMain('hide-progress-view')">Cancel</a></div>`,
+          false
+        );
+
+        return;
+      }
+
+      serverOptions.environment = env;
     }
 
     const server = await this.serverFactory.createServer(serverOptions);
@@ -1159,7 +1192,10 @@ export class MainWindow implements IDisposable {
     }
   }
 
-  private _createSessionForRecent(sessionIndex: number) {
+  private _createSessionForRecent(
+    sessionIndex: number,
+    useDefaultPythonEnv?: boolean
+  ) {
     const recentSession = appData.recentSessions[sessionIndex];
 
     if (recentSession.remoteURL) {
@@ -1170,7 +1206,9 @@ export class MainWindow implements IDisposable {
     } else {
       this._createSessionForLocal(
         recentSession.workingDirectory,
-        recentSession.filesToOpen
+        recentSession.filesToOpen,
+        sessionIndex,
+        useDefaultPythonEnv
       );
     }
   }
