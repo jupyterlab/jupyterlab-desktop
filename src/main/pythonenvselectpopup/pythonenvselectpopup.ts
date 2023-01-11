@@ -59,6 +59,7 @@ export class PythonEnvironmentSelectPopup {
         #env-list {
           max-width: 100%;
           width: 100%;
+          box-shadow: none;
         }
         jp-menu {
           background: none;

@@ -109,7 +109,7 @@ export class ProgressView {
           'Installation cancelled!' :
           status === 'FAILURE' ?
             'Failed to install!' :
-          status === 'SUCCESS' ? 'Installation succeeded' : '';
+          status === 'SUCCESS' ? 'Installation succeeded. Restarting now...' : '';
         let html = \`<div class="message-row">\$\{message\}</div>\`;
         if (detail) {
           html += \`<div class="message-row">\$\{detail\}</div>\`;
@@ -120,7 +120,7 @@ export class ProgressView {
 
         if (status === 'SUCCESS') {
           setTimeout(() => {
-            sendMessageToMain('show-welcome-view')
+            sendMessageToMain('restart-app');
           }, 2000);
         }
       });

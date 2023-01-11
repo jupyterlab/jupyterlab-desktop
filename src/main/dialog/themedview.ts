@@ -80,6 +80,7 @@ export class ThemedView {
           a {
             color: #505050;
             outline: none;
+            text-decoration: none;
           }
           a:hover {
             color: #111111;
