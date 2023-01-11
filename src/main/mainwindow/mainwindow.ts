@@ -189,27 +189,34 @@ export class MainWindow implements IDisposable {
     this._titleBarView = titleBarView;
 
     if (this._contentViewType === ContentViewType.Lab) {
-      this._createServerForSession()
-        .then(() => {
-          this._updateContentView();
-          if (this._sessionConfig.filesToOpen.length > 0) {
-            this._labView.labUIReady.then(() => {
-              this._labView.openFiles();
-            });
-          }
-          this._resizeViews();
-        })
-        .catch(error => {
-          this._setProgress(
-            'Failed to create session',
-            `<div class="message-row">${error}</div>
+      if (this._sessionConfig.isRemote) {
+        this._createSessionForRemoteUrl(
+          this._sessionConfig.remoteURL,
+          this._sessionConfig.persistSessionData
+        );
+      } else {
+        this._createServerForSession()
+          .then(() => {
+            this._updateContentView();
+            if (this._sessionConfig.filesToOpen.length > 0) {
+              this._labView.labUIReady.then(() => {
+                this._labView.openFiles();
+              });
+            }
+            this._resizeViews();
+          })
+          .catch(error => {
+            this._setProgress(
+              'Failed to create session',
+              `<div class="message-row">${error}</div>
           <div class="message-row">
             <a href="javascript:void(0);" onclick="sendMessageToMain('show-welcome-view')">Go to Welcome Page</a>
           </div>`,
-            false
-          );
-        });
-      this._resizeViews();
+              false
+            );
+          });
+        this._resizeViews();
+      }
     } else {
       this._updateContentView();
       this._resizeViews();
@@ -487,6 +494,7 @@ export class MainWindow implements IDisposable {
         }
 
         loadLabView();
+        this._updateSessionWindowInfo();
         appData.setLastSession(this._sessionConfig);
 
         if (type === 'notebook') {
@@ -1050,6 +1058,7 @@ export class MainWindow implements IDisposable {
     sessionConfig.defaultKernel = serverInfo.environment.defaultKernel;
 
     loadLabView(sessionConfig);
+    this._updateSessionWindowInfo();
     appData.setLastSession(this._sessionConfig);
 
     if (sessionConfig.filesToOpen) {
@@ -1132,6 +1141,7 @@ export class MainWindow implements IDisposable {
     sessionConfig.defaultKernel = serverInfo.environment.defaultKernel;
 
     loadLabView(sessionConfig);
+    this._updateSessionWindowInfo();
     appData.setLastSession(this._sessionConfig);
 
     if (filesToOpen) {
@@ -1210,6 +1220,7 @@ export class MainWindow implements IDisposable {
           this._updateContentView();
           this._resizeViews();
           this._hideProgressView();
+          this._updateSessionWindowInfo();
           appData.setLastSession(this._sessionConfig);
         })
         .catch(error => {

@@ -153,6 +153,9 @@ export class JupyterServer {
   constructor(options: JupyterServer.IOptions, registry: IRegistry) {
     this._options = options;
     this._info.environment = options.environment;
+    const workingDir =
+      this._options.workingDirectory || userSettings.resolvedWorkingDirectory;
+    this._info.workingDirectory = workingDir;
     this._registry = registry;
   }
 
@@ -244,13 +247,8 @@ export class JupyterServer {
           this._info.port
         );
 
-        const workingDir =
-          this._options.workingDirectory ||
-          userSettings.resolvedWorkingDirectory;
-        this._info.workingDirectory = workingDir;
-
         this._nbServer = execFile(launchScriptPath, {
-          cwd: workingDir,
+          cwd: this._info.workingDirectory,
           shell: isWin ? 'cmd.exe' : '/bin/bash',
           env: {
             ...process.env,
