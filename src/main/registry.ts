@@ -315,26 +315,33 @@ export class Registry implements IRegistry {
   }
 
   async getEnvironmentInfo(pythonPath: string): Promise<IPythonEnvironment> {
-    const envInfoOut = await this._runCommand(pythonPath, [
-      '-c',
-      envInfoPyCode
-    ]);
-    const envInfo = JSON.parse(envInfoOut.trim());
-    const envType =
-      envInfo.type === 'conda-root'
-        ? IEnvironmentType.CondaRoot
-        : envInfo.type === 'conda-env'
-        ? IEnvironmentType.CondaEnv
-        : IEnvironmentType.VirtualEnv;
-    const envName = `${EnvironmentTypeName[envType]}: ${envInfo.name}`;
+    try {
+      const envInfoOut = await this._runCommand(pythonPath, [
+        '-c',
+        envInfoPyCode
+      ]);
+      const envInfo = JSON.parse(envInfoOut.trim());
+      const envType =
+        envInfo.type === 'conda-root'
+          ? IEnvironmentType.CondaRoot
+          : envInfo.type === 'conda-env'
+          ? IEnvironmentType.CondaEnv
+          : IEnvironmentType.VirtualEnv;
+      const envName = `${EnvironmentTypeName[envType]}: ${envInfo.name}`;
 
-    return {
-      path: pythonPath,
-      type: envType,
-      name: envName,
-      versions: envInfo.versions,
-      defaultKernel: envInfo.defaultKernel
-    };
+      return {
+        path: pythonPath,
+        type: envType,
+        name: envName,
+        versions: envInfo.versions,
+        defaultKernel: envInfo.defaultKernel
+      };
+    } catch (error) {
+      console.error(
+        `Failed to get environment info at path '${pythonPath}'.`,
+        error
+      );
+    }
   }
 
   getEnvironmentInfoSync(pythonPath: string): IPythonEnvironment {

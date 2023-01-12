@@ -17,7 +17,7 @@ for requirement in requirements:
   try:
     module = importlib.import_module(requirement)
     versions[requirement] = module.__version__
-  except ImportError:
+  except:
     versions[requirement] = 'NOT-FOUND'
 
 if (getattr(sys, "base_prefix", None) or getattr(sys, "real_prefix", None) or sys.prefix) != sys.prefix:
