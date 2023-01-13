@@ -341,10 +341,12 @@ export class JupyterServer {
           );
         } else {
           this._nbServer.kill();
-          this._shutdownServer().then(() => {
-            this._stopping = false;
-            resolve();
-          });
+          this._shutdownServer()
+            .then(() => {
+              this._stopping = false;
+              resolve();
+            })
+            .catch(reject);
         }
       } else {
         this._stopping = false;
@@ -385,7 +387,7 @@ export class JupyterServer {
     this._nbServer.stderr.removeAllListeners();
   }
 
-  private _shutdownServer(): Promise<void> {
+  private _callShutdownAPI(): Promise<void> {
     return new Promise<void>((resolve, reject) => {
       const req = httpRequest(
         `${this._info.url.origin}/api/shutdown?_xsrf=${this._info.token}`,
@@ -403,10 +405,42 @@ export class JupyterServer {
           }
         }
       );
-      req.on('error', function (err) {
+      req.on('error', err => {
         reject(err);
       });
       req.end();
+    });
+  }
+
+  private _shutdownServer(): Promise<void> {
+    return new Promise<void>((resolve, reject) => {
+      this._callShutdownAPI()
+        .then(() => {
+          resolve();
+        })
+        .catch(error => {
+          // if no connection, it is possible that server was not up yet
+          // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+          // @ts-ignore
+          if (error.code === 'ECONNREFUSED') {
+            Promise.race([
+              waitUntilServerIsUp(this._info.url),
+              waitForDuration(SERVER_LAUNCH_TIMEOUT)
+            ]).then((up: boolean) => {
+              if (up) {
+                this._callShutdownAPI()
+                  .then(() => {
+                    resolve();
+                  })
+                  .catch(reject);
+              } else {
+                reject();
+              }
+            });
+          } else {
+            reject(error);
+          }
+        });
     });
   }
 
@@ -635,9 +669,7 @@ export class JupyterServerFactory implements IServerFactory, IDisposable {
         .then(() => {
           resolve();
         })
-        .catch(() => {
-          reject();
-        });
+        .catch(reject);
     });
 
     return this._disposePromise;

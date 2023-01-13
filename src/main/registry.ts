@@ -20,6 +20,7 @@ import {
   isPortInUse
 } from './utils';
 import { appData, FrontEndMode, SettingType, userSettings } from './settings';
+import { IDisposable } from './disposable';
 
 const envInfoPyCode = fs
   .readFileSync(path.join(__dirname, 'env_info.py'))
@@ -39,9 +40,10 @@ export interface IRegistry {
   getRequirements: () => Registry.IRequirement[];
   getEnvironmentInfo(pythonPath: string): Promise<IPythonEnvironment>;
   getRunningServerList(): Promise<string[]>;
+  dispose(): Promise<void>;
 }
 
-export class Registry implements IRegistry {
+export class Registry implements IRegistry, IDisposable {
   constructor() {
     const minJLabVersionRequired =
       userSettings.getValue(SettingType.frontEndMode) === FrontEndMode.ClientApp
@@ -315,6 +317,10 @@ export class Registry implements IRegistry {
   }
 
   async getEnvironmentInfo(pythonPath: string): Promise<IPythonEnvironment> {
+    if (this._disposing) {
+      return;
+    }
+
     try {
       const envInfoOut = await this._runCommand(pythonPath, [
         '-c',
@@ -345,6 +351,10 @@ export class Registry implements IRegistry {
   }
 
   getEnvironmentInfoSync(pythonPath: string): IPythonEnvironment {
+    if (this._disposing) {
+      return;
+    }
+
     const envInfoOut = this._runCommandSync(pythonPath, ['-c', envInfoPyCode]);
     const envInfo = JSON.parse(envInfoOut.trim());
     const envType =
@@ -1099,6 +1109,17 @@ export class Registry implements IRegistry {
     }
   }
 
+  dispose(): Promise<void> {
+    this._disposing = true;
+
+    return new Promise<void>(resolve => {
+      this._registryBuilt.then(() => {
+        this._disposing = false;
+        resolve();
+      });
+    });
+  }
+
   private _environments: IPythonEnvironment[] = [];
   private _discoveredEnvironments: IPythonEnvironment[] = [];
   private _userSetEnvironments: IPythonEnvironment[] = [];
@@ -1106,6 +1127,7 @@ export class Registry implements IRegistry {
   private _condaRootPath: string;
   private _registryBuilt: Promise<void>;
   private _requirements: Registry.IRequirement[];
+  private _disposing: boolean = false;
 }
 
 export namespace Registry {

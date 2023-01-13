@@ -229,11 +229,20 @@ export class JupyterApplication implements IApplication, IDisposable {
 
     this._disposePromise = new Promise<void>((resolve, reject) => {
       Promise.all([
-        this._mainWindow.dispose(),
-        this._serverFactory.dispose()
-      ]).then(() => {
-        resolve();
-      });
+        this._registry.dispose(),
+        this._serverFactory.dispose(),
+        this._mainWindow.dispose()
+      ])
+        .then(() => {
+          resolve();
+        })
+        .catch(error => {
+          console.error(
+            'There was a problem shutting down the application',
+            error
+          );
+          resolve();
+        });
     });
 
     return this._disposePromise;
