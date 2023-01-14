@@ -14,7 +14,7 @@ export class PythonEnvironmentSelectPopup {
     });
 
     const envs = options.envs;
-    const currentPythonPath = options.currentPythonPath;
+    const currentPythonPath = options.currentPythonPath || '';
 
     const template = `
       <style>
@@ -92,6 +92,10 @@ export class PythonEnvironmentSelectPopup {
         const numEnvs = envs.length;
         let activeIndex = -1;
 
+        window.electronAPI.onCurrentPythonPathSet((path) => {
+          pythonPathInput.value = path;
+        });
+
         window.electronAPI.onCustomPythonPathSelected((path) => {
           pythonPathInput.value = path;
         });
@@ -121,7 +125,7 @@ export class PythonEnvironmentSelectPopup {
             if (event.key === "Enter") {
               window.electronAPI.setPythonPath(pythonPathInput.value);
             } else if (event.key === "Escape") {
-              window.electronAPI.closeEnvSelectPopup();
+              window.electronAPI.hideEnvSelectPopup();
             } else if (event.key === "ArrowDown") {
               if (numEnvs == 0) {
                 return;
@@ -147,7 +151,7 @@ export class PythonEnvironmentSelectPopup {
 
           window.onkeydown = (event) => {
             if (event.key === "Escape") {
-              window.electronAPI.closeEnvSelectPopup();
+              window.electronAPI.hideEnvSelectPopup();
             }
           };
 
@@ -177,6 +181,13 @@ export class PythonEnvironmentSelectPopup {
     this._view.loadViewContent(this._pageBody);
   }
 
+  setCurrentPythonPath(currentPythonPath: string) {
+    this._view.view.webContents.send(
+      'set-current-python-path',
+      currentPythonPath
+    );
+  }
+
   private _view: ThemedView;
   private _pageBody: string;
 }
@@ -184,7 +195,7 @@ export class PythonEnvironmentSelectPopup {
 export namespace PythonEnvironmentSelectView {
   export interface IOptions {
     isDarkTheme: boolean;
-    currentPythonPath: string;
     envs: IPythonEnvironment[];
+    currentPythonPath?: string;
   }
 }

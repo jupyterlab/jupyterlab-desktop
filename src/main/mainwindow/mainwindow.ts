@@ -135,6 +135,7 @@ export class MainWindow implements IDisposable {
     this._registerListeners();
 
     this._createProgressView();
+    this._createEnvSelectPopup();
   }
 
   get window(): BrowserWindow {
@@ -366,7 +367,7 @@ export class MainWindow implements IDisposable {
     this._labView = labView;
 
     this._labView.view.webContents.on('focus', () => {
-      this._closeEnvSelectPopup();
+      this._hideEnvSelectPopup();
     });
 
     this.labView.view.webContents.on('page-title-updated', (event, title) => {
@@ -600,7 +601,7 @@ export class MainWindow implements IDisposable {
       this._showEnvSelectPopup();
     });
 
-    ipcMain.on('close-env-select-popup', event => {
+    ipcMain.on('hide-env-select-popup', event => {
       if (
         !(
           this._envSelectPopup &&
@@ -610,7 +611,7 @@ export class MainWindow implements IDisposable {
         return;
       }
 
-      this._closeEnvSelectPopup();
+      this._hideEnvSelectPopup();
     });
 
     ipcMain.on('set-python-path', async (event, path) => {
@@ -618,7 +619,7 @@ export class MainWindow implements IDisposable {
         return;
       }
 
-      this._closeEnvSelectPopup();
+      this._hideEnvSelectPopup();
 
       this._showProgressView(
         'Relaunching using the selected Python enviroment'
@@ -939,10 +940,21 @@ export class MainWindow implements IDisposable {
     dialog.load();
   }
 
-  private async _showEnvSelectPopup() {
-    this._closeEnvSelectPopup();
-
+  private async _createEnvSelectPopup() {
     const envs = await this.registry.getEnvironmentList();
+
+    this._envSelectPopup = new PythonEnvironmentSelectPopup({
+      isDarkTheme: this._isDarkTheme,
+      envs
+    });
+
+    this._envSelectPopup.load();
+  }
+
+  private async _showEnvSelectPopup() {
+    if (this._envSelectPopupVisible) {
+      return;
+    }
     let currentPythonPath = this._sessionConfig.pythonPath;
     if (!currentPythonPath) {
       const defaultEnv = await this.registry.getDefaultEnvironment();
@@ -951,22 +963,16 @@ export class MainWindow implements IDisposable {
       }
     }
 
-    this._envSelectPopup = new PythonEnvironmentSelectPopup({
-      isDarkTheme: this._isDarkTheme,
-      currentPythonPath: currentPythonPath,
-      envs
-    });
+    this._envSelectPopup.setCurrentPythonPath(currentPythonPath);
 
     this._window.addBrowserView(this._envSelectPopup.view.view);
-
+    this._envSelectPopupVisible = true;
     this._resizeEnvSelectPopup();
-
-    this._envSelectPopup.load();
     this._envSelectPopup.view.view.webContents.focus();
   }
 
   private _resizeEnvSelectPopup(height?: number) {
-    if (!this._envSelectPopup) {
+    if (!this._envSelectPopupVisible) {
       return;
     }
 
@@ -987,12 +993,12 @@ export class MainWindow implements IDisposable {
     });
   }
 
-  private _closeEnvSelectPopup() {
-    if (!this._envSelectPopup) {
+  private _hideEnvSelectPopup() {
+    if (!this._envSelectPopupVisible) {
       return;
     }
     this._window.removeBrowserView(this._envSelectPopup.view.view);
-    this._envSelectPopup = null;
+    this._envSelectPopupVisible = false;
   }
 
   handleOpenFilesOrFolders(fileOrFolders?: string[]) {
@@ -1338,6 +1344,7 @@ export class MainWindow implements IDisposable {
   private _remoteServerSelectDialog: RemoteServerSelectDialog;
   private _envSelectPopup: PythonEnvironmentSelectPopup;
   private _envSelectPopupHeight: number = defaultEnvSelectPopupHeight;
+  private _envSelectPopupVisible: boolean = false;
   private _disposePromise: Promise<void>;
 }
 

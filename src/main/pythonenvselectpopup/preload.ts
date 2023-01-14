@@ -1,8 +1,10 @@
 const { contextBridge, ipcRenderer } = require('electron');
 
+type CurrentPythonPathSetListener = (path: string) => void;
 type CustomPythonPathSelectedListener = (path: string) => void;
 
 let onCustomPythonPathSelectedListener: CustomPythonPathSelectedListener;
+let onCurrentPythonPathSetListener: CurrentPythonPathSetListener;
 
 contextBridge.exposeInMainWorld('electronAPI', {
   getAppConfig: () => {
@@ -19,14 +21,23 @@ contextBridge.exposeInMainWorld('electronAPI', {
   setPythonPath: (path: string) => {
     ipcRenderer.send('set-python-path', path);
   },
+  onCurrentPythonPathSet: (callback: CurrentPythonPathSetListener) => {
+    onCurrentPythonPathSetListener = callback;
+  },
   onCustomPythonPathSelected: (callback: CustomPythonPathSelectedListener) => {
     onCustomPythonPathSelectedListener = callback;
   },
-  closeEnvSelectPopup: () => {
-    ipcRenderer.send('close-env-select-popup');
+  hideEnvSelectPopup: () => {
+    ipcRenderer.send('hide-env-select-popup');
   },
   envSelectPopupHeightUpdated: (height: number) => {
     ipcRenderer.send('env-select-popup-height-updated', height);
+  }
+});
+
+ipcRenderer.on('set-current-python-path', (event, path) => {
+  if (onCurrentPythonPathSetListener) {
+    onCurrentPythonPathSetListener(path);
   }
 });
 
