@@ -941,7 +941,7 @@ export class MainWindow implements IDisposable {
   }
 
   private async _createEnvSelectPopup() {
-    const envs = await this.registry.getEnvironmentList();
+    const envs = await this.registry.getEnvironmentList(false);
 
     this._envSelectPopup = new PythonEnvironmentSelectPopup({
       isDarkTheme: this._isDarkTheme,

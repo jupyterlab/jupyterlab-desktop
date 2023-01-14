@@ -29,7 +29,7 @@ const envInfoPyCode = fs
 export interface IRegistry {
   getDefaultEnvironment: () => Promise<IPythonEnvironment>;
   getEnvironmentByPath: (pythonPath: string) => IPythonEnvironment;
-  getEnvironmentList: () => Promise<IPythonEnvironment[]>;
+  getEnvironmentList: (cacheOK: boolean) => Promise<IPythonEnvironment[]>;
   condaRootPath: Promise<string>;
   addEnvironment: (pythonPath: string) => IPythonEnvironment;
   validatePythonEnvironmentAtPath: (pythonPath: string) => boolean;
@@ -158,14 +158,14 @@ export class Registry implements IRegistry, IDisposable {
     envs: IPythonEnvironment[],
     sort?: boolean
   ): Promise<IPythonEnvironment[]> {
-    const uniqueEnvs = this._getUniqueObjects(envs, env => {
-      return env.path;
+    let filteredEnvs = envs.filter(env => this._pathExistsSync(env.path));
+    const uniqueEnvs = this._getUniqueObjects(filteredEnvs, env => {
+      return fs.realpathSync(env.path);
     });
-
     const resolvedEnvs = await Promise.all(
       uniqueEnvs.map(async env => await this._resolveEnvironment(env.path))
     );
-    const filteredEnvs = resolvedEnvs.filter(env => env !== undefined);
+    filteredEnvs = resolvedEnvs.filter(env => env !== undefined);
 
     if (sort) {
       this._sortEnvironments(filteredEnvs, this._requirements);
@@ -243,8 +243,8 @@ export class Registry implements IRegistry, IDisposable {
    * Retrieve the complete list of environments, once they have been resolved
    * @returns a promise that resolves to a complete list of environments
    */
-  getEnvironmentList(): Promise<IPythonEnvironment[]> {
-    if (this._environments.length > 0) {
+  getEnvironmentList(cacheOK: boolean): Promise<IPythonEnvironment[]> {
+    if (cacheOK && this._environments.length > 0) {
       return Promise.resolve(this._environments);
     } else {
       return new Promise((resolve, reject) => {
