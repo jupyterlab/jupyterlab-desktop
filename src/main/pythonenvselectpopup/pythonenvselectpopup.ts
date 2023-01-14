@@ -68,6 +68,15 @@ export class PythonEnvironmentSelectPopup {
         jp-menu-item.active {
           background: var(--neutral-layer-3);
         }
+        jp-menu-item::part(content) {
+          width: 100%;
+          text-overflow: ellipsis;
+          overflow: hidden;
+          white-space: nowrap;
+        }
+        jp-menu-item::part(end) {
+          margin-left: 10px;
+        }
       </style>
       <div style="height: 100%; display: flex; flex-direction: column; row-gap: 5px;">
         <div>
@@ -78,10 +87,19 @@ export class PythonEnvironmentSelectPopup {
           </div>
         </div>
         <% if (envs.length > 0) { %>
+        <%
+          function getEnvTooltip(env) {
+            const packages = [];
+            for (const name in env.versions) {
+              packages.push(name + ': ' + env.versions[name]);
+            }
+            return env.name + '\\n' + env.path + '\\n' + packages.join(', ');
+          }
+        %>
         <div style="flex-grow: 1; overflow-x: hidden; overflow-y: auto;">
           <jp-menu id="env-list">
             <% envs.forEach(env => { %>
-              <jp-menu-item data-python-path="<%- env.path %>" onclick="onMenuItemClicked(this);"><%- env.path %><div slot="end"><%- env.name %></div></jp-menu-item>
+              <jp-menu-item data-python-path="<%- env.path %>" onclick="onMenuItemClicked(this);" title="<%- getEnvTooltip(env) %>"><%- env.path %><div slot="end"><%- env.name %></div></jp-menu-item>
             <% }); %>
           </jp-menu>
         </div>

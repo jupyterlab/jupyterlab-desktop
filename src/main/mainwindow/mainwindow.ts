@@ -622,7 +622,7 @@ export class MainWindow implements IDisposable {
       this._hideEnvSelectPopup();
 
       this._showProgressView(
-        'Relaunching using the selected Python enviroment'
+        'Restarting server using the selected Python enviroment'
       );
 
       const env = this._registry.addEnvironment(path);
@@ -1282,6 +1282,8 @@ export class MainWindow implements IDisposable {
       this._updateContentView();
       this._resizeViews();
     };
+
+    this._hideEnvSelectPopup();
 
     this._disposeSession().then(() => {
       appData.setLastSession(null);
