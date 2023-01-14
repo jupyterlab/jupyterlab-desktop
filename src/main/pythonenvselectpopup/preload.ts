@@ -29,9 +29,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
   },
   hideEnvSelectPopup: () => {
     ipcRenderer.send('hide-env-select-popup');
-  },
-  envSelectPopupHeightUpdated: (height: number) => {
-    ipcRenderer.send('env-select-popup-height-updated', height);
   }
 });
 

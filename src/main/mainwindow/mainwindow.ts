@@ -677,19 +677,6 @@ export class MainWindow implements IDisposable {
       });
     });
 
-    ipcMain.on('env-select-popup-height-updated', async (event, height) => {
-      if (
-        !(
-          this._envSelectPopup &&
-          event.sender === this._envSelectPopup.view.view.webContents
-        )
-      ) {
-        return;
-      }
-
-      this._resizeEnvSelectPopup(height);
-    });
-
     ipcMain.on('show-app-context-menu', event => {
       if (event.sender !== this._titleBarView.view.webContents) {
         return;
@@ -971,7 +958,7 @@ export class MainWindow implements IDisposable {
     this._envSelectPopup.view.view.webContents.focus();
   }
 
-  private _resizeEnvSelectPopup(height?: number) {
+  private _resizeEnvSelectPopup() {
     if (!this._envSelectPopupVisible) {
       return;
     }
@@ -979,17 +966,17 @@ export class MainWindow implements IDisposable {
     const titleBarRect = this._titleBarView.view.getBounds();
     const popupWidth = 600;
     const paddingRight = process.platform === 'darwin' ? 33 : 127;
-    const newHeight = Math.min(
-      height || this._envSelectPopupHeight,
+    // shorten browser view height if larger than max allowed
+    const maxHeight = Math.min(
+      this._envSelectPopup.getScrollHeight(),
       defaultEnvSelectPopupHeight
     );
-    this._envSelectPopupHeight = newHeight;
 
     this._envSelectPopup.view.view.setBounds({
       x: Math.round(titleBarRect.width - paddingRight - popupWidth),
       y: Math.round(titleBarRect.height),
       width: popupWidth,
-      height: Math.round(newHeight)
+      height: Math.round(maxHeight)
     });
   }
 
@@ -1343,7 +1330,6 @@ export class MainWindow implements IDisposable {
   private _preferencesDialog: PreferencesDialog;
   private _remoteServerSelectDialog: RemoteServerSelectDialog;
   private _envSelectPopup: PythonEnvironmentSelectPopup;
-  private _envSelectPopupHeight: number = defaultEnvSelectPopupHeight;
   private _envSelectPopupVisible: boolean = false;
   private _disposePromise: Promise<void>;
 }
