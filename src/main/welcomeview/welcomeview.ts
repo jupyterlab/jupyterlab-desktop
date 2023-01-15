@@ -64,7 +64,7 @@ export class WelcomeView {
         tooltip = `${recentSession.remoteURL}\nSession data ${
           recentSession.persistSessionData ? '' : 'not '
         }persisted`;
-        sessionDetail = 'remote';
+        sessionDetail = '';
       } else {
         // local
         if (recentSession.filesToOpen.length > 0) {

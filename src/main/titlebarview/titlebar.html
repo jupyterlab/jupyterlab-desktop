@@ -256,7 +256,7 @@ Distributed under the terms of the Modified BSD License.
 
       const updateStatusItemLocal = (serverInfo) => {
         const env = serverInfo.environment;
-        serverLabel.innerText = `Local (${env.name})`;
+        serverLabel.innerText = env.name;
         let packages = [];
         for (const name in env.versions) {
           packages.push(`${name}: ${env.versions[name]}`);
@@ -268,8 +268,13 @@ Distributed under the terms of the Modified BSD License.
       };
 
       const updateStatusItemRemote = (serverInfo) => {
-        serverLabel.innerText = 'Remote';
-        serverButton.title = `Remote server\n${serverInfo.url}\nSession data ${serverInfo.persistSessionData ? '': 'not '}persisted`;
+        const url = new URL(serverInfo.url);
+        const isLocalUrl =
+          url.hostname === 'localhost' || url.hostname === '127.0.0.1';
+
+        const connectionType = isLocalUrl ? 'Local' : 'Remote';
+        serverLabel.innerText = connectionType
+        serverButton.title = `${connectionType} connection\n${serverInfo.url}\nSession data ${serverInfo.persistSessionData ? '': 'not '}persisted`;
         serverButton.classList.add('disabled');
       };
 
