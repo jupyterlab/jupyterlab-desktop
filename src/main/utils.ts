@@ -4,7 +4,7 @@
 import * as path from 'path';
 import * as fs from 'fs';
 import log from 'electron-log';
-import { AddressInfo, createServer } from 'net';
+import { AddressInfo, createServer, Socket } from 'net';
 import { app, nativeTheme } from 'electron';
 import { IPythonEnvironment } from './tokens';
 
@@ -131,16 +131,25 @@ export function clearSession(session: Electron.Session): Promise<void> {
 
 export function isPortInUse(port: number): Promise<boolean> {
   return new Promise<boolean>((resolve, reject) => {
-    const server = createServer();
-    server.once('error', err => {
-      server.close();
-      resolve(true);
+    let inUse = false;
+    const socket = new Socket();
+    socket.setTimeout(200);
+    socket.once('error', err => {
+      inUse = false;
+      socket.destroy();
     });
-    server.once('listening', () => {
-      server.close();
-      resolve(false);
+    socket.on('timeout', () => {
+      inUse = false;
+      socket.destroy();
     });
-    server.listen(port, '127.0.0.1');
+    socket.on('connect', () => {
+      inUse = true;
+      socket.destroy();
+    });
+    socket.on('close', exception => {
+      resolve(inUse);
+    });
+    socket.connect({ port: port, host: '127.0.0.1' });
   });
 }
 
