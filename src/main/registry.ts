@@ -31,6 +31,7 @@ export interface IRegistry {
   getEnvironmentByPath: (pythonPath: string) => IPythonEnvironment;
   getEnvironmentList: (cacheOK: boolean) => Promise<IPythonEnvironment[]>;
   condaRootPath: Promise<string>;
+  setCondaRootPath(rootPath: string): void;
   addEnvironment: (pythonPath: string) => IPythonEnvironment;
   validatePythonEnvironmentAtPath: (pythonPath: string) => boolean;
   validateCondaBaseEnvironmentAtPath: (envPath: string) => boolean;

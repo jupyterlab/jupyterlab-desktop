@@ -15,7 +15,7 @@ import {
   getSchemasDir,
   getUserDataDir
 } from './utils';
-import { appData, FrontEndMode, SettingType, userSettings } from './settings';
+import { FrontEndMode, SettingType, userSettings } from './settings';
 import { randomBytes } from 'crypto';
 import { IDisposable } from './disposable';
 
@@ -232,7 +232,7 @@ export class JupyterServer {
                 reject('Invalid base conda environment');
                 return;
               }
-              appData.condaRootPath = baseCondaPath;
+              this._registry.setCondaRootPath(baseCondaPath);
             } else {
               reject('Failed to activate conda environment');
               return;
