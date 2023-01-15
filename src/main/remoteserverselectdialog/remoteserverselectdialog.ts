@@ -20,9 +20,6 @@ export class RemoteServerSelectDialog {
     });
 
     const recentServers = appData.recentRemoteURLs;
-    const localServers = options.runningServers.map(server => {
-      return { url: server };
-    });
     const persistSessionData = options.persistSessionData;
 
     const template = `
@@ -44,6 +41,15 @@ export class RemoteServerSelectDialog {
         }
         jp-menu {
           background: none;
+        }
+        jp-menu-item {
+          width: 100%;
+        }
+        jp-menu-item::part(content) {
+          width: 100%;
+          text-overflow: ellipsis;
+          overflow: hidden;
+          white-space: nowrap;
         }
         jp-menu-item.category {
           color: #777777;
@@ -80,14 +86,10 @@ export class RemoteServerSelectDialog {
             <jp-menu-item class="category" disabled>Recents</jp-menu-item>
             <% } %>
             <% recentServers.forEach((remote, index) => { %>
-              <jp-menu-item onclick="onMenuItemClicked(this, 'recent', <%- index %>);"><%- remote.url %></jp-menu-item>
+              <jp-menu-item onclick="onRecentServerClicked(this, <%- index %>);"><%- remote.url %></jp-menu-item>
             <% }); %>
-            <% if (localServers.length > 0) { %>
             <jp-menu-item class="category" disabled>Local JupyterLab Servers</jp-menu-item>
-            <% } %>
-            <% localServers.forEach((remote, index) => { %>
-              <jp-menu-item onclick="onMenuItemClicked(this, 'local', <%- index %>);"><%- remote.url %></jp-menu-item>
-            <% }); %>
+            <jp-menu-item class="running-server">Loading...</jp-menu-item>
           </jp-menu>
         </div>
         <div class="row">
@@ -99,14 +101,45 @@ export class RemoteServerSelectDialog {
 
       <script>
         const recentServers = <%- JSON.stringify(recentServers) %>;
-        const localServers = <%- JSON.stringify(localServers) %>;
         const serverUrlInput = document.getElementById('server-url');
         const persistSessionDataCheckbox = document.getElementById('persist-session-data');
+        const serverList = document.getElementById('server-list');
         
-        function onMenuItemClicked(el, type, index) {
-          const server = type == 'recent' ? recentServers[index] : localServers[index];
+        function onRecentServerClicked(el, index) {
+          const server = recentServers[index];
           window.electronAPI.setRemoteServerOptions(server.url, persistSessionDataCheckbox.checked);
         }
+
+        function updateRunningServerList(runningServers) {
+          // clear list
+          serverList.querySelectorAll(".running-server").forEach((item) => {
+            item.remove();
+          });
+
+          if (runningServers.length === 0) {
+            return;
+          }
+
+          const fragment = new DocumentFragment();
+          runningServers.forEach((server, index) => {
+            const menuItem = document.createElement('jp-menu-item');
+            menuItem.classList.add("running-server");
+            menuItem.addEventListener('click', () => {
+              window.electronAPI.setRemoteServerOptions(server.url, persistSessionDataCheckbox.checked);
+            });
+            menuItem.innerText = server.url;
+            fragment.append(menuItem);
+          });
+
+          serverList.append(fragment);
+        }
+
+        window.electronAPI.onRunningServerListSet((runningServers) => {
+          const list = runningServers.map(server => {
+            return { url: server };
+          });
+          updateRunningServerList(list);
+        });
 
         document.addEventListener("DOMContentLoaded", () => {
           serverUrlInput.control.onkeydown = (event) => {
@@ -119,7 +152,6 @@ export class RemoteServerSelectDialog {
         `;
     this._pageBody = ejs.render(template, {
       recentServers,
-      localServers,
       persistSessionData
     });
   }
@@ -132,6 +164,13 @@ export class RemoteServerSelectDialog {
     this._window.loadDialogContent(this._pageBody);
   }
 
+  setRunningServerList(runningServers: string[]) {
+    this._window.window.webContents.send(
+      'set-running-server-list',
+      runningServers
+    );
+  }
+
   private _window: ThemedWindow;
   private _pageBody: string;
 }
@@ -141,7 +180,7 @@ export namespace RemoteServerSelectDialog {
     isDarkTheme: boolean;
     parent?: BrowserWindow;
     modal?: boolean;
-    runningServers: string[];
+    runningServers?: string[];
     persistSessionData: boolean;
   }
 }

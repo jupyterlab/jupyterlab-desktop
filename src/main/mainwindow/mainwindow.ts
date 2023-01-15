@@ -909,17 +909,18 @@ export class MainWindow implements IDisposable {
   }
 
   private async _selectRemoteServerUrl() {
-    const runningServers = await this._registry.getRunningServerList();
-
     this._remoteServerSelectDialog = new RemoteServerSelectDialog({
       isDarkTheme: this._isDarkTheme,
       parent: this._window,
       modal: true,
-      runningServers,
       persistSessionData: true
     });
 
     this._remoteServerSelectDialog.load();
+
+    this._registry.getRunningServerList().then(runningServers => {
+      this._remoteServerSelectDialog.setRunningServerList(runningServers);
+    });
   }
 
   private _showAboutDialog() {
