@@ -62,7 +62,7 @@ export class PreferencesDialog {
           bundledEnvInstallationLatest = false;
         }
       } catch (error) {
-        console.error('Failed to check bundled environment update');
+        console.error('Failed to check bundled environment update', error);
       }
     }
 

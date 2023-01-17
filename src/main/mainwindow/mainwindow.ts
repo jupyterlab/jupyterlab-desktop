@@ -811,14 +811,14 @@ export class MainWindow implements IDisposable {
             versions: info.environment.versions
           },
           workingDirectory: info.workingDirectory,
-          defaultKernel: info.environment.defaultKernel
+          defaultKernel: info.environment.defaultKernel,
+          url: this._sessionConfig.url.href
         };
 
         if (
           userSettings.getValue(SettingType.frontEndMode) ===
           FrontEndMode.ClientApp
         ) {
-          serverInfo.url = this._sessionConfig.url.href;
           serverInfo.pageConfig = this._sessionConfig.pageConfig;
         }
 

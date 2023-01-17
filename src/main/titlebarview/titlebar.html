@@ -261,9 +261,9 @@ Distributed under the terms of the Modified BSD License.
         for (const name in env.versions) {
           packages.push(`${name}: ${env.versions[name]}`);
         }
-        serverButton.title = `Local server\nroot:${serverInfo.workingDirectory}\n${env.name}\n${
+        serverButton.title = `Local server\n${serverInfo.url}\nroot: ${serverInfo.workingDirectory}\n${env.name} (${
           env.path
-        }\n${packages.join(', ')}`;
+        })\n${packages.join(', ')}`;
         serverButton.classList.remove('disabled');
       };
 
