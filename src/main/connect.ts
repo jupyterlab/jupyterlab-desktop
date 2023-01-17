@@ -137,6 +137,7 @@ export async function connectAndGetServerInfo(
                   cookie => cookie.domain === hostname
                 );
 
+                window.removeAllListeners('closed');
                 window.close();
                 resolve({
                   pageConfig: config,

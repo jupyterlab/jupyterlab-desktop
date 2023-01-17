@@ -57,6 +57,8 @@ interface IServerInfo {
   };
   workingDirectory?: string;
   defaultKernel?: string;
+  pageConfig?: any;
+  error?: string;
 }
 
 const titleBarHeight = 29;
@@ -163,6 +165,19 @@ export class MainWindow implements IDisposable {
     this._sessionConfig.url = serverInfo.url;
     this._sessionConfig.defaultKernel = serverInfo.environment.defaultKernel;
 
+    if (
+      userSettings.getValue(SettingType.frontEndMode) === FrontEndMode.ClientApp
+    ) {
+      const serverInfo = await connectAndGetServerInfo(
+        this._sessionConfig.url.href,
+        { showDialog: false }
+      );
+      if (serverInfo) {
+        this._sessionConfig.pageConfig = serverInfo.pageConfig;
+        this._sessionConfig.cookies = serverInfo.cookies;
+      }
+    }
+
     appData.addSessionToRecents({
       workingDirectory: this._sessionConfig.resolvedWorkingDirectory,
       filesToOpen: [...this._sessionConfig.filesToOpen]
@@ -241,26 +256,25 @@ export class MainWindow implements IDisposable {
     });
   }
 
-  private _disposeSession(): Promise<void> {
+  private async _disposeSession(): Promise<void> {
     this._wsSettings.save();
 
     if (this._sessionConfig?.isRemote) {
       if (!this._sessionConfig.persistSessionData) {
         return clearSession(this._labView.view.webContents.session);
-      } else {
-        return Promise.resolve();
       }
     } else {
       if (!this._server?.server) {
-        return Promise.resolve();
+        return;
       }
 
-      return new Promise<void>(resolve => {
-        this._server.server.stop().then(() => {
-          this._server = null;
-          resolve();
-        });
-      });
+      await this._server.server.stop();
+      this._server = null;
+      if (this._labView) {
+        this._window.removeBrowserView(this._labView.view);
+        this._labView.dispose();
+        this._labView = null;
+      }
     }
   }
 
@@ -360,7 +374,8 @@ export class MainWindow implements IDisposable {
         <div class="message-row">
           <a href="javascript:void(0);" onclick="sendMessageToMain('show-welcome-view')">Go to Welcome Page</a> 
         </div>
-      `
+      `,
+        false
       );
     });
 
@@ -768,15 +783,25 @@ export class MainWindow implements IDisposable {
     }
 
     if (this._sessionConfig?.remoteURL) {
-      return {
+      const serverInfo: IServerInfo = {
         type: 'remote',
         url: this._sessionConfig.remoteURL,
         persistSessionData: this._sessionConfig.persistSessionData
       };
+
+      if (
+        userSettings.getValue(SettingType.frontEndMode) ===
+        FrontEndMode.ClientApp
+      ) {
+        serverInfo.url = this._sessionConfig.url.href;
+        serverInfo.pageConfig = this._sessionConfig.pageConfig;
+      }
+
+      return serverInfo;
     } else {
       if (this._server?.server) {
         const info = this._server?.server.info;
-        return {
+        const serverInfo: IServerInfo = {
           type: 'local',
           environment: {
             name: info.environment.name,
@@ -786,6 +811,16 @@ export class MainWindow implements IDisposable {
           workingDirectory: info.workingDirectory,
           defaultKernel: info.environment.defaultKernel
         };
+
+        if (
+          userSettings.getValue(SettingType.frontEndMode) ===
+          FrontEndMode.ClientApp
+        ) {
+          serverInfo.url = this._sessionConfig.url.href;
+          serverInfo.pageConfig = this._sessionConfig.pageConfig;
+        }
+
+        return serverInfo;
       }
     }
   }
@@ -795,6 +830,7 @@ export class MainWindow implements IDisposable {
       this._titleBarView.showServerStatus(false);
       if (this._labView) {
         this._window.removeBrowserView(this._labView.view);
+        this._labView.dispose();
         this._labView = null;
       }
       this._loadWelcomeView();
@@ -943,7 +979,8 @@ export class MainWindow implements IDisposable {
     if (this._envSelectPopupVisible) {
       return;
     }
-    let currentPythonPath = this._sessionConfig.pythonPath;
+
+    let currentPythonPath = this._wsSettings.getValue(SettingType.pythonPath);
     if (!currentPythonPath) {
       const defaultEnv = await this.registry.getDefaultEnvironment();
       if (defaultEnv) {
@@ -1051,6 +1088,18 @@ export class MainWindow implements IDisposable {
     sessionConfig.url = serverInfo.url;
     sessionConfig.defaultKernel = serverInfo.environment.defaultKernel;
 
+    if (
+      userSettings.getValue(SettingType.frontEndMode) === FrontEndMode.ClientApp
+    ) {
+      const serverInfo = await connectAndGetServerInfo(sessionConfig.url.href, {
+        showDialog: false
+      });
+      if (serverInfo) {
+        sessionConfig.pageConfig = serverInfo.pageConfig;
+        sessionConfig.cookies = serverInfo.cookies;
+      }
+    }
+
     loadLabView(sessionConfig);
     this._updateSessionWindowInfo();
     appData.setLastSession(this._sessionConfig);
@@ -1133,6 +1182,18 @@ export class MainWindow implements IDisposable {
     sessionConfig.token = serverInfo.token;
     sessionConfig.url = serverInfo.url;
     sessionConfig.defaultKernel = serverInfo.environment.defaultKernel;
+
+    if (
+      userSettings.getValue(SettingType.frontEndMode) === FrontEndMode.ClientApp
+    ) {
+      const serverInfo = await connectAndGetServerInfo(sessionConfig.url.href, {
+        showDialog: false
+      });
+      if (serverInfo) {
+        sessionConfig.pageConfig = serverInfo.pageConfig;
+        sessionConfig.cookies = serverInfo.cookies;
+      }
+    }
 
     loadLabView(sessionConfig);
     this._updateSessionWindowInfo();

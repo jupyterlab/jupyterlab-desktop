@@ -3,6 +3,7 @@
 
 import '@fortawesome/fontawesome-free/css/fontawesome.min.css';
 import './style/style.js';
+import './style/style.css';
 
 import { Application } from './app';
 

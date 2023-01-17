@@ -58,9 +58,6 @@ export class Application extends React.Component<
       }
     }
 
-    PageConfig.setOption('jupyterlab-desktop-server-type', data.type);
-    PageConfig.setOption('jupyterlab-desktop-server-url', data.url);
-
     this._setupLab().then(lab => {
       this._lab = lab;
 

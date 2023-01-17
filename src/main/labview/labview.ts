@@ -23,6 +23,7 @@ import {
   SettingType,
   WorkspaceSettings
 } from '../settings';
+import { IDisposable } from '../disposable';
 
 export type ILoadErrorCallback = (
   errorCode: number,
@@ -43,7 +44,7 @@ const templateAssetPaths = new Map([
   ]
 ]);
 
-export class LabView {
+export class LabView implements IDisposable {
   constructor(options: LabView.IOptions) {
     this._parent = options.parent;
     this._sessionConfig = options.sessionConfig;
@@ -62,6 +63,16 @@ export class LabView {
 
     this._registerBrowserEventHandlers();
     this._addFallbackContextMenu();
+
+    if (
+      this._wsSettings.getValue(SettingType.frontEndMode) ===
+        FrontEndMode.ClientApp &&
+      this._sessionConfig.cookies
+    ) {
+      this._sessionConfig.cookies.forEach((cookie: any) => {
+        this._cookies.set(cookie.name, `${cookie.name}=${cookie.value}`);
+      });
+    }
 
     if (!this._sessionConfig.isRemote) {
       ipcMain.once('lab-ui-ready', event => {
@@ -97,11 +108,7 @@ export class LabView {
       this._view.webContents.loadURL(sessionConfig.url.href);
     } else {
       this._view.webContents.loadURL(
-        `${sessionConfig.url.protocol}//${sessionConfig.url.host}${
-          sessionConfig.url.pathname
-        }${DESKTOP_APP_ASSETS_PATH}/index.html?${encodeURIComponent(
-          JSON.stringify(this._sessionConfig) // ?
-        )}`
+        `${this.jlabBaseUrl}/${DESKTOP_APP_ASSETS_PATH}/index.html`
       );
     }
   }
@@ -111,7 +118,7 @@ export class LabView {
   }
 
   get desktopAppAssetsPrefix(): string {
-    return `${this.jlabBaseUrl}${DESKTOP_APP_ASSETS_PATH}`;
+    return `${this.jlabBaseUrl}/${DESKTOP_APP_ASSETS_PATH}`;
   }
 
   get appAssetsDir(): string {
@@ -190,6 +197,11 @@ export class LabView {
 
       checkIfReady();
     });
+  }
+
+  dispose(): Promise<void> {
+    this._unregisterBrowserEventHandlers();
+    return Promise.resolve();
   }
 
   /**
@@ -285,6 +297,16 @@ export class LabView {
     }
   }
 
+  private _unregisterBrowserEventHandlers() {
+    if (
+      this._wsSettings.getValue(SettingType.frontEndMode) ==
+      FrontEndMode.ClientApp
+    ) {
+      this._view.webContents.session.protocol.uninterceptProtocol('http');
+      this._view.webContents.session.protocol.uninterceptProtocol('https');
+    }
+  }
+
   private async _setJupyterLabTheme(theme: string) {
     const themeName = isDarkTheme(theme)
       ? 'JupyterLab Dark'
@@ -367,7 +389,11 @@ export class LabView {
         const requestHeaders: Record<string, string> = {
           ...details.requestHeaders
         };
-        if (this._cookies.size > 0) {
+
+        if (
+          this._cookies.size > 0 &&
+          new URL(details.url).host === this._sessionConfig.url.host
+        ) {
           requestHeaders['Cookie'] = Array.from(this._cookies.values()).join(
             '; '
           );
