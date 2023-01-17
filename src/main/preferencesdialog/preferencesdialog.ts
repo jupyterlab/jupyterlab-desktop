@@ -2,15 +2,17 @@
 // Distributed under the terms of the Modified BSD License.
 
 import * as ejs from 'ejs';
-import { BrowserWindow } from 'electron';
+import { app, BrowserWindow } from 'electron';
 import * as path from 'path';
 import * as fs from 'fs';
+const semver = require('semver');
 import { ThemedWindow } from '../dialog/themedwindow';
 import { FrontEndMode, StartupMode, ThemeType } from '../settings';
 import { getBundledPythonPath } from '../utils';
+import { IRegistry } from '../registry';
 
 export class PreferencesDialog {
-  constructor(options: PreferencesDialog.IOptions) {
+  constructor(options: PreferencesDialog.IOptions, registry: IRegistry) {
     this._window = new ThemedWindow({
       isDarkTheme: options.isDarkTheme,
       title: 'Preferences',
@@ -37,19 +39,31 @@ export class PreferencesDialog {
     if (defaultPythonPath === '') {
       defaultPythonPath = bundledPythonPath;
     }
-    let bundledEnvExists = false;
+    let bundledEnvInstallationExists = false;
     try {
-      bundledEnvExists = fs.existsSync(bundledPythonPath);
+      bundledEnvInstallationExists = fs.existsSync(bundledPythonPath);
     } catch (error) {
       console.error('Failed to check for bundled Python path', error);
     }
 
     const selectBundledPythonPath =
       (defaultPythonPath === '' || defaultPythonPath === bundledPythonPath) &&
-      bundledEnvExists;
+      bundledEnvInstallationExists;
 
-    if (bundledEnvExists) {
-      // TODO: check if latest
+    let bundledEnvInstallationLatest = true;
+
+    if (bundledEnvInstallationExists) {
+      try {
+        const bundledEnv = registry.getEnvironmentByPath(bundledPythonPath);
+        const jlabVersion = bundledEnv.versions['jupyterlab'];
+        const appVersion = app.getVersion();
+        const diff = semver.diff(appVersion, jlabVersion);
+        if (diff !== 'prerelease') {
+          bundledEnvInstallationLatest = false;
+        }
+      } catch (error) {
+        console.error('Failed to check bundled environment update');
+      }
     }
 
     const template = `
@@ -196,7 +210,7 @@ export class PreferencesDialog {
                 <div style="display: flex; flex-direction: column; row-gap: 5px;">
                   <div id="bundled-env-warning"><span id="bundled-env-warning-message"></span><jp-button id='install-bundled-env' onclick='handleInstallBundledEv(this);'>Install</jp-button><jp-button id='update-bundled-env' onclick='handleUpdateBundledEv(this);'>Update</jp-button></div>
                   <jp-radio-group orientation="vertical">
-                    <jp-radio type="radio" id="bundled-env" name="env_type" value="bundled-env" <%= selectBundledPythonPath ? 'checked' : '' %> <%= !bundledEnvExists ? 'disabled' : '' %> onchange="handleEnvTypeChange(this);">Bundled Python environment</jp-radio>
+                    <jp-radio type="radio" id="bundled-env" name="env_type" value="bundled-env" <%= selectBundledPythonPath ? 'checked' : '' %> <%= !bundledEnvInstallationExists ? 'disabled' : '' %> onchange="handleEnvTypeChange(this);">Bundled Python environment</jp-radio>
                     <jp-radio type="radio" id="custom-env" name="env_type" value="custom-env" <%= !selectBundledPythonPath ? 'checked' : '' %> onchange="handleEnvTypeChange(this);">Custom Python environment</jp-radio>
                   </jp-radio-group>
 
@@ -244,12 +258,13 @@ export class PreferencesDialog {
 
               function showBundledEnvWarning(type) {
                 if (type === 'does-not-exist') {
-                  bundledEnvWarningMessage.innerText = 'Bundled environment not found. Install now.';
+                  bundledEnvWarningMessage.innerText = 'Bundled environment not found';
                   installBundledEnvButton.style.display = 'block';
                   bundledEnvWarningContainer.classList.add('warning');
                 } else {
-                  bundledEnvWarningMessage.innerText = 'There is a newer bundled environment available. Update now.';
+                  bundledEnvWarningMessage.innerText = 'Updates available for the bundled environment';
                   updateBundledEnvButton.style.display = 'block';
+                  bundledEnvWarningContainer.classList.add('warning');
                 }
                 bundledEnvWarningContainer.style.display = 'flex';
               }
@@ -301,7 +316,8 @@ export class PreferencesDialog {
               });
 
               handleEnvTypeChange();
-              <%- !bundledEnvExists ? 'showBundledEnvWarning("does-not-exist");' : '' %> 
+              <%- !bundledEnvInstallationExists ? 'showBundledEnvWarning("does-not-exist");' : '' %> 
+              <%- (bundledEnvInstallationExists && !bundledEnvInstallationLatest) ? 'showBundledEnvWarning("not-latest");' : '' %> 
               </script>
             </jp-tab-panel>
 
@@ -412,7 +428,8 @@ export class PreferencesDialog {
       defaultWorkingDirectory,
       defaultPythonPath,
       selectBundledPythonPath,
-      bundledEnvExists
+      bundledEnvInstallationExists,
+      bundledEnvInstallationLatest
     });
   }
 

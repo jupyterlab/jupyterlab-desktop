@@ -271,7 +271,9 @@ export class MainWindow implements IDisposable {
       await this._server.server.stop();
       this._server = null;
       if (this._labView) {
-        this._window.removeBrowserView(this._labView.view);
+        if (!this._window.isDestroyed()) {
+          this._window.removeBrowserView(this._labView.view);
+        }
         this._labView.dispose();
         this._labView = null;
       }
@@ -424,8 +426,8 @@ export class MainWindow implements IDisposable {
   }
 
   private _registerListeners() {
-    this._window.on('close', () => {
-      this.dispose();
+    this._window.on('close', async () => {
+      await this.dispose();
     });
 
     ipcMain.on('minimize-window', event => {
@@ -915,25 +917,28 @@ export class MainWindow implements IDisposable {
 
     const settings = this._wsSettings;
 
-    const dialog = new PreferencesDialog({
-      isDarkTheme: this._isDarkTheme,
-      startupMode: settings.getValue(SettingType.startupMode),
-      theme: settings.getValue(SettingType.theme),
-      syncJupyterLabTheme: settings.getValue(SettingType.syncJupyterLabTheme),
-      showNewsFeed: settings.getValue(SettingType.showNewsFeed),
-      frontEndMode: settings.getValue(SettingType.frontEndMode),
-      checkForUpdatesAutomatically: settings.getValue(
-        SettingType.checkForUpdatesAutomatically
-      ),
-      installUpdatesAutomatically: settings.getValue(
-        SettingType.installUpdatesAutomatically
-      ),
-      defaultWorkingDirectory: userSettings.getValue(
-        SettingType.defaultWorkingDirectory
-      ),
-      defaultPythonPath: userSettings.getValue(SettingType.pythonPath),
-      activateTab: activateTab
-    });
+    const dialog = new PreferencesDialog(
+      {
+        isDarkTheme: this._isDarkTheme,
+        startupMode: settings.getValue(SettingType.startupMode),
+        theme: settings.getValue(SettingType.theme),
+        syncJupyterLabTheme: settings.getValue(SettingType.syncJupyterLabTheme),
+        showNewsFeed: settings.getValue(SettingType.showNewsFeed),
+        frontEndMode: settings.getValue(SettingType.frontEndMode),
+        checkForUpdatesAutomatically: settings.getValue(
+          SettingType.checkForUpdatesAutomatically
+        ),
+        installUpdatesAutomatically: settings.getValue(
+          SettingType.installUpdatesAutomatically
+        ),
+        defaultWorkingDirectory: userSettings.getValue(
+          SettingType.defaultWorkingDirectory
+        ),
+        defaultPythonPath: userSettings.getValue(SettingType.pythonPath),
+        activateTab: activateTab
+      },
+      this._registry
+    );
 
     this._preferencesDialog = dialog;
 
