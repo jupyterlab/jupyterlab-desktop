@@ -117,6 +117,11 @@ export class RemoteServerSelectDialog {
           });
 
           if (runningServers.length === 0) {
+            const menuItem = document.createElement('jp-menu-item');
+            menuItem.classList.add("running-server");
+            menuItem.disabled = true;
+            menuItem.innerText = 'No locally running JupyterLab server found';
+            serverList.append(menuItem);
             return;
           }
 
