@@ -506,6 +506,16 @@ export class ApplicationData {
     }
   }
 
+  removeRemoteURLFromRecents(url: string) {
+    const index = this.recentRemoteURLs.findIndex(value => {
+      return value.url === url;
+    });
+
+    if (index !== -1) {
+      this.recentRemoteURLs.splice(index, 1);
+    }
+  }
+
   addSessionToRecents(session: IRecentSession) {
     const filesToOpenCompare = (lhs: string[], rhs: string[]): boolean => {
       return (
