@@ -9,6 +9,7 @@ import {
   Menu,
   MenuItemConstructorOptions
 } from 'electron';
+import * as fs from 'fs';
 import { WelcomeView } from '../welcomeview/welcomeview';
 import { LabView } from '../labview/labview';
 import {
@@ -587,7 +588,12 @@ export class MainWindow implements IDisposable {
     });
 
     ipcMain.on('delete-recent-session', (event, sessionIndex: number) => {
-      if (event.sender !== this._welcomeView.view.webContents) {
+      if (
+        !(
+          event.sender === this._welcomeView.view.webContents ||
+          event.sender === this._progressView.view.view.webContents
+        )
+      ) {
         return;
       }
 
@@ -1325,6 +1331,33 @@ export class MainWindow implements IDisposable {
         recentSession.persistSessionData
       );
     } else {
+      let workingDirectoryExists = true;
+      try {
+        const stat = fs.statSync(recentSession.workingDirectory);
+        if (!stat.isDirectory()) {
+          workingDirectoryExists = false;
+        }
+      } catch (error) {
+        workingDirectoryExists = false;
+      }
+
+      if (!workingDirectoryExists) {
+        this._showProgressView(
+          'Recent session load failed',
+          `<div class="message-row">
+          Working directory "${recentSession.workingDirectory}" does not exist anymore.
+          </div>
+          <div class="message-row">
+            <a href="javascript:void(0);" onclick="sendMessageToMain('delete-recent-session', ${sessionIndex}); sendMessageToMain('show-welcome-view');">Remove from recents</a>
+          </div>
+          <div class="message-row">
+            <a href="javascript:void(0);" onclick="sendMessageToMain('hide-progress-view')">Go to Welcome Page</a>
+          </div>`,
+          false
+        );
+        return;
+      }
+
       this._createSessionForLocal(
         recentSession.workingDirectory,
         recentSession.filesToOpen,

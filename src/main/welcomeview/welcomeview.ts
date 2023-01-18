@@ -86,7 +86,7 @@ export class WelcomeView {
       }
 
       recentSessionSection += `<div class="row recent-session-row" data-session-index="${recentSessionCount}">
-          <div><a href="javascript:void(0)" onclick='handleRecentSessionClick(${recentSessionCount});' title="${tooltip}">${sessionItem}</a>${
+          <div><a href="javascript:void(0)" onclick='handleRecentSessionClick(event);' title="${tooltip}">${sessionItem}</a>${
         sessionDetail
           ? `<span class="recent-session-detail" title="${sessionDetail}">${sessionDetail}</span>`
           : ''
@@ -477,7 +477,12 @@ export class WelcomeView {
             window.electronAPI.newSession(type);
           }
 
-          function handleRecentSessionClick(sessionIndex) {
+          function handleRecentSessionClick(event) {
+            const row = event.currentTarget.closest('.recent-session-row');
+            if (!row) {
+              return;
+            }
+            const sessionIndex = parseInt(row.dataset.sessionIndex);
             window.electronAPI.openRecentSession(sessionIndex);
           }
 

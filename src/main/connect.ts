@@ -155,7 +155,7 @@ export async function connectAndGetServerInfo(
       clearTimeout(connectTimeout);
       reject({
         type: 'dismissed',
-        message: 'Window closed'
+        message: 'Login window closed'
       } as IConnectError);
     });
 
