@@ -75,8 +75,6 @@ export class RemoteServerSelectDialog {
         jp-menu-item .delete-button {
           width: 20px;
           height: 20px;
-        }
-        .delete-button {
           visibility: hidden;
         }
         jp-menu-item:hover .delete-button {

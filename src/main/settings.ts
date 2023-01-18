@@ -559,6 +559,12 @@ export class ApplicationData {
     }
   }
 
+  removeSessionFromRecents(sessionIndex: number) {
+    if (sessionIndex >= 0 && sessionIndex < this.recentSessions.length) {
+      this.recentSessions.splice(sessionIndex, 1);
+    }
+  }
+
   private _getAppDataPath(): string {
     const userDataDir = getUserDataDir();
     return path.join(userDataDir, 'app-data.json');

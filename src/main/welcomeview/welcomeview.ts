@@ -85,8 +85,17 @@ export class WelcomeView {
         }
       }
 
-      recentSessionSection += `<div class="row recent-session-row">
-          <a href="javascript:void(0)" onclick='handleRecentSessionClick(${recentSessionCount});' title="${tooltip}">${sessionItem}</a><span class="recent-session-detail" title="${sessionDetail}">${sessionDetail}</span>
+      recentSessionSection += `<div class="row recent-session-row" data-session-index="${recentSessionCount}">
+          <div><a href="javascript:void(0)" onclick='handleRecentSessionClick(${recentSessionCount});' title="${tooltip}">${sessionItem}</a>${
+        sessionDetail
+          ? `<span class="recent-session-detail" title="${sessionDetail}">${sessionDetail}</span>`
+          : ''
+      }</div>
+          <div class="recent-session-delete" title="Remove" onclick="handleRecentSesssionDeleteClick(event)">
+            <svg class="delete-button" version="2.0">
+              <use href="#circle-xmark" />
+            </svg>
+          </div>
         </div>`;
 
       recentSessionCount++;
@@ -165,6 +174,9 @@ export class WelcomeView {
               max-height: 200px;
               overflow-y: auto;
             }
+            .recents-collapsed .recent-col {
+              overflow-y: hidden;
+            }
             .recent-col .row-title {
               position: sticky;
               top: 0;
@@ -235,6 +247,30 @@ export class WelcomeView {
               overflow: hidden;
               white-space: nowrap;
             }
+            .recent-session-row {
+              align-items: center;
+            }
+            .recent-session-delete {
+              height: 18px;
+              margin-left: 10px;
+            }
+            .recent-session-row .delete-button {
+              width: 16px;
+              height: 16px;
+              padding-top: 1px;
+              visibility: hidden;
+              fill: #555555;
+            }
+            .app-ui-dark .recent-session-row .delete-button {
+              fill: #bcbcbc;
+            }
+            .recent-session-row:hover .delete-button {
+              visibility: visible;
+              transition-delay: 1s;
+            }
+            .recent-session-row:hover .delete-button {
+              cursor: pointer;
+            }
             .no-recent-message {
               color: #777777;
             }
@@ -284,6 +320,13 @@ export class WelcomeView {
       showNewsFeed ? '' : 'news-list-hidden'
     } ${recentSessionCount > maxRecentItems ? 'recents-collapsed' : ''}">
           <div class="body-container">
+          <svg class="symbol" style="display: none;">
+          <defs>
+            <symbol id="circle-xmark" viewBox="0 0 512 512">
+              <!--! Font Awesome Pro 6.2.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license (Commercial License) Copyright 2022 Fonticons, Inc. --><path d="M256 512c141.4 0 256-114.6 256-256S397.4 0 256 0S0 114.6 0 256S114.6 512 256 512zM175 175c9.4-9.4 24.6-9.4 33.9 0l47 47 47-47c9.4-9.4 24.6-9.4 33.9 0s9.4 24.6 0 33.9l-47 47 47 47c9.4 9.4 9.4 24.6 0 33.9s-24.6 9.4-33.9 0l-47-47-47 47c-9.4 9.4-24.6 9.4-33.9 0s-9.4-24.6 0-33.9l47-47-47-47c-9.4-9.4-9.4-24.6 0-33.9z"/>
+            </symbol>
+          </defs>
+        </svg>
           <div class="container">
             <div class="row app-title-row">
               <div class="app-title">
@@ -436,6 +479,21 @@ export class WelcomeView {
 
           function handleRecentSessionClick(sessionIndex) {
             window.electronAPI.openRecentSession(sessionIndex);
+          }
+
+          function handleRecentSesssionDeleteClick(event) {
+            const row = event.currentTarget.closest('.recent-session-row');
+            if (!row) {
+              return;
+            }
+            const sessionIndex = parseInt(row.dataset.sessionIndex);
+            let nextRow = row.nextSibling;
+            row.remove();
+            while (nextRow && nextRow.classList?.contains('recent-session-row')) {
+              nextRow.dataset.sessionIndex = parseInt(nextRow.dataset.sessionIndex) - 1;
+              nextRow = nextRow.nextSibling;
+            }
+            window.electronAPI.deleteRecentSession(sessionIndex);
           }
 
           function handleNewsClick(newsLink) {

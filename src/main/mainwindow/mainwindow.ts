@@ -586,6 +586,14 @@ export class MainWindow implements IDisposable {
       this._createSessionForRecent(sessionIndex);
     });
 
+    ipcMain.on('delete-recent-session', (event, sessionIndex: number) => {
+      if (event.sender !== this._welcomeView.view.webContents) {
+        return;
+      }
+
+      appData.removeSessionFromRecents(sessionIndex);
+    });
+
     ipcMain.on(
       'open-recent-session-with-default-env',
       (event, sessionIndex: number) => {
