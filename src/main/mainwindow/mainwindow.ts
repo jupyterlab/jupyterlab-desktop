@@ -30,8 +30,7 @@ import {
   LightThemeBGColor
 } from '../utils';
 import { IServerFactory, JupyterServer, JupyterServerFactory } from '../server';
-import { IDisposable } from '../disposable';
-import { IPythonEnvironment, IVersionContainer } from '../tokens';
+import { IDisposable, IPythonEnvironment, IVersionContainer } from '../tokens';
 import { IRegistry } from '../registry';
 import { IApplication } from '../app';
 import { PreferencesDialog } from '../preferencesdialog/preferencesdialog';

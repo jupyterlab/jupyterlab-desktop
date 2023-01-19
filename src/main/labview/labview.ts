@@ -23,7 +23,7 @@ import {
   SettingType,
   WorkspaceSettings
 } from '../config/settings';
-import { IDisposable } from '../disposable';
+import { IDisposable } from '../tokens';
 
 export type ILoadErrorCallback = (
   errorCode: number,

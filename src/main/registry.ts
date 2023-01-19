@@ -8,6 +8,7 @@ const which = require('which');
 const WinRegistry = require('winreg');
 import {
   EnvironmentTypeName,
+  IDisposable,
   IEnvironmentType,
   IPythonEnvironment,
   IVersionContainer
@@ -20,7 +21,6 @@ import {
   isPortInUse
 } from './utils';
 import { FrontEndMode, SettingType, userSettings } from './config/settings';
-import { IDisposable } from './disposable';
 import { appData } from './config/appdata';
 
 const envInfoPyCode = fs

@@ -8,7 +8,7 @@ import * as os from 'os';
 import * as path from 'path';
 import { request as httpRequest } from 'http';
 import { request as httpsRequest } from 'https';
-import { IEnvironmentType, IPythonEnvironment } from './tokens';
+import { IDisposable, IEnvironmentType, IPythonEnvironment } from './tokens';
 import {
   getEnvironmentPath,
   getFreePort,
@@ -17,7 +17,6 @@ import {
 } from './utils';
 import { FrontEndMode, SettingType, userSettings } from './config/settings';
 import { randomBytes } from 'crypto';
-import { IDisposable } from './disposable';
 
 const SERVER_LAUNCH_TIMEOUT = 30000; // milliseconds
 const SERVER_RESTART_LIMIT = 3; // max server restarts

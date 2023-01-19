@@ -63,3 +63,7 @@ export interface IPythonEnvironment {
    */
   defaultKernel: string;
 }
+
+export interface IDisposable {
+  dispose(): Promise<void>;
+}

@@ -29,9 +29,9 @@ import {
   StartupMode,
   userSettings
 } from './config/settings';
-import { IDisposable } from './disposable';
 import { ContentViewType, MainWindow } from './mainwindow/mainwindow';
 import { appData } from './config/appdata';
+import { IDisposable } from './tokens';
 
 export interface IApplication {
   checkForUpdates(showDialog: 'on-new-version' | 'always'): void;
