@@ -5,7 +5,7 @@ import * as ejs from 'ejs';
 import { BrowserWindow, ipcMain } from 'electron';
 import * as path from 'path';
 import { ThemedWindow } from '../dialog/themedwindow';
-import { appData } from '../settings';
+import { appData } from '../config/settings';
 
 export class RemoteServerSelectDialog {
   constructor(options: RemoteServerSelectDialog.IOptions) {

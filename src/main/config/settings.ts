@@ -3,8 +3,8 @@
 
 import * as path from 'path';
 import * as fs from 'fs';
-import { getUserDataDir, getUserHomeDir } from './utils';
-import { IPythonEnvironment } from './tokens';
+import { getUserDataDir, getUserHomeDir } from '../utils';
+import { IPythonEnvironment } from '../tokens';
 
 export const DEFAULT_WORKING_DIR = '$HOME';
 export const DEFAULT_WIN_WIDTH = 1024;

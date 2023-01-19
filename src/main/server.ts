@@ -15,7 +15,7 @@ import {
   getSchemasDir,
   getUserDataDir
 } from './utils';
-import { FrontEndMode, SettingType, userSettings } from './settings';
+import { FrontEndMode, SettingType, userSettings } from './config/settings';
 import { randomBytes } from 'crypto';
 import { IDisposable } from './disposable';
 

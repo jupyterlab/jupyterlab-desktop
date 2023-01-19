@@ -22,7 +22,7 @@ import {
   SessionConfig,
   SettingType,
   WorkspaceSettings
-} from '../settings';
+} from '../config/settings';
 import { IDisposable } from '../disposable';
 
 export type ILoadErrorCallback = (

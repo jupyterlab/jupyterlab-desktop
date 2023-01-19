@@ -7,7 +7,7 @@ import * as path from 'path';
 import * as fs from 'fs';
 const semver = require('semver');
 import { ThemedWindow } from '../dialog/themedwindow';
-import { FrontEndMode, StartupMode, ThemeType } from '../settings';
+import { FrontEndMode, StartupMode, ThemeType } from '../config/settings';
 import { getBundledPythonPath } from '../utils';
 import { IRegistry } from '../registry';
 

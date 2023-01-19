@@ -22,7 +22,7 @@ import {
   SettingType,
   userSettings,
   WorkspaceSettings
-} from '../settings';
+} from '../config/settings';
 import { TitleBarView } from '../titlebarview/titlebarview';
 import {
   clearSession,

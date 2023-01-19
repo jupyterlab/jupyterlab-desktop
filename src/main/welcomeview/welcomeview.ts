@@ -7,7 +7,12 @@ import * as path from 'path';
 import * as fs from 'fs';
 import fetch from 'node-fetch';
 import { XMLParser } from 'fast-xml-parser';
-import { appData, INewsItem, SettingType, userSettings } from '../settings';
+import {
+  appData,
+  INewsItem,
+  SettingType,
+  userSettings
+} from '../config/settings';
 
 const maxRecentItems = 5;
 const notebookIcon = `<svg xmlns="http://www.w3.org/2000/svg" width="16" viewBox="0 0 22 22">

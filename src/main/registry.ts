@@ -19,7 +19,12 @@ import {
   getUserHomeDir,
   isPortInUse
 } from './utils';
-import { appData, FrontEndMode, SettingType, userSettings } from './settings';
+import {
+  appData,
+  FrontEndMode,
+  SettingType,
+  userSettings
+} from './config/settings';
 import { IDisposable } from './disposable';
 
 const envInfoPyCode = fs

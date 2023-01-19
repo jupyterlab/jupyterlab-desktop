@@ -29,7 +29,7 @@ import {
   SettingType,
   StartupMode,
   userSettings
-} from './settings';
+} from './config/settings';
 import { IDisposable } from './disposable';
 import { ContentViewType, MainWindow } from './mainwindow/mainwindow';
 
