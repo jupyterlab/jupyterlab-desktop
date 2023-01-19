@@ -13,7 +13,6 @@ import * as fs from 'fs';
 import { WelcomeView } from '../welcomeview/welcomeview';
 import { LabView } from '../labview/labview';
 import {
-  appData,
   DEFAULT_WIN_HEIGHT,
   DEFAULT_WIN_WIDTH,
   DEFAULT_WORKING_DIR,
@@ -41,6 +40,7 @@ import { connectAndGetServerInfo, IJupyterServerInfo } from '../connect';
 import { PythonEnvironmentSelectPopup } from '../pythonenvselectpopup/pythonenvselectpopup';
 import { AboutDialog } from '../aboutdialog/aboutdialog';
 import { ProgressView } from '../progressview/progressview';
+import { appData } from '../config/appdata';
 
 export enum ContentViewType {
   Welcome = 'welcome',

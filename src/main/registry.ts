@@ -19,13 +19,9 @@ import {
   getUserHomeDir,
   isPortInUse
 } from './utils';
-import {
-  appData,
-  FrontEndMode,
-  SettingType,
-  userSettings
-} from './config/settings';
+import { FrontEndMode, SettingType, userSettings } from './config/settings';
 import { IDisposable } from './disposable';
+import { appData } from './config/appdata';
 
 const envInfoPyCode = fs
   .readFileSync(path.join(__dirname, 'env_info.py'))

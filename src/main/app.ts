@@ -23,7 +23,6 @@ import { JupyterServerFactory } from './server';
 import { connectAndGetServerInfo, IJupyterServerInfo } from './connect';
 import { UpdateDialog } from './updatedialog/updatedialog';
 import {
-  appData,
   resolveWorkingDirectory,
   SessionConfig,
   SettingType,
@@ -32,6 +31,7 @@ import {
 } from './config/settings';
 import { IDisposable } from './disposable';
 import { ContentViewType, MainWindow } from './mainwindow/mainwindow';
+import { appData } from './config/appdata';
 
 export interface IApplication {
   checkForUpdates(showDialog: 'on-new-version' | 'always'): void;
