@@ -64,8 +64,8 @@ interface IServerInfo {
 const titleBarHeight = 29;
 const defaultEnvSelectPopupHeight = 300;
 
-export class MainWindow implements IDisposable {
-  constructor(options: MainWindow.IOptions) {
+export class SessionWindow implements IDisposable {
+  constructor(options: SessionWindow.IOptions) {
     this._app = options.app;
     this._registry = options.registry;
     this._serverFactory = options.serverFactory;
@@ -239,7 +239,7 @@ export class MainWindow implements IDisposable {
     }
 
     this._window.on('resize', () => {
-      this._updateSessionWindowInfo();
+      this._updateSessionWindowPositionConfig();
       this._resizeViews();
     });
     this._window.on('maximize', () => {
@@ -252,7 +252,7 @@ export class MainWindow implements IDisposable {
       this._resizeViewsDelayed();
     });
     this._window.on('moved', () => {
-      this._updateSessionWindowInfo();
+      this._updateSessionWindowPositionConfig();
     });
   }
 
@@ -512,7 +512,7 @@ export class MainWindow implements IDisposable {
         }
 
         loadLabView();
-        this._updateSessionWindowInfo();
+        this._updateSessionWindowPositionConfig();
         appData.setLastSession(this._sessionConfig);
 
         if (type === 'notebook') {
@@ -904,7 +904,7 @@ export class MainWindow implements IDisposable {
     }, 200);
   }
 
-  private _updateSessionWindowInfo() {
+  private _updateSessionWindowPositionConfig() {
     if (!this._sessionConfig) {
       return;
     }
@@ -1119,7 +1119,7 @@ export class MainWindow implements IDisposable {
     }
 
     loadLabView(sessionConfig);
-    this._updateSessionWindowInfo();
+    this._updateSessionWindowPositionConfig();
     appData.setLastSession(this._sessionConfig);
 
     if (sessionConfig.filesToOpen) {
@@ -1214,7 +1214,7 @@ export class MainWindow implements IDisposable {
     }
 
     loadLabView(sessionConfig);
-    this._updateSessionWindowInfo();
+    this._updateSessionWindowPositionConfig();
     appData.setLastSession(this._sessionConfig);
 
     if (filesToOpen) {
@@ -1293,7 +1293,7 @@ export class MainWindow implements IDisposable {
           this._updateContentView();
           this._resizeViews();
           this._hideProgressView();
-          this._updateSessionWindowInfo();
+          this._updateSessionWindowPositionConfig();
           appData.setLastSession(this._sessionConfig);
         })
         .catch(error => {
@@ -1443,7 +1443,7 @@ export class MainWindow implements IDisposable {
   private _disposePromise: Promise<void>;
 }
 
-export namespace MainWindow {
+export namespace SessionWindow {
   export interface IOptions {
     app: IApplication;
     serverFactory: IServerFactory;

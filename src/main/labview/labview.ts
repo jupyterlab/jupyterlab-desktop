@@ -16,7 +16,7 @@ import * as path from 'path';
 import * as fs from 'fs';
 import * as ejs from 'ejs';
 import { DarkThemeBGColor, isDarkTheme, LightThemeBGColor } from '../utils';
-import { MainWindow } from '../mainwindow/mainwindow';
+import { SessionWindow } from '../sessionwindow/sessionwindow';
 import {
   FrontEndMode,
   SessionConfig,
@@ -544,7 +544,7 @@ export class LabView implements IDisposable {
   }
 
   private _view: BrowserView;
-  private _parent: MainWindow;
+  private _parent: SessionWindow;
   private _sessionConfig: SessionConfig;
   private _cookies: Map<string, string> = new Map();
   private _jlabBaseUrl: string;
@@ -557,7 +557,7 @@ export class LabView implements IDisposable {
 export namespace LabView {
   export interface IOptions {
     isDarkTheme: boolean;
-    parent: MainWindow;
+    parent: SessionWindow;
     sessionConfig: SessionConfig;
   }
 }

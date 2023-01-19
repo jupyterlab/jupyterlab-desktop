@@ -29,7 +29,7 @@ import {
   StartupMode,
   userSettings
 } from './config/settings';
-import { ContentViewType, MainWindow } from './mainwindow/mainwindow';
+import { ContentViewType, SessionWindow } from './sessionwindow/sessionwindow';
 import { appData } from './config/appdata';
 import { IDisposable } from './tokens';
 
@@ -163,7 +163,7 @@ export class JupyterApplication implements IApplication, IDisposable {
     const sessionConfig = this._sessionConfigFromArgs();
 
     if (sessionConfig) {
-      const window = new MainWindow({
+      const window = new SessionWindow({
         app: this,
         registry: this._registry,
         serverFactory: this._serverFactory,
@@ -171,7 +171,7 @@ export class JupyterApplication implements IApplication, IDisposable {
         sessionConfig
       });
       window.load();
-      this._mainWindow = window;
+      this._sessionWindow = window;
 
       return;
     }
@@ -181,7 +181,7 @@ export class JupyterApplication implements IApplication, IDisposable {
       appData.sessions.length > 0
     ) {
       const sessionConfig = appData.sessions[0];
-      const window = new MainWindow({
+      const window = new SessionWindow({
         app: this,
         registry: this._registry,
         serverFactory: this._serverFactory,
@@ -190,14 +190,14 @@ export class JupyterApplication implements IApplication, IDisposable {
         center: false
       });
       window.load();
-      this._mainWindow = window;
+      this._sessionWindow = window;
 
       return;
     }
 
     if (startupMode === StartupMode.NewLocalSession) {
       const sessionConfig = SessionConfig.createLocal();
-      const window = new MainWindow({
+      const window = new SessionWindow({
         app: this,
         registry: this._registry,
         serverFactory: this._serverFactory,
@@ -205,21 +205,21 @@ export class JupyterApplication implements IApplication, IDisposable {
         sessionConfig
       });
       window.load();
-      this._mainWindow = window;
+      this._sessionWindow = window;
     } else {
-      const window = new MainWindow({
+      const window = new SessionWindow({
         app: this,
         registry: this._registry,
         serverFactory: this._serverFactory,
         contentView: ContentViewType.Welcome
       });
       window.load();
-      this._mainWindow = window;
+      this._sessionWindow = window;
     }
   }
 
   handleOpenFilesOrFolders(fileOrFolders?: string[]) {
-    this._mainWindow.handleOpenFilesOrFolders(fileOrFolders);
+    this._sessionWindow.handleOpenFilesOrFolders(fileOrFolders);
   }
 
   dispose(): Promise<void> {
@@ -231,7 +231,7 @@ export class JupyterApplication implements IApplication, IDisposable {
       Promise.all([
         this._registry.dispose(),
         this._serverFactory.dispose(),
-        this._mainWindow.dispose()
+        this._sessionWindow.dispose()
       ])
         .then(() => {
           resolve();
@@ -554,5 +554,5 @@ export class JupyterApplication implements IApplication, IDisposable {
    * The most recently focused window
    */
   private _disposePromise: Promise<void>;
-  private _mainWindow: MainWindow;
+  private _sessionWindow: SessionWindow;
 }
