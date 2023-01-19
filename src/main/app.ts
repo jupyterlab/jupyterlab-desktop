@@ -24,7 +24,6 @@ import { connectAndGetServerInfo, IJupyterServerInfo } from './connect';
 import { UpdateDialog } from './updatedialog/updatedialog';
 import {
   resolveWorkingDirectory,
-  SessionConfig,
   SettingType,
   StartupMode,
   userSettings
@@ -32,6 +31,7 @@ import {
 import { ContentViewType, SessionWindow } from './sessionwindow/sessionwindow';
 import { appData } from './config/appdata';
 import { IDisposable } from './tokens';
+import { SessionConfig } from './config/sessionconfig';
 
 export interface IApplication {
   checkForUpdates(showDialog: 'on-new-version' | 'always'): void;

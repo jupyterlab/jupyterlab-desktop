@@ -19,11 +19,11 @@ import { DarkThemeBGColor, isDarkTheme, LightThemeBGColor } from '../utils';
 import { SessionWindow } from '../sessionwindow/sessionwindow';
 import {
   FrontEndMode,
-  SessionConfig,
   SettingType,
   WorkspaceSettings
 } from '../config/settings';
 import { IDisposable } from '../tokens';
+import { SessionConfig } from '../config/sessionconfig';
 
 export type ILoadErrorCallback = (
   errorCode: number,

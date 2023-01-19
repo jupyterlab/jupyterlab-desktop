@@ -1,4 +1,4 @@
-import { IRecentRemoteURL } from '../config/settings';
+import { IRecentRemoteURL } from '../config/appdata';
 const { contextBridge, ipcRenderer } = require('electron');
 
 type RecentRemoteURLsUpdatedListener = (

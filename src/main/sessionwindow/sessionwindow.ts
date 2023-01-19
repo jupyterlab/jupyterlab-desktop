@@ -17,7 +17,6 @@ import {
   DEFAULT_WIN_WIDTH,
   DEFAULT_WORKING_DIR,
   FrontEndMode,
-  SessionConfig,
   SettingType,
   userSettings,
   WorkspaceSettings
@@ -40,6 +39,7 @@ import { PythonEnvironmentSelectPopup } from '../pythonenvselectpopup/pythonenvs
 import { AboutDialog } from '../aboutdialog/aboutdialog';
 import { ProgressView } from '../progressview/progressview';
 import { appData } from '../config/appdata';
+import { SessionConfig } from '../config/sessionconfig';
 
 export enum ContentViewType {
   Welcome = 'welcome',

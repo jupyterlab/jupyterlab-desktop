@@ -14,21 +14,6 @@ export interface INewsItem {
   link: string;
 }
 
-export interface IWindowData {
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-}
-
-export interface ISessionData {
-  remoteURL: string;
-  workingDirectory: string;
-  filesToOpen: string[];
-  pythonPath: string;
-  persistSessionData: boolean;
-}
-
 export interface IRecentSession {
   workingDirectory?: string;
   filesToOpen?: string[];

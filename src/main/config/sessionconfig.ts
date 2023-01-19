@@ -13,22 +13,7 @@ import {
   userSettings
 } from './settings';
 
-export interface IWindowData {
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-}
-
-export interface ISessionData {
-  remoteURL: string;
-  workingDirectory: string;
-  filesToOpen: string[];
-  pythonPath: string;
-  persistSessionData: boolean;
-}
-
-export class SessionConfig implements ISessionData, IWindowData {
+export class SessionConfig {
   x: number = 0;
   y: number = 0;
   width: number = DEFAULT_WIN_WIDTH;

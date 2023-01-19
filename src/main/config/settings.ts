@@ -9,27 +9,36 @@ export const DEFAULT_WORKING_DIR = '$HOME';
 export const DEFAULT_WIN_WIDTH = 1024;
 export const DEFAULT_WIN_HEIGHT = 768;
 
-export interface INewsItem {
-  title: string;
-  link: string;
+export enum ThemeType {
+  System = 'system',
+  Light = 'light',
+  Dark = 'dark'
 }
 
-export function resolveWorkingDirectory(
-  workingDirectory: string,
-  resetIfInvalid: boolean = true
-): string {
-  const home = getUserHomeDir();
-  let resolved = workingDirectory.replace('$HOME', home);
+export enum FrontEndMode {
+  WebApp = 'web-app',
+  ClientApp = 'client-app'
+}
 
-  if (resetIfInvalid) {
-    const stat = fs.lstatSync(resolved);
+export enum StartupMode {
+  WelcomePage = 'welcome-page',
+  NewLocalSession = 'new-local-session',
+  LastSessions = 'restore-sessions'
+}
 
-    if (!stat.isDirectory()) {
-      resolved = home;
-    }
-  }
+export enum SettingType {
+  checkForUpdatesAutomatically = 'checkForUpdatesAutomatically',
+  installUpdatesAutomatically = 'installUpdatesAutomatically',
 
-  return resolved;
+  theme = 'theme',
+  syncJupyterLabTheme = 'syncJupyterLabTheme',
+  showNewsFeed = 'showNewsFeed',
+  frontEndMode = 'frontEndMode',
+
+  defaultWorkingDirectory = 'defaultWorkingDirectory',
+  pythonPath = 'pythonPath',
+
+  startupMode = 'startupMode'
 }
 
 export class Setting<T> {
@@ -69,53 +78,6 @@ export namespace Setting {
   export interface IOptions {
     wsOverridable?: boolean;
   }
-}
-
-export enum ThemeType {
-  System = 'system',
-  Light = 'light',
-  Dark = 'dark'
-}
-
-export enum FrontEndMode {
-  WebApp = 'web-app',
-  ClientApp = 'client-app'
-}
-
-export enum StartupMode {
-  WelcomePage = 'welcome-page',
-  NewLocalSession = 'new-local-session',
-  LastSessions = 'restore-sessions'
-}
-
-export interface IWindowData {
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-}
-
-export interface ISessionData {
-  remoteURL: string;
-  workingDirectory: string;
-  filesToOpen: string[];
-  pythonPath: string;
-  persistSessionData: boolean;
-}
-
-export enum SettingType {
-  checkForUpdatesAutomatically = 'checkForUpdatesAutomatically',
-  installUpdatesAutomatically = 'installUpdatesAutomatically',
-
-  theme = 'theme',
-  syncJupyterLabTheme = 'syncJupyterLabTheme',
-  showNewsFeed = 'showNewsFeed',
-  frontEndMode = 'frontEndMode',
-
-  defaultWorkingDirectory = 'defaultWorkingDirectory',
-  pythonPath = 'pythonPath',
-
-  startupMode = 'startupMode'
 }
 
 export class UserSettings {
@@ -288,192 +250,22 @@ export class WorkspaceSettings extends UserSettings {
   private _wsSettings: { [key: string]: Setting<any> } = {};
 }
 
-export interface IRecentSession {
-  workingDirectory?: string;
-  filesToOpen?: string[];
-  remoteURL?: string;
-  persistSessionData?: boolean;
-  date?: Date;
-}
+export function resolveWorkingDirectory(
+  workingDirectory: string,
+  resetIfInvalid: boolean = true
+): string {
+  const home = getUserHomeDir();
+  let resolved = workingDirectory.replace('$HOME', home);
 
-export interface IRecentRemoteURL {
-  url: string;
-  date: Date;
-}
+  if (resetIfInvalid) {
+    const stat = fs.lstatSync(resolved);
 
-export class SessionConfig implements ISessionData, IWindowData {
-  x: number = 0;
-  y: number = 0;
-  width: number = DEFAULT_WIN_WIDTH;
-  height: number = DEFAULT_WIN_HEIGHT;
-  remoteURL: string = '';
-  persistSessionData: boolean = true;
-  workingDirectory: string = DEFAULT_WORKING_DIR;
-  filesToOpen: string[] = [];
-  pythonPath: string = '';
-  defaultKernel: string = '';
-  lastOpened: Date = new Date();
-
-  url: URL;
-  token: string;
-  pageConfig: any;
-  cookies?: Electron.Cookie[];
-
-  static createLocal(
-    workingDirectory?: string,
-    filesToOpen?: string[],
-    pythonPath?: string
-  ): SessionConfig {
-    const sessionConfig = new SessionConfig();
-    sessionConfig.workingDirectory =
-      workingDirectory ||
-      userSettings.getValue(SettingType.defaultWorkingDirectory);
-    if (filesToOpen) {
-      sessionConfig.setFilesToOpen(filesToOpen);
-    }
-    sessionConfig.pythonPath =
-      pythonPath || userSettings.getValue(SettingType.pythonPath);
-
-    return sessionConfig;
-  }
-
-  static createLocalForFilesOrFolders(fileOrFolders?: string[]) {
-    const folders: string[] = [];
-    const files: string[] = [];
-
-    fileOrFolders.forEach(filePath => {
-      try {
-        const stat = fs.lstatSync(filePath);
-
-        if (stat.isFile()) {
-          files.push(filePath);
-        } else if (stat.isDirectory()) {
-          folders.push(filePath);
-        }
-      } catch (error) {
-        console.error('Failed to get info for selected files');
-      }
-    });
-
-    if (files.length > 0) {
-      const workingDir = path.dirname(files[0]);
-      const sameWorkingDirFiles = files
-        .filter(file => {
-          return file.startsWith(workingDir);
-        })
-        .map(file => {
-          return path.relative(workingDir, file);
-        });
-      return SessionConfig.createLocal(workingDir, sameWorkingDirFiles);
-    } else if (folders.length > 0) {
-      return SessionConfig.createLocal(folders[0]);
+    if (!stat.isDirectory()) {
+      resolved = home;
     }
   }
 
-  static createRemote(
-    remoteURL: string,
-    persistSessionData?: boolean
-  ): SessionConfig {
-    const sessionConfig = new SessionConfig();
-    sessionConfig.remoteURL = remoteURL;
-    sessionConfig.persistSessionData = persistSessionData !== false;
-
-    return sessionConfig;
-  }
-
-  get isRemote(): boolean {
-    return this.remoteURL !== '';
-  }
-
-  get resolvedWorkingDirectory(): string {
-    return resolveWorkingDirectory(this.workingDirectory);
-  }
-
-  setFilesToOpen(filePaths: string[]) {
-    this.filesToOpen = [];
-
-    const workingDir = this.resolvedWorkingDirectory;
-
-    for (const filePath of filePaths) {
-      const fullPath = path.join(workingDir, filePath);
-      const stats = fs.lstatSync(fullPath);
-      if (stats.isFile()) {
-        this.filesToOpen.push(filePath);
-      }
-    }
-  }
-
-  deserialize(jsonData: any) {
-    if ('x' in jsonData) {
-      this.x = jsonData.x;
-    }
-    if ('y' in jsonData) {
-      this.y = jsonData.y;
-    }
-    if ('width' in jsonData) {
-      this.width = jsonData.width;
-    }
-    if ('height' in jsonData) {
-      this.height = jsonData.height;
-    }
-    if ('lastOpened' in jsonData) {
-      this.lastOpened = new Date(jsonData.lastOpened);
-    }
-    if ('remoteURL' in jsonData) {
-      this.remoteURL = jsonData.remoteURL;
-    }
-    if ('persistSessionData' in jsonData) {
-      this.persistSessionData = jsonData.persistSessionData;
-    }
-    if ('workingDirectory' in jsonData) {
-      this.workingDirectory = jsonData.workingDirectory;
-    }
-    if ('filesToOpen' in jsonData) {
-      this.filesToOpen = [...jsonData.filesToOpen];
-    }
-    if ('pageConfig' in jsonData) {
-      this.pageConfig = JSON.parse(JSON.stringify(jsonData.pageConfig));
-    }
-  }
-
-  serialize(): any {
-    const jsonData: any = {
-      x: this.x,
-      y: this.y,
-      width: this.width,
-      height: this.height,
-      lastOpened: this.lastOpened.toISOString()
-    };
-
-    if (this.remoteURL !== '') {
-      jsonData.remoteURL = this.remoteURL;
-    }
-
-    if (this.persistSessionData === false) {
-      jsonData.persistSessionData = this.persistSessionData;
-    }
-
-    if (this.workingDirectory !== DEFAULT_WORKING_DIR) {
-      jsonData.workingDirectory = this.workingDirectory;
-    }
-
-    if (this.filesToOpen.length > 0) {
-      jsonData.filesToOpen = [...this.filesToOpen];
-    }
-
-    // if local server and JupyterLab UI is in client-app mode
-    if (
-      this.pageConfig &&
-      this.remoteURL === '' &&
-      userSettings.getValue(SettingType.frontEndMode) === FrontEndMode.ClientApp
-    ) {
-      const pageConfig = JSON.parse(JSON.stringify(this.pageConfig));
-      delete pageConfig['token'];
-      jsonData.pageConfig = pageConfig;
-    }
-
-    return jsonData;
-  }
+  return resolved;
 }
 
 export const userSettings = new UserSettings();
