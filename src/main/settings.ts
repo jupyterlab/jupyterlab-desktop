@@ -360,7 +360,9 @@ export class ApplicationData {
       for (const recentSession of jsonData.recentSessions) {
         this.recentSessions.push({
           workingDirectory: recentSession.workingDirectory,
-          filesToOpen: [...recentSession.filesToOpen],
+          filesToOpen: recentSession.filesToOpen
+            ? [...recentSession.filesToOpen]
+            : [],
           remoteURL: recentSession.remoteURL,
           persistSessionData: recentSession.persistSessionData,
           date: new Date(recentSession.date)
@@ -443,7 +445,10 @@ export class ApplicationData {
     for (const recentSession of this.recentSessions) {
       appDataJSON.recentSessions.push({
         workingDirectory: recentSession.workingDirectory,
-        filesToOpen: [...recentSession.filesToOpen],
+        filesToOpen:
+          recentSession.filesToOpen.length > 0
+            ? [...recentSession.filesToOpen]
+            : undefined,
         remoteURL: recentSession.remoteURL,
         persistSessionData: recentSession.persistSessionData,
         date: recentSession.date.toISOString()
