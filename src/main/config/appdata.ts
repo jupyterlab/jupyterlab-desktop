@@ -4,8 +4,9 @@
 import * as path from 'path';
 import * as fs from 'fs';
 import { getUserDataDir } from '../utils';
-import { IPythonEnvironment } from '../tokens';
+import { IEnvironmentType, IPythonEnvironment } from '../tokens';
 import { SessionConfig } from './sessionconfig';
+import { getOldSettings } from './settings';
 
 const MAX_RECENT_SESSIONS = 20;
 
@@ -58,6 +59,8 @@ export class ApplicationData {
   read() {
     const appDataPath = this._getAppDataPath();
     if (!fs.existsSync(appDataPath)) {
+      // TODO: remove after 07/2023
+      this._migrateFromOldSettings();
       return;
     }
     const data = fs.readFileSync(appDataPath);
@@ -149,6 +152,29 @@ export class ApplicationData {
           link: newsItem.link
         });
       }
+    }
+  }
+
+  private _migrateFromOldSettings() {
+    const oldSettings = getOldSettings();
+
+    if (oldSettings.condaRootPath) {
+      this.condaRootPath = oldSettings.condaRootPath;
+    }
+    if (oldSettings.pythonPath) {
+      this.userSetPythonEnvs.push({
+        path: oldSettings.pythonPath,
+        name: 'env',
+        type: IEnvironmentType.Path,
+        versions: {},
+        defaultKernel: 'python3'
+      });
+    }
+    if (oldSettings.remoteURL) {
+      this.recentRemoteURLs.push({
+        url: oldSettings.remoteURL,
+        date: new Date()
+      });
     }
   }
 

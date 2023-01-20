@@ -81,6 +81,11 @@ export function getBundledPythonInstallDir(): string {
   return installDir;
 }
 
+// user data dir for<= 3.5.1-1
+export function getOldUserConfigPath() {
+  return path.join(getBundledPythonInstallDir(), 'jupyterlab-desktop-data');
+}
+
 export function getBundledPythonEnvPath(): string {
   const userDataDir = getBundledPythonInstallDir();
   let envPath = path.join(userDataDir, 'jlab_server');
