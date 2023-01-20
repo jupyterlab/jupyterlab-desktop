@@ -45,6 +45,8 @@ export interface IRegistry {
   dispose(): Promise<void>;
 }
 
+export const SERVER_TOKEN_PREFIX = 'jlab:srvr:';
+
 export class Registry implements IRegistry, IDisposable {
   constructor() {
     const minJLabVersionRequired =
@@ -423,8 +425,11 @@ export class Registry implements IRegistry, IDisposable {
                 const jsonStr = line.substring(jsonStart);
                 try {
                   const jsonData = JSON.parse(jsonStr);
-                  // check if server is really up
-                  if (await isPortInUse(jsonData.port)) {
+                  // check if server is not created by desktop app and is still running
+                  if (
+                    !jsonData.token.startsWith(SERVER_TOKEN_PREFIX) &&
+                    (await isPortInUse(jsonData.port))
+                  ) {
                     runningServers.push(
                       `${jsonData.url}lab?token=${jsonData.token}`
                     );

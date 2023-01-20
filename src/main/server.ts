@@ -1,5 +1,5 @@
 import { ChildProcess, execFile } from 'child_process';
-import { IRegistry } from './registry';
+import { IRegistry, SERVER_TOKEN_PREFIX } from './registry';
 import { dialog } from 'electron';
 import { ArrayExt } from '@lumino/algorithm';
 import log from 'electron-log';
@@ -177,8 +177,7 @@ export class JupyterServer {
           return;
         }
         this._info.port = this._options.port || (await getFreePort());
-        this._info.token =
-          this._options.token || randomBytes(24).toString('hex');
+        this._info.token = this._options.token || this._generateToken();
         this._info.url = new URL(
           `http://localhost:${this._info.port}/lab?token=${this._info.token}`
         );
@@ -434,6 +433,10 @@ export class JupyterServer {
           }
         });
     });
+  }
+
+  private _generateToken() {
+    return SERVER_TOKEN_PREFIX + randomBytes(19).toString('hex');
   }
 
   /**
