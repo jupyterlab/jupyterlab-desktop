@@ -429,7 +429,7 @@ export class WelcomeView {
                   </div>
                 </div>
                 
-                <div class="col recent-col">
+                <div id="recent-sessions-col" class="col recent-col">
                   <div class="row row-title">
                     Recent sessions
                   </div>
@@ -548,12 +548,23 @@ export class WelcomeView {
             }
             const sessionIndex = parseInt(row.dataset.sessionIndex);
             let nextRow = row.nextSibling;
+            let lastOneDeleted = sessionIndex === 0;
             row.remove();
             while (nextRow && nextRow.classList?.contains('recent-session-row')) {
+              // next one exists
+              lastOneDeleted = false;
               nextRow.dataset.sessionIndex = parseInt(nextRow.dataset.sessionIndex) - 1;
               nextRow = nextRow.nextSibling;
             }
             window.electronAPI.deleteRecentSession(sessionIndex);
+
+            if (lastOneDeleted) {
+              const recentSessionsCol = document.getElementById("recent-sessions-col");
+              const noRecentMessage = document.createElement("div");
+              noRecentMessage.classList.add("no-recent-message");
+              noRecentMessage.innerText = "No history yet";
+              recentSessionsCol.appendChild(noRecentMessage);
+            }
           }
 
           function handleNewsClick(newsLink) {
