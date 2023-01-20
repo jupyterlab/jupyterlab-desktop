@@ -177,3 +177,11 @@ export function getFreePort(): Promise<number> {
     getPort();
   });
 }
+
+export async function waitForDuration(duration: number): Promise<boolean> {
+  return new Promise(resolve => {
+    setTimeout(() => {
+      resolve(false);
+    }, duration);
+  });
+}

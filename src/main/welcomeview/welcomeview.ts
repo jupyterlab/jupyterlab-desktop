@@ -9,6 +9,7 @@ import fetch from 'node-fetch';
 import { XMLParser } from 'fast-xml-parser';
 import { SettingType, userSettings } from '../config/settings';
 import { appData, INewsItem } from '../config/appdata';
+import { IRegistry } from '../registry';
 
 const maxRecentItems = 5;
 const notebookIcon = `<svg xmlns="http://www.w3.org/2000/svg" width="16" viewBox="0 0 22 22">
@@ -28,6 +29,7 @@ const externalLinkIcon = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 5
 
 export class WelcomeView {
   constructor(options: WelcomeView.IOptions) {
+    this._registry = options.registry;
     this._isDarkTheme = options.isDarkTheme;
     this._view = new BrowserView({
       webPreferences: {
@@ -87,7 +89,9 @@ export class WelcomeView {
       }
 
       recentSessionSection += `<div class="row recent-session-row" data-session-index="${recentSessionCount}">
-          <div><a href="javascript:void(0)" onclick='handleRecentSessionClick(event);' title="${tooltip}">${sessionItem}</a>${
+          <div><a ${
+            !recentSession.remoteURL ? 'class="recent-item-local"' : ''
+          } href="javascript:void(0)" onclick='handleRecentSessionClick(event);' title="${tooltip}">${sessionItem}</a>${
         sessionDetail
           ? `<span class="recent-session-detail" title="${sessionDetail}">${sessionDetail}</span>`
           : ''
@@ -132,8 +136,11 @@ export class WelcomeView {
               color: #ffffff;
             }
             .container {
-              padding: 80px 120px;
+              height: calc(100vh - 100px);
+              padding: 80px 120px 20px 120px;
               font-size: 16px;
+              display: flex;
+              flex-direction: column;
             }
             .row {
               display: flex;
@@ -156,6 +163,9 @@ export class WelcomeView {
             }
             .app-title {
               font-size: 30px;
+            }
+            .content-row {
+              flex-grow: 1;
             }
             .start-recent-col {
               width: 40%;
@@ -230,6 +240,10 @@ export class WelcomeView {
             }
             .more-row a {
               color: #202020;
+            }
+            a.disabled {
+              pointer-events: none;
+              opacity: 0.5;
             }
             .app-ui-dark .more-row a {
               color: #f0f0f0;
@@ -307,6 +321,33 @@ export class WelcomeView {
               height: 26px;
               margin-left: -2px;
             }
+            #notification-panel {
+              position: sticky;
+              bottom: 0;
+              display: none;
+              height: 50px;
+              padding: 0 20px;
+              background: inherit;
+              border-top: 1px solid #585858;
+              align-items: center;
+            }
+            #notification-panel-message {
+              flex-grow: 1;
+              display: flex;
+              align-items: center;
+            }
+            #notification-panel-message a {
+              margin: 0 4px;
+            }
+            #notification-panel .close-button {
+              width: 20px;
+              height: 20px;
+              fill: #555555;
+              cursor: pointer;
+            }
+            .app-ui-dark #notification-panel .close-button {
+              fill: #bcbcbc;
+            }
           </style>
           <script>
             document.addEventListener("DOMContentLoaded", () => {
@@ -320,14 +361,16 @@ export class WelcomeView {
         <body class="${this._isDarkTheme ? 'app-ui-dark' : ''} ${
       showNewsFeed ? '' : 'news-list-hidden'
     } ${recentSessionCount > maxRecentItems ? 'recents-collapsed' : ''}">
-          <div class="body-container">
           <svg class="symbol" style="display: none;">
           <defs>
             <symbol id="circle-xmark" viewBox="0 0 512 512">
               <!--! Font Awesome Pro 6.2.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license (Commercial License) Copyright 2022 Fonticons, Inc. --><path d="M256 512c141.4 0 256-114.6 256-256S397.4 0 256 0S0 114.6 0 256S114.6 512 256 512zM175 175c9.4-9.4 24.6-9.4 33.9 0l47 47 47-47c9.4-9.4 24.6-9.4 33.9 0s9.4 24.6 0 33.9l-47 47 47 47c9.4 9.4 9.4 24.6 0 33.9s-24.6 9.4-33.9 0l-47-47-47 47c-9.4 9.4-24.6 9.4-33.9 0s-9.4-24.6 0-33.9l47-47-47-47c-9.4-9.4-9.4-24.6 0-33.9z"/>
             </symbol>
+            <symbol id="triangle-exclamation" viewBox="0 0 512 512">
+              <!--! Font Awesome Pro 6.2.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license (Commercial License) Copyright 2022 Fonticons, Inc. --><path d="M256 32c14.2 0 27.3 7.5 34.5 19.8l216 368c7.3 12.4 7.3 27.7 .2 40.1S486.3 480 472 480H40c-14.3 0-27.6-7.7-34.7-20.1s-7-27.8 .2-40.1l216-368C228.7 39.5 241.8 32 256 32zm0 128c-13.3 0-24 10.7-24 24V296c0 13.3 10.7 24 24 24s24-10.7 24-24V184c0-13.3-10.7-24-24-24zm32 224c0-17.7-14.3-32-32-32s-32 14.3-32 32s14.3 32 32 32s32-14.3 32-32z"/></svg>
+            </symbol>
           </defs>
-        </svg>
+          </svg>
           <div class="container">
             <div class="row app-title-row">
               <div class="app-title">
@@ -344,13 +387,13 @@ export class WelcomeView {
                     Start
                   </div>
                   <div class="row action-row new-notebook-action-row">
-                    <a href="javascript:void(0)" title="Create new notebook in the default working directory" onclick="handleNewSessionClick('notebook');">
+                    <a id="new-notebook-link" href="javascript:void(0)" title="Create new notebook in the default working directory" onclick="handleNewSessionClick('notebook');">
                       <span class="action-icon">${notebookIcon}</span>
                       New notebook...
                     </a>
                   </div>
                   <div class="row action-row new-session-action-row">
-                    <a href="javascript:void(0)" title="Launch new JupyterLab session in the default working directory" onclick="handleNewSessionClick('blank');">
+                    <a id="new-session-link" href="javascript:void(0)" title="Launch new JupyterLab session in the default working directory" onclick="handleNewSessionClick('blank');">
                       <span class="action-icon">${labIcon}</span>
                       New session...
                     </a>
@@ -358,19 +401,19 @@ export class WelcomeView {
                   ${
                     process.platform === 'darwin'
                       ? `<div class="row action-row">
-                      <a href="javascript:void(0)" title="Open a notebook or folder in JupyterLab" onclick="handleNewSessionClick('open');">
+                      <a id="open-file-or-folder-link" href="javascript:void(0)" title="Open a notebook or folder in JupyterLab" onclick="handleNewSessionClick('open');">
                         <span class="action-icon">${openIcon}</span>
                         Open...
                       </a>
                     </div>`
                       : `<div class="row action-row">
-                      <a href="javascript:void(0)" title="Open a notebook or file in JupyterLab" onclick="handleNewSessionClick('open-file');">
+                      <a id="open-file-link" href="javascript:void(0)" title="Open a notebook or file in JupyterLab" onclick="handleNewSessionClick('open-file');">
                         <span class="action-icon">${openIcon}</span>
                         Open File...
                       </a>
                     </div>
                     <div class="row action-row">
-                      <a href="javascript:void(0)" title="Open a folder in JupyterLab" onclick="handleNewSessionClick('open-folder');">
+                      <a id="open-folder-link" href="javascript:void(0)" title="Open a folder in JupyterLab" onclick="handleNewSessionClick('open-folder');">
                         <span class="action-icon">${openIcon}</span>
                         Open Folder...
                       </a>
@@ -433,10 +476,21 @@ export class WelcomeView {
               </div>
             </div>
           </div>
+          <div id="notification-panel">
+            <div id="notification-panel-message">
+            </div>
+            <div id="notification-panel-close" title="Close" onclick="closeNotificationPanel(event)">
+              <svg class="close-button" version="2.0">
+                <use href="#circle-xmark" />
+              </svg>
+            </div>
           </div>
 
           <script>
           const newsListContainer = document.getElementById('news-list');
+          const notificationPanel = document.getElementById('notification-panel');
+          const notificationPanelMessage = document.getElementById('notification-panel-message');
+          const notificationPanelCloseButton = document.getElementById('notification-panel-close');
           
           window.electronAPI.onSetNewsList((newsList) => {
             // clear list
@@ -518,6 +572,63 @@ export class WelcomeView {
               expandCollapseButton.innerText = "More...";
             }
           }
+
+          function sendMessageToMain(message, ...args) {
+            window.electronAPI.sendMessageToMain(message, ...args);
+          }
+
+          function showNotificationPanel(message, closable) {
+            notificationPanelMessage.innerHTML = message;
+            notificationPanel.style.display = "flex";
+            notificationPanelCloseButton.style.display = closable ? 'block' : 'none'; 
+          }
+
+          function closeNotificationPanel() {
+            notificationPanel.style.display = "none";
+          }
+
+          function disableLocalServerActions() {
+            const serverActionIds = ["new-notebook-link", "new-session-link", "open-file-or-folder-link", "open-file-link", "open-folder-link"];
+            serverActionIds.forEach(id => {
+              const link = document.getElementById(id);
+              if (link) {
+                link.classList.add("disabled");
+              }
+            });
+
+            document.querySelectorAll('a.recent-item-local').forEach(link => {
+              link.classList.add("disabled");
+            });
+          }
+
+          window.electronAPI.onSetNotificationMessage((message, closable) => {
+            showNotificationPanel(message, closable);
+          });
+
+          window.electronAPI.onDisableLocalServerActions(() => {
+            disableLocalServerActions();
+          });
+
+          window.electronAPI.onInstallBundledPythonEnvStatus((status, detail) => {
+            let message = status === 'STARTED' ?
+              'Installing Python environment...' :
+              status === 'CANCELLED' ?
+              'Installation cancelled!' :
+              status === 'FAILURE' ?
+                'Failed to install!' :
+              status === 'SUCCESS' ? 'Installation succeeded. Restarting now...' : '';
+            if (detail) {
+              message += \`[\$\{detail\}]\`;
+            }
+
+            showNotificationPanel(message, status === 'CANCELLED' || status === 'FAILURE');
+    
+            if (status === 'SUCCESS') {
+              setTimeout(() => {
+                sendMessageToMain('restart-app');
+              }, 2000);
+            }
+          });
           </script>
         </body>
       </html>
@@ -535,9 +646,46 @@ export class WelcomeView {
       `data:text/html;charset=utf-8,${encodeURIComponent(this._pageSource)}`
     );
 
+    this._viewReady = new Promise<void>(resolve => {
+      this._view.webContents.on('dom-ready', () => {
+        resolve();
+      });
+    });
+
     if (userSettings.getValue(SettingType.showNewsFeed)) {
       this._updateNewsList();
     }
+
+    this._registry.getDefaultEnvironment().catch(() => {
+      this.disableLocalServerActions();
+      this.showNotification(
+        `
+        <div>
+          <svg style="width: 20px; height: 20px; fill: orange; margin-right: 6px;">
+            <use href="#triangle-exclamation" />
+          </svg>
+        </div>
+        Python environment not found. <a href="javascript:void(0);" onclick="sendMessageToMain('install-bundled-python-env')">Install using the bundled installer</a> or <a href="javascript:void(0);" onclick="sendMessageToMain('show-server-preferences')">Change the default Python environment</a>
+        `,
+        true
+      );
+    });
+  }
+
+  disableLocalServerActions() {
+    this._viewReady.then(() => {
+      this._view.webContents.send('disable-local-server-actions');
+    });
+  }
+
+  showNotification(message: string, closable: boolean) {
+    this._viewReady.then(() => {
+      this._view.webContents.send(
+        'set-notification-message',
+        message,
+        closable
+      );
+    });
   }
 
   private _registerListeners() {
@@ -600,6 +748,8 @@ export class WelcomeView {
 
   private _isDarkTheme: boolean;
   private _view: BrowserView;
+  private _viewReady: Promise<void>;
+  private _registry: IRegistry;
   private _pageSource: string;
   static _newsList: INewsItem[] = [];
   static _newsListFetched = false;
@@ -608,5 +758,6 @@ export class WelcomeView {
 export namespace WelcomeView {
   export interface IOptions {
     isDarkTheme: boolean;
+    registry: IRegistry;
   }
 }

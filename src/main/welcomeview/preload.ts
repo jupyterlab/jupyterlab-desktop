@@ -1,8 +1,20 @@
 const { contextBridge, ipcRenderer } = require('electron');
 
 type SetNewsListListener = (list: any[]) => void;
+type SetNotificationMessageListener = (
+  message: string,
+  closable: boolean
+) => void;
+type DisableLocalServerActionsListener = () => void;
+type InstallBundledPythonEnvStatusListener = (
+  status: string,
+  message: string
+) => void;
 
 let onSetNewsListListener: SetNewsListListener;
+let onSetNotificationMessageListener: SetNotificationMessageListener;
+let onDisableLocalServerActionsListener: DisableLocalServerActionsListener;
+let onInstallBundledPythonEnvStatusListener: InstallBundledPythonEnvStatusListener;
 
 contextBridge.exposeInMainWorld('electronAPI', {
   getAppConfig: () => {
@@ -40,8 +52,24 @@ contextBridge.exposeInMainWorld('electronAPI', {
   openNewsLink: (newsLink: string) => {
     ipcRenderer.send('open-news-link', newsLink);
   },
+  sendMessageToMain: (message: string, ...args: any[]) => {
+    ipcRenderer.send(message, ...args);
+  },
   onSetNewsList: (callback: SetNewsListListener) => {
     onSetNewsListListener = callback;
+  },
+  onSetNotificationMessage: (callback: SetNotificationMessageListener) => {
+    onSetNotificationMessageListener = callback;
+  },
+  onDisableLocalServerActions: (
+    callback: DisableLocalServerActionsListener
+  ) => {
+    onDisableLocalServerActionsListener = callback;
+  },
+  onInstallBundledPythonEnvStatus: (
+    callback: InstallBundledPythonEnvStatusListener
+  ) => {
+    onInstallBundledPythonEnvStatusListener = callback;
   }
 });
 
@@ -50,5 +78,29 @@ ipcRenderer.on('set-news-list', (event, list) => {
     onSetNewsListListener(list);
   }
 });
+
+ipcRenderer.on(
+  'set-notification-message',
+  (event, message: string, closable: boolean) => {
+    if (onSetNotificationMessageListener) {
+      onSetNotificationMessageListener(message, closable);
+    }
+  }
+);
+
+ipcRenderer.on('disable-local-server-actions', event => {
+  if (onDisableLocalServerActionsListener) {
+    onDisableLocalServerActionsListener();
+  }
+});
+
+ipcRenderer.on(
+  'install-bundled-python-env-status',
+  (event, result, message) => {
+    if (onInstallBundledPythonEnvStatusListener) {
+      onInstallBundledPythonEnvStatusListener(result, message);
+    }
+  }
+);
 
 export {};

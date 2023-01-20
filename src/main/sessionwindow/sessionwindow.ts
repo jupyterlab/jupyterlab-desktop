@@ -296,7 +296,10 @@ export class SessionWindow implements IDisposable {
   }
 
   private _loadWelcomeView() {
-    const welcomeView = new WelcomeView({ isDarkTheme: this._isDarkTheme });
+    const welcomeView = new WelcomeView({
+      registry: this._registry,
+      isDarkTheme: this._isDarkTheme
+    });
     this._window.addBrowserView(welcomeView.view);
     welcomeView.view.setBounds({
       x: 0,
@@ -778,7 +781,12 @@ export class SessionWindow implements IDisposable {
     });
 
     ipcMain.on('show-server-preferences', async event => {
-      if (event.sender !== this._progressView.view.view.webContents) {
+      if (
+        !(
+          event.sender === this._progressView.view.view.webContents ||
+          event.sender === this._welcomeView.view.webContents
+        )
+      ) {
         return;
       }
 

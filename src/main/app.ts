@@ -16,7 +16,8 @@ import {
   getAppDir,
   getBundledPythonEnvPath,
   getBundledPythonPath,
-  isDarkTheme
+  isDarkTheme,
+  waitForDuration
 } from './utils';
 import { execFile } from 'child_process';
 import { JupyterServerFactory } from './server';
@@ -366,7 +367,7 @@ export class JupyterApplication implements IApplication, IDisposable {
         });
     });
 
-    ipcMain.on('install-bundled-python-env', event => {
+    ipcMain.on('install-bundled-python-env', async event => {
       event.sender.send('install-bundled-python-env-status', 'STARTED');
       const platform = process.platform;
       const isWin = platform === 'win32';
@@ -390,6 +391,8 @@ export class JupyterApplication implements IApplication, IDisposable {
         });
 
         if (choice === 0) {
+          // allow dialog to close
+          await waitForDuration(200);
           fs.rmdirSync(installPath, { recursive: true });
         } else {
           event.sender.send('install-bundled-python-env-status', 'CANCELLED');

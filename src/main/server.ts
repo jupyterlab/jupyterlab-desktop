@@ -13,7 +13,8 @@ import {
   getEnvironmentPath,
   getFreePort,
   getSchemasDir,
-  getUserDataDir
+  getUserDataDir,
+  waitForDuration
 } from './utils';
 import { FrontEndMode, SettingType, userSettings } from './config/settings';
 import { randomBytes } from 'crypto';
@@ -108,14 +109,6 @@ function createLaunchScript(
   }
 
   return scriptPath;
-}
-
-async function waitForDuration(duration: number): Promise<boolean> {
-  return new Promise(resolve => {
-    setTimeout(() => {
-      resolve(false);
-    }, duration);
-  });
 }
 
 async function checkIfUrlExists(url: URL): Promise<boolean> {
