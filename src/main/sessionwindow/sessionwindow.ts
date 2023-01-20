@@ -15,7 +15,6 @@ import { LabView } from '../labview/labview';
 import {
   DEFAULT_WIN_HEIGHT,
   DEFAULT_WIN_WIDTH,
-  DEFAULT_WORKING_DIR,
   FrontEndMode,
   SettingType,
   userSettings,
@@ -72,7 +71,7 @@ export class SessionWindow implements IDisposable {
     this._contentViewType = options.contentView;
     this._sessionConfig = options.sessionConfig;
     this._wsSettings = new WorkspaceSettings(
-      this._sessionConfig?.workingDirectory || DEFAULT_WORKING_DIR
+      this._sessionConfig?.workingDirectory
     );
 
     // if a python path was specified together with working directory,
@@ -491,7 +490,7 @@ export class SessionWindow implements IDisposable {
         const sessionConfig = new SessionConfig();
         this._sessionConfig = sessionConfig;
         this._wsSettings = new WorkspaceSettings(
-          sessionConfig.workingDirectory || DEFAULT_WORKING_DIR
+          sessionConfig.workingDirectory
         );
         try {
           await this._createServerForSession();
@@ -1078,7 +1077,7 @@ export class SessionWindow implements IDisposable {
 
       this._disposeSession().then(() => {
         this._wsSettings = new WorkspaceSettings(
-          sessionConfig.workingDirectory || DEFAULT_WORKING_DIR
+          sessionConfig.workingDirectory
         );
         this._createSessionForConfig(sessionConfig).catch(error => {
           this._setProgress(
@@ -1165,9 +1164,7 @@ export class SessionWindow implements IDisposable {
 
     this._showProgressView('Creating new session');
 
-    this._wsSettings = new WorkspaceSettings(
-      sessionConfig.workingDirectory || DEFAULT_WORKING_DIR
-    );
+    this._wsSettings = new WorkspaceSettings(sessionConfig.workingDirectory);
 
     const serverOptions: JupyterServer.IOptions = {
       workingDirectory: sessionConfig.resolvedWorkingDirectory

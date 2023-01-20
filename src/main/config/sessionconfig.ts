@@ -6,7 +6,6 @@ import * as fs from 'fs';
 import {
   DEFAULT_WIN_HEIGHT,
   DEFAULT_WIN_WIDTH,
-  DEFAULT_WORKING_DIR,
   FrontEndMode,
   resolveWorkingDirectory,
   SettingType,
@@ -20,7 +19,7 @@ export class SessionConfig {
   height: number = DEFAULT_WIN_HEIGHT;
   remoteURL: string = '';
   persistSessionData: boolean = true;
-  workingDirectory: string = DEFAULT_WORKING_DIR;
+  workingDirectory: string = '';
   filesToOpen: string[] = [];
   pythonPath: string = '';
   defaultKernel: string = '';
@@ -165,7 +164,7 @@ export class SessionConfig {
       jsonData.persistSessionData = this.persistSessionData;
     }
 
-    if (this.workingDirectory !== DEFAULT_WORKING_DIR) {
+    if (this.workingDirectory !== '') {
       jsonData.workingDirectory = this.workingDirectory;
     }
 

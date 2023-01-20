@@ -5,7 +5,6 @@ import * as path from 'path';
 import * as fs from 'fs';
 import { getOldUserConfigPath, getUserDataDir, getUserHomeDir } from '../utils';
 
-export const DEFAULT_WORKING_DIR = '$HOME';
 export const DEFAULT_WIN_WIDTH = 1024;
 export const DEFAULT_WIN_HEIGHT = 768;
 
@@ -91,7 +90,7 @@ export class UserSettings {
       syncJupyterLabTheme: new Setting<boolean>(true, { wsOverridable: true }),
       frontEndMode: new Setting<FrontEndMode>(FrontEndMode.WebApp),
 
-      defaultWorkingDirectory: new Setting<string>(DEFAULT_WORKING_DIR),
+      defaultWorkingDirectory: new Setting<string>(''),
       pythonPath: new Setting<string>('', { wsOverridable: true }),
 
       startupMode: new Setting<StartupMode>(StartupMode.WelcomePage)
@@ -274,12 +273,20 @@ export function resolveWorkingDirectory(
   resetIfInvalid: boolean = true
 ): string {
   const home = getUserHomeDir();
-  let resolved = workingDirectory.replace('$HOME', home);
+  let resolved = workingDirectory || '';
+  if (!resolved) {
+    resolved = home;
+    resetIfInvalid = false;
+  }
 
   if (resetIfInvalid) {
-    const stat = fs.lstatSync(resolved);
+    try {
+      const stat = fs.lstatSync(resolved);
 
-    if (!stat.isDirectory()) {
+      if (!stat.isDirectory()) {
+        resolved = home;
+      }
+    } catch (error) {
       resolved = home;
     }
   }

@@ -196,7 +196,7 @@ export class PreferencesDialog {
               </div>
               <div class="row">
                 <div style="flex-grow: 1;">
-                  <jp-text-field type="text" id="working-directory" value="<%= defaultWorkingDirectory %>" style="width: 100%;" spellcheck="false"></jp-text-field>
+                  <jp-text-field type="text" id="working-directory" value="<%= defaultWorkingDirectory %>" style="width: 100%;" spellcheck="false" placeholder="/working/directory (leave empty for user home)"></jp-text-field>
                 </div>
                 <div>
                   <jp-button id='select-working-directory' onclick='handleSelectWorkingDirectory(this);'>Change</jp-button>
