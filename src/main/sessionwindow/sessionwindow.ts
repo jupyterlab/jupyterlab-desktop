@@ -1063,10 +1063,10 @@ export class SessionWindow implements IDisposable {
       }
 
       this._disposeSession().then(() => {
-        this._wsSettings = new WorkspaceSettings(
-          sessionConfig.workingDirectory
-        );
-        this._createSessionForConfig(sessionConfig).catch(error => {
+        this._createSessionForLocal(
+          sessionConfig.workingDirectory,
+          sessionConfig.filesToOpen
+        ).catch(error => {
           this._setProgress(
             'Failed to create session',
             `<div class="message-row">${error}</div>
@@ -1078,34 +1078,6 @@ export class SessionWindow implements IDisposable {
         });
       });
     }
-  }
-
-  private async _createSessionForConfig(sessionConfig: SessionConfig) {
-    this._sessionConfig = sessionConfig;
-
-    this._showProgressView('Creating new session');
-
-    await this._createServerForSession();
-
-    this._contentViewType = ContentViewType.Lab;
-    this._updateContentView();
-
-    this._updateSessionWindowPositionConfig();
-    appData.setLastSession(this._sessionConfig);
-
-    if (sessionConfig.filesToOpen) {
-      this.labView.labUIReady.then(() => {
-        this.labView.openFiles();
-        this._hideProgressView();
-      });
-    } else {
-      this._hideProgressView();
-    }
-
-    appData.addSessionToRecents({
-      workingDirectory: sessionConfig.resolvedWorkingDirectory,
-      filesToOpen: [...sessionConfig.filesToOpen]
-    });
   }
 
   private async _createSessionForLocal(
