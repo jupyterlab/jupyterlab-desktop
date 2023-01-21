@@ -360,7 +360,9 @@ export class WelcomeView {
       
         <body class="${this._isDarkTheme ? 'app-ui-dark' : ''} ${
       showNewsFeed ? '' : 'news-list-hidden'
-    } ${recentSessionCount > maxRecentItems ? 'recents-collapsed' : ''}">
+    } ${
+      recentSessionCount > maxRecentItems ? 'recents-collapsed' : ''
+    }" title="">
           <svg class="symbol" style="display: none;">
           <defs>
             <symbol id="circle-xmark" viewBox="0 0 512 512">
