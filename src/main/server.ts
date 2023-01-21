@@ -488,6 +488,17 @@ export namespace JupyterServer {
 
 export interface IServerFactory {
   /**
+   * Create and start a 'free' server is none exists.
+   *
+   * @param opts the Jupyter server options.
+   *
+   * @return the factory item.
+   */
+  createFreeServerIfNoneExists: (
+    opts?: JupyterServer.IOptions
+  ) => Promise<void>;
+
+  /**
    * Create and start a 'free' server. The server created will be returned
    * in the next call to 'createServer'.
    *
@@ -543,6 +554,15 @@ export namespace IServerFactory {
 export class JupyterServerFactory implements IServerFactory, IDisposable {
   constructor(registry: IRegistry) {
     this._registry = registry;
+  }
+
+  async createFreeServerIfNoneExists(
+    opts?: JupyterServer.IOptions
+  ): Promise<void> {
+    const exists = this._findUnusedServer(opts);
+    if (!exists) {
+      this.createFreeServer(opts);
+    }
   }
 
   /**
@@ -685,17 +705,17 @@ export class JupyterServerFactory implements IServerFactory, IDisposable {
   }
 
   private _findUnusedServer(
-    opts: JupyterServer.IOptions
+    opts?: JupyterServer.IOptions
   ): JupyterServerFactory.IFactoryItem | null {
     const workingDir =
-      opts.workingDirectory || userSettings.resolvedWorkingDirectory;
+      opts?.workingDirectory || userSettings.resolvedWorkingDirectory;
     let result = ArrayExt.findFirstValue(
       this._servers,
       (server: JupyterServerFactory.IFactoryItem, idx: number) => {
         return (
           !server.used &&
           server.server.info.workingDirectory === workingDir &&
-          server.server.info.environment.path === opts.environment.path
+          server.server.info.environment.path === opts?.environment?.path
         );
       }
     );

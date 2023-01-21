@@ -1414,6 +1414,8 @@ export class SessionWindow implements IDisposable {
     this._disposeSession().then(() => {
       appData.setLastSession(null);
       showWelcome();
+      // keep a free server up
+      this._serverFactory.createFreeServerIfNoneExists();
     });
   }
 
