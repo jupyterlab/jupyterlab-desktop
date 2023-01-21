@@ -246,20 +246,30 @@ export class RemoteServerSelectDialog {
 
   load() {
     this._window.loadDialogContent(this._pageBody);
+
+    this._windowReady = new Promise<void>(resolve => {
+      this._window.window.webContents.on('dom-ready', () => {
+        resolve();
+      });
+    });
   }
 
   updateRecentRemoteURLs() {
-    this._window.window.webContents.send(
-      'update-recent-remote-urls',
-      appData.recentRemoteURLs
-    );
+    this._windowReady.then(() => {
+      this._window.window.webContents.send(
+        'update-recent-remote-urls',
+        appData.recentRemoteURLs
+      );
+    });
   }
 
   setRunningServerList(runningServers: string[]) {
-    this._window.window.webContents.send(
-      'set-running-server-list',
-      runningServers
-    );
+    this._windowReady.then(() => {
+      this._window.window.webContents.send(
+        'set-running-server-list',
+        runningServers
+      );
+    });
   }
 
   private _handleDeleteRecentRemoteUrl(
@@ -280,6 +290,7 @@ export class RemoteServerSelectDialog {
     event: Electron.IpcMainEvent,
     url: string
   ) => void;
+  private _windowReady: Promise<void>;
 }
 
 export namespace RemoteServerSelectDialog {
