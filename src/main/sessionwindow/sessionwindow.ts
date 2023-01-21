@@ -1254,9 +1254,8 @@ export class SessionWindow implements IDisposable {
       const isLocalUrl =
         url.hostname === 'localhost' || url.hostname === '127.0.0.1';
       const getServerInfo =
-        !isLocalUrl ||
         userSettings.getValue(SettingType.frontEndMode) ===
-          FrontEndMode.ClientApp;
+        FrontEndMode.ClientApp;
 
       const fetchServerInfo = new Promise<IJupyterServerInfo>(
         (resolve, reject) => {

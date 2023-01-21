@@ -338,8 +338,16 @@ export class ApplicationData {
     }
   }
 
-  removeSessionFromRecents(sessionIndex: number) {
+  async removeSessionFromRecents(sessionIndex: number) {
     if (sessionIndex >= 0 && sessionIndex < this.recentSessions.length) {
+      const session = this.recentSessions[sessionIndex];
+      if (session.partition && session.partition.startsWith('persist:')) {
+        try {
+          await clearSession(electronSession.fromPartition(session.partition));
+        } catch (error) {
+          //
+        }
+      }
       this.recentSessions.splice(sessionIndex, 1);
     }
   }
