@@ -207,7 +207,8 @@ export class SessionWindow implements IDisposable {
       if (this._sessionConfig.isRemote) {
         this._createSessionForRemoteUrl(
           this._sessionConfig.remoteURL,
-          this._sessionConfig.persistSessionData
+          this._sessionConfig.persistSessionData,
+          this._sessionConfig.partition
         );
       } else {
         this._createServerForSession()
@@ -576,7 +577,11 @@ export class SessionWindow implements IDisposable {
         this._remoteServerSelectDialog.window.close();
         this._remoteServerSelectDialog = null;
 
-        this._createSessionForRemoteUrl(remoteUrl, persistSessionData);
+        this._createSessionForRemoteUrl(
+          remoteUrl,
+          persistSessionData,
+          undefined
+        );
       }
     );
 
@@ -1239,7 +1244,8 @@ export class SessionWindow implements IDisposable {
 
   private _createSessionForRemoteUrl(
     remoteURL: string,
-    persistSessionData: boolean
+    persistSessionData: boolean,
+    partition: string
   ) {
     this._showProgressView('Connecting to JupyterLab Server');
 
@@ -1255,7 +1261,10 @@ export class SessionWindow implements IDisposable {
       const fetchServerInfo = new Promise<IJupyterServerInfo>(
         (resolve, reject) => {
           if (getServerInfo) {
-            connectAndGetServerInfo(remoteURL, { showDialog: !isLocalUrl })
+            connectAndGetServerInfo(remoteURL, {
+              showDialog: !isLocalUrl,
+              partition
+            })
               .then(serverInfo => {
                 resolve({
                   pageConfig: serverInfo.pageConfig,
@@ -1280,7 +1289,8 @@ export class SessionWindow implements IDisposable {
 
           this._sessionConfig = SessionConfig.createRemote(
             remoteURL,
-            persistSessionData
+            persistSessionData,
+            partition
           );
           const sessionConfig = this._sessionConfig;
           sessionConfig.url = url;
@@ -1291,7 +1301,8 @@ export class SessionWindow implements IDisposable {
           appData.addRemoteURLToRecents(remoteURL);
           appData.addSessionToRecents({
             remoteURL,
-            persistSessionData
+            persistSessionData,
+            partition: sessionConfig.partition
           });
 
           this._contentViewType = ContentViewType.Lab;
@@ -1327,12 +1338,16 @@ export class SessionWindow implements IDisposable {
     sessionIndex: number,
     useDefaultPythonEnv?: boolean
   ) {
+    if (sessionIndex < 0 || sessionIndex >= appData.recentSessions.length) {
+      return;
+    }
     const recentSession = appData.recentSessions[sessionIndex];
 
     if (recentSession.remoteURL) {
       this._createSessionForRemoteUrl(
         recentSession.remoteURL,
-        recentSession.persistSessionData
+        recentSession.persistSessionData,
+        recentSession.partition
       );
     } else {
       let workingDirectoryExists = true;

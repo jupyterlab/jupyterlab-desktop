@@ -144,6 +144,13 @@ export class PreferencesDialog {
         flex-direction: column;
         margin: 10px 0;
       }
+      #clear-history {
+        display: flex;
+        flex-direction: column;
+      }
+      #clear-history-progress {
+        visibility: hidden;
+      }
       </style>
       <div id="container">
         <div id="content-area">
@@ -156,6 +163,9 @@ export class PreferencesDialog {
             </jp-tab>
             <jp-tab id="tab-updates">
               Updates
+            </jp-tab>
+            <jp-tab id="tab-privacy">
+              Privacy
             </jp-tab>
 
             <jp-tab-panel id="tab-panel-general">
@@ -350,6 +360,41 @@ export class PreferencesDialog {
                 document.addEventListener("DOMContentLoaded", () => {
                   updateAutoInstallCheckboxState();
                 });
+              </script>
+            </jp-tab-panel>
+
+            <jp-tab-panel id="tab-panel-privacy">
+              <div id="clear-history">
+                <div class="row" style="line-height: 30px;">
+                  <label>Clear History</label>
+                </div>
+                <jp-checkbox id='checkbox-clear-session-data' type='checkbox' checked="true">Browser session cache & data</jp-checkbox>
+                <jp-checkbox id='checkbox-clear-recent-remote-urls' type='checkbox'>Recent remote URLs</jp-checkbox>
+                <jp-checkbox id='checkbox-clear-recent-sessions' type='checkbox'>Recent sessions</jp-checkbox>
+                <jp-checkbox id='checkbox-clear-user-set-python-envs' type='checkbox'>User set Python environments</jp-checkbox>
+
+                <div class="row" style="height: 60px">
+                <jp-button onclick='handleClearHistory(this);'>Clear selected</jp-button><jp-progress-ring id="clear-history-progress"></jp-progress-ring>
+                </div>
+              </div>
+              <script>
+                const clearSessionDataCheckbox = document.getElementById('checkbox-clear-session-data');
+                const clearRecentRemoteURLs = document.getElementById('checkbox-clear-recent-remote-urls');
+                const clearRecentSessions = document.getElementById('checkbox-clear-recent-sessions');
+                const clearUserSetPythonEnvs = document.getElementById('checkbox-clear-user-set-python-envs');
+                const clearHistoryProgress = document.getElementById('clear-history-progress');
+
+                function handleClearHistory(el) {
+                  clearHistoryProgress.style.visibility = 'visible';
+                  window.electronAPI.clearHistory({
+                    sessionData: clearSessionDataCheckbox.checked,
+                    recentRemoteURLs: clearRecentRemoteURLs.checked,
+                    recentSessions: clearRecentSessions.checked,
+                    userSetPythonEnvs: clearUserSetPythonEnvs.checked,
+                  }).then(() => {
+                    clearHistoryProgress.style.visibility = 'hidden';
+                  });
+                }
               </script>
             </jp-tab-panel>
           </jp-tabs>

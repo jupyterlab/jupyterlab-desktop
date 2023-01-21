@@ -1,7 +1,7 @@
 // Copyright (c) Jupyter Development Team.
 // Distributed under the terms of the Modified BSD License.
 
-import { app, autoUpdater, dialog, ipcMain, shell } from 'electron';
+import { app, autoUpdater, dialog, ipcMain, session, shell } from 'electron';
 
 import log from 'electron-log';
 
@@ -13,6 +13,7 @@ import * as path from 'path';
 import * as fs from 'fs';
 
 import {
+  clearSession,
   getAppDir,
   getBundledPythonEnvPath,
   getBundledPythonPath,
@@ -46,6 +47,13 @@ export interface ICLIArguments {
   [x: string]: unknown;
   pythonPath: string | unknown;
   workingDir: string | unknown;
+}
+
+interface IClearHistoryOptions {
+  sessionData: boolean;
+  recentRemoteURLs: boolean;
+  recentSessions: boolean;
+  userSetPythonEnvs: boolean;
 }
 
 export class JupyterApplication implements IApplication, IDisposable {
@@ -493,6 +501,47 @@ export class JupyterApplication implements IApplication, IDisposable {
     ipcMain.handle('is-dark-theme', event => {
       return isDarkTheme(userSettings.getValue(SettingType.theme));
     });
+
+    ipcMain.handle(
+      'clear-history',
+      async (event, options: IClearHistoryOptions) => {
+        if (options.recentRemoteURLs) {
+          appData.recentRemoteURLs = [];
+        }
+        if (options.userSetPythonEnvs) {
+          appData.userSetPythonEnvs = [];
+        }
+        if (options.sessionData || options.recentSessions) {
+          appData.recentSessions.forEach(async recentSession => {
+            if (
+              recentSession.partition &&
+              recentSession.partition.startsWith('persist:')
+            ) {
+              const s = session.fromPartition(recentSession.partition);
+              try {
+                await clearSession(s);
+              } catch (error) {
+                //
+              }
+            }
+          });
+        }
+
+        if (options.sessionData) {
+          try {
+            await clearSession(session.defaultSession);
+          } catch (error) {
+            //
+          }
+        }
+
+        if (options.recentSessions) {
+          appData.recentSessions = [];
+        }
+
+        return true;
+      }
+    );
   }
 
   private _showUpdateDialog(

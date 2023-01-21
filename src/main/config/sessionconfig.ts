@@ -19,6 +19,7 @@ export class SessionConfig {
   height: number = DEFAULT_WIN_HEIGHT;
   remoteURL: string = '';
   persistSessionData: boolean = true;
+  partition: string = '';
   workingDirectory: string = '';
   filesToOpen: string[] = [];
   pythonPath: string = '';
@@ -83,11 +84,21 @@ export class SessionConfig {
 
   static createRemote(
     remoteURL: string,
-    persistSessionData?: boolean
+    persistSessionData: boolean,
+    partition: string
   ): SessionConfig {
     const sessionConfig = new SessionConfig();
     sessionConfig.remoteURL = remoteURL;
     sessionConfig.persistSessionData = persistSessionData !== false;
+    if (partition) {
+      sessionConfig.partition = partition;
+    } else {
+      if (sessionConfig.persistSessionData) {
+        sessionConfig.partition = `persist:${Date.now()}`;
+      } else {
+        sessionConfig.partition = `partition:${Date.now()}`;
+      }
+    }
 
     return sessionConfig;
   }
@@ -162,6 +173,10 @@ export class SessionConfig {
 
     if (this.persistSessionData === false) {
       jsonData.persistSessionData = this.persistSessionData;
+    }
+
+    if (this.persistSessionData) {
+      jsonData.partition = this.partition;
     }
 
     if (this.workingDirectory !== '') {

@@ -81,6 +81,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   },
   showInvalidPythonPathMessage: (path: string) => {
     ipcRenderer.send('show-invalid-python-path-message', path);
+  },
+  clearHistory: (options: any) => {
+    return ipcRenderer.invoke('clear-history', options);
   }
 });
 

@@ -15,6 +15,7 @@ export interface IRemoteServerConnectOptions {
   showDialog?: boolean;
   incognito?: boolean;
   timeout?: number;
+  partition?: string;
 }
 
 export interface IConnectError {
@@ -45,6 +46,11 @@ export async function connectAndGetServerInfo(
     if (options?.incognito) {
       browserOptions.webPreferences = {
         partition: `partition-${Date.now()}`
+      };
+    }
+    if (options?.partition) {
+      browserOptions.webPreferences = {
+        partition: options.partition
       };
     }
 

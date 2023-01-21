@@ -3,10 +3,11 @@
 
 import * as path from 'path';
 import * as fs from 'fs';
-import { getUserDataDir } from '../utils';
+import { clearSession, getUserDataDir } from '../utils';
 import { IEnvironmentType, IPythonEnvironment } from '../tokens';
 import { SessionConfig } from './sessionconfig';
 import { getOldSettings } from './settings';
+import { session as electronSession } from 'electron';
 
 const MAX_RECENT_SESSIONS = 20;
 
@@ -20,6 +21,7 @@ export interface IRecentSession {
   filesToOpen?: string[];
   remoteURL?: string;
   persistSessionData?: boolean;
+  partition?: string;
   date?: Date;
 }
 
@@ -92,6 +94,7 @@ export class ApplicationData {
             : [],
           remoteURL: recentSession.remoteURL,
           persistSessionData: recentSession.persistSessionData,
+          partition: recentSession.partition,
           date: new Date(recentSession.date)
         });
       }
@@ -201,6 +204,9 @@ export class ApplicationData {
             : undefined,
         remoteURL: recentSession.remoteURL,
         persistSessionData: recentSession.persistSessionData,
+        partition: recentSession.persistSessionData
+          ? recentSession.partition
+          : undefined,
         date: recentSession.date.toISOString()
       });
     }
@@ -271,7 +277,7 @@ export class ApplicationData {
     }
   }
 
-  addSessionToRecents(session: IRecentSession) {
+  async addSessionToRecents(session: IRecentSession) {
     const filesToOpenCompare = (lhs: string[], rhs: string[]): boolean => {
       return (
         Array.isArray(lhs) &&
@@ -286,8 +292,7 @@ export class ApplicationData {
     const isRemote = session.remoteURL !== undefined;
     const existing = this.recentSessions.find(item => {
       return isRemote
-        ? session.remoteURL === item.remoteURL &&
-            session.persistSessionData === item.persistSessionData
+        ? session.remoteURL === item.remoteURL
         : session.workingDirectory === item.workingDirectory &&
             filesToOpenCompare(session.filesToOpen, item.filesToOpen);
     });
@@ -296,6 +301,24 @@ export class ApplicationData {
 
     if (existing) {
       existing.date = now;
+      // update persist info for remote
+      if (isRemote) {
+        existing.persistSessionData = session.persistSessionData;
+        if (
+          existing.partition &&
+          existing.partition !== session.partition &&
+          existing.partition.startsWith('persist:')
+        ) {
+          try {
+            await clearSession(
+              electronSession.fromPartition(existing.partition)
+            );
+          } catch (error) {
+            //
+          }
+        }
+        existing.partition = session.partition;
+      }
     } else {
       let filesToOpen = [...(session.filesToOpen || [])];
       this.recentSessions.push({
@@ -303,6 +326,7 @@ export class ApplicationData {
         filesToOpen: filesToOpen,
         remoteURL: session.remoteURL,
         persistSessionData: session.persistSessionData,
+        partition: session.partition,
         date: now
       });
     }

@@ -15,7 +15,12 @@ import { request as httpsRequest } from 'https';
 import * as path from 'path';
 import * as fs from 'fs';
 import * as ejs from 'ejs';
-import { DarkThemeBGColor, isDarkTheme, LightThemeBGColor } from '../utils';
+import {
+  clearSession,
+  DarkThemeBGColor,
+  isDarkTheme,
+  LightThemeBGColor
+} from '../utils';
 import { SessionWindow } from '../sessionwindow/sessionwindow';
 import {
   FrontEndMode,
@@ -53,7 +58,11 @@ export class LabView implements IDisposable {
     this._jlabBaseUrl = `${sessionConfig.url.protocol}//${sessionConfig.url.host}${sessionConfig.url.pathname}`;
     this._view = new BrowserView({
       webPreferences: {
-        preload: path.join(__dirname, './preload.js')
+        preload: path.join(__dirname, './preload.js'),
+        partition:
+          sessionConfig.isRemote && sessionConfig.persistSessionData
+            ? sessionConfig.partition
+            : `partition-${Date.now()}`
       }
     });
 
@@ -201,7 +210,16 @@ export class LabView implements IDisposable {
 
   dispose(): Promise<void> {
     this._unregisterBrowserEventHandlers();
-    return Promise.resolve();
+
+    // if local or remote with no data persistence, clear session data
+    if (
+      this._sessionConfig.isRemote &&
+      this._sessionConfig.persistSessionData
+    ) {
+      return Promise.resolve();
+    } else {
+      return clearSession(this._view.webContents.session);
+    }
   }
 
   /**

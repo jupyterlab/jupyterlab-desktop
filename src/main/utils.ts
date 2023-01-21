@@ -124,7 +124,8 @@ export function clearSession(session: Electron.Session): Promise<void> {
       Promise.all([
         session.clearCache(),
         session.clearAuthCache(),
-        session.clearStorageData()
+        session.clearStorageData(),
+        session.flushStorageData()
       ]).then(() => {
         resolve();
       });
