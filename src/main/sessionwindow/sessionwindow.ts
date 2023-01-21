@@ -214,7 +214,6 @@ export class SessionWindow implements IDisposable {
                 this._labView.openFiles();
               });
             }
-            this._resizeViews();
             appData.addSessionToRecents({
               workingDirectory: this._sessionConfig.resolvedWorkingDirectory,
               filesToOpen: [...this._sessionConfig.filesToOpen]
@@ -234,7 +233,6 @@ export class SessionWindow implements IDisposable {
       }
     } else {
       this._updateContentView();
-      this._resizeViews();
     }
 
     this._window.on('resize', () => {
@@ -513,7 +511,6 @@ export class SessionWindow implements IDisposable {
 
         this._contentViewType = ContentViewType.Lab;
         this._updateContentView();
-        this._resizeViews();
         this._updateSessionWindowPositionConfig();
         appData.setLastSession(this._sessionConfig);
 
@@ -683,8 +680,6 @@ export class SessionWindow implements IDisposable {
           await this._createServerForSession();
           this._contentViewType = ContentViewType.Lab;
           this._updateContentView();
-          this._resizeViews();
-
           this._hideProgressView();
         } catch (error) {
           this._setProgress(
@@ -856,6 +851,8 @@ export class SessionWindow implements IDisposable {
       }
       this._loadLabView();
     }
+
+    this._resizeViews();
   }
 
   private _resizeViewsDelayed() {
@@ -1092,7 +1089,6 @@ export class SessionWindow implements IDisposable {
 
     this._contentViewType = ContentViewType.Lab;
     this._updateContentView();
-    this._resizeViews();
 
     this._updateSessionWindowPositionConfig();
     appData.setLastSession(this._sessionConfig);
@@ -1164,7 +1160,6 @@ export class SessionWindow implements IDisposable {
 
     this._contentViewType = ContentViewType.Lab;
     this._updateContentView();
-    this._resizeViews();
 
     this._updateSessionWindowPositionConfig();
     appData.setLastSession(this._sessionConfig);
@@ -1248,7 +1243,6 @@ export class SessionWindow implements IDisposable {
 
           this._contentViewType = ContentViewType.Lab;
           this._updateContentView();
-          this._resizeViews();
           this._hideProgressView();
           this._updateSessionWindowPositionConfig();
           appData.setLastSession(this._sessionConfig);
@@ -1341,14 +1335,12 @@ export class SessionWindow implements IDisposable {
 
     this._contentViewType = ContentViewType.Welcome;
     this._updateContentView();
-    this._resizeViews();
   }
 
   private _closeSession() {
     const showWelcome = () => {
       this._contentViewType = ContentViewType.Welcome;
       this._updateContentView();
-      this._resizeViews();
     };
 
     this._hideEnvSelectPopup();
