@@ -176,11 +176,6 @@ export class SessionWindow implements IDisposable {
         this._sessionConfig.cookies = serverInfo.cookies;
       }
     }
-
-    appData.addSessionToRecents({
-      workingDirectory: this._sessionConfig.resolvedWorkingDirectory,
-      filesToOpen: [...this._sessionConfig.filesToOpen]
-    });
   }
 
   load() {
@@ -220,6 +215,10 @@ export class SessionWindow implements IDisposable {
               });
             }
             this._resizeViews();
+            appData.addSessionToRecents({
+              workingDirectory: this._sessionConfig.resolvedWorkingDirectory,
+              filesToOpen: [...this._sessionConfig.filesToOpen]
+            });
           })
           .catch(error => {
             this._setProgress(
@@ -480,12 +479,6 @@ export class SessionWindow implements IDisposable {
           return;
         }
 
-        const loadLabView = () => {
-          this._contentViewType = ContentViewType.Lab;
-          this._updateContentView();
-          this._resizeViews();
-        };
-
         this._showProgressView('Creating new session');
 
         const sessionConfig = new SessionConfig();
@@ -495,6 +488,10 @@ export class SessionWindow implements IDisposable {
         );
         try {
           await this._createServerForSession();
+          appData.addSessionToRecents({
+            workingDirectory: this._sessionConfig.resolvedWorkingDirectory,
+            filesToOpen: [...this._sessionConfig.filesToOpen]
+          });
         } catch (error) {
           this._showProgressView(
             'Failed to create session!',
@@ -514,7 +511,9 @@ export class SessionWindow implements IDisposable {
           );
         }
 
-        loadLabView();
+        this._contentViewType = ContentViewType.Lab;
+        this._updateContentView();
+        this._resizeViews();
         this._updateSessionWindowPositionConfig();
         appData.setLastSession(this._sessionConfig);
 
@@ -679,26 +678,12 @@ export class SessionWindow implements IDisposable {
       this._wsSettings.setValue(SettingType.pythonPath, path);
       this._sessionConfig.pythonPath = path;
 
-      const loadLabView = () => {
-        this._contentViewType = ContentViewType.Lab;
-        this._updateContentView();
-        this._resizeViews();
-      };
-
       this._disposeSession().then(async () => {
         try {
-          const sessionConfig = this._sessionConfig;
-          const server = await this.serverFactory.createServer({
-            workingDirectory: sessionConfig.resolvedWorkingDirectory,
-            environment: env
-          });
-          this._server = server;
-          await server.server.started;
-          const serverInfo = server.server.info;
-          sessionConfig.token = serverInfo.token;
-          sessionConfig.url = serverInfo.url;
-          sessionConfig.defaultKernel = serverInfo.environment.defaultKernel;
-          loadLabView();
+          await this._createServerForSession();
+          this._contentViewType = ContentViewType.Lab;
+          this._updateContentView();
+          this._resizeViews();
 
           this._hideProgressView();
         } catch (error) {
@@ -1099,38 +1084,16 @@ export class SessionWindow implements IDisposable {
   }
 
   private async _createSessionForConfig(sessionConfig: SessionConfig) {
-    const loadLabView = (sessionConfig: SessionConfig) => {
-      this._sessionConfig = sessionConfig;
-      this._contentViewType = ContentViewType.Lab;
-      this._updateContentView();
-      this._resizeViews();
-    };
+    this._sessionConfig = sessionConfig;
 
     this._showProgressView('Creating new session');
 
-    const server = await this.serverFactory.createServer({
-      workingDirectory: sessionConfig.workingDirectory
-    });
-    this._server = server;
-    await server.server.started;
-    const serverInfo = server.server.info;
-    sessionConfig.token = serverInfo.token;
-    sessionConfig.url = serverInfo.url;
-    sessionConfig.defaultKernel = serverInfo.environment.defaultKernel;
+    await this._createServerForSession();
 
-    if (
-      userSettings.getValue(SettingType.frontEndMode) === FrontEndMode.ClientApp
-    ) {
-      const serverInfo = await connectAndGetServerInfo(sessionConfig.url.href, {
-        showDialog: false
-      });
-      if (serverInfo) {
-        sessionConfig.pageConfig = serverInfo.pageConfig;
-        sessionConfig.cookies = serverInfo.cookies;
-      }
-    }
+    this._contentViewType = ContentViewType.Lab;
+    this._updateContentView();
+    this._resizeViews();
 
-    loadLabView(sessionConfig);
     this._updateSessionWindowPositionConfig();
     appData.setLastSession(this._sessionConfig);
 
@@ -1155,13 +1118,6 @@ export class SessionWindow implements IDisposable {
     recentSessionIndex?: number,
     useDefaultPythonEnv?: boolean
   ) {
-    const loadLabView = (sessionConfig: SessionConfig) => {
-      this._sessionConfig = sessionConfig;
-      this._contentViewType = ContentViewType.Lab;
-      this._updateContentView();
-      this._resizeViews();
-    };
-
     const sessionConfig = SessionConfig.createLocal(
       workingDirectory,
       filesToOpen
@@ -1203,27 +1159,13 @@ export class SessionWindow implements IDisposable {
       serverOptions.environment = env;
     }
 
-    const server = await this.serverFactory.createServer(serverOptions);
-    this._server = server;
-    await server.server.started;
-    const serverInfo = server.server.info;
-    sessionConfig.token = serverInfo.token;
-    sessionConfig.url = serverInfo.url;
-    sessionConfig.defaultKernel = serverInfo.environment.defaultKernel;
+    this._sessionConfig = sessionConfig;
+    await this._createServerForSession();
 
-    if (
-      userSettings.getValue(SettingType.frontEndMode) === FrontEndMode.ClientApp
-    ) {
-      const serverInfo = await connectAndGetServerInfo(sessionConfig.url.href, {
-        showDialog: false
-      });
-      if (serverInfo) {
-        sessionConfig.pageConfig = serverInfo.pageConfig;
-        sessionConfig.cookies = serverInfo.cookies;
-      }
-    }
+    this._contentViewType = ContentViewType.Lab;
+    this._updateContentView();
+    this._resizeViews();
 
-    loadLabView(sessionConfig);
     this._updateSessionWindowPositionConfig();
     appData.setLastSession(this._sessionConfig);
 
