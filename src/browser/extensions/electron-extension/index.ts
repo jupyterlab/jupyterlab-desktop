@@ -6,13 +6,9 @@ import {
   JupyterFrontEndPlugin,
   JupyterLab
 } from '@jupyterlab/application';
-
 import { PageConfig } from '@jupyterlab/coreutils';
-
 import { ICommandPalette } from '@jupyterlab/apputils';
-
 import { ServerConnection } from '@jupyterlab/services';
-
 import plugins from '@jupyterlab/application-extension';
 
 /**
@@ -20,14 +16,10 @@ import plugins from '@jupyterlab/application-extension';
  */
 namespace CommandIDs {
   export const activateNextTab: string = 'main-jupyterlab:activate-next-tab';
-
   export const activatePreviousTab: string =
     'main-jupyterlab:activate-previous-tab';
-
   export const closeAll: string = 'main-jupyterlab:close-all';
-
   export const setMode: string = 'main-jupyterlab:set-mode';
-
   export const toggleMode: string = 'main-jupyterlab:toggle-mode';
 }
 

@@ -6,7 +6,6 @@ import * as fs from 'fs';
 import {
   DEFAULT_WIN_HEIGHT,
   DEFAULT_WIN_WIDTH,
-  FrontEndMode,
   resolveWorkingDirectory,
   SettingType,
   userSettings
@@ -118,9 +117,13 @@ export class SessionConfig {
 
     for (const filePath of filePaths) {
       const fullPath = path.join(workingDir, filePath);
-      const stats = fs.lstatSync(fullPath);
-      if (stats.isFile()) {
-        this.filesToOpen.push(filePath);
+      try {
+        const stats = fs.lstatSync(fullPath);
+        if (stats.isFile()) {
+          this.filesToOpen.push(filePath);
+        }
+      } catch (error) {
+        console.log('Failed to get file info', error);
       }
     }
   }
@@ -147,14 +150,14 @@ export class SessionConfig {
     if ('persistSessionData' in jsonData) {
       this.persistSessionData = jsonData.persistSessionData;
     }
+    if (this.persistSessionData && 'partition' in jsonData) {
+      this.partition = jsonData.partition;
+    }
     if ('workingDirectory' in jsonData) {
       this.workingDirectory = jsonData.workingDirectory;
     }
     if ('filesToOpen' in jsonData) {
       this.filesToOpen = [...jsonData.filesToOpen];
-    }
-    if ('pageConfig' in jsonData) {
-      this.pageConfig = JSON.parse(JSON.stringify(jsonData.pageConfig));
     }
   }
 
@@ -185,17 +188,6 @@ export class SessionConfig {
 
     if (this.filesToOpen.length > 0) {
       jsonData.filesToOpen = [...this.filesToOpen];
-    }
-
-    // if local server and JupyterLab UI is in client-app mode
-    if (
-      this.pageConfig &&
-      this.remoteURL === '' &&
-      userSettings.getValue(SettingType.frontEndMode) === FrontEndMode.ClientApp
-    ) {
-      const pageConfig = JSON.parse(JSON.stringify(this.pageConfig));
-      delete pageConfig['token'];
-      jsonData.pageConfig = pageConfig;
     }
 
     return jsonData;

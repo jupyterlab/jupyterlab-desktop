@@ -11,7 +11,6 @@ import {
 import log from 'electron-log';
 import { request as httpRequest, IncomingMessage } from 'http';
 import { request as httpsRequest } from 'https';
-
 import * as path from 'path';
 import * as fs from 'fs';
 import * as ejs from 'ejs';
@@ -571,8 +570,6 @@ export class LabView implements IDisposable {
   private _cookies: Map<string, string> = new Map();
   private _jlabBaseUrl: string;
   private _wsSettings: WorkspaceSettings;
-  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-  // @ts-ignore
   private _labUIReady = false;
 }
 

@@ -195,8 +195,6 @@ export class Registry implements IRegistry, IDisposable {
     }
   }
 
-  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-  // @ts-ignore
   private _resolveEnvironmentSync(pythonPath: string): IPythonEnvironment {
     if (!this._pathExistsSync(pythonPath)) {
       return;
@@ -755,97 +753,6 @@ export class Registry implements IRegistry, IDisposable {
         return false;
       }
     });
-  }
-
-  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-  // @ts-ignore
-  private _updatePythonEnvironmentsWithRequirementVersions(
-    environments: IPythonEnvironment[],
-    requirements: Registry.IRequirement[]
-  ): Promise<IPythonEnvironment[]> {
-    let updatedEnvironments = environments.map(env => {
-      // Get versions for each requirement
-      let versions: Promise<[string, string]>[] = requirements.map(req => {
-        let pythonOutput = this._runPythonModuleCommand(
-          env.path,
-          req.moduleName,
-          req.commands
-        );
-        let versionFromOutput = this._extractVersionFromExecOutput(
-          pythonOutput
-        );
-        return versionFromOutput
-          .then<[string, string]>(version => {
-            return [req.name, version];
-          })
-          .catch<[string, string]>(reason => {
-            return [req.name, Registry.NO_MODULE_SENTINEL];
-          });
-      });
-
-      // Get version for python executable
-      let pythonVersion = this._extractVersionFromExecOutput(
-        this._runCommand(env.path, ['--version'])
-      )
-        .then<[string, string]>(versionString => {
-          return ['python', versionString];
-        })
-        .catch<[string, string]>(reason => {
-          return ['python', Registry.NO_MODULE_SENTINEL];
-        });
-      versions.push(pythonVersion);
-
-      return Promise.all(versions).then(versions => {
-        env.versions = versions.reduce(
-          (
-            accum: IVersionContainer,
-            current: [string, string],
-            index,
-            self
-          ) => {
-            accum[current[0]] = current[1];
-            return accum;
-          },
-          {}
-        );
-
-        return env;
-      });
-    });
-
-    return Promise.all(updatedEnvironments);
-  }
-
-  private _extractVersionFromExecOutput(
-    output: Promise<string>
-  ): Promise<string> {
-    return new Promise((resolve, reject) => {
-      return output
-        .then(output => {
-          const version = this._extractVersionFromExecOutputSync(output);
-          if (version === '') {
-            reject(new Error(`Could not find SemVer match in output!`));
-          } else {
-            resolve(version);
-          }
-        })
-        .catch(reason => {
-          reject(new Error(`Command output failed: ${reason}`));
-        });
-    });
-  }
-
-  private _extractVersionFromExecOutputSync(output: string): string {
-    let matches: string[] = [];
-    let currentMatch: RegExpExecArray;
-    do {
-      currentMatch = Registry.SEMVER_REGEX.exec(output);
-      if (currentMatch) {
-        matches.push(currentMatch[0]);
-      }
-    } while (currentMatch);
-
-    return matches.length === 0 ? '' : matches[0];
   }
 
   private _convertExecutableOutputFromJson(

@@ -334,7 +334,14 @@ export class ApplicationData {
     this._sortRecentItems(this.recentSessions);
 
     if (this.recentSessions.length > MAX_RECENT_SESSIONS) {
-      this.recentSessions.length = MAX_RECENT_SESSIONS;
+      for (
+        let i = this.recentSessions.length - 1;
+        i >= MAX_RECENT_SESSIONS;
+        --i
+      ) {
+        // make sure persisted sessions are cleared
+        this.removeSessionFromRecents(i);
+      }
     }
   }
 
@@ -371,8 +378,6 @@ export class ApplicationData {
 
   discoveredPythonEnvs: IPythonEnvironment[] = [];
   userSetPythonEnvs: IPythonEnvironment[] = [];
-
-  recentWorkingDirs: string[];
 }
 
 export const appData = ApplicationData.getSingleton();

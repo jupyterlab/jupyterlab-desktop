@@ -2,16 +2,13 @@
 // Distributed under the terms of the Modified BSD License.
 
 import { app, autoUpdater, dialog, ipcMain, session, shell } from 'electron';
-
 import log from 'electron-log';
-
 import { IRegistry, Registry } from './registry';
 import fetch from 'node-fetch';
 import * as yaml from 'js-yaml';
 import * as semver from 'semver';
 import * as path from 'path';
 import * as fs from 'fs';
-
 import {
   clearSession,
   getAppDir,
@@ -598,13 +595,9 @@ export class JupyterApplication implements IApplication, IDisposable {
       });
   }
 
-  readonly id = 'JupyterLabDesktop';
   private _cliArgs: ICLIArguments;
   private _registry: IRegistry;
   private _serverFactory: JupyterServerFactory;
-  /**
-   * The most recently focused window
-   */
   private _disposePromise: Promise<void>;
   private _sessionWindow: SessionWindow;
 }

@@ -714,6 +714,9 @@ export class SessionWindow implements IDisposable {
         },
         {
           label: 'Open Developer Tools',
+          visible:
+            this._contentViewType === ContentViewType.Lab ||
+            process.env.NODE_ENV === 'development',
           click: () => {
             this._openDevTools();
           }

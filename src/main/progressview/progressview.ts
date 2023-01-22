@@ -6,16 +6,16 @@ import * as ejs from 'ejs';
 import * as fs from 'fs';
 import { ThemedView } from '../dialog/themedview';
 
-const progressLogo = fs.readFileSync(
-  path.join(__dirname, '../../../app-assets/progress-logo.svg')
-);
-
 export class ProgressView {
   constructor(options: ProgressView.IOptions) {
     this._view = new ThemedView({
       isDarkTheme: options.isDarkTheme,
       preload: path.join(__dirname, './preload.js')
     });
+
+    const progressLogo = fs.readFileSync(
+      path.join(__dirname, '../../../app-assets/progress-logo.svg')
+    );
 
     const template = `
       <style>

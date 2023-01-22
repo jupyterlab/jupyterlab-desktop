@@ -68,36 +68,6 @@ console.warn = log.warn;
 console.info = log.info;
 console.debug = log.debug;
 
-/**
- * A user-defined service.
- *
- * Services make up the core functionality of the
- * application. Each service is instantiated
- * once and then becomes available to every other service.
- */
-export interface IService {
-  /**
-   * The required services.
-   */
-  requirements: string[];
-
-  /**
-   * The service name that is required by other services.
-   */
-  provides: string;
-
-  /**
-   * A function to create the service object.
-   */
-  activate: (...x: any[]) => any;
-
-  /**
-   * Whether the service should be instantiated immediately,
-   * or lazy loaded.
-   */
-  autostart?: boolean;
-}
-
 const thisYear = new Date().getFullYear();
 
 app.setAboutPanelOptions({

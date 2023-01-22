@@ -265,12 +265,12 @@ export class JupyterServer {
         this._nbServer.on('exit', () => {
           if (started) {
             /* On Windows, JupyterLab server sometimes crashes randomly during websocket
-                    connection. As a result of this, users experience kernel connections failures.
-                    This crash only happens when server is launched from electron app. Since we
-                    haven't been able to detect the exact cause of these crashes we are restarting the
-                    server at the same port. After the restart, users are able to launch new kernels
-                    for the notebook.
-                    */
+              connection. As a result of this, users experience kernel connections failures.
+              This crash only happens when server is launched from electron app. Since we
+              haven't been able to detect the exact cause of these crashes we are restarting the
+              server at the same port. After the restart, users are able to launch new kernels
+              for the notebook.
+              */
             this._cleanupListeners();
 
             if (!this._stopping && this._restartCount < SERVER_RESTART_LIMIT) {
@@ -744,11 +744,7 @@ export class JupyterServerFactory implements IServerFactory, IDisposable {
   }
 
   private _servers: JupyterServerFactory.IFactoryItem[] = [];
-
   private _nextId: number = 1;
-
-  // private _app: IApplication;
-
   private _registry: IRegistry;
   private _disposePromise: Promise<void>;
 }
