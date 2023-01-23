@@ -87,13 +87,13 @@ export class WelcomeView {
       }
 
       recentSessionSection += `<div class="row recent-session-row" data-session-index="${recentSessionCount}">
-          <div><a ${
-            !recentSession.remoteURL ? 'class="recent-item-local"' : ''
-          } href="javascript:void(0)" onclick='handleRecentSessionClick(event);' title="${tooltip}">${sessionItem}</a>${
+          <div class="recent-session-link${
+            !recentSession.remoteURL ? ' recent-item-local' : ''
+          }" onclick='handleRecentSessionClick(event);' title="${tooltip}">${sessionItem}</div>${
         sessionDetail
-          ? `<span class="recent-session-detail" title="${sessionDetail}">${sessionDetail}</span>`
+          ? `<div class="recent-session-detail" title="${sessionDetail}">${sessionDetail}</div>`
           : ''
-      }</div>
+      }
           <div class="recent-session-delete" title="Remove" onclick="handleRecentSesssionDeleteClick(event)">
             <svg class="delete-button" version="2.0">
               <use href="#circle-xmark" />
@@ -223,23 +223,24 @@ export class WelcomeView {
               margin-bottom: 5px;
               font-size: 16px;
             }
-            a {
+            a, .recent-session-link {
               color: #555555;
               text-decoration: none;
+              cursor: pointer;
             }
-            a:hover {
+            a:hover, .recent-session-link:hover {
               color: #777777;
             }
-            .app-ui-dark a {
+            .app-ui-dark a, .app-ui-dark .recent-session-link {
               color: #cccccc;
             }
-            .app-ui-dark a:hover {
+            .app-ui-dark a:hover, .app-ui-dark .recent-session-link:hover {
               color: #eeeeee;
             }
             .more-row a {
               color: #202020;
             }
-            a.disabled {
+            a.disabled, .recent-session-link.disabled {
               pointer-events: none;
               opacity: 0.5;
             }
@@ -251,6 +252,9 @@ export class WelcomeView {
             }
             .jupyterlab-wordmark .jp-icon2 {
               fill: #888888;
+            }
+            .recent-session-link {
+              white-space: nowrap;
             }
             .recent-session-detail {
               padding-left: 10px;
@@ -266,23 +270,21 @@ export class WelcomeView {
             .recent-session-delete {
               height: 18px;
               margin-left: 10px;
+              visibility: hidden;
+            }
+            .recent-session-row:hover .recent-session-delete {
+              visibility: visible;
+              transition-delay: 1s;
+              cursor: pointer;
             }
             .recent-session-row .delete-button {
               width: 16px;
               height: 16px;
               padding-top: 1px;
-              visibility: hidden;
               fill: #555555;
             }
             .app-ui-dark .recent-session-row .delete-button {
               fill: #bcbcbc;
-            }
-            .recent-session-row:hover .delete-button {
-              visibility: visible;
-              transition-delay: 1s;
-            }
-            .recent-session-row:hover .delete-button {
-              cursor: pointer;
             }
             .no-recent-message {
               color: #777777;
@@ -607,7 +609,7 @@ export class WelcomeView {
               }
             });
 
-            document.querySelectorAll('a.recent-item-local').forEach(link => {
+            document.querySelectorAll('div.recent-item-local').forEach(link => {
               link.classList.add("disabled");
             });
           }
