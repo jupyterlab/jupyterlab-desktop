@@ -59,7 +59,6 @@ function createLaunchScript(
     `--ServerApp.port=${port}`,
     // use our token rather than any pre-configured password
     '--ServerApp.password=""',
-    '--ServerApp.allow_origin="*"',
     // enable hidden files (let user decide whether to display them)
     '--ContentsManager.allow_hidden=True'
   ];
@@ -67,6 +66,7 @@ function createLaunchScript(
   if (
     userSettings.getValue(SettingType.frontEndMode) === FrontEndMode.ClientApp
   ) {
+    launchArgs.push('--ServerApp.allow_origin="*"');
     launchArgs.push(`--LabServerApp.schemas_dir="${schemasDir}"`);
   }
 
@@ -258,6 +258,7 @@ export class JupyterServer {
             fs.unlinkSync(launchScriptPath);
             resolve(this._info);
           } else {
+            this._serverStartFailed();
             reject(new Error('Failed to launch Jupyter Server'));
           }
         });
@@ -443,13 +444,9 @@ export class JupyterServer {
    * The child process object for the Jupyter server
    */
   private _nbServer: ChildProcess;
-
   private _stopServer: Promise<void> = null;
-
   private _startServer: Promise<JupyterServer.IInfo> = null;
-
   private _options: JupyterServer.IOptions;
-
   private _info: JupyterServer.IInfo = {
     type: 'local',
     url: null,
@@ -459,8 +456,6 @@ export class JupyterServer {
     environment: null,
     version: null
   };
-
-  // private _app: IApplication;
   private _registry: IRegistry;
   private _stopping: boolean = false;
   private _restartCount: number = 0;
@@ -590,7 +585,10 @@ export class JupyterServerFactory implements IServerFactory, IDisposable {
 
     opts = { ...opts, ...{ environment: env } };
     item = this._createServer(opts);
-    item.server.start();
+    item.server.start().catch(error => {
+      console.error('Failed to start server', error);
+      this._removeFailedServer(item.factoryId);
+    });
 
     return item;
   }
@@ -620,9 +618,10 @@ export class JupyterServerFactory implements IServerFactory, IDisposable {
     item = this._findUnusedServer(opts) || this._createServer(opts);
     item.used = true;
 
-    item.server.start();
-
-    // this._removeFailedServer(item.factoryId);
+    item.server.start().catch(error => {
+      console.error('Failed to start server', error);
+      this._removeFailedServer(item.factoryId);
+    });
 
     return item;
   }
@@ -723,13 +722,13 @@ export class JupyterServerFactory implements IServerFactory, IDisposable {
     return result;
   }
 
-  // private _removeFailedServer(factoryId: number): void {
-  //   let idx = this._getServerIdx(factoryId);
-  //   if (idx < 0) {
-  //     return;
-  //   }
-  //   ArrayExt.removeAt(this._servers, idx);
-  // }
+  private _removeFailedServer(factoryId: number): void {
+    let idx = this._getServerIdx(factoryId);
+    if (idx < 0) {
+      return;
+    }
+    ArrayExt.removeAt(this._servers, idx);
+  }
 
   private _getServerIdx(factoryId: number): number {
     return ArrayExt.findFirstIndex(
