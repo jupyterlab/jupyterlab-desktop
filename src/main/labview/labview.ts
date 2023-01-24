@@ -55,13 +55,22 @@ export class LabView implements IDisposable {
     const sessionConfig = this._sessionConfig;
     this._wsSettings = new WorkspaceSettings(sessionConfig.workingDirectory);
     this._jlabBaseUrl = `${sessionConfig.url.protocol}//${sessionConfig.url.host}${sessionConfig.url.pathname}`;
+    /*
+    using a dedicated partition causes PDF rendering issues (object blob in iframe).
+    use temporary dedicated partition only for unpersisted remote connections
+    */
+    let partition = undefined;
+    if (sessionConfig.isRemote) {
+      if (sessionConfig.persistSessionData) {
+        partition = sessionConfig.partition;
+      } else {
+        partition = `partition-${Date.now()}`;
+      }
+    }
     this._view = new BrowserView({
       webPreferences: {
         preload: path.join(__dirname, './preload.js'),
-        partition:
-          sessionConfig.isRemote && sessionConfig.persistSessionData
-            ? sessionConfig.partition
-            : `partition-${Date.now()}`
+        partition
       }
     });
 
@@ -213,15 +222,15 @@ export class LabView implements IDisposable {
     // if local or remote with no data persistence, clear session data
     if (
       this._sessionConfig.isRemote &&
-      this._sessionConfig.persistSessionData
+      !this._sessionConfig.persistSessionData
     ) {
-      return Promise.resolve();
-    } else {
       if (!this._parent.window.isDestroyed()) {
         return clearSession(this._view.webContents.session);
       } else {
         return Promise.resolve();
       }
+    } else {
+      return Promise.resolve();
     }
   }
 
