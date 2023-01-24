@@ -181,10 +181,10 @@ export class WelcomeView {
             .recent-col {
               row-gap: 5px;
               max-height: 200px;
-              overflow-y: auto;
-            }
-            .recents-collapsed .recent-col {
               overflow-y: hidden;
+            }
+            .recents-expanded .recent-col {
+              overflow-y: auto;
             }
             .recent-col .row-title {
               position: sticky;
@@ -579,8 +579,10 @@ export class WelcomeView {
             const isCollapsed = bodyClassList.contains("recents-collapsed");
             if (isCollapsed) {
               bodyClassList.remove("recents-collapsed");
+              bodyClassList.add("recents-expanded");
               expandCollapseButton.innerText = "Less...";
             } else {
+              bodyClassList.remove("recents-expanded");
               bodyClassList.add("recents-collapsed");
               expandCollapseButton.innerText = "More...";
             }
