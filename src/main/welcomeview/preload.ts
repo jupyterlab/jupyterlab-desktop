@@ -1,5 +1,9 @@
 const { contextBridge, ipcRenderer } = require('electron');
 
+type SetRecentSessionListListener = (
+  recentSessions: any[],
+  recentCollapseState: boolean
+) => void;
 type SetNewsListListener = (list: any[]) => void;
 type SetNotificationMessageListener = (
   message: string,
@@ -11,6 +15,7 @@ type InstallBundledPythonEnvStatusListener = (
   message: string
 ) => void;
 
+let onSetRecentSessionListListener: SetRecentSessionListListener;
 let onSetNewsListListener: SetNewsListListener;
 let onSetNotificationMessageListener: SetNotificationMessageListener;
 let onDisableLocalServerActionsListener: DisableLocalServerActionsListener;
@@ -55,6 +60,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   sendMessageToMain: (message: string, ...args: any[]) => {
     ipcRenderer.send(message, ...args);
   },
+  onSetRecentSessionList: (callback: SetRecentSessionListListener) => {
+    onSetRecentSessionListListener = callback;
+  },
   onSetNewsList: (callback: SetNewsListListener) => {
     onSetNewsListListener = callback;
   },
@@ -72,6 +80,15 @@ contextBridge.exposeInMainWorld('electronAPI', {
     onInstallBundledPythonEnvStatusListener = callback;
   }
 });
+
+ipcRenderer.on(
+  'set-recent-session-list',
+  (event, recentSessions, recentCollapseState) => {
+    if (onSetRecentSessionListListener) {
+      onSetRecentSessionListListener(recentSessions, recentCollapseState);
+    }
+  }
+);
 
 ipcRenderer.on('set-news-list', (event, list) => {
   if (onSetNewsListListener) {

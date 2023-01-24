@@ -13,6 +13,13 @@ import { IRegistry } from '../registry';
 
 const maxRecentItems = 5;
 
+interface IRecentSessionListItem {
+  isRemote: boolean;
+  linkLabel: string;
+  linkTooltip: string;
+  linkDetail?: string;
+}
+
 export class WelcomeView {
   constructor(options: WelcomeView.IOptions) {
     this._registry = options.registry;
@@ -44,69 +51,10 @@ export class WelcomeView {
     const serverIcon = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Pro 6.2.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license (Commercial License) Copyright 2022 Fonticons, Inc. --><path d="M64 32C28.7 32 0 60.7 0 96v64c0 35.3 28.7 64 64 64H448c35.3 0 64-28.7 64-64V96c0-35.3-28.7-64-64-64H64zM344 152c-13.3 0-24-10.7-24-24s10.7-24 24-24s24 10.7 24 24s-10.7 24-24 24zm96-24c0 13.3-10.7 24-24 24s-24-10.7-24-24s10.7-24 24-24s24 10.7 24 24zM64 288c-35.3 0-64 28.7-64 64v64c0 35.3 28.7 64 64 64H448c35.3 0 64-28.7 64-64V352c0-35.3-28.7-64-64-64H64zM344 408c-13.3 0-24-10.7-24-24s10.7-24 24-24s24 10.7 24 24s-10.7 24-24 24zm104-24c0 13.3-10.7 24-24 24s-24-10.7-24-24s10.7-24 24-24s24 10.7 24 24z"/></svg>`;
     const externalLinkIcon = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Pro 6.2.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license (Commercial License) Copyright 2022 Fonticons, Inc. --><path d="M352 0c-12.9 0-24.6 7.8-29.6 19.8s-2.2 25.7 6.9 34.9L370.7 96 201.4 265.4c-12.5 12.5-12.5 32.8 0 45.3s32.8 12.5 45.3 0L416 141.3l41.4 41.4c9.2 9.2 22.9 11.9 34.9 6.9s19.8-16.6 19.8-29.6V32c0-17.7-14.3-32-32-32H352zM80 32C35.8 32 0 67.8 0 112V432c0 44.2 35.8 80 80 80H400c44.2 0 80-35.8 80-80V320c0-17.7-14.3-32-32-32s-32 14.3-32 32V432c0 8.8-7.2 16-16 16H80c-8.8 0-16-7.2-16-16V112c0-8.8 7.2-16 16-16H192c17.7 0 32-14.3 32-32s-14.3-32-32-32H80z"/></svg>`;
 
-    const home = getUserHomeDir();
     const showNewsFeed = userSettings.getValue(SettingType.showNewsFeed);
     if (showNewsFeed) {
       // initalize from app cache
       WelcomeView._newsList = appData.newsList;
-    }
-
-    let recentSessionCount = 0;
-    let recentSessionSection = '';
-
-    for (const recentSession of appData.recentSessions) {
-      let sessionItem = '';
-      let sessionDetail = '';
-      let tooltip = '';
-      let parent = '';
-      if (recentSession.remoteURL) {
-        const url = new URL(recentSession.remoteURL);
-        sessionItem = url.origin;
-        tooltip = `${recentSession.remoteURL}\nSession data ${
-          recentSession.persistSessionData ? '' : 'not '
-        }persisted`;
-        sessionDetail = '';
-      } else {
-        // local
-        if (recentSession.filesToOpen.length > 0) {
-          sessionItem = path.basename(recentSession.filesToOpen[0]);
-          tooltip = recentSession.filesToOpen.join(', ');
-          parent = recentSession.workingDirectory;
-        } else {
-          sessionItem = path.basename(recentSession.workingDirectory);
-          parent = path.dirname(recentSession.workingDirectory);
-          tooltip = recentSession.workingDirectory;
-        }
-
-        if (parent.startsWith(home)) {
-          const relative = path.relative(home, parent);
-          sessionDetail = `~${path.sep}${relative}`;
-        } else {
-          sessionDetail = parent;
-        }
-      }
-
-      recentSessionSection += `<div class="row recent-session-row" data-session-index="${recentSessionCount}">
-          <div class="recent-session-link${
-            !recentSession.remoteURL ? ' recent-item-local' : ''
-          }" onclick='handleRecentSessionClick(event);' title="${tooltip}">${sessionItem}</div>${
-        sessionDetail
-          ? `<div class="recent-session-detail" title="${sessionDetail}">${sessionDetail}</div>`
-          : ''
-      }
-          <div class="recent-session-delete" title="Remove" onclick="handleRecentSesssionDeleteClick(event)">
-            <svg class="delete-button" version="2.0">
-              <use href="#circle-xmark" />
-            </svg>
-          </div>
-        </div>`;
-
-      recentSessionCount++;
-    }
-
-    if (recentSessionSection === '') {
-      recentSessionSection =
-        '<div class="no-recent-message">No history yet</div>';
     }
 
     this._pageSource = `
@@ -183,7 +131,7 @@ export class WelcomeView {
               max-height: 200px;
               overflow-y: hidden;
             }
-            .recents-expanded .recent-col {
+            .recent-col.recents-expanded {
               overflow-y: auto;
             }
             .recent-col .row-title {
@@ -194,7 +142,7 @@ export class WelcomeView {
             .app-ui-dark .recent-col .row-title {
               background: ${DarkThemeBGColor};
             }
-            .recents-collapsed .recent-col > div:nth-child(n+${
+            .recent-col.recents-collapsed > div:nth-child(n+${
               maxRecentItems + 2
             }).recent-session-row {
               display: none;
@@ -348,6 +296,9 @@ export class WelcomeView {
             .app-ui-dark #notification-panel .close-button {
               fill: #bcbcbc;
             }
+            .recent-expander-col {
+              display: none;
+            }
           </style>
           <script>
             document.addEventListener("DOMContentLoaded", () => {
@@ -360,8 +311,6 @@ export class WelcomeView {
       
         <body class="${this._isDarkTheme ? 'app-ui-dark' : ''} ${
       showNewsFeed ? '' : 'news-list-hidden'
-    } ${
-      recentSessionCount > maxRecentItems ? 'recents-collapsed' : ''
     }" title="">
           <svg class="symbol" style="display: none;">
           <defs>
@@ -432,23 +381,17 @@ export class WelcomeView {
                 </div>
                 
                 <div id="recent-sessions-col" class="col recent-col">
-                  <div class="row row-title">
+                  <div id="recent-sessions-title" class="row row-title">
                     Recent sessions
                   </div>
-                  ${recentSessionSection}
                 </div>
-                ${
-                  recentSessionCount > maxRecentItems
-                    ? `
-                  <div class="col recent-expander-col">
-                    <div class="row action-row more-row news-col-footer">
-                      <a id="expand-collapse-recents" href="javascript:void(0)" onclick='handleExpandCollapseRecents();'>
-                        More...
-                      </a>
-                    </div>
-                  </div>`
-                    : ''
-                }
+                <div id="recent-expander-col" class="col recent-expander-col">
+                  <div class="row action-row more-row news-col-footer">
+                    <a id="expand-collapse-recents" href="javascript:void(0)" onclick='handleExpandCollapseRecents();'>
+                      More...
+                    </a>
+                  </div>
+                </div>
               </div>
 
               <div class="col news-col">
@@ -493,6 +436,68 @@ export class WelcomeView {
           const notificationPanel = document.getElementById('notification-panel');
           const notificationPanelMessage = document.getElementById('notification-panel-message');
           const notificationPanelCloseButton = document.getElementById('notification-panel-close');
+          const recentSessionsCol = document.getElementById('recent-sessions-col');
+          const recentSessionsTitle = document.getElementById('recent-sessions-title');
+
+          function updateRecentSessionList(recentSessions, resetCollapseState) {
+            const maxRecentItems = ${maxRecentItems};
+            // clear list
+            while (recentSessionsTitle.nextSibling) {
+              recentSessionsTitle.nextSibling.remove();
+            }
+
+            let recentSessionCount = 0;
+
+            const fragment = new DocumentFragment();
+
+            for (const recentSession of recentSessions) {
+              const {isRemote, linkLabel, linkTooltip, linkDetail} = recentSession;
+              const recentSessionRow = document.createElement('div');
+              recentSessionRow.classList.add("row");
+              recentSessionRow.classList.add("recent-session-row");
+              recentSessionRow.dataset.sessionIndex = recentSessionCount;
+              recentSessionRow.innerHTML = \`
+                  <div class="recent-session-link\$\{!isRemote ? ' recent-item-local' : ''\}" onclick='handleRecentSessionClick(event);' title="\$\{linkTooltip\}">\$\{linkLabel\}</div>
+                  \$\{linkDetail ? \`<div class="recent-session-detail" title="\$\{linkDetail\}">\$\{linkDetail\}</div>\`: ''}
+                  <div class="recent-session-delete" title="Remove" onclick="handleRecentSesssionDeleteClick(event)">
+                    <svg class="delete-button" version="2.0">
+                      <use href="#circle-xmark" />
+                    </svg>
+                  </div>\`;
+
+              fragment.append(recentSessionRow);
+
+              recentSessionCount++;
+            }
+
+            if (recentSessionCount === 0) {
+              const noHistoryMessage = document.createElement('div');
+              noHistoryMessage.className = 'no-recent-message';
+              noHistoryMessage.innerText = 'No history yet';
+              fragment.append(noHistoryMessage);
+            }
+
+            recentSessionsCol.append(fragment);
+
+            // also reset if item remove causes count to get back to limit
+            resetCollapseState = resetCollapseState || recentSessionCount <= maxRecentItems;
+
+            if (resetCollapseState) {
+              const recentExpanderCol = document.getElementById('recent-expander-col');
+              if (recentSessionCount > maxRecentItems) {
+                recentSessionsCol.classList.add('recents-collapsed');
+                recentExpanderCol.style.display = 'block';
+              } else {
+                recentSessionsCol.classList.remove('recents-collapsed');
+                recentSessionsCol.classList.remove('recents-expanded');
+                recentExpanderCol.style.display = 'none';
+              }
+            }
+          }
+
+          window.electronAPI.onSetRecentSessionList((recentSessions, resetCollapseState) => {
+            updateRecentSessionList(recentSessions, resetCollapseState);
+          });
           
           window.electronAPI.onSetNewsList((newsList) => {
             // clear list
@@ -549,24 +554,7 @@ export class WelcomeView {
               return;
             }
             const sessionIndex = parseInt(row.dataset.sessionIndex);
-            let nextRow = row.nextSibling;
-            let lastOneDeleted = sessionIndex === 0;
-            row.remove();
-            while (nextRow && nextRow.classList?.contains('recent-session-row')) {
-              // next one exists
-              lastOneDeleted = false;
-              nextRow.dataset.sessionIndex = parseInt(nextRow.dataset.sessionIndex) - 1;
-              nextRow = nextRow.nextSibling;
-            }
             window.electronAPI.deleteRecentSession(sessionIndex);
-
-            if (lastOneDeleted) {
-              const recentSessionsCol = document.getElementById("recent-sessions-col");
-              const noRecentMessage = document.createElement("div");
-              noRecentMessage.classList.add("no-recent-message");
-              noRecentMessage.innerText = "No history yet";
-              recentSessionsCol.appendChild(noRecentMessage);
-            }
           }
 
           function handleNewsClick(newsLink) {
@@ -575,15 +563,15 @@ export class WelcomeView {
 
           function handleExpandCollapseRecents() {
             const expandCollapseButton = document.getElementById("expand-collapse-recents");
-            const bodyClassList = document.body.classList;
-            const isCollapsed = bodyClassList.contains("recents-collapsed");
+            const classList = recentSessionsCol.classList;
+            const isCollapsed = classList.contains("recents-collapsed");
             if (isCollapsed) {
-              bodyClassList.remove("recents-collapsed");
-              bodyClassList.add("recents-expanded");
+              classList.remove("recents-collapsed");
+              classList.add("recents-expanded");
               expandCollapseButton.innerText = "Less...";
             } else {
-              bodyClassList.remove("recents-expanded");
-              bodyClassList.add("recents-collapsed");
+              classList.remove("recents-expanded");
+              classList.add("recents-collapsed");
               expandCollapseButton.innerText = "More...";
             }
           }
@@ -666,6 +654,8 @@ export class WelcomeView {
         resolve();
       });
     });
+
+    this.updateRecentSessionList(true);
 
     if (userSettings.getValue(SettingType.showNewsFeed)) {
       this._updateNewsList();
@@ -759,6 +749,59 @@ export class WelcomeView {
       .catch(error => {
         console.error('Failed to fetch news list:', error);
       });
+  }
+
+  updateRecentSessionList(resetCollapseState: boolean) {
+    const recentSessionList: IRecentSessionListItem[] = [];
+    const home = getUserHomeDir();
+
+    for (const recentSession of appData.recentSessions) {
+      let sessionItem = '';
+      let sessionDetail = '';
+      let tooltip = '';
+      let parent = '';
+      if (recentSession.remoteURL) {
+        const url = new URL(recentSession.remoteURL);
+        sessionItem = url.origin;
+        tooltip = `${recentSession.remoteURL}\nSession data ${
+          recentSession.persistSessionData ? '' : 'not '
+        }persisted`;
+        sessionDetail = '';
+      } else {
+        // local
+        if (recentSession.filesToOpen.length > 0) {
+          sessionItem = path.basename(recentSession.filesToOpen[0]);
+          tooltip = recentSession.filesToOpen.join(', ');
+          parent = recentSession.workingDirectory;
+        } else {
+          sessionItem = path.basename(recentSession.workingDirectory);
+          parent = path.dirname(recentSession.workingDirectory);
+          tooltip = recentSession.workingDirectory;
+        }
+
+        if (parent.startsWith(home)) {
+          const relative = path.relative(home, parent);
+          sessionDetail = `~${path.sep}${relative}`;
+        } else {
+          sessionDetail = parent;
+        }
+      }
+
+      recentSessionList.push({
+        isRemote: !!recentSession.remoteURL,
+        linkLabel: sessionItem,
+        linkTooltip: tooltip,
+        linkDetail: sessionDetail
+      });
+    }
+
+    this._viewReady.then(() => {
+      this._view.webContents.send(
+        'set-recent-session-list',
+        recentSessionList,
+        resetCollapseState
+      );
+    });
   }
 
   private _isDarkTheme: boolean;

@@ -277,6 +277,12 @@ export class SessionWindow implements IDisposable {
     }
   }
 
+  updateRecentSessionList(resetCollapseState: boolean) {
+    if (this._welcomeView) {
+      this._welcomeView.updateRecentSessionList(resetCollapseState);
+    }
+  }
+
   dispose(): Promise<void> {
     if (this._disposePromise) {
       return this._disposePromise;
@@ -600,6 +606,10 @@ export class SessionWindow implements IDisposable {
       }
 
       appData.removeSessionFromRecents(sessionIndex);
+
+      if (event.sender === this._welcomeView.view.webContents) {
+        this._welcomeView.updateRecentSessionList(false);
+      }
     });
 
     ipcMain.on(

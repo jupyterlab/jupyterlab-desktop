@@ -534,6 +534,10 @@ export class JupyterApplication implements IApplication, IDisposable {
 
         if (options.recentSessions) {
           appData.recentSessions = [];
+
+          if (this._sessionWindow) {
+            this._sessionWindow.updateRecentSessionList(true);
+          }
         }
 
         return true;
