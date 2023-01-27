@@ -340,7 +340,7 @@ export class ApplicationData {
         --i
       ) {
         // make sure persisted sessions are cleared
-        this.removeSessionFromRecents(i);
+        await this.removeSessionFromRecents(i);
       }
     }
   }

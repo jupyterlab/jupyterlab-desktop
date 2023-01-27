@@ -68,7 +68,7 @@ export class ProgressView {
         }
       </style>
   
-      <div class="container">
+      <div class="container" title="">
         <div class="row progress-logo-row">
           <div id="progress-logo" class="progress-logo animated">${progressLogo}</div>
         </div>

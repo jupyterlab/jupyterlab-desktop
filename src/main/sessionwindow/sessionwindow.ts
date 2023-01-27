@@ -595,7 +595,7 @@ export class SessionWindow implements IDisposable {
       this._createSessionForRecent(sessionIndex);
     });
 
-    ipcMain.on('delete-recent-session', (event, sessionIndex: number) => {
+    ipcMain.on('delete-recent-session', async (event, sessionIndex: number) => {
       if (
         !(
           event.sender === this._welcomeView.view.webContents ||
@@ -605,7 +605,7 @@ export class SessionWindow implements IDisposable {
         return;
       }
 
-      appData.removeSessionFromRecents(sessionIndex);
+      await appData.removeSessionFromRecents(sessionIndex);
 
       if (event.sender === this._welcomeView.view.webContents) {
         this._welcomeView.updateRecentSessionList(false);
