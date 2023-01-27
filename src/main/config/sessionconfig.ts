@@ -10,6 +10,7 @@ import {
   SettingType,
   userSettings
 } from './settings';
+import { ICLIArguments } from '../tokens';
 
 export class SessionConfig {
   x: number = 0;
@@ -100,6 +101,73 @@ export class SessionConfig {
     }
 
     return sessionConfig;
+  }
+
+  static createFromArgs(cliArgs: ICLIArguments) {
+    let workingDir = cliArgs.workingDir;
+    let fileOrFolders: string[] = [];
+    let pythonPath = '';
+
+    try {
+      let skipFilePaths = false;
+      if (workingDir) {
+        workingDir = path.resolve(workingDir as string);
+        if (!fs.existsSync(workingDir as string)) {
+          workingDir = null;
+          skipFilePaths = true;
+        }
+      }
+
+      if (!skipFilePaths) {
+        for (let filePath of cliArgs._) {
+          if (workingDir) {
+            filePath = path.resolve(workingDir as string, filePath.toString());
+            if (fs.existsSync(filePath)) {
+              const relPath = path.relative(workingDir as string, filePath);
+              fileOrFolders.push(relPath);
+            }
+          } else {
+            filePath = path.resolve(cliArgs.cwd, filePath.toString());
+            fileOrFolders.push(filePath);
+          }
+        }
+      }
+
+      if (cliArgs.pythonPath) {
+        pythonPath = path.resolve(cliArgs.pythonPath as string);
+        if (!fs.existsSync(pythonPath)) {
+          pythonPath = '';
+        }
+      }
+    } catch (error) {
+      return;
+    }
+
+    if (!(workingDir || fileOrFolders.length > 0 || pythonPath)) {
+      return;
+    }
+
+    if (workingDir) {
+      const sessionConfig = SessionConfig.createLocal(
+        workingDir as string,
+        fileOrFolders
+      );
+      if (pythonPath) {
+        sessionConfig.pythonPath = pythonPath;
+      }
+
+      return sessionConfig;
+    } else {
+      const sessionConfig =
+        fileOrFolders.length > 0
+          ? SessionConfig.createLocalForFilesOrFolders(fileOrFolders)
+          : SessionConfig.createLocal();
+      if (pythonPath) {
+        sessionConfig.pythonPath = pythonPath;
+      }
+
+      return sessionConfig;
+    }
   }
 
   get isRemote(): boolean {

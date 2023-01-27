@@ -1051,6 +1051,41 @@ export class SessionWindow implements IDisposable {
     this._envSelectPopupVisible = false;
   }
 
+  async openSession(sessionConfig: SessionConfig) {
+    if (this._sessionConfig && this._contentViewType === ContentViewType.Lab) {
+      const choice = dialog.showMessageBoxSync({
+        type: 'warning',
+        message: 'Replace existing session',
+        detail:
+          'Opening a new JupyterLab session will close the existing one. Would you like to continue?',
+        buttons: ['Continue', 'Cancel'],
+        defaultId: 1,
+        cancelId: 1
+      });
+
+      if (choice === 1) {
+        return;
+      }
+    }
+
+    this._disposeSession().then(() => {
+      this._createSessionForLocal(
+        sessionConfig.workingDirectory,
+        sessionConfig.filesToOpen,
+        sessionConfig.pythonPath
+      ).catch(error => {
+        this._setProgress(
+          'Failed to create session',
+          `<div class="message-row">${error}</div>
+          <div class="message-row">
+            <a href="javascript:void(0);" onclick="sendMessageToMain('show-welcome-view')">Go to Welcome Page</a>
+          </div>`,
+          false
+        );
+      });
+    });
+  }
+
   handleOpenFilesOrFolders(fileOrFolders?: string[]) {
     const sessionConfig = SessionConfig.createLocalForFilesOrFolders(
       fileOrFolders
@@ -1096,6 +1131,7 @@ export class SessionWindow implements IDisposable {
   private async _createSessionForLocal(
     workingDirectory?: string,
     filesToOpen?: string[],
+    pythonPath?: string,
     recentSessionIndex?: number,
     useDefaultPythonEnv?: boolean
   ) {
@@ -1108,15 +1144,14 @@ export class SessionWindow implements IDisposable {
 
     this._wsSettings = new WorkspaceSettings(sessionConfig.workingDirectory);
 
-    const serverOptions: JupyterServer.IOptions = {
-      workingDirectory: sessionConfig.resolvedWorkingDirectory
-    };
-
-    if (useDefaultPythonEnv === true) {
-      this._wsSettings.setValue(SettingType.pythonPath, '');
+    if (pythonPath || useDefaultPythonEnv === true) {
+      this._wsSettings.setValue(
+        SettingType.pythonPath,
+        pythonPath ? pythonPath : ''
+      );
     }
 
-    const pythonPath = this._wsSettings.getValue(SettingType.pythonPath);
+    pythonPath = this._wsSettings.getValue(SettingType.pythonPath);
 
     if (pythonPath) {
       const env = this._registry.addEnvironment(pythonPath);
@@ -1136,8 +1171,6 @@ export class SessionWindow implements IDisposable {
 
         return;
       }
-
-      serverOptions.environment = env;
     }
 
     this._sessionConfig = sessionConfig;
@@ -1300,6 +1333,7 @@ export class SessionWindow implements IDisposable {
       this._createSessionForLocal(
         recentSession.workingDirectory,
         recentSession.filesToOpen,
+        undefined,
         sessionIndex,
         useDefaultPythonEnv
       ).catch(error => {

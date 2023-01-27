@@ -7,7 +7,6 @@ import { IRegistry, Registry } from './registry';
 import fetch from 'node-fetch';
 import * as yaml from 'js-yaml';
 import * as semver from 'semver';
-import * as path from 'path';
 import * as fs from 'fs';
 import {
   clearSession,
@@ -29,21 +28,12 @@ import {
 } from './config/settings';
 import { ContentViewType, SessionWindow } from './sessionwindow/sessionwindow';
 import { appData } from './config/appdata';
-import { IDisposable } from './tokens';
+import { ICLIArguments, IDisposable } from './tokens';
 import { SessionConfig } from './config/sessionconfig';
 
 export interface IApplication {
   checkForUpdates(showDialog: 'on-new-version' | 'always'): void;
   cliArgs: ICLIArguments;
-}
-
-export interface ICLIArguments {
-  _: (string | number)[];
-  // eslint-disable-next-line id-match
-  $0: string;
-  [x: string]: unknown;
-  pythonPath: string | unknown;
-  workingDir: string | unknown;
 }
 
 interface IClearHistoryOptions {
@@ -93,80 +83,13 @@ export class JupyterApplication implements IApplication, IDisposable {
     return this._cliArgs;
   }
 
-  private _sessionConfigFromArgs() {
-    let workingDir = this._cliArgs.workingDir;
-    let fileOrFolders: string[] = [];
-    let pythonPath = '';
-
-    try {
-      let skipFilePaths = false;
-      if (workingDir) {
-        workingDir = path.resolve(workingDir as string);
-        if (!fs.existsSync(workingDir as string)) {
-          workingDir = null;
-          skipFilePaths = true;
-        }
-      }
-
-      if (!skipFilePaths) {
-        for (let filePath of this._cliArgs._) {
-          if (workingDir) {
-            filePath = path.resolve(workingDir as string, filePath.toString());
-            if (fs.existsSync(filePath)) {
-              const relPath = path.relative(workingDir as string, filePath);
-              fileOrFolders.push(relPath);
-            }
-          } else {
-            filePath = path.resolve(filePath.toString());
-            fileOrFolders.push(filePath);
-          }
-        }
-      }
-
-      if (this._cliArgs.pythonPath) {
-        pythonPath = path.resolve(this._cliArgs.pythonPath as string);
-        if (!fs.existsSync(pythonPath)) {
-          pythonPath = '';
-        }
-      }
-    } catch (error) {
-      return;
-    }
-
-    if (!(workingDir || fileOrFolders.length > 0 || pythonPath)) {
-      return;
-    }
-
-    if (workingDir) {
-      const sessionConfig = SessionConfig.createLocal(
-        workingDir as string,
-        fileOrFolders
-      );
-      if (pythonPath) {
-        sessionConfig.pythonPath = pythonPath;
-      }
-
-      return sessionConfig;
-    } else {
-      const sessionConfig =
-        fileOrFolders.length > 0
-          ? SessionConfig.createLocalForFilesOrFolders(fileOrFolders)
-          : SessionConfig.createLocal();
-      if (pythonPath) {
-        sessionConfig.pythonPath = pythonPath;
-      }
-
-      return sessionConfig;
-    }
-  }
-
   startup() {
     const startupMode = userSettings.getValue(
       SettingType.startupMode
     ) as StartupMode;
 
     // if launching from CLI, parse settings
-    const sessionConfig = this._sessionConfigFromArgs();
+    const sessionConfig = SessionConfig.createFromArgs(this._cliArgs);
 
     if (sessionConfig) {
       const window = new SessionWindow({
@@ -224,8 +147,24 @@ export class JupyterApplication implements IApplication, IDisposable {
     }
   }
 
+  focus() {
+    if (!this._sessionWindow) {
+      return;
+    }
+
+    if (this._sessionWindow.window.isMinimized()) {
+      this._sessionWindow.window.restore();
+    }
+
+    this._sessionWindow.window.focus();
+  }
+
   handleOpenFilesOrFolders(fileOrFolders?: string[]) {
     this._sessionWindow.handleOpenFilesOrFolders(fileOrFolders);
+  }
+
+  openSession(sessionConfig: SessionConfig) {
+    this._sessionWindow.openSession(sessionConfig);
   }
 
   dispose(): Promise<void> {

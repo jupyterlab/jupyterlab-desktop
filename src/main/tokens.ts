@@ -67,3 +67,13 @@ export interface IPythonEnvironment {
 export interface IDisposable {
   dispose(): Promise<void>;
 }
+
+export interface ICLIArguments {
+  cwd: string;
+  _: (string | number)[];
+  // eslint-disable-next-line id-match
+  $0: string;
+  [x: string]: unknown;
+  pythonPath: string | unknown;
+  workingDir: string | unknown;
+}
