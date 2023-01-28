@@ -24,6 +24,7 @@ import { TitleBarView } from '../titlebarview/titlebarview';
 import {
   clearSession,
   DarkThemeBGColor,
+  getBundledPythonPath,
   isDarkTheme,
   LightThemeBGColor
 } from '../utils';
@@ -690,6 +691,9 @@ export class SessionWindow implements IDisposable {
           await this._createServerForSession();
           this._contentViewType = ContentViewType.Lab;
           this._updateContentView();
+          // TODO: add ability to update popup's env list
+          // recreate env select popup to have newly added env listed
+          this._createEnvSelectPopup();
           this._hideProgressView();
         } catch (error) {
           this._setProgress(
@@ -991,10 +995,14 @@ export class SessionWindow implements IDisposable {
 
   private async _createEnvSelectPopup() {
     const envs = await this.registry.getEnvironmentList(false);
+    const defaultEnv = await this._registry.getDefaultEnvironment();
+    const defaultPythonPath = defaultEnv ? defaultEnv.path : '';
 
     this._envSelectPopup = new PythonEnvironmentSelectPopup({
       isDarkTheme: this._isDarkTheme,
-      envs
+      envs,
+      bundledPythonPath: getBundledPythonPath(),
+      defaultPythonPath
     });
 
     this._envSelectPopup.load();

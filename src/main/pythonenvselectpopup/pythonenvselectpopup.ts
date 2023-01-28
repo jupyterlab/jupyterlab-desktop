@@ -13,7 +13,7 @@ export class PythonEnvironmentSelectPopup {
       preload: path.join(__dirname, './preload.js')
     });
 
-    const envs = options.envs;
+    const { envs, defaultPythonPath, bundledPythonPath } = options;
     this._envs = options.envs;
     const currentPythonPath = options.currentPythonPath || '';
 
@@ -99,7 +99,9 @@ export class PythonEnvironmentSelectPopup {
         <div style="flex-grow: 1; overflow-x: hidden; overflow-y: auto;">
           <jp-menu id="env-list">
             <% envs.forEach(env => { %>
-              <jp-menu-item data-python-path="<%- env.path %>" onclick="onMenuItemClicked(this);" title="<%- getEnvTooltip(env) %>"><%- env.path %><div slot="end"><%- env.name %></div></jp-menu-item>
+              <jp-menu-item data-python-path="<%- env.path %>" onclick="onMenuItemClicked(this);" title="<%- getEnvTooltip(env) %>"><%- env.path %>
+                <div slot="end"><%- env.name %><%- env.path === '${defaultPythonPath}' ? ' (default)' : env.path === '${bundledPythonPath}' ? ' (bundled)' : '' %></div>
+              </jp-menu-item>
             <% }); %>
           </jp-menu>
         </div>
@@ -220,6 +222,8 @@ export namespace PythonEnvironmentSelectView {
   export interface IOptions {
     isDarkTheme: boolean;
     envs: IPythonEnvironment[];
+    bundledPythonPath: string;
+    defaultPythonPath: string;
     currentPythonPath?: string;
   }
 }
