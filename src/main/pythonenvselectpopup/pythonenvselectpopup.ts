@@ -119,6 +119,7 @@ export class PythonEnvironmentSelectPopup {
 
         window.electronAPI.onCustomPythonPathSelected((path) => {
           pythonPathInput.value = path;
+          window.electronAPI.setPythonPath(path);
         });
 
         function onMenuItemClicked(el) {

@@ -296,12 +296,21 @@ export class Registry implements IRegistry, IDisposable {
       return inUserSetEnvList;
     }
 
-    const env = this._resolveEnvironmentSync(pythonPath);
-    if (env) {
-      this._userSetEnvironments.push(env);
-      this._updateEnvironments();
+    try {
+      const env = this._resolveEnvironmentSync(pythonPath);
+      if (env) {
+        this._userSetEnvironments.push(env);
+        this._updateEnvironments();
+      }
+
+      return env;
+    } catch (error) {
+      console.error(
+        `Failed to add the Python environment at: ${pythonPath}`,
+        error
+      );
+      return;
     }
-    return env;
   }
 
   validatePythonEnvironmentAtPath(pythonPath: string): boolean {
