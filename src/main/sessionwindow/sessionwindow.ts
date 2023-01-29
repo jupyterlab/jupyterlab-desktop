@@ -1165,6 +1165,9 @@ export class SessionWindow implements IDisposable {
       const env = this._registry.addEnvironment(pythonPath);
 
       if (!env) {
+        // reset python path to default
+        this._wsSettings.setValue(SettingType.pythonPath, '');
+
         this._showProgressView(
           'Invalid Environment configured for workspace',
           `<div class="message-row">Error! Python environment at '${pythonPath}' is not compatible.</div>
