@@ -38,6 +38,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   showEnvSelectPopup: () => {
     ipcRenderer.send('show-env-select-popup');
   },
+  sendMouseEvent: (type: string, params: any) => {
+    ipcRenderer.send('titlebar-mouse-event', type, params);
+  },
   onSetTitle: (callback: SetTitleListener) => {
     onSetTitleListener = callback;
   },

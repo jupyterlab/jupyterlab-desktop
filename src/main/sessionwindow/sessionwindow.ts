@@ -793,6 +793,16 @@ export class SessionWindow implements IDisposable {
 
       this._showPreferencesDialog(PreferencesDialog.Tab.Server);
     });
+
+    ipcMain.on('titlebar-mouse-event', (event, type: string, params: any) => {
+      if (event.sender !== this._titleBarView.view.webContents) {
+        return;
+      }
+
+      if (type === 'mousedown') {
+        this._hideEnvSelectPopup();
+      }
+    });
   }
 
   getPythonEnvironment(): IPythonEnvironment {

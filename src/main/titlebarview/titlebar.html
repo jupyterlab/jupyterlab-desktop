@@ -224,31 +224,37 @@ Distributed under the terms of the Modified BSD License.
         }
       });
 
-      menuButton.onclick = () => {
+      menuButton.onclick = (ev) => {
+        ev.stopPropagation();
         window.electronAPI.showAppContextMenu();
       };
 
-      minimizeButton.onclick = () => {
+      minimizeButton.onclick = (ev) => {
+        ev.stopPropagation();
         window.electronAPI.minimizeWindow();
       };
 
-      maximizeButton.onclick = () => {
+      maximizeButton.onclick = (ev) => {
+        ev.stopPropagation();
         window.electronAPI.maximizeWindow();
         maximizeButton.style.display = 'none';
         restoreButton.style.display = 'block';
       };
 
-      restoreButton.onclick = () => {
+      restoreButton.onclick = (ev) => {
+        ev.stopPropagation();
         window.electronAPI.restoreWindow();
         restoreButton.style.display = 'none';
         maximizeButton.style.display = 'block';
       };
 
-      closeButton.onclick = () => {
+      closeButton.onclick = (ev) => {
+        ev.stopPropagation();
         window.electronAPI.closeWindow();
       };
 
-      serverButton.onclick = () => {
+      serverButton.onclick = (ev) => {
+        ev.stopPropagation();
         if (!serverButton.classList.contains('disabled')) {
           window.electronAPI.showEnvSelectPopup();
         }
@@ -292,6 +298,15 @@ Distributed under the terms of the Modified BSD License.
       };
 
       updateServerStatus();
+
+      document.body.addEventListener('mousedown', (ev) => {
+        if (ev.target !== appTitle) {
+          return;
+        }
+        ev.preventDefault();
+        ev.stopPropagation();
+        window.electronAPI.sendMouseEvent('mousedown', {});
+      });
     </script>
   </body>
 </html>
