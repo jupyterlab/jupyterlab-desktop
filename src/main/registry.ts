@@ -578,7 +578,9 @@ export class Registry implements IRegistry, IDisposable {
         } else {
           let subEnvsWithPython = files
             .map(subEnvPath => {
-              return join(subEnvironmentsFolder, subEnvPath, 'bin', 'python');
+              return process.platform === 'win32'
+                ? join(subEnvironmentsFolder, subEnvPath, 'python.exe')
+                : join(subEnvironmentsFolder, subEnvPath, 'bin', 'python');
             })
             .filter(pythonPath => this._pathExists(pythonPath));
 
