@@ -335,10 +335,13 @@ export class Registry implements IRegistry, IDisposable {
     }
 
     try {
-      const envInfoOut = await this._runCommand(pythonPath, [
-        '-c',
-        envInfoPyCode
-      ]);
+      const envInfoOut = await this._runCommand(
+        pythonPath,
+        ['-c', envInfoPyCode],
+        {
+          env: { PATH: this.getAdditionalPathIncludesForPythonPath(pythonPath) }
+        }
+      );
       const envInfo = JSON.parse(envInfoOut.trim());
       const envType =
         envInfo.type === 'conda-root'
@@ -368,7 +371,9 @@ export class Registry implements IRegistry, IDisposable {
       return;
     }
 
-    const envInfoOut = this._runCommandSync(pythonPath, ['-c', envInfoPyCode]);
+    const envInfoOut = this._runCommandSync(pythonPath, ['-c', envInfoPyCode], {
+      env: { PATH: this.getAdditionalPathIncludesForPythonPath(pythonPath) }
+    });
     const envInfo = JSON.parse(envInfoOut.trim());
     const envType =
       envInfo.type === 'conda-root'
@@ -874,10 +879,11 @@ export class Registry implements IRegistry, IDisposable {
 
   private async _runCommand(
     executablePath: string,
-    commands: string[]
+    commands: string[],
+    options?: ExecFileOptions
   ): Promise<string> {
     return new Promise((resolve, reject) => {
-      let executableRun = execFile(executablePath, commands);
+      let executableRun = execFile(executablePath, commands, options);
       let stdoutBufferChunks: Buffer[] = [];
       let stdoutLength = 0;
       let stderrBufferChunks: Buffer[] = [];
