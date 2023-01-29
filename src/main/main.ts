@@ -208,7 +208,12 @@ app.on('ready', () => {
 function handleMultipleAppInstances(): Promise<void> {
   let promise = new Promise<void>((resolve, reject) => {
     // only the first instance will get the lock
-    const gotLock = app.requestSingleInstanceLock({ fileToOpenInMainInstance });
+    // pass cliArgs to main instance since argv provided by second-instance
+    // event is out of order
+    const gotLock = app.requestSingleInstanceLock({
+      cliArgs: argv,
+      fileToOpenInMainInstance
+    });
     if (gotLock) {
       app.on('second-instance', (event, argv, cwd, additionalData: any) => {
         // second instance created by double clicking a file
@@ -216,9 +221,9 @@ function handleMultipleAppInstances(): Promise<void> {
           jupyterApp.handleOpenFilesOrFolders([
             additionalData.fileToOpenInMainInstance
           ]);
-        } else if (argv.length > 1) {
+        } else if (additionalData?.cliArgs) {
           // second instance created using CLI
-          const cliArgs = processArgs(argv.slice(1));
+          const cliArgs = additionalData.cliArgs;
           cliArgs.cwd = cwd;
           const sessionConfig = SessionConfig.createFromArgs(
             (cliArgs as unknown) as ICLIArguments

@@ -86,8 +86,13 @@ export class UserSettings {
       installUpdatesAutomatically: new Setting<boolean>(true),
       showNewsFeed: new Setting<boolean>(true),
 
-      theme: new Setting<ThemeType>(ThemeType.System, { wsOverridable: true }),
-      syncJupyterLabTheme: new Setting<boolean>(true, { wsOverridable: true }),
+      /* making themes workspace overridable is not feasible.
+      When app has multiple windows, different window titlebars shouldn't have different themes.
+      Also, JupyterLab theme is stored as user settings in {USER_DATA}/jupyterlab-desktop/lab/.
+      An individual working-dir cannot have a different theme with common lab settings.
+      */
+      theme: new Setting<ThemeType>(ThemeType.System),
+      syncJupyterLabTheme: new Setting<boolean>(true),
       frontEndMode: new Setting<FrontEndMode>(FrontEndMode.WebApp),
 
       defaultWorkingDirectory: new Setting<string>(''),

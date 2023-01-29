@@ -134,7 +134,7 @@ export class SessionConfig {
       }
 
       if (cliArgs.pythonPath) {
-        pythonPath = path.resolve(cliArgs.pythonPath as string);
+        pythonPath = path.resolve(cliArgs.cwd, cliArgs.pythonPath as string);
         if (!fs.existsSync(pythonPath)) {
           pythonPath = '';
         }

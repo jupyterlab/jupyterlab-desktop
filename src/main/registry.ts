@@ -82,6 +82,8 @@ export class Registry implements IRegistry, IDisposable {
         defaultEnv.type === IEnvironmentType.CondaRoot &&
         !this._condaRootPath
       ) {
+        // this call overrides user set appData.condaRootPath
+        // which is probably better for compatibility
         this.setCondaRootPath(getEnvironmentPath(defaultEnv));
       }
     }
