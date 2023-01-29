@@ -100,7 +100,7 @@ export class PythonEnvironmentSelectPopup {
           <jp-menu id="env-list">
             <% envs.forEach(env => { %>
               <jp-menu-item data-python-path="<%- env.path %>" onclick="onMenuItemClicked(this);" title="<%- getEnvTooltip(env) %>"><%- env.path %>
-                <div slot="end"><%- env.name %><%- env.path === '${defaultPythonPath}' ? ' (default)' : env.path === '${bundledPythonPath}' ? ' (bundled)' : '' %></div>
+                <div slot="end"><%- env.name %><%- env.path === ${JSON.stringify(defaultPythonPath)} ? ' (default)' : env.path === ${JSON.stringify(bundledPythonPath)} ? ' (bundled)' : '' %></div>
               </jp-menu-item>
             <% }); %>
           </jp-menu>
