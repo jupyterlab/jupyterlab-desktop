@@ -17,7 +17,7 @@ import {
   waitForDuration
 } from './utils';
 import { execFile } from 'child_process';
-import { JupyterServerFactory } from './server';
+import { IServerFactory, JupyterServerFactory } from './server';
 import { connectAndGetServerInfo, IJupyterServerInfo } from './connect';
 import { UpdateDialog } from './updatedialog/updatedialog';
 import {
@@ -32,6 +32,7 @@ import { ICLIArguments, IDisposable } from './tokens';
 import { SessionConfig } from './config/sessionconfig';
 
 export interface IApplication {
+  createNewEmptySession(): void;
   checkForUpdates(showDialog: 'on-new-version' | 'always'): void;
   cliArgs: ICLIArguments;
 }
@@ -43,6 +44,97 @@ interface IClearHistoryOptions {
   userSetPythonEnvs: boolean;
 }
 
+class SessionWindowManager implements IDisposable {
+  constructor(options: SessionWindowManager.IOptions) {
+    this._options = options;
+  }
+
+  createNewEmptyWindow(): SessionWindow {
+    return this.createNew(ContentViewType.Welcome);
+  }
+
+  restoreLabWindow(sessionConfig?: SessionConfig): SessionWindow {
+    return this.createNew(ContentViewType.Lab, sessionConfig, true);
+  }
+
+  createNewLabWindow(sessionConfig?: SessionConfig): SessionWindow {
+    return this.createNew(ContentViewType.Lab, sessionConfig);
+  }
+
+  getOrCreateEmptyWindow(): SessionWindow {
+    const emptySessionWindow = this._windows.find(sessionWindow => {
+      sessionWindow.contentViewType === ContentViewType.Welcome;
+    });
+
+    if (emptySessionWindow) {
+      return emptySessionWindow;
+    }
+
+    return this.createNewEmptyWindow();
+  }
+
+  createNew(
+    contentView?: ContentViewType,
+    sessionConfig?: SessionConfig,
+    restorePosition?: boolean
+  ): SessionWindow {
+    const window = new SessionWindow({
+      app: this._options.app,
+      registry: this._options.registry,
+      serverFactory: this._options.serverFactory,
+      contentView: contentView,
+      sessionConfig,
+      center: !restorePosition
+    });
+    window.load();
+
+    this._windows.push(window);
+
+    window.window.on('close', async event => {
+      const index = this._windows.indexOf(window);
+      if (index !== -1) {
+        await window.dispose();
+        this._windows.splice(index, 1);
+      }
+    });
+
+    return window;
+  }
+
+  get windows(): SessionWindow[] {
+    return this._windows;
+  }
+
+  dispose(): Promise<void> {
+    return new Promise<void>((resolve, reject) => {
+      return Promise.all([
+        this._windows.map(sessionWindow => sessionWindow.dispose())
+      ])
+        .then(() => {
+          resolve();
+        })
+        .catch(error => {
+          console.error(
+            'There was a problem shutting down the application',
+            error
+          );
+          resolve();
+        });
+    });
+  }
+
+  private _options: SessionWindowManager.IOptions;
+  private _windows: SessionWindow[] = [];
+}
+
+namespace SessionWindowManager {
+  export interface IOptions {
+    app: JupyterApplication;
+    registry: IRegistry;
+    serverFactory: IServerFactory;
+  }
+}
+
 export class JupyterApplication implements IApplication, IDisposable {
   /**
    * Construct the Jupyter application
@@ -51,6 +143,13 @@ export class JupyterApplication implements IApplication, IDisposable {
     this._cliArgs = cliArgs;
     this._registry = new Registry();
     this._serverFactory = new JupyterServerFactory(this._registry);
+
+    this._sessionWindowManager = new SessionWindowManager({
+      app: this,
+      registry: this._registry,
+      serverFactory: this._serverFactory
+    });
+
     // create a server in advance
     this._serverFactory.createFreeServer().catch(error => {
       console.error('Failed to create free server', error);
@@ -79,6 +178,10 @@ export class JupyterApplication implements IApplication, IDisposable {
     this.startup();
   }
 
+  createNewEmptySession() {
+    this._sessionWindowManager.createNewEmptyWindow();
+  }
+
   get cliArgs(): ICLIArguments {
     return this._cliArgs;
   }
@@ -92,16 +195,7 @@ export class JupyterApplication implements IApplication, IDisposable {
     const sessionConfig = SessionConfig.createFromArgs(this._cliArgs);
 
     if (sessionConfig) {
-      const window = new SessionWindow({
-        app: this,
-        registry: this._registry,
-        serverFactory: this._serverFactory,
-        contentView: ContentViewType.Lab,
-        sessionConfig
-      });
-      window.load();
-      this._sessionWindow = window;
-
+      this._sessionWindowManager.createNewLabWindow(sessionConfig);
       return;
     }
 
@@ -110,61 +204,37 @@ export class JupyterApplication implements IApplication, IDisposable {
       appData.sessions.length > 0
     ) {
       const sessionConfig = appData.sessions[0];
-      const window = new SessionWindow({
-        app: this,
-        registry: this._registry,
-        serverFactory: this._serverFactory,
-        contentView: ContentViewType.Lab,
-        sessionConfig,
-        center: false
-      });
-      window.load();
-      this._sessionWindow = window;
-
+      this._sessionWindowManager.restoreLabWindow(sessionConfig);
       return;
     }
 
     if (startupMode === StartupMode.NewLocalSession) {
       const sessionConfig = SessionConfig.createLocal();
-      const window = new SessionWindow({
-        app: this,
-        registry: this._registry,
-        serverFactory: this._serverFactory,
-        contentView: ContentViewType.Lab,
-        sessionConfig
-      });
-      window.load();
-      this._sessionWindow = window;
+      this._sessionWindowManager.createNewLabWindow(sessionConfig);
     } else {
-      const window = new SessionWindow({
-        app: this,
-        registry: this._registry,
-        serverFactory: this._serverFactory,
-        contentView: ContentViewType.Welcome
-      });
-      window.load();
-      this._sessionWindow = window;
+      this._sessionWindowManager.createNewEmptyWindow();
     }
-  }
-
-  focus() {
-    if (!this._sessionWindow) {
-      return;
-    }
-
-    if (this._sessionWindow.window.isMinimized()) {
-      this._sessionWindow.window.restore();
-    }
-
-    this._sessionWindow.window.focus();
   }
 
   handleOpenFilesOrFolders(fileOrFolders?: string[]) {
-    this._sessionWindow.handleOpenFilesOrFolders(fileOrFolders);
+    const sessionWindow = this._sessionWindowManager.getOrCreateEmptyWindow();
+    sessionWindow.handleOpenFilesOrFolders(fileOrFolders);
+
+    this.focusSession(sessionWindow);
   }
 
   openSession(sessionConfig: SessionConfig) {
-    this._sessionWindow.openSession(sessionConfig);
+    const sessionWindow = this._sessionWindowManager.getOrCreateEmptyWindow();
+    sessionWindow.openSession(sessionConfig);
+
+    this.focusSession(sessionWindow);
+  }
+
+  focusSession(sessionWindow: SessionWindow) {
+    if (sessionWindow.window.isMinimized()) {
+      sessionWindow.window.restore();
+    }
+    sessionWindow.window.focus();
   }
 
   dispose(): Promise<void> {
@@ -174,9 +244,9 @@ export class JupyterApplication implements IApplication, IDisposable {
 
     this._disposePromise = new Promise<void>((resolve, reject) => {
       Promise.all([
-        this._registry.dispose(),
+        this._sessionWindowManager.dispose(),
         this._serverFactory.dispose(),
-        this._sessionWindow.dispose()
+        this._registry.dispose()
       ])
         .then(() => {
           resolve();
@@ -434,6 +504,17 @@ export class JupyterApplication implements IApplication, IDisposable {
       this.checkForUpdates('always');
     });
 
+    ipcMain.handle('get-server-info', event => {
+      for (const sessionWindow of this._sessionWindowManager.windows) {
+        if (
+          event.sender === sessionWindow.titleBarView?.view?.webContents ||
+          event.sender === sessionWindow.labView?.view?.webContents
+        ) {
+          return sessionWindow.getServerInfo();
+        }
+      }
+    });
+
     ipcMain.handle('is-dark-theme', event => {
       return isDarkTheme(userSettings.getValue(SettingType.theme));
     });
@@ -474,9 +555,9 @@ export class JupyterApplication implements IApplication, IDisposable {
         if (options.recentSessions) {
           appData.recentSessions = [];
 
-          if (this._sessionWindow) {
-            this._sessionWindow.updateRecentSessionList(true);
-          }
+          this._sessionWindowManager.windows.forEach(sessionWindow => {
+            sessionWindow.updateRecentSessionList(true);
+          });
         }
 
         return true;
@@ -542,5 +623,5 @@ export class JupyterApplication implements IApplication, IDisposable {
   private _registry: IRegistry;
   private _serverFactory: JupyterServerFactory;
   private _disposePromise: Promise<void>;
-  private _sessionWindow: SessionWindow;
+  private _sessionWindowManager: SessionWindowManager;
 }

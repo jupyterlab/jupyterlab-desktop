@@ -230,8 +230,6 @@ function handleMultipleAppInstances(): Promise<void> {
           );
           jupyterApp.openSession(sessionConfig);
         }
-
-        jupyterApp.focus();
       });
       resolve();
     } else {

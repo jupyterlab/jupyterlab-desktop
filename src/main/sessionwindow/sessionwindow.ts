@@ -416,6 +416,10 @@ export class SessionWindow implements IDisposable {
     return this._labView;
   }
 
+  get contentViewType(): ContentViewType {
+    return this._contentViewType;
+  }
+
   get contentView(): BrowserView {
     if (this._contentViewType === ContentViewType.Welcome) {
       return this._welcomeView?.view;
@@ -433,6 +437,10 @@ export class SessionWindow implements IDisposable {
   }
 
   private _registerListeners() {
+    appData.recentSessionsChanged.connect(() => {
+      this._welcomeView.updateRecentSessionList(true);
+    });
+
     this._window.on('close', async () => {
       await this.dispose();
     });
@@ -463,18 +471,6 @@ export class SessionWindow implements IDisposable {
         return;
       }
       this._window.close();
-    });
-
-    ipcMain.handle('get-server-info', event => {
-      if (
-        !(
-          event.sender === this._titleBarView.view.webContents ||
-          event.sender === this._labView.view.webContents
-        )
-      ) {
-        return;
-      }
-      return this.getServerInfo();
     });
 
     ipcMain.on(
@@ -589,7 +585,7 @@ export class SessionWindow implements IDisposable {
     );
 
     ipcMain.on('open-recent-session', (event, sessionIndex: number) => {
-      if (event.sender !== this._welcomeView.view.webContents) {
+      if (event.sender !== this._welcomeView?.view?.webContents) {
         return;
       }
 
@@ -715,6 +711,22 @@ export class SessionWindow implements IDisposable {
 
       const template: MenuItemConstructorOptions[] = [
         {
+          label: 'New Window',
+          click: () => {
+            this._newWindow();
+          }
+        },
+        {
+          label: 'Close Session',
+          visible:
+            this._contentViewType === ContentViewType.Lab &&
+            !this._progressViewVisible,
+          click: () => {
+            this._closeSession();
+          }
+        },
+        { type: 'separator' },
+        {
           label: 'Preferences',
           click: () => {
             this._showPreferencesDialog();
@@ -743,21 +755,6 @@ export class SessionWindow implements IDisposable {
           }
         }
       ];
-
-      if (
-        this._contentViewType === ContentViewType.Lab &&
-        !this._progressViewVisible
-      ) {
-        template.unshift(
-          {
-            label: 'Close Session',
-            click: () => {
-              this._closeSession();
-            }
-          },
-          { type: 'separator' }
-        );
-      }
 
       const menu = Menu.buildFromTemplate(template);
       menu.popup({
@@ -1375,6 +1372,10 @@ export class SessionWindow implements IDisposable {
 
     this._contentViewType = ContentViewType.Welcome;
     this._updateContentView();
+  }
+
+  private _newWindow() {
+    this._app.createNewEmptySession();
   }
 
   private _closeSession() {
