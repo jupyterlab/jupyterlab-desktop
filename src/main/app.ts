@@ -26,7 +26,11 @@ import {
   StartupMode,
   userSettings
 } from './config/settings';
-import { ContentViewType, SessionWindow } from './sessionwindow/sessionwindow';
+import {
+  ContentViewType,
+  IServerInfo,
+  SessionWindow
+} from './sessionwindow/sessionwindow';
 import { appData } from './config/appdata';
 import { ICLIArguments, IDisposable } from './tokens';
 import { SessionConfig } from './config/sessionconfig';
@@ -90,6 +94,10 @@ class SessionWindowManager implements IDisposable {
 
     this._windows.push(window);
 
+    window.sessionConfigChanged.connect(() => {
+      this.syncSessionData();
+    });
+
     window.window.on('close', async event => {
       const index = this._windows.indexOf(window);
       if (index !== -1) {
@@ -103,6 +111,17 @@ class SessionWindowManager implements IDisposable {
 
   get windows(): SessionWindow[] {
     return this._windows;
+  }
+
+  syncSessionData() {
+    const sessionConfigs: SessionConfig[] = [];
+    this._windows.forEach(sessionWindow => {
+      if (sessionWindow.contentViewType === ContentViewType.Lab) {
+        sessionConfigs.push(sessionWindow.sessionConfig);
+      }
+    });
+
+    appData.setActiveSessions(sessionConfigs);
   }
 
   dispose(): Promise<void> {
@@ -203,8 +222,9 @@ export class JupyterApplication implements IApplication, IDisposable {
       startupMode === StartupMode.LastSessions &&
       appData.sessions.length > 0
     ) {
-      const sessionConfig = appData.sessions[0];
-      this._sessionWindowManager.restoreLabWindow(sessionConfig);
+      appData.sessions.forEach(sessionConfig => {
+        this._sessionWindowManager.restoreLabWindow(sessionConfig);
+      });
       return;
     }
 
@@ -504,16 +524,19 @@ export class JupyterApplication implements IApplication, IDisposable {
       this.checkForUpdates('always');
     });
 
-    ipcMain.handle('get-server-info', event => {
-      for (const sessionWindow of this._sessionWindowManager.windows) {
-        if (
-          event.sender === sessionWindow.titleBarView?.view?.webContents ||
-          event.sender === sessionWindow.labView?.view?.webContents
-        ) {
-          return sessionWindow.getServerInfo();
+    ipcMain.handle(
+      'get-server-info',
+      (event): Promise<IServerInfo> => {
+        for (const sessionWindow of this._sessionWindowManager.windows) {
+          if (
+            event.sender === sessionWindow.titleBarView?.view?.webContents ||
+            event.sender === sessionWindow.labView?.view?.webContents
+          ) {
+            return sessionWindow.getServerInfo();
+          }
         }
       }
-    });
+    );
 
     ipcMain.handle('is-dark-theme', event => {
       return isDarkTheme(userSettings.getValue(SettingType.theme));

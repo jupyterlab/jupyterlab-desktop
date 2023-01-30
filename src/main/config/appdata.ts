@@ -50,13 +50,8 @@ export class ApplicationData {
     return _appDataSingleton;
   }
 
-  setLastSession(sessionConfig: SessionConfig | null) {
-    if (sessionConfig) {
-      this.sessions.unshift(sessionConfig);
-      this.sessions.length = 1;
-    } else {
-      this.sessions = [];
-    }
+  setActiveSessions(sessionConfigs: SessionConfig[]) {
+    this.sessions = sessionConfigs;
   }
 
   read() {

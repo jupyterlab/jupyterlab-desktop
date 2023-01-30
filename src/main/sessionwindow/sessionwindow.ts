@@ -40,13 +40,14 @@ import { AboutDialog } from '../aboutdialog/aboutdialog';
 import { ProgressView } from '../progressview/progressview';
 import { appData } from '../config/appdata';
 import { SessionConfig } from '../config/sessionconfig';
+import { ISignal, Signal } from '@lumino/signaling';
 
 export enum ContentViewType {
   Welcome = 'welcome',
   Lab = 'lab'
 }
 
-interface IServerInfo {
+export interface IServerInfo {
   type: 'local' | 'remote';
   url?: string;
   persistSessionData?: boolean;
@@ -428,6 +429,10 @@ export class SessionWindow implements IDisposable {
     }
   }
 
+  get sessionConfig(): SessionConfig {
+    return this._sessionConfig;
+  }
+
   get serverFactory(): IServerFactory {
     return this._serverFactory;
   }
@@ -438,7 +443,7 @@ export class SessionWindow implements IDisposable {
 
   private _registerListeners() {
     appData.recentSessionsChanged.connect(() => {
-      this._welcomeView.updateRecentSessionList(true);
+      this._welcomeView?.updateRecentSessionList(true);
     });
 
     this._window.on('close', async () => {
@@ -515,7 +520,7 @@ export class SessionWindow implements IDisposable {
         this._contentViewType = ContentViewType.Lab;
         this._updateContentView();
         this._updateSessionWindowPositionConfig();
-        appData.setLastSession(this._sessionConfig);
+        this._sessionConfigChanged.emit();
 
         if (type === 'notebook') {
           this.labView.labUIReady.then(() => {
@@ -808,7 +813,7 @@ export class SessionWindow implements IDisposable {
     }
   }
 
-  getServerInfo(): IServerInfo {
+  async getServerInfo(): Promise<IServerInfo> {
     if (this._contentViewType !== ContentViewType.Lab) {
       return null;
     }
@@ -841,7 +846,7 @@ export class SessionWindow implements IDisposable {
           },
           workingDirectory: info.workingDirectory,
           defaultKernel: info.environment.defaultKernel,
-          url: this._sessionConfig.url.href
+          url: this._sessionConfig.url?.href
         };
 
         if (
@@ -854,6 +859,10 @@ export class SessionWindow implements IDisposable {
         return serverInfo;
       }
     }
+  }
+
+  get sessionConfigChanged(): ISignal<this, void> {
+    return this._sessionConfigChanged;
   }
 
   private _updateContentView() {
@@ -1198,7 +1207,7 @@ export class SessionWindow implements IDisposable {
     this._updateContentView();
 
     this._updateSessionWindowPositionConfig();
-    appData.setLastSession(this._sessionConfig);
+    this._sessionConfigChanged.emit();
 
     if (filesToOpen) {
       this.labView.labUIReady.then(() => {
@@ -1281,7 +1290,7 @@ export class SessionWindow implements IDisposable {
           this._updateContentView();
           this._hideProgressView();
           this._updateSessionWindowPositionConfig();
-          appData.setLastSession(this._sessionConfig);
+          this._sessionConfigChanged.emit();
         })
         .catch(error => {
           this._setProgress(
@@ -1387,8 +1396,8 @@ export class SessionWindow implements IDisposable {
     this._hideEnvSelectPopup();
 
     this._disposeSession().then(() => {
-      appData.setLastSession(null);
       showWelcome();
+      this._sessionConfigChanged.emit();
       // keep a free server up
       this._serverFactory.createFreeServerIfNoneExists();
     });
@@ -1437,6 +1446,7 @@ export class SessionWindow implements IDisposable {
   private _envSelectPopup: PythonEnvironmentSelectPopup;
   private _envSelectPopupVisible: boolean = false;
   private _disposePromise: Promise<void>;
+  private _sessionConfigChanged = new Signal<this, void>(this);
 }
 
 export namespace SessionWindow {
