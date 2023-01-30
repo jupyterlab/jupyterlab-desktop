@@ -13,7 +13,7 @@ export enum IEnvironmentType {
    * This is the catch-all type value, any environments that are randomly found or
    * entered will have this type
    */
-  PATH = 'PATH',
+  Path = 'path',
   /**
    * This environment type is reserved for the type level of conda installations
    */
@@ -26,12 +26,11 @@ export enum IEnvironmentType {
    * This environment type is for environments that were derived from the WindowsRegistry
    */
   WindowsReg = 'windows-reg',
-
   VirtualEnv = 'venv'
 }
 
 export const EnvironmentTypeName: { [key in IEnvironmentType]: string } = {
-  [IEnvironmentType.PATH]: 'system',
+  [IEnvironmentType.Path]: 'system',
   [IEnvironmentType.CondaRoot]: 'conda',
   [IEnvironmentType.CondaEnv]: 'conda',
   [IEnvironmentType.WindowsReg]: 'win',
@@ -59,9 +58,22 @@ export interface IPythonEnvironment {
    * There will also be a version that accompanies the python executable
    */
   versions: IVersionContainer;
-
   /**
-   * True if this is the current default environment.
+   * Default kernel name
    */
-  default: boolean;
+  defaultKernel: string;
+}
+
+export interface IDisposable {
+  dispose(): Promise<void>;
+}
+
+export interface ICLIArguments {
+  cwd: string;
+  _: (string | number)[];
+  // eslint-disable-next-line id-match
+  $0: string;
+  [x: string]: unknown;
+  pythonPath: string | unknown;
+  workingDir: string | unknown;
 }

@@ -9,7 +9,6 @@ Distributed under the terms of the Modified BSD License.
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0">
-    <title>JupyterLab Header</title>
     <style>
       body {
         background-color: #e1e1e1;
@@ -50,7 +49,7 @@ Distributed under the terms of the Modified BSD License.
       }
       #server-button {
         -webkit-app-region: no-drag;
-        display: flex;
+        display: none;
         padding-right: 5px;
         color: #606060;
       }
@@ -64,8 +63,8 @@ Distributed under the terms of the Modified BSD License.
         color: #c1c1c1;
       }
       #server-icon svg {
-        width: 15px;
-        height: 15px;
+        width: 16px;
+        height: 16px;
         padding-top: 6px;
       }
       #server-icon, #menu-button {
@@ -129,12 +128,12 @@ Distributed under the terms of the Modified BSD License.
 
       .control-box-button:hover,
       #menu-button:hover,
-      #server-button:hover {
+      #server-button:not(.disabled):hover {
         background-color: #c1c1c1;
       }
       .app-ui-dark .control-box-button:hover,
       .app-ui-dark #menu-button:hover,
-      .app-ui-dark #server-button:hover {
+      .app-ui-dark #server-button:not(.disabled):hover {
         background-color: #505050;
       }
 
@@ -144,28 +143,20 @@ Distributed under the terms of the Modified BSD License.
     </style>
     <script>
       document.addEventListener("DOMContentLoaded", async () => {
-        const appConfig = window.electronAPI.getAppConfig();
-        const platform = appConfig.platform;
+        const platform = "<%- platform %>";
         document.body.dataset.appPlatform = platform;
         document.body.classList.add(`app-ui-${platform}`);
-        if (await window.electronAPI.isDarkTheme()) {
-          document.body.classList.add('app-ui-dark');
-        }
       });
     </script>
   </head>
 
-  <body class="active">
+  <body class="active <%- isDarkTheme ? 'app-ui-dark' : '' %>">
     <div class="titlebar">
       <div id="app-title" class="app-title">JupyterLab</div>
       <div id="right-widgets">
         <div id="server-button">
           <div id="server-icon">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><path fill="#333333" d="M480 160H32c-17.673 0-32-14.327-32-32V64c0-17.673 14.327-32 32-32h448c17.673 0 32 14.327 32 32v64c0 17.673-14.327 32-32 32zm-48-88c-13.255 0-24 10.745-24 24s10.745 24 24 24 24-10.745 24-24-10.745-24-24-24zm-64 0c-13.255 0-24 10.745-24 24s10.745 24 24 24 24-10.745 24-24-10.745-24-24-24zm112 248H32c-17.673 0-32-14.327-32-32v-64c0-17.673 14.327-32 32-32h448c17.673 0 32 14.327 32 32v64c0 17.673-14.327 32-32 32zm-48-88c-13.255 0-24 10.745-24 24s10.745 24 24 24 24-10.745 24-24-10.745-24-24-24zm-64 0c-13.255 0-24 10.745-24 24s10.745 24 24 24 24-10.745 24-24-10.745-24-24-24zm112 248H32c-17.673 0-32-14.327-32-32v-64c0-17.673 14.327-32 32-32h448c17.673 0 32 14.327 32 32v64c0 17.673-14.327 32-32 32zm-48-88c-13.255 0-24 10.745-24 24s10.745 24 24 24 24-10.745 24-24-10.745-24-24-24zm-64 0c-13.255 0-24 10.745-24 24s10.745 24 24 24 24-10.745 24-24-10.745-24-24-24z"/></svg>
-            <!--
-            Font Awesome Free 5.2.0 by @fontawesome - https://fontawesome.com
-            License - https://fontawesome.com/license (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License)
-            -->
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Pro 6.2.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license (Commercial License) Copyright 2022 Fonticons, Inc. --><path d="M64 32C28.7 32 0 60.7 0 96v64c0 35.3 28.7 64 64 64H448c35.3 0 64-28.7 64-64V96c0-35.3-28.7-64-64-64H64zM344 152c-13.3 0-24-10.7-24-24s10.7-24 24-24s24 10.7 24 24s-10.7 24-24 24zm96-24c0 13.3-10.7 24-24 24s-24-10.7-24-24s10.7-24 24-24s24 10.7 24 24zM64 288c-35.3 0-64 28.7-64 64v64c0 35.3 28.7 64 64 64H448c35.3 0 64-28.7 64-64V352c0-35.3-28.7-64-64-64H64zM344 408c-13.3 0-24-10.7-24-24s10.7-24 24-24s24 10.7 24 24s-10.7 24-24 24zm104-24c0 13.3-10.7 24-24 24s-24-10.7-24-24s10.7-24 24-24s24 10.7 24 24z"/></svg>
           </div>
           <div id="server-label"></div>
         </div>
@@ -225,58 +216,96 @@ Distributed under the terms of the Modified BSD License.
         }
       });
 
-      menuButton.onclick = () => {
+      window.electronAPI.onShowServerStatus((show) => {
+        serverButton.style.display = show ? 'flex' : 'none';
+
+        if (show) {
+          updateServerStatus();
+        }
+      });
+
+      menuButton.onclick = (ev) => {
+        ev.stopPropagation();
         window.electronAPI.showAppContextMenu();
       };
 
-      minimizeButton.onclick = () => {
+      minimizeButton.onclick = (ev) => {
+        ev.stopPropagation();
         window.electronAPI.minimizeWindow();
       };
 
-      maximizeButton.onclick = () => {
+      maximizeButton.onclick = (ev) => {
+        ev.stopPropagation();
         window.electronAPI.maximizeWindow();
         maximizeButton.style.display = 'none';
         restoreButton.style.display = 'block';
       };
 
-      restoreButton.onclick = () => {
+      restoreButton.onclick = (ev) => {
+        ev.stopPropagation();
         window.electronAPI.restoreWindow();
         restoreButton.style.display = 'none';
         maximizeButton.style.display = 'block';
       };
 
-      closeButton.onclick = () => {
+      closeButton.onclick = (ev) => {
+        ev.stopPropagation();
         window.electronAPI.closeWindow();
       };
 
-      serverButton.onclick = () => {
-        window.electronAPI.showServerConfigDialog();
+      serverButton.onclick = (ev) => {
+        ev.stopPropagation();
+        if (!serverButton.classList.contains('disabled')) {
+          window.electronAPI.showEnvSelectPopup();
+        }
       };
 
-      const updateStatusItemLocal = (env) => {
-        serverLabel.innerText = `Local (${env.name})`;
+      const updateStatusItemLocal = (serverInfo) => {
+        const env = serverInfo.environment;
+        serverLabel.innerText = env.name;
         let packages = [];
         for (const name in env.versions) {
           packages.push(`${name}: ${env.versions[name]}`);
         }
-        serverButton.title = `Local server\n${env.name}\n${
+        serverButton.title = `Local server\n${serverInfo.url}\nroot: ${serverInfo.workingDirectory}\n${env.name} (${
           env.path
-        }\n${packages.join(', ')}`;
+        })\n${packages.join(', ')}`;
+        serverButton.classList.remove('disabled');
       };
 
-      const updateStatusItemRemote = (url) => {
-        serverLabel.innerText = 'Remote';
-        serverButton.title = `Remote server\n${url}`;
+      const updateStatusItemRemote = (serverInfo) => {
+        const url = new URL(serverInfo.url);
+        const isLocalUrl =
+          url.hostname === 'localhost' || url.hostname === '127.0.0.1';
+
+        const connectionType = isLocalUrl ? 'Local' : 'Remote';
+        serverLabel.innerText = connectionType
+        serverButton.title = `${connectionType} connection\n${serverInfo.url}\nSession data ${serverInfo.persistSessionData ? '': 'not '}persisted`;
+        serverButton.classList.add('disabled');
       };
 
-      window.electronAPI.getServerInfo().then(data => {
-        if (data.type === 'local') {
-          window.electronAPI.getCurrentPythonEnvironment().then(env => {
-            updateStatusItemLocal(env);
-          });
-        } else {
-          updateStatusItemRemote(data.url);
+      const updateServerStatus = () => {
+        window.electronAPI.getServerInfo().then(serverInfo => {
+          if (!serverInfo) {
+            return;
+          }
+          if (serverInfo.type === 'local') {
+            updateStatusItemLocal(serverInfo);
+          } else {
+            updateStatusItemRemote(serverInfo);
+          }
+        });
+      };
+
+      updateServerStatus();
+
+      document.body.addEventListener('mousedown', (ev) => {
+        if (ev.target !== appTitle) {
+          return;
         }
+        ev.preventDefault();
+        ev.stopPropagation();
+        window.electronAPI.sendMouseEvent('mousedown', {});
       });
     </script>
   </body>

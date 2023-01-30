@@ -6,8 +6,9 @@ import * as path from 'path';
 import { ThemedWindow } from '../dialog/themedwindow';
 
 export class UpdateDialog {
-  constructor(options: { type: 'updates-available' | 'error' | 'no-updates' }) {
+  constructor(options: UpdateDialog.IOptions) {
     this._window = new ThemedWindow({
+      isDarkTheme: options.isDarkTheme,
       title: 'Update',
       width: 400,
       height: 180,
@@ -63,4 +64,11 @@ export class UpdateDialog {
 
   private _window: ThemedWindow;
   private _pageBody: string;
+}
+
+export namespace UpdateDialog {
+  export interface IOptions {
+    isDarkTheme: boolean;
+    type: 'updates-available' | 'error' | 'no-updates';
+  }
 }

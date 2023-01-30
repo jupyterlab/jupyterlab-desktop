@@ -9,9 +9,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
   isDarkTheme: () => {
     return ipcRenderer.invoke('is-dark-theme');
   },
-  closeWindow: () => {
-    ipcRenderer.send('close-active-window');
-  },
   setCheckForUpdatesAutomatically: (check: boolean) => {
     ipcRenderer.send('set-check-for-updates-automatically', check);
   },

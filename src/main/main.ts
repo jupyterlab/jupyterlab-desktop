@@ -1,25 +1,15 @@
 import { app, Menu, MenuItem } from 'electron';
-
-const Bottle = require('bottlejs');
-import log from 'electron-log';
-import * as yargs from 'yargs';
-import * as path from 'path';
+import log, { LevelOption } from 'electron-log';
+import yargs from 'yargs/yargs';
 import * as fs from 'fs';
 import { getAppDir, isDevMode } from './utils';
 import { execSync } from 'child_process';
+import { JupyterApplication } from './app';
+import { ICLIArguments } from './tokens';
+import { SessionConfig } from './config/sessionconfig';
 
-// handle opening file or directory with command-line arguments
-if (process.argv.length > 1) {
-  const openPath = path.resolve(process.argv[1]);
-
-  if (fs.existsSync(openPath)) {
-    if (fs.lstatSync(openPath).isDirectory()) {
-      process.env.JLAB_DESKTOP_HOME = openPath;
-    } else {
-      process.env.JLAB_DESKTOP_HOME = path.dirname(openPath);
-    }
-  }
-}
+let jupyterApp: JupyterApplication;
+let fileToOpenInMainInstance = '';
 
 /**
  *  * On Mac OSX the PATH env variable a packaged app gets does not
@@ -28,49 +18,61 @@ if (process.argv.length > 1) {
  */
 require('fix-path')();
 
-let argv = yargs
-  .option('v', {
-    alias: 'verbose',
-    count: true,
-    type: 'boolean',
-    describe: 'verbose output to terminal'
-  })
-  .help().argv;
+function processArgs(argv: string[]) {
+  return (
+    yargs(argv)
+      .usage('jlab [options] folder/file paths')
+      .example('jlab', 'Launch in default working directory')
+      .example('jlab .', 'Launch in current directory')
+      .example(
+        'jlab /data/nb/test.ipynb',
+        'Launch in /data/nb and open test.ipynb'
+      )
+      .example('jlab /data/nb', 'Launch in /data/nb')
+      .example(
+        'jlab --working-dir /data/nb test.ipynb sub/test2.ipynb',
+        'Launch in /data/nb and open /data/nb/test.ipynb and /data/nb/sub/test2.ipynb'
+      )
+      .option('python-path', {
+        describe: 'Python path',
+        type: 'string'
+      })
+      .option('working-dir', {
+        describe: 'Working directory',
+        type: 'string'
+      })
+      .option('log-level', {
+        describe: 'Log level',
+        choices: ['error', 'warn', 'info', 'verbose', 'debug'],
+        default: 'debug'
+      })
+      .help('h')
+      .alias({
+        h: 'help'
+      })
+      // define Electron / macOS boolean options as hidden to prevent them disturbing file list
+      .option('allow-file-access-from-files', { type: 'boolean', hidden: true })
+      .option('enable-avfoundation', { type: 'boolean', hidden: true })
+      .parseSync()
+  );
+}
 
-/**
- * Enabled separate logging for development and packaged environments.
- * Also override console methods so that future addition will route to
- * using this package.
- */
-let adjustedVerbose = parseInt((argv.verbose as unknown) as string) - 2;
+const argv = processArgs(process.argv.slice(isDevMode() ? 2 : 1));
+
 if (isDevMode()) {
-  if (adjustedVerbose === 0) {
-    log.transports.console.level = 'info';
-  } else if (adjustedVerbose === 1) {
-    log.transports.console.level = 'verbose';
-  } else if (adjustedVerbose >= 2) {
-    log.transports.console.level = 'debug';
-  }
-
+  log.transports.console.level = argv.logLevel as LevelOption;
   log.transports.file.level = false;
 
   log.info('In development mode');
   log.info(`Logging to console at '${log.transports.console.level}' level`);
 } else {
-  if (adjustedVerbose === 0) {
-    log.transports.file.level = 'info';
-  } else if (adjustedVerbose === 1) {
-    log.transports.file.level = 'verbose';
-  } else if (adjustedVerbose >= 2) {
-    log.transports.file.level = 'debug';
-  }
-
+  log.transports.file.level = argv.logLevel as LevelOption;
   log.transports.console.level = false;
 
   log.info('In production mode');
   log.info(
-    `Logging to file (${log.transports.file.findLogPath()}) at '${
-      log.transports.console.level
+    `Logging to file (${log.transports.file.getFile().path}) at '${
+      log.transports.file.level
     }' level`
   );
 }
@@ -80,50 +82,6 @@ console.error = log.error;
 console.warn = log.warn;
 console.info = log.info;
 console.debug = log.debug;
-
-/**
- * A user-defined service.
- *
- * Services make up the core functionality of the
- * application. Each service is instantiated
- * once and then becomes available to every other service.
- */
-export interface IService {
-  /**
-   * The required services.
-   */
-  requirements: string[];
-
-  /**
-   * The service name that is required by other services.
-   */
-  provides: string;
-
-  /**
-   * A function to create the service object.
-   */
-  activate: (...x: any[]) => any;
-
-  /**
-   * Whether the service should be instantiated immediately,
-   * or lazy loaded.
-   */
-  autostart?: boolean;
-}
-
-/**
- * Services required by this application.
- */
-const services = [
-  './app',
-  './sessions',
-  './server',
-  './shortcuts',
-  './utils',
-  './registry'
-].map((service: string) => {
-  return require(service).default;
-});
 
 const thisYear = new Date().getFullYear();
 
@@ -135,8 +93,31 @@ app.setAboutPanelOptions({
   copyright: `© 2015-${thisYear}  Project Jupyter Contributors`
 });
 
-app.on('open-file', (event: Electron.Event, _path: string) => {
-  process.env.JLAB_DESKTOP_HOME = path.dirname(_path);
+// when a file is double clicked or dropped on the app icon on OS,
+// this method is called
+app.on('open-file', (event: Electron.Event, filePath: string) => {
+  event.preventDefault();
+
+  // open-file will be called early at launch, so there is chance to pass to main instance
+  fileToOpenInMainInstance = filePath;
+
+  app.whenReady().then(() => {
+    let fileOrFolders: string[] = [];
+
+    try {
+      if (process.platform === 'win32') {
+        fileOrFolders = process.argv.slice(1); // TODO: this looks incorrect
+      } else {
+        fileOrFolders = [filePath];
+      }
+    } catch (error) {
+      console.error('Failed to open files', error);
+    }
+
+    if (fileOrFolders.length > 0) {
+      jupyterApp.handleOpenFilesOrFolders(fileOrFolders);
+    }
+  });
 });
 
 function setupJLabCommand() {
@@ -203,25 +184,13 @@ function setApplicationMenu() {
  * ready.
  */
 app.on('ready', () => {
-  setApplicationMenu();
-
-  handOverArguments()
+  handleMultipleAppInstances()
     .then(() => {
+      setApplicationMenu();
       setupJLabCommand();
-      let serviceManager = new Bottle();
-      let autostarts: string[] = [];
-      services.forEach((s: IService) => {
-        serviceManager.factory(s.provides, (container: any) => {
-          let args = s.requirements.map((r: string) => {
-            return container[r];
-          });
-          return s.activate(...args);
-        });
-        if (s.autostart) {
-          autostarts.push(s.provides);
-        }
-      });
-      serviceManager.digest(autostarts);
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      argv.cwd = process.cwd();
+      jupyterApp = new JupyterApplication((argv as unknown) as ICLIArguments);
     })
     .catch(e => {
       log.error(e);
@@ -236,18 +205,40 @@ app.on('ready', () => {
  * This instead opens the files in the first instance of the
  * application.
  */
-function handOverArguments(): Promise<void> {
+function handleMultipleAppInstances(): Promise<void> {
   let promise = new Promise<void>((resolve, reject) => {
-    app.requestSingleInstanceLock();
-    // TODO; double check this logic
-    app.on('second-instance', (event, argv, cwd) => {
-      // Skip JupyterLab Executable
-      for (let i = 1; i < argv.length; i++) {
-        app.emit('open-file', null, argv[i]);
-      }
-      reject();
+    // only the first instance will get the lock
+    // pass cliArgs to main instance since argv provided by second-instance
+    // event is out of order
+    const gotLock = app.requestSingleInstanceLock({
+      cliArgs: argv,
+      fileToOpenInMainInstance
     });
-    resolve();
+    if (gotLock) {
+      app.on('second-instance', (event, argv, cwd, additionalData: any) => {
+        // second instance created by double clicking a file
+        if (additionalData?.fileToOpenInMainInstance) {
+          jupyterApp.handleOpenFilesOrFolders([
+            additionalData.fileToOpenInMainInstance
+          ]);
+        } else if (additionalData?.cliArgs) {
+          // second instance created using CLI
+          const cliArgs = additionalData.cliArgs;
+          cliArgs.cwd = cwd;
+          const sessionConfig = SessionConfig.createFromArgs(
+            (cliArgs as unknown) as ICLIArguments
+          );
+          jupyterApp.openSession(sessionConfig);
+        }
+
+        jupyterApp.focus();
+      });
+      resolve();
+    } else {
+      // is second instance
+      app.quit();
+      reject();
+    }
   });
   return promise;
 }

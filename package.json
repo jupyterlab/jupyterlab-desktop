@@ -16,6 +16,7 @@
     "watch": "concurrently \"yarn watch:tsc\" \"yarn watch:assets\" \"yarn watch:pack\" ",
     "build:pack": "webpack --config webpack.browser.js",
     "build": "tsc && node ./scripts/extract.js && node ./scripts/copyassets.js && yarn build:pack",
+    "build:no-pack": "tsc && node ./scripts/extract.js && node ./scripts/copyassets.js",
     "build:all": "yarn clean && yarn build && yarn start",
     "extract": "node scripts/extract.js",
     "pack": "yarn build && electron-builder --dir",
@@ -151,7 +152,7 @@
     "@types/react": "~17.0.2",
     "@types/react-dom": "^17.0.1",
     "@types/semver": "^7.3.4",
-    "@types/yargs": "^16.0.0",
+    "@types/yargs": "^17.0.18",
     "@typescript-eslint/eslint-plugin": "~5.28.0",
     "@typescript-eslint/parser": "~5.28.0",
     "@yarnpkg/lockfile": "~1.1.0",
@@ -279,9 +280,9 @@
     "@jupyterlab/vdom": "3.5.2",
     "@jupyterlab/vdom-extension": "3.5.2",
     "@jupyterlab/vega5-extension": "3.5.2",
-    "bottlejs": "^2.0.0",
     "ejs": "^3.1.7",
     "electron-log": "^4.4.8",
+    "fast-xml-parser": "^4.0.12",
     "fix-path": "^3.0.0",
     "js-yaml": "^4.1.0",
     "node-fetch": "^2.6.7",
@@ -291,7 +292,7 @@
     "update-electron-app": "^2.0.1",
     "which": "^2.0.2",
     "winreg": "^1.2.4",
-    "yargs": "^16.2.0"
+    "yargs": "^17.6.2"
   },
   "resolutions": {
     "@jupyterlab/application": "~3.5.2",

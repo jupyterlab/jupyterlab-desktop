@@ -1,143 +1,214 @@
 import { execFile, ExecFileOptions, execFileSync } from 'child_process';
-
-import { IService } from './main';
-
 import { basename, join, normalize } from 'path';
-
 import * as path from 'path';
-
-import { app, dialog } from 'electron';
-
 import * as semver from 'semver';
-
-import { ArrayExt } from '@lumino/algorithm';
-
 import * as fs from 'fs';
 import log from 'electron-log';
+const which = require('which');
+const WinRegistry = require('winreg');
 import {
   EnvironmentTypeName,
+  IDisposable,
   IEnvironmentType,
   IPythonEnvironment,
   IVersionContainer
 } from './tokens';
-import { getUserDataDir } from './utils';
+import {
+  getBundledPythonEnvPath,
+  getBundledPythonPath,
+  getEnvironmentPath,
+  getUserHomeDir,
+  isPortInUse
+} from './utils';
+import { FrontEndMode, SettingType, userSettings } from './config/settings';
+import { appData } from './config/appdata';
 
 const envInfoPyCode = fs
   .readFileSync(path.join(__dirname, 'env_info.py'))
   .toString();
 
-let which = require('which');
-let WinRegistry = require('winreg');
-
 export interface IRegistry {
   getDefaultEnvironment: () => Promise<IPythonEnvironment>;
-
-  getEnvironmentByPath: (path: string) => Promise<IPythonEnvironment>;
-
-  setDefaultEnvironment: (path: string) => Promise<void>;
-
-  // refreshEnvironmentList: () => Promise<void>;
-
-  getEnvironmentList: () => Promise<IPythonEnvironment[]>;
-
-  getCondaEnvironments(): Promise<IPythonEnvironment[]>;
-
-  addEnvironment: (path: string) => Promise<IPythonEnvironment>;
-
-  getUserJupyterPath: () => Promise<IPythonEnvironment>;
-
-  getBundledPythonPath: () => string;
-
-  validatePythonEnvironmentAtPath: (path: string) => boolean;
-
+  getEnvironmentByPath: (pythonPath: string) => IPythonEnvironment;
+  getEnvironmentList: (cacheOK: boolean) => Promise<IPythonEnvironment[]>;
+  condaRootPath: Promise<string>;
+  setCondaRootPath(rootPath: string): void;
+  addEnvironment: (pythonPath: string) => IPythonEnvironment;
+  validatePythonEnvironmentAtPath: (pythonPath: string) => boolean;
   validateCondaBaseEnvironmentAtPath: (envPath: string) => boolean;
-
-  setDefaultPythonPath: (path: string) => void;
-
+  setDefaultPythonPath: (pythonPath: string) => void;
   getCurrentPythonEnvironment: () => IPythonEnvironment;
-
   getAdditionalPathIncludesForPythonPath: (pythonPath: string) => string;
-
   getRequirements: () => Registry.IRequirement[];
+  getEnvironmentInfo(pythonPath: string): Promise<IPythonEnvironment>;
+  getRunningServerList(): Promise<string[]>;
+  dispose(): Promise<void>;
 }
 
-export class Registry implements IRegistry {
+export const SERVER_TOKEN_PREFIX = 'jlab:srvr:';
+
+export class Registry implements IRegistry, IDisposable {
   constructor() {
+    const minJLabVersionRequired =
+      userSettings.getValue(SettingType.frontEndMode) === FrontEndMode.ClientApp
+        ? '3.4.5'
+        : '3.0.0';
+
     this._requirements = [
       {
         name: 'jupyterlab',
         moduleName: 'jupyterlab',
         commands: ['--version'],
-        versionRange: new semver.Range('>=3.4.5')
+        versionRange: new semver.Range(`>=${minJLabVersionRequired}`)
       }
     ];
 
-    // disable registry building since environment selection list is not
-    // exposed to users yet
-    const onlySingleUserEnvSupport = true;
+    // initialize environment list and default
+    this._environments = [
+      ...appData.discoveredPythonEnvs,
+      ...appData.userSetPythonEnvs
+    ].filter(env => this._pathExistsSync(env.path));
 
-    if (!onlySingleUserEnvSupport) {
-      let pathEnvironments = this._loadPATHEnvironments();
-      let condaEnvironments = this._loadCondaEnvironments();
-      let allEnvironments = [pathEnvironments, condaEnvironments];
-      if (process.platform === 'win32') {
-        let windowRegEnvironments = this._loadWindowsRegistryEnvironments(
-          this._requirements
-        );
-        allEnvironments.push(windowRegEnvironments);
+    let pythonPath = userSettings.getValue(SettingType.pythonPath);
+    if (pythonPath === '') {
+      pythonPath = getBundledPythonPath();
+    }
+
+    const defaultEnv = this._resolveEnvironmentSync(pythonPath);
+
+    if (defaultEnv) {
+      this._defaultEnv = defaultEnv;
+      if (
+        defaultEnv.type === IEnvironmentType.CondaRoot &&
+        !this._condaRootPath
+      ) {
+        // this call overrides user set appData.condaRootPath
+        // which is probably better for compatibility
+        this.setCondaRootPath(getEnvironmentPath(defaultEnv));
       }
+    }
 
-      this._registryBuilt = Promise.all<IPythonEnvironment[]>(allEnvironments)
-        .then(environments => {
-          let flattenedEnvs: IPythonEnvironment[] = Array.prototype.concat.apply(
-            [],
-            environments
-          );
-          let uniqueEnvs = this._getUniqueObjects(flattenedEnvs, env => {
-            return env.path;
-          });
+    if (!this._condaRootPath && appData.condaRootPath) {
+      if (this.validateCondaBaseEnvironmentAtPath(appData.condaRootPath)) {
+        this.setCondaRootPath(appData.condaRootPath);
 
-          return this._filterPromises(uniqueEnvs, value => {
-            return this._pathExists(value.path);
-          }).then(existingEnvs => {
-            let updatedEnvs = this._updatePythonEnvironmentsWithRequirementVersions(
-              uniqueEnvs,
-              this._requirements
-            );
-            return updatedEnvs.then(envs => {
-              let filteredEnvs = this._filterPythonEnvironmentsByRequirements(
-                envs,
-                this._requirements
-              );
-              this._sortEnvironments(filteredEnvs, this._requirements);
-
-              this._setDefaultEnvironment(filteredEnvs[0]);
-              this._environments = this._environments.concat(filteredEnvs);
-
-              return;
-            });
-          });
-        })
-        .catch(reason => {
-          if (reason.fileName || reason.lineNumber) {
-            log.error(
-              `Registry building failed! ${reason.name} at ${reason.fileName}:${reason.lineNumber}: ${reason.message}`
-            );
-          } else if (reason.stack) {
-            log.error(
-              `Registry building failed! ${reason.name}: ${reason.message}`
-            );
-            log.error(reason.stack);
-          } else {
-            log.error(
-              `Registry building failed! ${reason.name}: ${reason.message}`
-            );
+        // set default env from appData.condaRootPath
+        if (!this._defaultEnv) {
+          const pythonPath =
+            process.platform === 'win32'
+              ? join(appData.condaRootPath, 'python.exe')
+              : join(appData.condaRootPath, 'bin', 'python');
+          const defaultEnv = this._resolveEnvironmentSync(pythonPath);
+          if (defaultEnv) {
+            this._defaultEnv = defaultEnv;
           }
-          this._setDefaultEnvironment(undefined);
+        }
+      }
+    }
+
+    const pathEnvironments = this._loadPathEnvironments();
+    const condaEnvironments = this._loadCondaEnvironments();
+    const allEnvironments = [pathEnvironments, condaEnvironments];
+    if (process.platform === 'win32') {
+      let windowRegEnvironments = this._loadWindowsRegistryEnvironments(
+        this._requirements
+      );
+      allEnvironments.push(windowRegEnvironments);
+    }
+
+    this._registryBuilt = Promise.all<IPythonEnvironment[]>(allEnvironments)
+      .then(async environments => {
+        let discoveredEnvs = [].concat(...environments);
+
+        this._userSetEnvironments = await this._resolveEnvironments(
+          appData.userSetPythonEnvs,
+          true
+        );
+
+        // filter out user set environments
+        discoveredEnvs = discoveredEnvs.filter(env => {
+          return !this._userSetEnvironments.find(
+            userSetEnv => userSetEnv.path === env.path
+          );
         });
-    } else {
-      this._condaEnvironments = this._loadCondaEnvironments();
-      this._registryBuilt = Promise.resolve();
+
+        discoveredEnvs = await this._resolveEnvironments(discoveredEnvs, true);
+        this._discoveredEnvironments = discoveredEnvs;
+
+        this._updateEnvironments();
+
+        if (!this._defaultEnv && this._environments.length > 0) {
+          this._defaultEnv = this._environments[0];
+        }
+        return;
+      })
+      .catch(reason => {
+        if (reason.fileName || reason.lineNumber) {
+          log.error(
+            `Registry building failed! ${reason.name} at ${reason.fileName}:${reason.lineNumber}: ${reason.message}`
+          );
+        } else if (reason.stack) {
+          log.error(
+            `Registry building failed! ${reason.name}: ${reason.message}`
+          );
+          log.error(reason.stack);
+        } else {
+          log.error(
+            `Registry building failed! ${reason.name}: ${reason.message}`
+          );
+        }
+      });
+  }
+
+  private async _resolveEnvironments(
+    envs: IPythonEnvironment[],
+    sort?: boolean
+  ): Promise<IPythonEnvironment[]> {
+    let filteredEnvs = envs.filter(env => this._pathExistsSync(env.path));
+    const uniqueEnvs = this._getUniqueObjects(filteredEnvs, env => {
+      return fs.realpathSync(env.path);
+    });
+    const resolvedEnvs = await Promise.all(
+      uniqueEnvs.map(async env => await this._resolveEnvironment(env.path))
+    );
+    filteredEnvs = resolvedEnvs.filter(env => env !== undefined);
+
+    if (sort) {
+      this._sortEnvironments(filteredEnvs, this._requirements);
+    }
+
+    return filteredEnvs;
+  }
+
+  private async _resolveEnvironment(
+    pythonPath: string
+  ): Promise<IPythonEnvironment> {
+    if (!(await this._pathExists(pythonPath))) {
+      return;
+    }
+
+    const env = await this.getEnvironmentInfo(pythonPath);
+
+    if (
+      env &&
+      this._environmentSatisfiesRequirements(env, this._requirements)
+    ) {
+      return env;
+    }
+  }
+
+  private _resolveEnvironmentSync(pythonPath: string): IPythonEnvironment {
+    if (!this._pathExistsSync(pythonPath)) {
+      return;
+    }
+
+    const env = this.getEnvironmentInfoSync(pythonPath);
+
+    if (
+      env &&
+      this._environmentSatisfiesRequirements(env, this._requirements)
+    ) {
+      return env;
     }
   }
 
@@ -147,189 +218,105 @@ export class Registry implements IRegistry {
    * @returns a promise containing the default environment
    */
   getDefaultEnvironment(): Promise<IPythonEnvironment> {
-    return new Promise((resolve, reject) => {
-      this._registryBuilt
-        .then(() => {
-          if (this._default) {
-            resolve(this._default);
-          } else {
-            reject(new Error(`No default environment found!`));
-          }
-        })
-        .catch(reason => {
-          reject(
-            new Error(`Default environment could not be obtained: ${reason}`)
-          );
-        });
-    });
-  }
-
-  getEnvironmentByPath(pathToMatch: string): Promise<IPythonEnvironment> {
-    return new Promise((resolve, reject) => {
-      this._registryBuilt
-        .then(() => {
-          let matchingEnv = ArrayExt.findFirstValue(
-            this._environments,
-            env => pathToMatch === env.path
-          );
-
-          if (matchingEnv) {
-            resolve(matchingEnv);
-          } else {
-            reject(
-              new Error(
-                `No environment found with path matching "${pathToMatch}"`
-              )
-            );
-          }
-        })
-        .catch(reason => {
-          reject(new Error(`Registry failed to build: ${reason}`));
-        });
-    });
-  }
-
-  /**
-   * Either find default environment by path if it exists in the list, or create a new environment that
-   * will be used as the default.
-   * @param newDefaultPath the path to the new python executable that will be used as the default
-   * @returns a void promise that will be resolved when the process is complete
-   */
-  setDefaultEnvironment(newDefaultPath: string): Promise<void> {
-    return new Promise((resolve, reject) => {
-      this._registryBuilt
-        .then(() => {
-          if (this._default) {
-            if (this._default.path === newDefaultPath) {
-              resolve();
+    if (this._defaultEnv) {
+      return Promise.resolve(this._defaultEnv);
+    } else {
+      return new Promise((resolve, reject) => {
+        this._registryBuilt
+          .then(() => {
+            if (this._defaultEnv) {
+              resolve(this._defaultEnv);
             } else {
-              let foundInList = ArrayExt.findFirstValue(
-                this._environments,
-                env => env.path === newDefaultPath
-              );
-
-              if (foundInList) {
-                this._setDefaultEnvironment(foundInList);
-
-                resolve();
-              } else {
-                this._buildEnvironmentFromPath(
-                  newDefaultPath,
-                  this._requirements
-                )
-                  .then(newEnv => {
-                    this._setDefaultEnvironment(newEnv);
-                    this._environments.unshift(newEnv);
-                    resolve();
-                  })
-                  .catch(reject);
-              }
+              reject(new Error(`No default environment found!`));
             }
-          } else {
-            this._buildEnvironmentFromPath(newDefaultPath, this._requirements)
-              .then(newEnv => {
-                this._setDefaultEnvironment(newEnv);
-                this._environments.unshift(newEnv);
-                resolve();
-              })
-              .catch(reject);
-          }
-        })
-        .catch(reason => {
-          reject(new Error(`Default environment could not be set: ${reason}`));
-        });
-    });
+          })
+          .catch(reason => {
+            reject(
+              new Error(`Default environment could not be obtained: ${reason}`)
+            );
+          });
+      });
+    }
+  }
+
+  getEnvironmentByPath(pythonPath: string): IPythonEnvironment {
+    return this._environments.find(env => pythonPath === env.path);
   }
 
   /**
    * Retrieve the complete list of environments, once they have been resolved
    * @returns a promise that resolves to a complete list of environments
    */
-  getEnvironmentList(): Promise<IPythonEnvironment[]> {
-    return new Promise((resolve, reject) => {
-      this._registryBuilt
-        .then(() => {
-          if (this._environments) {
-            resolve(this._environments);
-          } else {
-            reject(new Error(`No environment list found!`));
-          }
-        })
-        .catch(reason => {
-          reject(
-            new Error(`Environment list could not be obtained: ${reason}`)
-          );
-        });
-    });
+  getEnvironmentList(cacheOK: boolean): Promise<IPythonEnvironment[]> {
+    if (cacheOK && this._environments.length > 0) {
+      return Promise.resolve(this._environments);
+    } else {
+      return new Promise((resolve, reject) => {
+        this._registryBuilt
+          .then(() => {
+            if (this._environments) {
+              resolve(this._environments);
+            } else {
+              reject(new Error(`No environment list found!`));
+            }
+          })
+          .catch(reason => {
+            reject(
+              new Error(`Environment list could not be obtained: ${reason}`)
+            );
+          });
+      });
+    }
   }
 
-  /**
-   * Retrieve the list of conda environments, once they have been resolved
-   * @returns a promise that resolves to a list of conda environments
-   */
-  getCondaEnvironments(): Promise<IPythonEnvironment[]> {
-    return this._condaEnvironments;
+  get condaRootPath(): Promise<string> {
+    return Promise.resolve(this._condaRootPath);
+  }
+
+  setCondaRootPath(rootPath: string) {
+    this._condaRootPath = rootPath;
+    appData.condaRootPath = rootPath;
   }
 
   /**
    * Create a new environment from a python executable, without waiting for the
    * entire registry to be resolved first.
-   * @param path The location of the python executable to create an environment from
+   * @param pythonPath The location of the python executable to create an environment from
    */
-  addEnvironment(path: string): Promise<IPythonEnvironment> {
-    return new Promise((resolve, reject) => {
-      this._buildEnvironmentFromPath(path, this._requirements)
-        .then(newEnv => {
-          this._environments.push(newEnv);
-          resolve(newEnv);
-        })
-        .catch(reject);
-    });
-  }
-
-  /**
-   * Open a file selection dialog so users
-   * can enter the local path to the Jupyter server.
-   *
-   * @return a promise that is fulfilled with the user path.
-   */
-  getUserJupyterPath(): Promise<IPythonEnvironment> {
-    return new Promise<IPythonEnvironment>((resolve, reject) => {
-      dialog
-        .showOpenDialog({
-          properties: ['openFile', 'showHiddenFiles'],
-          buttonLabel: 'Use Path'
-        })
-        .then(({ filePaths }) => {
-          if (!filePaths) {
-            reject(new Error('cancel'));
-          } else {
-            this.addEnvironment(filePaths[0]).then(resolve).catch(reject);
-          }
-        });
-    });
-  }
-
-  validatePythonEnvironmentAtPath(path: string): boolean {
-    if (!fs.existsSync(path)) {
-      return false;
+  addEnvironment(pythonPath: string): IPythonEnvironment {
+    const inDiscoveredEnvList = this._discoveredEnvironments.find(
+      env => pythonPath === env.path
+    );
+    if (inDiscoveredEnvList) {
+      return inDiscoveredEnvList;
     }
 
-    for (const req of this._requirements) {
-      let pythonOutput = this._runPythonModuleCommandSync(
-        path,
-        req.moduleName,
-        req.commands
-      );
-      let versionFromOutput = this._extractVersionFromExecOutputSync(
-        pythonOutput
-      );
-      if (!semver.satisfies(versionFromOutput, req.versionRange)) {
-        return false;
+    const inUserSetEnvList = this._userSetEnvironments.find(
+      env => pythonPath === env.path
+    );
+    if (inUserSetEnvList) {
+      return inUserSetEnvList;
+    }
+
+    try {
+      const env = this._resolveEnvironmentSync(pythonPath);
+      if (env) {
+        this._userSetEnvironments.push(env);
+        this._updateEnvironments();
       }
-    }
 
-    return true;
+      return env;
+    } catch (error) {
+      console.error(
+        `Failed to add the Python environment at: ${pythonPath}`,
+        error
+      );
+      return;
+    }
+  }
+
+  validatePythonEnvironmentAtPath(pythonPath: string): boolean {
+    return this._resolveEnvironment(pythonPath) !== undefined;
   }
 
   validateCondaBaseEnvironmentAtPath(envPath: string): boolean {
@@ -342,27 +329,51 @@ export class Registry implements IRegistry {
     return fs.existsSync(condaBinPath) && fs.lstatSync(condaBinPath).isFile();
   }
 
-  getEnvironmentInfo(pythonPath: string): IPythonEnvironment {
-    const runOptions = {
+  async getEnvironmentInfo(pythonPath: string): Promise<IPythonEnvironment> {
+    if (this._disposing) {
+      return;
+    }
+
+    try {
+      const envInfoOut = await this._runCommand(
+        pythonPath,
+        ['-c', envInfoPyCode],
+        {
+          env: { PATH: this.getAdditionalPathIncludesForPythonPath(pythonPath) }
+        }
+      );
+      const envInfo = JSON.parse(envInfoOut.trim());
+      const envType =
+        envInfo.type === 'conda-root'
+          ? IEnvironmentType.CondaRoot
+          : envInfo.type === 'conda-env'
+          ? IEnvironmentType.CondaEnv
+          : IEnvironmentType.VirtualEnv;
+      const envName = `${EnvironmentTypeName[envType]}: ${envInfo.name}`;
+
+      return {
+        path: pythonPath,
+        type: envType,
+        name: envName,
+        versions: envInfo.versions,
+        defaultKernel: envInfo.defaultKernel
+      };
+    } catch (error) {
+      console.error(
+        `Failed to get environment info at path '${pythonPath}'.`,
+        error
+      );
+    }
+  }
+
+  getEnvironmentInfoSync(pythonPath: string): IPythonEnvironment {
+    if (this._disposing) {
+      return;
+    }
+
+    const envInfoOut = this._runCommandSync(pythonPath, ['-c', envInfoPyCode], {
       env: { PATH: this.getAdditionalPathIncludesForPythonPath(pythonPath) }
-    };
-    const pythonVersionOutput = this._runCommandSync(
-      pythonPath,
-      ['--version'],
-      runOptions
-    );
-    const pythonVersion = this._extractVersionFromExecOutputSync(
-      pythonVersionOutput
-    );
-    const jlabVersionOutput = this._runCommandSync(
-      pythonPath,
-      ['-m', 'jupyterlab', '--version'],
-      runOptions
-    );
-    const jlabVersion = this._extractVersionFromExecOutputSync(
-      jlabVersionOutput
-    );
-    const envInfoOut = this._runCommandSync(pythonPath, ['-c', envInfoPyCode]);
+    });
     const envInfo = JSON.parse(envInfoOut.trim());
     const envType =
       envInfo.type === 'conda-root'
@@ -373,35 +384,20 @@ export class Registry implements IRegistry {
     const envName = `${EnvironmentTypeName[envType]}: ${envInfo.name}`;
 
     return {
+      path: pythonPath,
       type: envType,
       name: envName,
-      path: pythonPath,
-      versions: { python: pythonVersion, jupyterlab: jlabVersion },
-      default: false
+      versions: envInfo.versions,
+      defaultKernel: envInfo.defaultKernel
     };
   }
 
-  setDefaultPythonPath(path: string): void {
-    this._default = this.getEnvironmentInfo(path);
+  setDefaultPythonPath(pythonPath: string): void {
+    this._defaultEnv = this.getEnvironmentByPath(pythonPath);
   }
 
   getCurrentPythonEnvironment(): IPythonEnvironment {
-    return this._default;
-  }
-
-  getBundledPythonPath(): string {
-    const platform = process.platform;
-    const userDataDir = getUserDataDir();
-    let envPath = join(userDataDir, 'jlab_server');
-    if (platform !== 'win32') {
-      envPath = join(envPath, 'bin');
-    }
-    const bundledPythonPath = join(
-      envPath,
-      `python${platform === 'win32' ? '.exe' : ''}`
-    );
-
-    return bundledPythonPath;
+    return this._defaultEnv;
   }
 
   getAdditionalPathIncludesForPythonPath(pythonPath: string): string {
@@ -426,98 +422,116 @@ export class Registry implements IRegistry {
     return this._requirements;
   }
 
-  private _buildEnvironmentFromPath(
-    pythonPath: string,
-    requirements: Registry.IRequirement[]
-  ): Promise<IPythonEnvironment> {
-    let newEnvironment: IPythonEnvironment = {
-      name: `SetDefault-${basename(pythonPath)}`,
-      path: pythonPath,
-      type: IEnvironmentType.PATH,
-      versions: {},
-      default: false
-    };
+  getRunningServerList(): Promise<string[]> {
+    return new Promise<string[]>(resolve => {
+      if (this._defaultEnv) {
+        this._runPythonModuleCommand(this._defaultEnv.path, 'jupyter', [
+          'server',
+          'list',
+          '--json'
+        ])
+          .then(async output => {
+            const runningServers: string[] = [];
+            const lines = output.split('\n');
+            for (const line of lines) {
+              const jsonStart = line.indexOf('{');
+              if (jsonStart !== -1) {
+                const jsonStr = line.substring(jsonStart);
+                try {
+                  const jsonData = JSON.parse(jsonStr);
+                  // check if server is not created by desktop app and is still running
+                  if (
+                    !jsonData.token.startsWith(SERVER_TOKEN_PREFIX) &&
+                    (await isPortInUse(jsonData.port))
+                  ) {
+                    runningServers.push(
+                      `${jsonData.url}lab?token=${jsonData.token}`
+                    );
+                  }
+                } catch (error) {
+                  console.error(
+                    `Failed to parse running JupyterLab server list`,
+                    error
+                  );
+                }
+              }
+            }
 
-    let updatedEnv = this._updatePythonEnvironmentsWithRequirementVersions(
-      [newEnvironment],
-      requirements
-    );
-
-    return updatedEnv
-      .catch((error: Error) => {
-        return Promise.reject(new Error(`Python check failed: ${error}`));
-      })
-      .then(newEnvs => {
-        let filteredEnvs = this._filterPythonEnvironmentsByRequirements(
-          newEnvs,
-          requirements
-        );
-        if (filteredEnvs.length === 0) {
-          const requirementsDescription = requirements
-            .map(
-              requirement =>
-                `${requirement.name} (${requirement.moduleName}) ${requirement.versionRange.range}`
-            )
-            .join(', ');
-          return Promise.reject(
-            new Error(
-              `Required packages could not be found in the selected Python path:\n${pythonPath}\n\nThe requirements are: ${requirementsDescription}`
-            )
-          );
-        } else {
-          return Promise.resolve(filteredEnvs[0]);
-        }
-      });
+            resolve(runningServers);
+          })
+          .catch(reason => {
+            console.debug(
+              `Failed to get running JupyterLab server list`,
+              reason
+            );
+            resolve([]);
+          });
+      } else {
+        resolve([]);
+      }
+    });
   }
 
-  private _loadPATHEnvironments(): Promise<IPythonEnvironment[]> {
-    let pythonExecutableName: string;
-    if (process.platform === 'win32') {
-      pythonExecutableName = 'python.exe';
-    } else {
-      pythonExecutableName = 'python';
-    }
+  private _updateEnvironments() {
+    this._environments = [
+      ...this._userSetEnvironments,
+      ...this._discoveredEnvironments
+    ];
+    appData.discoveredPythonEnvs = JSON.parse(
+      JSON.stringify(this._discoveredEnvironments)
+    );
+    appData.userSetPythonEnvs = JSON.parse(
+      JSON.stringify(this._userSetEnvironments)
+    );
+  }
 
-    let pythonInstances = [
+  private async _loadPathEnvironments(): Promise<IPythonEnvironment[]> {
+    const pythonExecutableName =
+      process.platform === 'win32' ? 'python.exe' : 'python';
+
+    const pythonInstances = [
       this._getExecutableInstances(pythonExecutableName, process.env.PATH)
     ];
+
     if (process.platform === 'darwin') {
       pythonInstances.push(
         this._getExecutableInstances('python3', process.env.PATH)
       );
     }
 
-    let flattenedPythonPaths: Promise<string[]> = Promise.all(
+    const flattenedPythonPaths: Promise<string[]> = Promise.all(
       pythonInstances
     ).then<string[]>(multiplePythons => {
       return Array.prototype.concat.apply([], multiplePythons);
     });
 
-    return flattenedPythonPaths.then((pythons: string[]) => {
-      return pythons.map((pythonPath, index) => {
-        let newPythonEnvironment: IPythonEnvironment = {
-          name: `${basename(pythonPath)}-${index}`,
-          path: pythonPath,
-          type: IEnvironmentType.PATH,
-          versions: {},
-          default: false
-        };
+    const pythonPaths = await flattenedPythonPaths;
 
-        return newPythonEnvironment;
-      });
+    return pythonPaths.map((pythonPath, index) => {
+      let newPythonEnvironment: IPythonEnvironment = {
+        name: `${basename(pythonPath)}-${index}`,
+        path: pythonPath,
+        type: IEnvironmentType.Path,
+        versions: {},
+        defaultKernel: 'python3'
+      };
+
+      return newPythonEnvironment;
     });
   }
 
-  private _loadCondaEnvironments(): Promise<IPythonEnvironment[]> {
-    let pathCondas = this._getPATHCondas();
-    let commonCondas = this._filterNonexistantPaths(
-      Registry.COMMON_CONDA_LOCATIONS
+  private async _loadCondaEnvironments(): Promise<IPythonEnvironment[]> {
+    const pathCondas = this._getPathCondas();
+    const commonCondas = Promise.resolve(
+      Registry.COMMON_CONDA_LOCATIONS.filter(condaPath =>
+        this._pathExistsSync(condaPath)
+      )
     );
 
-    let allCondas = [pathCondas, commonCondas];
+    const allCondas = [pathCondas, commonCondas];
 
     // add bundled conda env to the list of base conda envs
-    const bundledEnvPath = path.join(getUserDataDir(), 'jlab_server');
+    const bundledEnvPath = getBundledPythonEnvPath();
     if (fs.existsSync(path.join(bundledEnvPath, 'condabin'))) {
       allCondas.unshift(Promise.resolve([bundledEnvPath]));
     }
@@ -526,34 +540,30 @@ export class Registry implements IRegistry {
       allCondas.push(this._getWindowsRegistryCondas());
     }
 
-    return this._loadRootCondaEnvironments(allCondas).then(rootEnvs => {
-      let subEnvs = rootEnvs.reduce<Promise<IPythonEnvironment[]>[]>(
-        (accum, currentRootEnv, index, self) => {
-          let rootSubEnvsFolderPath: string;
-          if (process.platform === 'win32') {
-            rootSubEnvsFolderPath = normalize(join(currentRootEnv.path, '..'));
-          } else {
-            rootSubEnvsFolderPath = normalize(
-              join(currentRootEnv.path, '..', '..')
-            );
-          }
+    const rootEnvs = await this._loadRootCondaEnvironments(allCondas);
+    const subEnvs = rootEnvs.reduce<Promise<IPythonEnvironment[]>[]>(
+      (accum, currentRootEnv, index, self) => {
+        let rootSubEnvsFolderPath: string;
+        if (process.platform === 'win32') {
+          rootSubEnvsFolderPath = normalize(join(currentRootEnv.path, '..'));
+        } else {
+          rootSubEnvsFolderPath = normalize(
+            join(currentRootEnv.path, '..', '..')
+          );
+        }
 
-          accum.push(this._getSubEnvironmentsFromRoot(rootSubEnvsFolderPath));
+        accum.push(this._getSubEnvironmentsFromRoot(rootSubEnvsFolderPath));
 
-          return accum;
-        },
-        []
-      );
-
-      return Promise.all(subEnvs).then(subEnvs => {
-        let flattenSubEnvs = Array.prototype.concat.apply(
-          [],
-          subEnvs
-        ) as IPythonEnvironment[];
-
-        return rootEnvs.concat(flattenSubEnvs);
-      });
-    });
+        return accum;
+      },
+      []
+    );
+    const subEnvsResolved = await Promise.all(subEnvs);
+    let flattenSubEnvs = Array.prototype.concat.apply(
+      [],
+      subEnvsResolved
+    ) as IPythonEnvironment[];
+    return rootEnvs.concat(flattenSubEnvs);
   }
 
   private _getSubEnvironmentsFromRoot(
@@ -571,84 +581,81 @@ export class Registry implements IRegistry {
         if (err) {
           reject(err);
         } else {
-          let subEnvsWithPython = this._filterNonexistantPaths(
-            files.map(subEnvPath => {
-              return join(subEnvironmentsFolder, subEnvPath, 'bin', 'python');
+          let subEnvsWithPython = files
+            .map(subEnvPath => {
+              return process.platform === 'win32'
+                ? join(subEnvironmentsFolder, subEnvPath, 'python.exe')
+                : join(subEnvironmentsFolder, subEnvPath, 'bin', 'python');
+            })
+            .filter(pythonPath => this._pathExists(pythonPath));
+
+          resolve(
+            subEnvsWithPython.map(subEnvPath => {
+              return {
+                name: `${rootName}-${basename(
+                  normalize(join(subEnvPath, '..', '..'))
+                )}`,
+                path: subEnvPath,
+                type: IEnvironmentType.CondaEnv,
+                versions: {}
+              } as IPythonEnvironment;
             })
           );
-
-          subEnvsWithPython
-            .catch(reject)
-            .then(subEnvs => {
-              return Array.prototype.concat.apply([], subEnvs) as string[];
-            })
-            .then(subEnvsWithPython => {
-              resolve(
-                subEnvsWithPython.map(subEnvPath => {
-                  return {
-                    name: `${rootName}-${basename(
-                      normalize(join(subEnvPath, '..', '..'))
-                    )}`,
-                    path: subEnvPath,
-                    type: IEnvironmentType.CondaEnv,
-                    versions: {}
-                  } as IPythonEnvironment;
-                })
-              );
-            });
         }
       });
     });
   }
 
-  private _loadRootCondaEnvironments(
+  private async _loadRootCondaEnvironments(
     condaRoots: Promise<string[]>[]
   ): Promise<IPythonEnvironment[]> {
-    return Promise.all(condaRoots).then(allCondas => {
-      let flattenedCondaRoots: string[] = Array.prototype.concat.apply(
-        [],
-        allCondas
-      );
-      let uniqueCondaRoots = this._getUniqueObjects(flattenedCondaRoots);
+    const allCondas = await Promise.all(condaRoots);
+    const flattenedCondaRoots: string[] = Array.prototype.concat.apply(
+      [],
+      allCondas
+    );
+    const uniqueCondaRoots = this._getUniqueObjects(flattenedCondaRoots);
 
-      return uniqueCondaRoots.map(condaRootPath => {
-        let path: string;
-        if (process.platform === 'win32') {
-          path = join(condaRootPath, 'python.exe');
-        } else {
-          path = join(condaRootPath, 'bin', 'python');
-        }
+    return uniqueCondaRoots.map(condaRootPath => {
+      let path: string;
+      if (process.platform === 'win32') {
+        path = join(condaRootPath, 'python.exe');
+      } else {
+        path = join(condaRootPath, 'bin', 'python');
+      }
 
-        let newRootEnvironment: IPythonEnvironment = {
-          name: basename(condaRootPath),
-          path: path,
-          type: IEnvironmentType.CondaRoot,
-          versions: {},
-          default: false
-        };
+      let newRootEnvironment: IPythonEnvironment = {
+        name: basename(condaRootPath),
+        path: path,
+        type: IEnvironmentType.CondaRoot,
+        versions: {},
+        defaultKernel: 'python3'
+      };
 
-        return newRootEnvironment;
-      });
+      if (!this._condaRootPath) {
+        this.setCondaRootPath(condaRootPath);
+      }
+
+      return newRootEnvironment;
     });
   }
 
-  private _getPATHCondas(): Promise<string[]> {
-    let PATH = process.env.PATH;
-    return this._getExecutableInstances('conda', PATH).then(condasInPath => {
-      return Promise.all(
-        condasInPath.map(condaExecutablePath => {
-          let condaInfoOutput = this._runCommand(condaExecutablePath, [
-            'info',
-            '--json'
-          ]);
-          return this._convertExecutableOutputFromJson(condaInfoOutput).then(
-            condaInfoJSON => {
-              return condaInfoJSON.root_prefix as string;
-            }
-          );
-        })
-      );
-    });
+  private async _getPathCondas(): Promise<string[]> {
+    const PATH = process.env.PATH;
+    const condasInPath = await this._getExecutableInstances('conda', PATH);
+
+    return await Promise.all(
+      condasInPath.map(async condaExecutablePath => {
+        const condaInfoOutput = this._runCommand(condaExecutablePath, [
+          'info',
+          '--json'
+        ]);
+        const condaInfoJSON = await this._convertExecutableOutputFromJson(
+          condaInfoOutput
+        );
+        return condaInfoJSON.root_prefix as string;
+      })
+    );
   }
 
   private _getWindowsRegistryCondas(): Promise<string[]> {
@@ -664,60 +671,62 @@ export class Registry implements IRegistry {
     );
   }
 
-  private _loadWindowsRegistryEnvironments(
+  private async _loadWindowsRegistryEnvironments(
     requirements: Registry.IRequirement[]
   ): Promise<IPythonEnvironment[]> {
-    let valuePredicate = (value: any) => {
+    const valuePredicate = (value: any) => {
       return value.name === '(Default)';
     };
 
-    let defaultPaths = this._getAllMatchingValuesFromSubRegistry(
+    const defaultPaths = this._getAllMatchingValuesFromSubRegistry(
       WinRegistry.HKCU,
       '\\SOFTWARE\\Python\\PythonCore',
       'InstallPath',
       valuePredicate
     );
 
-    return defaultPaths.then(installPaths => {
-      return Promise.all(
-        installPaths.map(path => {
-          let finalPath = join(path, 'python.exe');
+    const installPaths = await defaultPaths;
 
-          return {
-            name: `WinReg-${basename(normalize(join(path, '..')))}`,
-            path: finalPath,
-            type: IEnvironmentType.WindowsReg,
-            versions: {}
-          } as IPythonEnvironment;
-        })
-      );
-    });
+    return await Promise.all(
+      installPaths.map(path => {
+        const finalPath = join(path, 'python.exe');
+
+        return {
+          name: `WinReg-${basename(normalize(join(path, '..')))}`,
+          path: finalPath,
+          type: IEnvironmentType.WindowsReg,
+          versions: {}
+        } as IPythonEnvironment;
+      })
+    );
   }
 
   // This function will retrieve all subdirectories of the main registry path, and for each subdirectory(registry) it will search for the key
   // matching the subDirectory parameter and the value the passes
-  private _getAllMatchingValuesFromSubRegistry(
+  private async _getAllMatchingValuesFromSubRegistry(
     registryHive: string,
     mainRegPath: string,
     subDirectory: string,
     valueFilter: (value: any) => boolean
   ): Promise<string[]> {
-    let mainWinRegistry = new WinRegistry({
+    const mainWinRegistry = new WinRegistry({
       hive: registryHive,
       key: mainRegPath
     });
 
-    let getMainRegistryKeys: Promise<any[]> = new Promise((resolve, reject) => {
-      mainWinRegistry.keys((err: any, items: any[]) => {
-        if (err) {
-          reject(err);
-        } else {
-          resolve(items);
-        }
-      });
-    });
+    const getMainRegistryKeys: Promise<any[]> = new Promise(
+      (resolve, reject) => {
+        mainWinRegistry.keys((err: any, items: any[]) => {
+          if (err) {
+            reject(err);
+          } else {
+            resolve(items);
+          }
+        });
+      }
+    );
 
-    let installPathValues: Promise<any[]> = getMainRegistryKeys
+    const installPathValues: Promise<any[]> = getMainRegistryKeys
       .then(items => {
         return Promise.all(
           items.map(item => {
@@ -744,113 +753,24 @@ export class Registry implements IRegistry {
         return Array.prototype.concat.apply([], nestedInstallPathValues);
       });
 
-    return installPathValues.then(values => {
-      return values.filter(valueFilter).map(v => v.value);
-    });
+    const pathValues = await installPathValues;
+    return pathValues.filter(valueFilter).map(v => v.value);
   }
 
-  private _filterPythonEnvironmentsByRequirements(
-    environments: IPythonEnvironment[],
+  private _environmentSatisfiesRequirements(
+    environment: IPythonEnvironment,
     requirements: Registry.IRequirement[]
-  ): IPythonEnvironment[] {
-    return environments.filter((env, index, envSelf) => {
-      return requirements.every((req, index, reqSelf) => {
-        try {
-          return semver.satisfies(env.versions[req.name], req.versionRange);
-        } catch (e) {
-          return false;
-        }
-      });
-    });
-  }
-
-  private _updatePythonEnvironmentsWithRequirementVersions(
-    environments: IPythonEnvironment[],
-    requirements: Registry.IRequirement[]
-  ): Promise<IPythonEnvironment[]> {
-    let updatedEnvironments = environments.map(env => {
-      // Get versions for each requirement
-      let versions: Promise<[string, string]>[] = requirements.map(req => {
-        let pythonOutput = this._runPythonModuleCommand(
-          env.path,
-          req.moduleName,
-          req.commands
+  ): boolean {
+    return requirements.every((req, index, reqSelf) => {
+      try {
+        return semver.satisfies(
+          environment.versions[req.name],
+          req.versionRange
         );
-        let versionFromOutput = this._extractVersionFromExecOutput(
-          pythonOutput
-        );
-        return versionFromOutput
-          .then<[string, string]>(version => {
-            return [req.name, version];
-          })
-          .catch<[string, string]>(reason => {
-            return [req.name, Registry.NO_MODULE_SENTINEL];
-          });
-      });
-
-      // Get version for python executable
-      let pythonVersion = this._extractVersionFromExecOutput(
-        this._runCommand(env.path, ['--version'])
-      )
-        .then<[string, string]>(versionString => {
-          return ['python', versionString];
-        })
-        .catch<[string, string]>(reason => {
-          return ['python', Registry.NO_MODULE_SENTINEL];
-        });
-      versions.push(pythonVersion);
-
-      return Promise.all(versions).then(versions => {
-        env.versions = versions.reduce(
-          (
-            accum: IVersionContainer,
-            current: [string, string],
-            index,
-            self
-          ) => {
-            accum[current[0]] = current[1];
-            return accum;
-          },
-          {}
-        );
-
-        return env;
-      });
-    });
-
-    return Promise.all(updatedEnvironments);
-  }
-
-  private _extractVersionFromExecOutput(
-    output: Promise<string>
-  ): Promise<string> {
-    return new Promise((resolve, reject) => {
-      return output
-        .then(output => {
-          const version = this._extractVersionFromExecOutputSync(output);
-          if (version === '') {
-            reject(new Error(`Could not find SemVer match in output!`));
-          } else {
-            resolve(version);
-          }
-        })
-        .catch(reason => {
-          reject(new Error(`Command output failed: ${reason}`));
-        });
-    });
-  }
-
-  private _extractVersionFromExecOutputSync(output: string): string {
-    let matches: string[] = [];
-    let currentMatch: RegExpExecArray;
-    do {
-      currentMatch = Registry.SEMVER_REGEX.exec(output);
-      if (currentMatch) {
-        matches.push(currentMatch[0]);
+      } catch (e) {
+        return false;
       }
-    } while (currentMatch);
-
-    return matches.length === 0 ? '' : matches[0];
+    });
   }
 
   private _convertExecutableOutputFromJson(
@@ -870,16 +790,21 @@ export class Registry implements IRegistry {
     });
   }
 
-  private _filterNonexistantPaths(paths: string[]): Promise<string[]> {
-    return this._filterPromises(paths, this._pathExists);
-  }
-
   private _pathExists(path: string): Promise<boolean> {
     return new Promise<boolean>((res, rej) => {
       fs.access(path, fs.constants.F_OK, e => {
         res(e === undefined || e === null);
       });
     });
+  }
+
+  private _pathExistsSync(path: string): boolean {
+    try {
+      fs.accessSync(path, fs.constants.F_OK);
+      return true;
+    } catch (err) {
+      return false;
+    }
   }
 
   private _getExecutableInstances(
@@ -937,6 +862,8 @@ export class Registry implements IRegistry {
     });
   }
 
+  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+  // @ts-ignore
   private _runPythonModuleCommandSync(
     pythonPath: string,
     moduleName: string,
@@ -950,12 +877,13 @@ export class Registry implements IRegistry {
     return this._runCommandSync(pythonPath, totalCommands, runOptions);
   }
 
-  private _runCommand(
+  private async _runCommand(
     executablePath: string,
-    commands: string[]
+    commands: string[],
+    options?: ExecFileOptions
   ): Promise<string> {
     return new Promise((resolve, reject) => {
-      let executableRun = execFile(executablePath, commands);
+      let executableRun = execFile(executablePath, commands, options);
       let stdoutBufferChunks: Buffer[] = [];
       let stdoutLength = 0;
       let stderrBufferChunks: Buffer[] = [];
@@ -1060,7 +988,7 @@ export class Registry implements IRegistry {
 
     for (let index = 0; index < requirements.length; index++) {
       let [aVersion, bVersion] = versionPairs[index];
-      let result = aVersion.localeCompare(bVersion);
+      let result = bVersion.localeCompare(aVersion);
 
       if (result !== 0) {
         return result;
@@ -1076,7 +1004,7 @@ export class Registry implements IRegistry {
 
   private _getEnvTypeValue(a: IEnvironmentType): number {
     switch (a) {
-      case IEnvironmentType.PATH:
+      case IEnvironmentType.Path:
         return 0;
       case IEnvironmentType.CondaRoot:
         return 1;
@@ -1114,40 +1042,25 @@ export class Registry implements IRegistry {
     }
   }
 
-  private _filterPromises<T>(
-    arr: T[],
-    predicate: (value: T, index: number, self: T[]) => Promise<boolean>
-  ): Promise<T[]> {
-    let predicatedValues = arr.map((value, index) =>
-      predicate(value, index, arr)
-    );
+  dispose(): Promise<void> {
+    this._disposing = true;
 
-    return Promise.all(predicatedValues).then(predicatedValues => {
-      return arr.filter((element, index) => {
-        return predicatedValues[index];
+    return new Promise<void>(resolve => {
+      this._registryBuilt.then(() => {
+        this._disposing = false;
+        resolve();
       });
     });
   }
 
-  private _setDefaultEnvironment(newEnv: IPythonEnvironment) {
-    if (this._default) {
-      this._default.default = false;
-    }
-    this._default = newEnv;
-    if (this._default) {
-      this._default.default = true;
-    }
-  }
-
   private _environments: IPythonEnvironment[] = [];
-
-  private _condaEnvironments: Promise<IPythonEnvironment[]>;
-
-  private _default: IPythonEnvironment;
-
+  private _discoveredEnvironments: IPythonEnvironment[] = [];
+  private _userSetEnvironments: IPythonEnvironment[] = [];
+  private _defaultEnv: IPythonEnvironment;
+  private _condaRootPath: string;
   private _registryBuilt: Promise<void>;
-
   private _requirements: Registry.IRequirement[];
+  private _disposing: boolean = false;
 }
 
 export namespace Registry {
@@ -1176,10 +1089,10 @@ export namespace Registry {
   }
 
   export const COMMON_CONDA_LOCATIONS = [
-    join(app.getPath('home'), 'anaconda3'),
-    join(app.getPath('home'), 'anaconda'),
-    join(app.getPath('home'), 'miniconda3'),
-    join(app.getPath('home'), 'miniconda')
+    join(getUserHomeDir(), 'anaconda3'),
+    join(getUserHomeDir(), 'anaconda'),
+    join(getUserHomeDir(), 'miniconda3'),
+    join(getUserHomeDir(), 'miniconda')
   ];
 
   // Copied from https://raw.githubusercontent.com/sindresorhus/semver-regex/master/index.js
@@ -1187,13 +1100,3 @@ export namespace Registry {
 
   export const NO_MODULE_SENTINEL = 'NO MODULE OR VERSION FOUND';
 }
-
-let service: IService = {
-  requirements: [],
-  provides: 'IRegistry',
-  activate: (): IRegistry => {
-    return new Registry();
-  },
-  autostart: true
-};
-export default service;

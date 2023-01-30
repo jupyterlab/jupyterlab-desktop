@@ -8,8 +8,9 @@ import { ThemedWindow } from '../dialog/themedwindow';
 import { app } from 'electron';
 
 export class AboutDialog {
-  constructor() {
+  constructor(options: AboutDialog.IOptions) {
     this._window = new ThemedWindow({
+      isDarkTheme: options.isDarkTheme,
       title: 'About JupyterLab Desktop',
       width: 400,
       height: 275,
@@ -107,4 +108,10 @@ export class AboutDialog {
 
   private _window: ThemedWindow;
   private _pageBody: string;
+}
+
+export namespace AboutDialog {
+  export interface IOptions {
+    isDarkTheme: boolean;
+  }
 }

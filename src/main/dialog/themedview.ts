@@ -1,46 +1,30 @@
 // Copyright (c) Jupyter Development Team.
 // Distributed under the terms of the Modified BSD License.
 
-import { BrowserWindow } from 'electron';
+import { BrowserView } from 'electron';
 import * as fs from 'fs';
 import * as path from 'path';
 import { DarkThemeBGColor, LightThemeBGColor } from '../utils';
 
-export class ThemedWindow {
-  constructor(options: ThemedWindow.IOptions) {
+export class ThemedView {
+  constructor(options: ThemedView.IOptions) {
     this._isDarkTheme = options.isDarkTheme;
-    this._window = new BrowserWindow({
-      parent: options.parent,
-      modal: options.modal,
-      title: options.title,
-      width: options.width,
-      height: options.height,
-      show: false,
-      resizable: options.resizable !== false,
-      titleBarStyle: 'hidden',
-      frame: process.platform === 'darwin',
-      backgroundColor: this._isDarkTheme ? DarkThemeBGColor : LightThemeBGColor,
+    this._view = new BrowserView({
       webPreferences: {
         preload: options.preload || path.join(__dirname, './preload.js')
       }
     });
-
-    // hide the traffic lights
-    if (process.platform === 'darwin') {
-      this._window.setWindowButtonVisibility(false);
-    }
-    this._window.setMenuBarVisibility(false);
-
-    this._window.webContents.on('did-finish-load', () => {
-      this._window.show();
-    });
+    this._view.setBackgroundColor(
+      this._isDarkTheme ? DarkThemeBGColor : LightThemeBGColor
+    );
   }
 
-  get window(): BrowserWindow {
-    return this._window;
+  get view(): BrowserView {
+    return this._view;
   }
 
-  loadDialogContent(bodyHtml: string) {
+  loadViewContent(bodyHtml: string) {
+    const platform = process.platform;
     let toolkitJsSrc = fs
       .readFileSync(
         path.join(__dirname, '../../../jupyter-ui-toolkit/toolkit.js')
@@ -54,11 +38,8 @@ export class ThemedWindow {
         document.body.dataset.jpThemeName = 'jlab-desktop-theme';
         provideJupyterDesignSystem().register(allComponents);
         addJupyterLabThemeChangeListener();
-      }
+      };
     `;
-    const titlebarJsSrc = fs.readFileSync(
-      path.join(__dirname, './dialogtitlebar.js')
-    );
 
     const pageSource = `
       <html>
@@ -73,6 +54,7 @@ export class ThemedWindow {
             --md-blue-700: #1976D2;
           }
           body {
+            visibility: hidden;
             margin: 0;
             background: ${LightThemeBGColor};
             color: #000000;
@@ -91,57 +73,58 @@ export class ThemedWindow {
             height: 100%;
           }
           .jlab-dialog-body {
-            visibility: hidden;
             flex-grow: 1;
-            padding: 10px;
+            padding: 5px;
             overflow-y: auto;
+          }
+          a {
+            color: #505050;
+            outline: none;
+            text-decoration: none;
+          }
+          a:hover {
+            color: #111111;
+          }
+          .app-ui-dark a {
+            color: #5d96ed;
+          }
+          .app-ui-dark a:hover {
+            color: #85a1cb;
           }
           </style>
           <script type="module">${toolkitJsSrc}</script>
-          <script type="module">${titlebarJsSrc}</script>
           <script>
             document.addEventListener("DOMContentLoaded", () => {
-              const platform = "${process.platform}";
-              document.body.dataset.appPlatform = platform;
-              document.body.classList.add('app-ui-' + platform);
+              document.body.dataset.appPlatform = '${platform}';
+              document.body.classList.add('app-ui-' + '${platform}');
             });
+
             window.addEventListener('load', () => {
-              document.getElementById('jlab-dialog-body').style.visibility = 'visible';
+              document.body.style.visibility = 'visible';
             });
           </script>
         </head>
         <body class="${this._isDarkTheme ? 'app-ui-dark' : ''}">
           <div class="page-container">
-            <jlab-dialog-titlebar id="title-bar" data-title="${
-              this._window.title
-            }" class="${
-      this._isDarkTheme ? 'app-ui-dark' : ''
-    }"></jlab-dialog-titlebar>
-            <div id="jlab-dialog-body" class="jlab-dialog-body">
+            <div class="jlab-dialog-body">
             ${bodyHtml}
             </div>
           </div>
         </body>
       </html>
       `;
-    this._window.loadURL(
+    this._view.webContents.loadURL(
       `data:text/html;charset=utf-8,${encodeURIComponent(pageSource)}`
     );
   }
 
   private _isDarkTheme: boolean;
-  private _window: BrowserWindow;
+  private _view: BrowserView;
 }
 
-export namespace ThemedWindow {
+export namespace ThemedView {
   export interface IOptions {
     isDarkTheme: boolean;
-    parent?: BrowserWindow;
-    modal?: boolean;
-    title: string;
-    width: number;
-    height: number;
-    resizable?: boolean;
     preload?: string;
   }
 }

@@ -11,12 +11,28 @@ import {
 import log from 'electron-log';
 import { request as httpRequest, IncomingMessage } from 'http';
 import { request as httpsRequest } from 'https';
-
 import * as path from 'path';
 import * as fs from 'fs';
 import * as ejs from 'ejs';
-import { appConfig, getCurrentRootPath, isDarkTheme } from '../utils';
-import { MainWindow } from '../mainwindow/mainwindow';
+import {
+  clearSession,
+  DarkThemeBGColor,
+  isDarkTheme,
+  LightThemeBGColor
+} from '../utils';
+import { SessionWindow } from '../sessionwindow/sessionwindow';
+import {
+  FrontEndMode,
+  SettingType,
+  WorkspaceSettings
+} from '../config/settings';
+import { IDisposable } from '../tokens';
+import { SessionConfig } from '../config/sessionconfig';
+
+export type ILoadErrorCallback = (
+  errorCode: number,
+  errorDescription: string
+) => void;
 
 const DESKTOP_APP_ASSETS_PATH = 'desktop-app-assets';
 
@@ -24,42 +40,92 @@ const DESKTOP_APP_ASSETS_PATH = 'desktop-app-assets';
 const templateAssetPaths = new Map([
   [
     'index.html',
-    () => {
+    (sessionConfig: SessionConfig) => {
       return {
-        pageConfig: JSON.stringify(appConfig.pageConfig)
+        pageConfig: JSON.stringify(sessionConfig.pageConfig)
       };
     }
   ]
 ]);
 
-export class LabView {
-  constructor(parent: MainWindow, options: LabView.IOptions) {
-    this._parent = parent;
-    this._options = options;
+export class LabView implements IDisposable {
+  constructor(options: LabView.IOptions) {
+    this._parent = options.parent;
+    this._sessionConfig = options.sessionConfig;
+    const sessionConfig = this._sessionConfig;
+    this._wsSettings = new WorkspaceSettings(sessionConfig.workingDirectory);
+    this._jlabBaseUrl = `${sessionConfig.url.protocol}//${sessionConfig.url.host}${sessionConfig.url.pathname}`;
+    /*
+    using a dedicated partition causes PDF rendering issues (object blob in iframe).
+    use temporary dedicated partition only for unpersisted remote connections
+    */
+    let partition = undefined;
+    if (sessionConfig.isRemote) {
+      if (sessionConfig.persistSessionData) {
+        partition = sessionConfig.partition;
+      } else {
+        partition = `partition-${Date.now()}`;
+      }
+    }
     this._view = new BrowserView({
       webPreferences: {
-        preload: path.join(__dirname, './preload.js')
+        preload: path.join(__dirname, './preload.js'),
+        partition
       }
     });
 
+    this._view.setBackgroundColor(
+      options.isDarkTheme ? DarkThemeBGColor : LightThemeBGColor
+    );
+
     this._registerBrowserEventHandlers();
     this._addFallbackContextMenu();
+
+    if (
+      this._wsSettings.getValue(SettingType.frontEndMode) ===
+        FrontEndMode.ClientApp &&
+      this._sessionConfig.cookies
+    ) {
+      this._sessionConfig.cookies.forEach((cookie: any) => {
+        this._cookies.set(cookie.name, `${cookie.name}=${cookie.value}`);
+      });
+    }
+
+    if (!this._sessionConfig.isRemote) {
+      ipcMain.once('lab-ui-ready', event => {
+        if (event.sender !== this._view.webContents) {
+          return;
+        }
+
+        this._labUIReady = true;
+      });
+    }
   }
 
   public get view(): BrowserView {
     return this._view;
   }
 
-  load() {
-    if (appConfig.frontEndMode === 'web-app') {
-      this._view.webContents.loadURL(appConfig.url.href);
+  load(errorCallback?: ILoadErrorCallback) {
+    const sessionConfig = this._sessionConfig;
+
+    this._view.webContents.once(
+      'did-fail-load',
+      (event: Electron.Event, errorCode: number, errorDescription: string) => {
+        if (errorCallback) {
+          errorCallback(errorCode, errorDescription);
+        }
+      }
+    );
+
+    if (
+      this._wsSettings.getValue(SettingType.frontEndMode) ===
+      FrontEndMode.WebApp
+    ) {
+      this._view.webContents.loadURL(sessionConfig.url.href);
     } else {
       this._view.webContents.loadURL(
-        `${appConfig.url.protocol}//${appConfig.url.host}${
-          appConfig.url.pathname
-        }${DESKTOP_APP_ASSETS_PATH}/index.html?${encodeURIComponent(
-          JSON.stringify(this._options)
-        )}`
+        `${this.jlabBaseUrl}/${DESKTOP_APP_ASSETS_PATH}/index.html`
       );
     }
   }
@@ -69,36 +135,102 @@ export class LabView {
   }
 
   get desktopAppAssetsPrefix(): string {
-    return `${this.jlabBaseUrl}${DESKTOP_APP_ASSETS_PATH}`;
+    return `${this.jlabBaseUrl}/${DESKTOP_APP_ASSETS_PATH}`;
   }
 
   get appAssetsDir(): string {
     return path.normalize(path.join(__dirname, '../../../'));
   }
 
-  async openFile(path: string): Promise<void> {
-    try {
-      const stats = fs.lstatSync(path);
-      if (stats.isFile()) {
-        const labDir = getCurrentRootPath();
-        let relPath = path.replace(labDir, '');
-        const winConvert = relPath.split('\\').join('/');
-        relPath = winConvert.replace('/', '');
-
-        await this._view.webContents.executeJavaScript(`
-          {
-            const lab = window.jupyterapp || window.jupyterlab;
-            if (lab) {
-              lab.commands.execute('docmanager:open', { path: '${relPath}' });
-            }
-          }
-          0; // response
-        `);
-      } else {
-        log.error(`Valid file not found at path: ${path}`);
+  async openFiles() {
+    const filesToOpen = this._sessionConfig.filesToOpen;
+    filesToOpen.forEach(async (relPath: string) => {
+      if (relPath === '') {
+        return;
       }
+
+      const labDir = this._sessionConfig.resolvedWorkingDirectory;
+      const filePath = path.resolve(labDir, relPath);
+
+      try {
+        const stats = fs.lstatSync(filePath);
+        if (stats.isFile()) {
+          await this._view.webContents.executeJavaScript(`
+            {
+              const lab = window.jupyterapp || window.jupyterlab;
+              if (lab) {
+                lab.commands.execute('docmanager:open', { path: '${relPath}' });
+              }
+            }
+            0; // response
+          `);
+        } else {
+          log.error(`Valid file not found at path: ${path}`);
+        }
+      } catch (error) {
+        log.error(`Failed to open file at path: ${path}. Error: `, error);
+      }
+    });
+  }
+
+  async newNotebook() {
+    try {
+      await this._view.webContents.executeJavaScript(`
+        {
+          const lab = window.jupyterapp || window.jupyterlab;
+          if (lab) {
+            const commands = lab.commands;
+            commands.execute('docmanager:new-untitled', {
+              type: 'notebook'
+            }).then((model) => {
+              if (model != undefined) {
+                commands.execute('docmanager:open', {
+                  path: model.path,
+                  factory: 'Notebook',
+                  kernel: { name: '${this._sessionConfig.defaultKernel}' }
+                });
+              }
+            });
+          }
+        }
+        0; // response
+      `);
     } catch (error) {
-      log.error(`Failed to open file at path: ${path}. Error: `, error);
+      log.error(`Failed to create new notebook. Error: `, error);
+    }
+  }
+
+  get labUIReady(): Promise<boolean> {
+    return new Promise<boolean>(resolve => {
+      const checkIfReady = () => {
+        if (this._labUIReady) {
+          resolve(true);
+        } else {
+          setTimeout(() => {
+            checkIfReady();
+          }, 100);
+        }
+      };
+
+      checkIfReady();
+    });
+  }
+
+  dispose(): Promise<void> {
+    this._unregisterBrowserEventHandlers();
+
+    // if local or remote with no data persistence, clear session data
+    if (
+      this._sessionConfig.isRemote &&
+      !this._sessionConfig.persistSessionData
+    ) {
+      if (!this._parent.window.isDestroyed()) {
+        return clearSession(this._view.webContents.session);
+      } else {
+        return Promise.resolve();
+      }
+    } else {
+      return Promise.resolve();
     }
   }
 
@@ -171,22 +303,37 @@ export class LabView {
       }
     );
 
-    if (appConfig.syncJupyterLabTheme) {
-      ipcMain.once('lab-ui-ready', () => {
-        this._setJupyterLabTheme(appConfig.theme);
+    if (this._wsSettings.getValue(SettingType.syncJupyterLabTheme)) {
+      ipcMain.once('lab-ui-ready', event => {
+        if (event.sender !== this._view.webContents) {
+          return;
+        }
+        this._setJupyterLabTheme(this._wsSettings.getValue(SettingType.theme));
       });
     }
 
     ipcMain.on('set-theme', async (_event, theme) => {
-      if (appConfig.syncJupyterLabTheme) {
+      if (this._wsSettings.getValue(SettingType.syncJupyterLabTheme)) {
         await this._setJupyterLabTheme(theme);
       }
     });
 
-    if (appConfig.frontEndMode == 'web-app') {
+    if (
+      this._wsSettings.getValue(SettingType.frontEndMode) == FrontEndMode.WebApp
+    ) {
       this._registerWebAppFrontEndHandlers();
     } else {
       this._registerClientAppFrontEndHandlers();
+    }
+  }
+
+  private _unregisterBrowserEventHandlers() {
+    if (
+      this._wsSettings.getValue(SettingType.frontEndMode) ==
+      FrontEndMode.ClientApp
+    ) {
+      this._view.webContents.session.protocol.uninterceptProtocol('http');
+      this._view.webContents.session.protocol.uninterceptProtocol('https');
     }
   }
 
@@ -213,6 +360,11 @@ export class LabView {
   private _registerWebAppFrontEndHandlers() {
     this._view.webContents.on('dom-ready', () => {
       this._view.webContents.executeJavaScript(`
+        // disable splash animation
+        const style = document.createElement('style');
+        style.textContent = '#jupyterlab-splash { display: none !important; }';
+        document.head.append(style);
+
         async function getLab() {
           return new Promise((resolve) => {
             const checkLab = () => {
@@ -243,6 +395,7 @@ export class LabView {
   }
 
   private _registerClientAppFrontEndHandlers() {
+    const sessionConfig = this._sessionConfig;
     this._view.webContents.session.protocol.interceptBufferProtocol(
       'http',
       this._handleInterceptBufferProtocol.bind(this)
@@ -254,7 +407,10 @@ export class LabView {
     );
 
     const filter = {
-      urls: [`ws://${appConfig.url.host}/*`, `wss://${appConfig.url.host}/*`]
+      urls: [
+        `ws://${sessionConfig.url.host}/*`,
+        `wss://${sessionConfig.url.host}/*`
+      ]
     };
 
     this._view.webContents.session.webRequest.onBeforeSendHeaders(
@@ -263,12 +419,16 @@ export class LabView {
         const requestHeaders: Record<string, string> = {
           ...details.requestHeaders
         };
-        if (this._cookies.size > 0) {
+
+        if (
+          this._cookies.size > 0 &&
+          new URL(details.url).host === this._sessionConfig.url.host
+        ) {
           requestHeaders['Cookie'] = Array.from(this._cookies.values()).join(
             '; '
           );
-          requestHeaders['Host'] = appConfig.url.host;
-          requestHeaders['Origin'] = appConfig.url.origin;
+          requestHeaders['Host'] = sessionConfig.url.host;
+          requestHeaders['Origin'] = sessionConfig.url.origin;
         }
         callback({ cancel: false, requestHeaders });
       }
@@ -310,7 +470,7 @@ export class LabView {
         assetContent = Buffer.from(
           ejs.render(
             assetContent.toString(),
-            templateAssetPaths.get(assetPath)()
+            templateAssetPaths.get(assetPath)(this._sessionConfig)
           )
         );
       }
@@ -323,20 +483,23 @@ export class LabView {
     req: Electron.ProtocolRequest,
     callback: (response: Buffer | Electron.ProtocolResponse) => void
   ): void {
+    const sessionConfig = this._sessionConfig;
     const headers: any = {
       ...req.headers,
       Referer: req.referrer,
-      Authorization: `token ${appConfig.token}`
+      Authorization: `token ${sessionConfig.token}`
     };
 
     if (
-      appConfig.url &&
-      req.url.startsWith(`${appConfig.url.protocol}//${appConfig.url.host}`)
+      sessionConfig.url &&
+      req.url.startsWith(
+        `${sessionConfig.url.protocol}//${sessionConfig.url.host}`
+      )
     ) {
       let cookieArray: string[] = [];
-      if (appConfig.cookies) {
-        appConfig.cookies.forEach(cookie => {
-          if (cookie.domain === appConfig.url.hostname) {
+      if (sessionConfig.cookies) {
+        sessionConfig.cookies.forEach((cookie: any) => {
+          if (cookie.domain === sessionConfig.url.hostname) {
             cookieArray.push(`${cookie.name}=${cookie.value}`);
             if (cookie.name === '_xsrf') {
               headers['X-XSRFToken'] = cookie.value;
@@ -411,16 +574,18 @@ export class LabView {
   }
 
   private _view: BrowserView;
-  private _parent: MainWindow;
-  private _options: LabView.IOptions;
+  private _parent: SessionWindow;
+  private _sessionConfig: SessionConfig;
   private _cookies: Map<string, string> = new Map();
-  private _jlabBaseUrl = `${appConfig.url.protocol}//${appConfig.url.host}${appConfig.url.pathname}`;
+  private _jlabBaseUrl: string;
+  private _wsSettings: WorkspaceSettings;
+  private _labUIReady = false;
 }
 
 export namespace LabView {
   export interface IOptions {
-    serverState: 'new' | 'local' | 'remote';
-    platform: NodeJS.Platform;
-    uiState: 'linux' | 'mac' | 'windows';
+    isDarkTheme: boolean;
+    parent: SessionWindow;
+    sessionConfig: SessionConfig;
   }
 }

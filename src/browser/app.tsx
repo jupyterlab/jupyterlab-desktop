@@ -8,7 +8,6 @@ import { main } from './extensions';
 import { PageConfig } from '@jupyterlab/coreutils';
 import { IServerFactory } from '../main/server';
 import { ElectronJupyterLab } from './extensions/electron-extension';
-import { JupyterLabSession } from '../main/sessions';
 import * as React from 'react';
 import { LabShell } from '@jupyterlab/application';
 
@@ -59,9 +58,6 @@ export class Application extends React.Component<
       }
     }
 
-    PageConfig.setOption('jupyterlab-desktop-server-type', data.type);
-    PageConfig.setOption('jupyterlab-desktop-server-url', data.url);
-
     this._setupLab().then(lab => {
       this._lab = lab;
 
@@ -90,9 +86,7 @@ export class Application extends React.Component<
         shell: new LabShell(),
         mimeExtensions: extensions.mime,
         disabled: extensions.disabled,
-        deferred: extensions.deferred,
-        platform: this.props.options.platform,
-        uiState: this.props.options.uiState
+        deferred: extensions.deferred
       });
       this._ignorePlugins.push(...extensions.ignored);
 
@@ -140,9 +134,7 @@ export namespace Application {
    */
   export const SERVER_STATE_ID = 'servers';
 
-  export interface IProps {
-    options: JupyterLabSession.IInfo;
-  }
+  export interface IProps {}
 
   export interface IState {
     renderState: () => any;

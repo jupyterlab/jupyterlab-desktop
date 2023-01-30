@@ -2,7 +2,7 @@
 // Distributed under the terms of the Modified BSD License.
 
 import { BrowserWindow, Cookie } from 'electron';
-import { appConfig, clearSession } from './utils';
+import { clearSession } from './utils';
 
 export let connectWindow: BrowserWindow;
 
@@ -15,6 +15,7 @@ export interface IRemoteServerConnectOptions {
   showDialog?: boolean;
   incognito?: boolean;
   timeout?: number;
+  partition?: string;
 }
 
 export interface IConnectError {
@@ -45,6 +46,11 @@ export async function connectAndGetServerInfo(
     if (options?.incognito) {
       browserOptions.webPreferences = {
         partition: `partition-${Date.now()}`
+      };
+    }
+    if (options?.partition) {
+      browserOptions.webPreferences = {
+        partition: options.partition
       };
     }
 
@@ -137,6 +143,7 @@ export async function connectAndGetServerInfo(
                   cookie => cookie.domain === hostname
                 );
 
+                window.removeAllListeners('closed');
                 window.close();
                 resolve({
                   pageConfig: config,
@@ -154,22 +161,13 @@ export async function connectAndGetServerInfo(
       clearTimeout(connectTimeout);
       reject({
         type: 'dismissed',
-        message: 'Window closed'
+        message: 'Login window closed'
       } as IConnectError);
     });
 
     window.setMenuBarVisibility(false);
     window.center();
 
-    const clearUserSession =
-      !appConfig.persistSessionData || appConfig.clearSessionDataOnNextLaunch;
-
-    if (clearUserSession) {
-      clearSession(window.webContents.session).then(() => {
-        window.loadURL(url);
-      });
-    } else {
-      window.loadURL(url);
-    }
+    window.loadURL(url);
   });
 }

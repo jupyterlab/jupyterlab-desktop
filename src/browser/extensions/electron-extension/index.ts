@@ -6,15 +6,9 @@ import {
   JupyterFrontEndPlugin,
   JupyterLab
 } from '@jupyterlab/application';
-
 import { PageConfig } from '@jupyterlab/coreutils';
-
 import { ICommandPalette } from '@jupyterlab/apputils';
-
-import { JupyterLabSession } from '../../../main/sessions';
-
 import { ServerConnection } from '@jupyterlab/services';
-
 import plugins from '@jupyterlab/application-extension';
 
 /**
@@ -22,19 +16,15 @@ import plugins from '@jupyterlab/application-extension';
  */
 namespace CommandIDs {
   export const activateNextTab: string = 'main-jupyterlab:activate-next-tab';
-
   export const activatePreviousTab: string =
     'main-jupyterlab:activate-previous-tab';
-
   export const closeAll: string = 'main-jupyterlab:close-all';
-
   export const setMode: string = 'main-jupyterlab:set-mode';
-
   export const toggleMode: string = 'main-jupyterlab:toggle-mode';
 }
 
 export class ElectronJupyterLab extends JupyterLab {
-  constructor(options: ElectronJupyterLab.IOptions) {
+  constructor(options: JupyterLab.IOptions) {
     /**
      * WORKAROUND
      * The constructor of JupyterLab in @jupyterlab/application initializes
@@ -64,15 +54,6 @@ export class ElectronJupyterLab extends JupyterLab {
     };
 
     super(options);
-
-    this._electronInfo = { ...JupyterLab.defaultInfo, ...options };
-    if (this._electronInfo.devMode) {
-      this.shell.addClass('jp-mod-devMode');
-    }
-  }
-
-  get info(): ElectronJupyterLab.IInfo {
-    return this._electronInfo;
   }
 
   get paths(): JupyterFrontEnd.IPaths {
@@ -103,31 +84,6 @@ export class ElectronJupyterLab extends JupyterLab {
       }
     };
   }
-
-  private _electronInfo: ElectronJupyterLab.IInfo;
-}
-
-export namespace ElectronJupyterLab {
-  export interface IOptions extends JupyterLab.IOptions {
-    uiState?: JupyterLabSession.UIState;
-    platform: NodeJS.Platform;
-  }
-
-  export interface IInfo extends JupyterLab.IInfo {
-    uiState?: string;
-    platform: string;
-  }
-
-  /**
-   * The default application info.
-   */
-  export const defaultInfo: IInfo = {
-    ...{
-      uiState: PageConfig.getOption('uistate') || 'windows',
-      platform: PageConfig.getOption('platform')
-    },
-    ...JupyterLab.defaultInfo
-  };
 }
 
 /**

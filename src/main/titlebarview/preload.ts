@@ -2,9 +2,11 @@ const { contextBridge, ipcRenderer } = require('electron');
 
 type SetTitleListener = (title: string) => void;
 type SetActiveListener = (active: boolean) => void;
+type ShowServerStatusListener = (show: boolean) => void;
 
 let onSetTitleListener: SetTitleListener;
 let onSetActiveListener: SetActiveListener;
+let onShowServerStatusListener: ShowServerStatusListener;
 
 contextBridge.exposeInMainWorld('electronAPI', {
   getAppConfig: () => {
@@ -16,7 +18,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.send('show-app-context-menu');
   },
   closeWindow: () => {
-    ipcRenderer.send('close-active-window');
+    ipcRenderer.send('close-window');
   },
   isDarkTheme: () => {
     return ipcRenderer.invoke('is-dark-theme');
@@ -33,17 +35,20 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getServerInfo: () => {
     return ipcRenderer.invoke('get-server-info');
   },
-  getCurrentPythonEnvironment: () => {
-    return ipcRenderer.invoke('get-current-python-environment');
+  showEnvSelectPopup: () => {
+    ipcRenderer.send('show-env-select-popup');
   },
-  showServerConfigDialog: () => {
-    ipcRenderer.send('show-server-config-dialog');
+  sendMouseEvent: (type: string, params: any) => {
+    ipcRenderer.send('titlebar-mouse-event', type, params);
   },
   onSetTitle: (callback: SetTitleListener) => {
     onSetTitleListener = callback;
   },
   onSetActive: (callback: SetActiveListener) => {
     onSetActiveListener = callback;
+  },
+  onShowServerStatus: (callback: ShowServerStatusListener) => {
+    onShowServerStatusListener = callback;
   }
 });
 
@@ -56,6 +61,12 @@ ipcRenderer.on('set-title', (event, title) => {
 ipcRenderer.on('set-active', (event, active) => {
   if (onSetActiveListener) {
     onSetActiveListener(active);
+  }
+});
+
+ipcRenderer.on('show-server-status', (event, show) => {
+  if (onShowServerStatusListener) {
+    onShowServerStatusListener(show);
   }
 });
 

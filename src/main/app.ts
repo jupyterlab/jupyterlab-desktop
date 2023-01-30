@@ -1,395 +1,196 @@
 // Copyright (c) Jupyter Development Team.
 // Distributed under the terms of the Modified BSD License.
 
-import {
-  app,
-  autoUpdater,
-  BrowserWindow,
-  dialog,
-  ipcMain,
-  Menu,
-  MenuItemConstructorOptions,
-  session,
-  shell
-} from 'electron';
-
-import { IService } from './main';
-
-import { ElectronStateDB } from './state';
-
-import { JSONObject, JSONValue } from '@lumino/coreutils';
-
+import { app, autoUpdater, dialog, ipcMain, session, shell } from 'electron';
 import log from 'electron-log';
-
-import { IPythonEnvironment } from './tokens';
-import { IRegistry } from './registry';
+import { IRegistry, Registry } from './registry';
 import fetch from 'node-fetch';
 import * as yaml from 'js-yaml';
 import * as semver from 'semver';
-import * as path from 'path';
 import * as fs from 'fs';
-import { AddressInfo, createServer } from 'net';
-import { randomBytes } from 'crypto';
-
 import {
-  appConfig,
   clearSession,
   getAppDir,
-  getUserDataDir,
-  isDarkTheme
+  getBundledPythonEnvPath,
+  getBundledPythonPath,
+  isDarkTheme,
+  waitForDuration
 } from './utils';
 import { execFile } from 'child_process';
-import { JupyterServer, waitUntilServerIsUp } from './server';
+import { JupyterServerFactory } from './server';
 import { connectAndGetServerInfo, IJupyterServerInfo } from './connect';
 import { UpdateDialog } from './updatedialog/updatedialog';
-import { PreferencesDialog } from './preferencesdialog/preferencesdialog';
-import { ServerConfigDialog } from './serverconfigdialog/serverconfigdialog';
-import { AboutDialog } from './aboutdialog/aboutdialog';
-
-async function getFreePort(): Promise<number> {
-  return new Promise<number>(resolve => {
-    const getPort = () => {
-      const server = createServer(socket => {
-        socket.write('Echo server\r\n');
-        socket.pipe(socket);
-      });
-
-      server.on('error', function (e) {
-        getPort();
-      });
-      server.on('listening', function (e: any) {
-        const port = (server.address() as AddressInfo).port;
-        server.close();
-
-        resolve(port);
-      });
-
-      server.listen(0, '127.0.0.1');
-    };
-
-    getPort();
-  });
-}
+import {
+  resolveWorkingDirectory,
+  SettingType,
+  StartupMode,
+  userSettings
+} from './config/settings';
+import { ContentViewType, SessionWindow } from './sessionwindow/sessionwindow';
+import { appData } from './config/appdata';
+import { ICLIArguments, IDisposable } from './tokens';
+import { SessionConfig } from './config/sessionconfig';
 
 export interface IApplication {
-  /**
-   * Register as service with persistent state.
-   *
-   * @return promise fulfileld with the service's previous state.
-   */
-  registerStatefulService: (service: IStatefulService) => Promise<JSONValue>;
-
-  registerClosingService: (service: IClosingService) => void;
-
-  /**
-   * Force the application service to write data to the disk.
-   */
-  saveState: (service: IStatefulService, data: JSONValue) => Promise<void>;
-
-  getPythonEnvironment(): Promise<IPythonEnvironment>;
-
-  setCondaRootPath(condaRootPath: string): void;
-
-  getCondaRootPath(): Promise<string>;
-
-  getServerInfo(): Promise<JupyterServer.IInfo>;
-  pageConfigSet: Promise<boolean>;
+  checkForUpdates(showDialog: 'on-new-version' | 'always'): void;
+  cliArgs: ICLIArguments;
 }
 
-/**
- * A service that has data that needs to persist.
- */
-export interface IStatefulService {
-  /**
-   * The human-readable id for the service state. Must be unique
-   * to each service.
-   */
-  id: string;
-
-  /**
-   * Called before the application quits. Qutting will
-   * be suspended until the returned promise is resolved with
-   * the service's state.
-   *
-   * @return promise that is fulfilled with the service's state.
-   */
-  getStateBeforeQuit(): Promise<JSONValue>;
-
-  /**
-   * Called before state is passed to the service. Implementing
-   * services should scan the state for issues in this function.
-   * If the data is invalid, the function should return false.
-   *
-   * @return true if the data is valid, false otherwise.
-   */
-  verifyState: (state: JSONValue) => boolean;
+interface IClearHistoryOptions {
+  sessionData: boolean;
+  recentRemoteURLs: boolean;
+  recentSessions: boolean;
+  userSetPythonEnvs: boolean;
 }
 
-/**
- * A service that has to complete some task on application exit
- */
-export interface IClosingService {
-  /**
-   * Called before the application exits and after the states are saved.
-   * Service resolves the promise upon a successful cleanup.
-   *
-   * @return promise that is fulfilled when the service is ready to quit
-   */
-  finished(): Promise<void>;
-}
-
-export class JupyterApplication implements IApplication, IStatefulService {
-  readonly id = 'JupyterLabDesktop';
-  private _registry: IRegistry;
-
+export class JupyterApplication implements IApplication, IDisposable {
   /**
    * Construct the Jupyter application
    */
-  constructor(registry: IRegistry) {
-    this._registry = registry;
+  constructor(cliArgs: ICLIArguments) {
+    this._cliArgs = cliArgs;
+    this._registry = new Registry();
+    this._serverFactory = new JupyterServerFactory(this._registry);
+    // create a server in advance
+    this._serverFactory.createFreeServer().catch(error => {
+      console.error('Failed to create free server', error);
+    });
     this._registerListeners();
 
-    // Get application state from state db file.
-    this._appState = new Promise<JSONObject>((res, rej) => {
-      this._appStateDB
-        .fetch(JupyterApplication.APP_STATE_NAMESPACE)
-        .then((state: JSONObject) => {
-          res(state);
-        })
-        .catch(e => {
-          log.error(e);
-          res({});
-        });
-    });
-
-    this._applicationState = {
-      checkForUpdatesAutomatically: true,
-      installUpdatesAutomatically: true,
-      pythonPath: '',
-      condaRootPath: '',
-      remoteURL: '',
-      theme: 'system',
-      syncJupyterLabTheme: true,
-      frontEndMode: 'web-app'
-    };
-
-    this.registerStatefulService(this).then(
-      (state: JupyterApplication.IState) => {
-        if (state) {
-          this._applicationState = state;
-        }
-
-        const appState = this._applicationState;
-
-        if (appState.remoteURL === undefined) {
-          appState.remoteURL = '';
-        }
-
-        if (appState.persistSessionData === undefined) {
-          appState.persistSessionData = true;
-        }
-
-        if (appState.pythonPath === undefined) {
-          appState.pythonPath = '';
-        }
-        const bundledPythonPath = this._registry.getBundledPythonPath();
-        let pythonPath = appState.pythonPath;
-        if (pythonPath === '') {
-          pythonPath = bundledPythonPath;
-        }
-
-        if (appState.remoteURL === '') {
-          const useBundledPythonPath = pythonPath === bundledPythonPath;
-
-          if (this._registry.validatePythonEnvironmentAtPath(pythonPath)) {
-            this._registry.setDefaultPythonPath(pythonPath);
-            appState.pythonPath = pythonPath;
-          } else {
-            this._showServerConfigDialog(
-              useBundledPythonPath ? 'invalid-bundled-env' : 'invalid-env'
-            );
-          }
-        }
-
-        if (!(appState.theme === 'light' || appState.theme === 'dark')) {
-          appState.theme = 'system';
-        }
-        appConfig.theme = appState.theme;
-
-        if (appState.syncJupyterLabTheme !== false) {
-          appState.syncJupyterLabTheme = true;
-        }
-        appConfig.syncJupyterLabTheme = appState.syncJupyterLabTheme;
-
-        if (appState.frontEndMode !== 'client-app') {
-          appState.frontEndMode = 'web-app';
-        }
-        appConfig.frontEndMode = appState.frontEndMode;
-
-        if (appState.checkForUpdatesAutomatically !== false) {
-          let checkDirectly = true;
-          if (
-            process.platform === 'darwin' &&
-            appState.installUpdatesAutomatically !== false
-          ) {
-            this._setupAutoUpdater();
-            checkDirectly = false;
-          }
-
-          if (checkDirectly) {
-            setTimeout(() => {
-              this._checkForUpdates('on-new-version');
-            }, 5000);
-          }
-        }
-
-        if (appState.remoteURL === '') {
-          appConfig.isRemote = false;
-          getFreePort().then(port => {
-            appConfig.token = randomBytes(24).toString('hex');
-            appConfig.url = new URL(
-              `http://localhost:${port}/lab?token=${appConfig.token}`
-            );
-            this._serverInfoStateSet = true;
-
-            waitUntilServerIsUp(appConfig.url).then(() => {
-              connectAndGetServerInfo(appConfig.url.href, { showDialog: false })
-                .then(serverInfo => {
-                  appConfig.pageConfig = serverInfo.pageConfig;
-                  appConfig.cookies = serverInfo.cookies;
-                  this._serverPageConfigSet = true;
-                })
-                .catch(() => {
-                  this._showServerConfigDialog('change');
-                });
-            });
-          });
-        } else {
-          appConfig.isRemote = true;
-          appConfig.persistSessionData = appState.persistSessionData;
-          appConfig.clearSessionDataOnNextLaunch =
-            appState.clearSessionDataOnNextLaunch === true;
-          // reset the flag
-          appState.clearSessionDataOnNextLaunch = false;
-          try {
-            appConfig.url = new URL(appState.remoteURL);
-            appConfig.token = appConfig.url.searchParams.get('token');
-            connectAndGetServerInfo(appConfig.url.href, { showDialog: true })
-              .then(serverInfo => {
-                appConfig.pageConfig = serverInfo.pageConfig;
-                appConfig.cookies = serverInfo.cookies;
-                this._serverInfoStateSet = true;
-                this._serverPageConfigSet = true;
-              })
-              .catch(() => {
-                this._showServerConfigDialog('remote-connection-failure');
-              });
-          } catch (error) {
-            this._showServerConfigDialog('remote-connection-failure');
-          }
-        }
+    if (
+      userSettings.getValue(SettingType.checkForUpdatesAutomatically) !== false
+    ) {
+      let checkDirectly = true;
+      if (
+        process.platform === 'darwin' &&
+        userSettings.getValue(SettingType.installUpdatesAutomatically) !== false
+      ) {
+        this._setupAutoUpdater();
+        checkDirectly = false;
       }
-    );
+
+      if (checkDirectly) {
+        setTimeout(() => {
+          this.checkForUpdates('on-new-version');
+        }, 5000);
+      }
+    }
+
+    this.startup();
   }
 
-  getPythonEnvironment(): Promise<IPythonEnvironment> {
-    return new Promise<IPythonEnvironment>((resolve, _reject) => {
-      this._appState.then((state: JSONObject) => {
-        resolve(this._registry.getCurrentPythonEnvironment());
+  get cliArgs(): ICLIArguments {
+    return this._cliArgs;
+  }
+
+  startup() {
+    const startupMode = userSettings.getValue(
+      SettingType.startupMode
+    ) as StartupMode;
+
+    // if launching from CLI, parse settings
+    const sessionConfig = SessionConfig.createFromArgs(this._cliArgs);
+
+    if (sessionConfig) {
+      const window = new SessionWindow({
+        app: this,
+        registry: this._registry,
+        serverFactory: this._serverFactory,
+        contentView: ContentViewType.Lab,
+        sessionConfig
       });
-    });
-  }
+      window.load();
+      this._sessionWindow = window;
 
-  setCondaRootPath(condaRootPath: string): void {
-    this._applicationState.condaRootPath = condaRootPath;
-  }
+      return;
+    }
 
-  getCondaRootPath(): Promise<string> {
-    return new Promise<string>((resolve, _reject) => {
-      this._appState.then((state: JSONObject) => {
-        resolve(this._applicationState.condaRootPath);
+    if (
+      startupMode === StartupMode.LastSessions &&
+      appData.sessions.length > 0
+    ) {
+      const sessionConfig = appData.sessions[0];
+      const window = new SessionWindow({
+        app: this,
+        registry: this._registry,
+        serverFactory: this._serverFactory,
+        contentView: ContentViewType.Lab,
+        sessionConfig,
+        center: false
       });
-    });
+      window.load();
+      this._sessionWindow = window;
+
+      return;
+    }
+
+    if (startupMode === StartupMode.NewLocalSession) {
+      const sessionConfig = SessionConfig.createLocal();
+      const window = new SessionWindow({
+        app: this,
+        registry: this._registry,
+        serverFactory: this._serverFactory,
+        contentView: ContentViewType.Lab,
+        sessionConfig
+      });
+      window.load();
+      this._sessionWindow = window;
+    } else {
+      const window = new SessionWindow({
+        app: this,
+        registry: this._registry,
+        serverFactory: this._serverFactory,
+        contentView: ContentViewType.Welcome
+      });
+      window.load();
+      this._sessionWindow = window;
+    }
   }
 
-  getServerInfo(): Promise<JupyterServer.IInfo> {
-    return new Promise<JupyterServer.IInfo>(resolve => {
-      const resolveInfo = () => {
-        resolve({
-          type: appConfig.isRemote ? 'remote' : 'local',
-          url: `${appConfig.url.protocol}//${appConfig.url.host}${appConfig.url.pathname}`,
-          token: appConfig.token,
-          environment: undefined,
-          pageConfig: appConfig.pageConfig
-        });
-      };
+  focus() {
+    if (!this._sessionWindow) {
+      return;
+    }
 
-      if (this._serverInfoStateSet) {
-        resolveInfo();
-        return;
-      }
+    if (this._sessionWindow.window.isMinimized()) {
+      this._sessionWindow.window.restore();
+    }
 
-      const timer = setInterval(() => {
-        if (this._serverInfoStateSet) {
-          clearInterval(timer);
-          resolveInfo();
-        }
-      }, 200);
-    });
+    this._sessionWindow.window.focus();
   }
 
-  get pageConfigSet(): Promise<boolean> {
-    return new Promise<boolean>(resolve => {
-      if (this._serverPageConfigSet) {
-        resolve(true);
-        return;
-      }
-
-      const timer = setInterval(() => {
-        if (this._serverPageConfigSet) {
-          clearInterval(timer);
-          resolve(true);
-        }
-      }, 200);
-    });
+  handleOpenFilesOrFolders(fileOrFolders?: string[]) {
+    this._sessionWindow.handleOpenFilesOrFolders(fileOrFolders);
   }
 
-  registerStatefulService(service: IStatefulService): Promise<JSONValue> {
-    this._services.push(service);
+  openSession(sessionConfig: SessionConfig) {
+    this._sessionWindow.openSession(sessionConfig);
+  }
 
-    return new Promise<JSONValue>((res, rej) => {
-      this._appState
-        .then((state: JSONObject) => {
-          if (
-            state &&
-            state[service.id] &&
-            service.verifyState(state[service.id])
-          ) {
-            res(state[service.id]);
-          }
-          res(null);
+  dispose(): Promise<void> {
+    if (this._disposePromise) {
+      return this._disposePromise;
+    }
+
+    this._disposePromise = new Promise<void>((resolve, reject) => {
+      Promise.all([
+        this._registry.dispose(),
+        this._serverFactory.dispose(),
+        this._sessionWindow.dispose()
+      ])
+        .then(() => {
+          resolve();
         })
-        .catch(() => {
-          res(null);
+        .catch(error => {
+          console.error(
+            'There was a problem shutting down the application',
+            error
+          );
+          resolve();
         });
     });
-  }
 
-  registerClosingService(service: IClosingService): void {
-    this._closing.push(service);
-  }
-
-  saveState(service: IStatefulService, data: JSONValue): Promise<void> {
-    this._updateState(service.id, data);
-    return this._saveState();
-  }
-
-  getStateBeforeQuit(): Promise<JupyterApplication.IState> {
-    return Promise.resolve(this._applicationState);
-  }
-
-  verifyState(state: JupyterApplication.IState): boolean {
-    return true;
+    return this._disposePromise;
   }
 
   private _setupAutoUpdater() {
@@ -416,59 +217,8 @@ export class JupyterApplication implements IApplication, IStatefulService {
     require('update-electron-app')();
   }
 
-  private _updateState(id: string, data: JSONValue): void {
-    let prevState = this._appState;
-
-    this._appState = new Promise<JSONObject>((res, rej) => {
-      prevState
-        .then((state: JSONObject) => {
-          state[id] = data;
-          res(state);
-        })
-        .catch((state: JSONObject) => res(state));
-    });
-  }
-
-  private _rewriteState(ids: string[], data: JSONValue[]): void {
-    let prevState = this._appState;
-
-    this._appState = new Promise<JSONObject>((res, rej) => {
-      prevState
-        .then(() => {
-          let state: JSONObject = {};
-          ids.forEach((id: string, idx: number) => {
-            state[id] = data[idx];
-          });
-          res(state);
-        })
-        .catch((state: JSONObject) => res(state));
-    });
-  }
-
-  private _saveState(): Promise<void> {
-    return new Promise<void>((res, rej) => {
-      this._appState
-        .then((state: JSONObject) => {
-          return this._appStateDB.save(
-            JupyterApplication.APP_STATE_NAMESPACE,
-            state
-          );
-        })
-        .then(() => {
-          res();
-        })
-        .catch(e => {
-          rej(e);
-        });
-    });
-  }
-
   private _validateRemoteServerUrl(url: string): Promise<IJupyterServerInfo> {
     return connectAndGetServerInfo(url, { showDialog: true, incognito: true });
-  }
-
-  private _clearSessionData(): Promise<void> {
-    return clearSession(session.defaultSession);
   }
 
   /**
@@ -477,42 +227,21 @@ export class JupyterApplication implements IApplication, IStatefulService {
   private _registerListeners(): void {
     app.on('will-quit', event => {
       event.preventDefault();
+      appData.save();
+      userSettings.save();
 
-      // Collect data from services
-      let state: Promise<JSONValue>[] = this._services.map(
-        (s: IStatefulService) => {
-          return s.getStateBeforeQuit();
-        }
-      );
-      let ids: string[] = this._services.map((s: IStatefulService) => {
-        return s.id;
-      });
-
-      // Wait for all services to return state
-      Promise.all(state)
-        .then((data: JSONValue[]) => {
-          this._rewriteState(ids, data);
-          return this._saveState();
-        })
-        .then(() => {
-          this._quit();
-        })
-        .catch(() => {
-          log.error(new Error('JupyterLab did not save state successfully'));
-          this._quit();
-        });
-    });
-
-    app.on('browser-window-focus', (_event: Event, window: BrowserWindow) => {
-      this._window = window;
+      this._quit();
     });
 
     ipcMain.on('set-check-for-updates-automatically', (_event, autoUpdate) => {
-      this._applicationState.checkForUpdatesAutomatically = autoUpdate;
+      userSettings.setValue(
+        SettingType.checkForUpdatesAutomatically,
+        autoUpdate
+      );
     });
 
-    ipcMain.on('set-install-updates-automatically', (_event, autoUpdate) => {
-      this._applicationState.installUpdatesAutomatically = autoUpdate;
+    ipcMain.on('set-install-updates-automatically', (_event, install) => {
+      userSettings.setValue(SettingType.installUpdatesAutomatically, install);
     });
 
     ipcMain.on('launch-installer-download-page', () => {
@@ -525,14 +254,55 @@ export class JupyterApplication implements IApplication, IStatefulService {
       shell.openExternal('https://jupyter.org/about.html');
     });
 
-    ipcMain.on('select-python-path', event => {
-      const currentEnv = this._registry.getCurrentPythonEnvironment();
+    ipcMain.on('select-working-directory', event => {
+      const currentPath = userSettings.resolvedWorkingDirectory;
+
+      dialog
+        .showOpenDialog({
+          properties: ['openDirectory', 'showHiddenFiles', 'noResolveAliases'],
+          buttonLabel: 'Choose',
+          defaultPath: currentPath
+        })
+        .then(({ filePaths }) => {
+          if (filePaths.length > 0) {
+            event.sender.send('working-directory-selected', filePaths[0]);
+          }
+        });
+    });
+
+    ipcMain.on('set-default-working-directory', (event, path: string) => {
+      try {
+        const resolved = resolveWorkingDirectory(path, false);
+        const stat = fs.lstatSync(resolved);
+        if (stat.isDirectory()) {
+          userSettings.setValue(SettingType.defaultWorkingDirectory, path);
+          event.sender.send('set-default-working-directory-result', 'SUCCESS');
+        } else {
+          event.sender.send(
+            'set-default-working-directory-result',
+            'INVALID-PATH'
+          );
+          console.error('Failed to set working directory');
+        }
+      } catch (error) {
+        event.sender.send('set-default-working-directory-result', 'FAILURE');
+        console.error('Failed to set working directory');
+      }
+    });
+
+    ipcMain.on('select-python-path', (event, currentPath) => {
+      if (!currentPath) {
+        currentPath = userSettings.getValue(SettingType.pythonPath);
+        if (currentPath === '') {
+          currentPath = getBundledPythonPath();
+        }
+      }
 
       dialog
         .showOpenDialog({
           properties: ['openFile', 'showHiddenFiles', 'noResolveAliases'],
           buttonLabel: 'Use Path',
-          defaultPath: currentEnv ? path.dirname(currentEnv.path) : undefined
+          defaultPath: currentPath
         })
         .then(({ filePaths }) => {
           if (filePaths.length > 0) {
@@ -541,7 +311,8 @@ export class JupyterApplication implements IApplication, IStatefulService {
         });
     });
 
-    ipcMain.on('install-bundled-python-env', event => {
+    ipcMain.on('install-bundled-python-env', async event => {
+      event.sender.send('install-bundled-python-env-status', 'STARTED');
       const platform = process.platform;
       const isWin = platform === 'win32';
       const appDir = getAppDir();
@@ -551,8 +322,7 @@ export class JupyterApplication implements IApplication, IStatefulService {
         : platform === 'darwin'
         ? `${appDir}/env_installer/JupyterLabDesktopAppServer-${appVersion}-MacOSX-x86_64.sh`
         : `${appDir}/env_installer/JupyterLabDesktopAppServer-${appVersion}-Linux-x86_64.sh`;
-      const userDataDir = getUserDataDir();
-      const installPath = path.join(userDataDir, 'jlab_server');
+      const installPath = getBundledPythonEnvPath();
 
       if (fs.existsSync(installPath)) {
         const choice = dialog.showMessageBoxSync({
@@ -565,9 +335,11 @@ export class JupyterApplication implements IApplication, IStatefulService {
         });
 
         if (choice === 0) {
+          // allow dialog to close
+          await waitForDuration(200);
           fs.rmdirSync(installPath, { recursive: true });
         } else {
-          event.sender.send('install-bundled-python-env-result', 'CANCELLED');
+          event.sender.send('install-bundled-python-env-status', 'CANCELLED');
           return;
         }
       }
@@ -581,27 +353,26 @@ export class JupyterApplication implements IApplication, IStatefulService {
 
       installerProc.on('exit', (exitCode: number) => {
         if (exitCode === 0) {
-          event.sender.send('install-bundled-python-env-result', 'SUCCESS');
-          app.relaunch();
-          app.quit();
+          event.sender.send('install-bundled-python-env-status', 'SUCCESS');
         } else {
-          event.sender.send('install-bundled-python-env-result', 'FAILURE');
-          log.error(new Error(`Installer Exit: ${exitCode}`));
+          const message = `Installer Exit: ${exitCode}`;
+          event.sender.send(
+            'install-bundled-python-env-status',
+            'FAILURE',
+            message
+          );
+          log.error(new Error(message));
         }
       });
 
       installerProc.on('error', (err: Error) => {
-        event.sender.send('install-bundled-python-env-result', 'FAILURE');
+        event.sender.send(
+          'install-bundled-python-env-status',
+          'FAILURE',
+          err.message
+        );
         log.error(err);
       });
-    });
-
-    ipcMain.handle('get-server-info', event => {
-      return this.getServerInfo();
-    });
-
-    ipcMain.handle('get-current-python-environment', event => {
-      return this.getPythonEnvironment();
     });
 
     ipcMain.handle('validate-python-path', (event, path) => {
@@ -620,18 +391,6 @@ export class JupyterApplication implements IApplication, IStatefulService {
       });
     });
 
-    ipcMain.handle('clear-session-data', event => {
-      return new Promise<any>((resolve, reject) => {
-        this._clearSessionData()
-          .then(() => {
-            resolve({ result: 'success' });
-          })
-          .catch(error => {
-            resolve({ result: 'error', error: error.message });
-          });
-      });
-    });
-
     ipcMain.on('show-invalid-python-path-message', (event, path) => {
       const requirements = this._registry.getRequirements();
       const reqVersions = requirements.map(
@@ -642,34 +401,28 @@ export class JupyterApplication implements IApplication, IStatefulService {
       dialog.showMessageBox({ message, type: 'error' });
     });
 
-    ipcMain.on('set-python-path', (event, path) => {
-      this._applicationState.remoteURL = '';
-      this._applicationState.pythonPath = path;
-      app.relaunch();
-      app.quit();
+    ipcMain.on('set-default-python-path', (event, path) => {
+      userSettings.setValue(SettingType.pythonPath, path);
     });
 
-    ipcMain.on('set-remote-server-url', (event, url, persistSessionData) => {
-      if (this._applicationState.remoteURL !== url) {
-        this._applicationState.clearSessionDataOnNextLaunch = true;
-      }
-
-      this._applicationState.remoteURL = url;
-      this._applicationState.persistSessionData = persistSessionData;
-      app.relaunch();
-      app.quit();
+    ipcMain.on('set-startup-mode', (_event, mode) => {
+      userSettings.setValue(SettingType.startupMode, mode);
     });
 
     ipcMain.on('set-theme', (_event, theme) => {
-      this._applicationState.theme = theme;
+      userSettings.setValue(SettingType.theme, theme);
     });
 
     ipcMain.on('set-sync-jupyterlab-theme', (_event, sync) => {
-      this._applicationState.syncJupyterLabTheme = sync;
+      userSettings.setValue(SettingType.syncJupyterLabTheme, sync);
+    });
+
+    ipcMain.on('set-show-news-theme', (_event, show) => {
+      userSettings.setValue(SettingType.showNewsFeed, show);
     });
 
     ipcMain.on('set-frontend-mode', (_event, mode) => {
-      this._applicationState.frontEndMode = mode;
+      userSettings.setValue(SettingType.frontEndMode, mode);
     });
 
     ipcMain.on('restart-app', _event => {
@@ -678,112 +431,71 @@ export class JupyterApplication implements IApplication, IStatefulService {
     });
 
     ipcMain.on('check-for-updates', _event => {
-      this._checkForUpdates('always');
-    });
-
-    ipcMain.on('show-app-context-menu', event => {
-      const template: MenuItemConstructorOptions[] = [
-        {
-          label: 'Preferences',
-          click: () => {
-            this._showPreferencesDialog();
-          }
-        },
-        {
-          label: 'Check for updates…',
-          click: () => {
-            this._checkForUpdates('always');
-          }
-        },
-        {
-          label: 'Open Developer Tools',
-          click: () => {
-            this._openDevTools();
-          }
-        },
-        { type: 'separator' },
-        {
-          label: 'About',
-          click: () => {
-            this._showAboutDialog();
-          }
-        }
-      ];
-
-      const menu = Menu.buildFromTemplate(template);
-      menu.popup({
-        window: BrowserWindow.fromWebContents(event.sender)
-      });
-    });
-
-    ipcMain.on('close-active-window', event => {
-      const window = BrowserWindow.fromWebContents(event.sender);
-      window.close();
-    });
-
-    ipcMain.on('minimize-window', event => {
-      const window = BrowserWindow.fromWebContents(event.sender);
-      window.minimize();
-    });
-
-    ipcMain.on('maximize-window', event => {
-      const window = BrowserWindow.fromWebContents(event.sender);
-      window.maximize();
-    });
-
-    ipcMain.on('restore-window', event => {
-      const window = BrowserWindow.fromWebContents(event.sender);
-      window.unmaximize();
+      this.checkForUpdates('always');
     });
 
     ipcMain.handle('is-dark-theme', event => {
-      return isDarkTheme(this._applicationState.theme);
+      return isDarkTheme(userSettings.getValue(SettingType.theme));
     });
 
-    ipcMain.on('show-server-config-dialog', event => {
-      this._showServerConfigDialog();
-    });
+    ipcMain.handle(
+      'clear-history',
+      async (event, options: IClearHistoryOptions) => {
+        if (options.recentRemoteURLs) {
+          appData.recentRemoteURLs = [];
+        }
+        if (options.userSetPythonEnvs) {
+          appData.userSetPythonEnvs = [];
+        }
+        if (options.sessionData || options.recentSessions) {
+          appData.recentSessions.forEach(async recentSession => {
+            if (
+              recentSession.partition &&
+              recentSession.partition.startsWith('persist:')
+            ) {
+              const s = session.fromPartition(recentSession.partition);
+              try {
+                await clearSession(s);
+              } catch (error) {
+                //
+              }
+            }
+          });
+        }
+
+        if (options.sessionData) {
+          try {
+            await clearSession(session.defaultSession);
+          } catch (error) {
+            //
+          }
+        }
+
+        if (options.recentSessions) {
+          appData.recentSessions = [];
+
+          if (this._sessionWindow) {
+            this._sessionWindow.updateRecentSessionList(true);
+          }
+        }
+
+        return true;
+      }
+    );
   }
 
   private _showUpdateDialog(
     type: 'updates-available' | 'error' | 'no-updates'
   ) {
-    const dialog = new UpdateDialog({ type });
-
-    dialog.load();
-  }
-
-  private _showServerConfigDialog(
-    reason:
-      | 'change'
-      | 'invalid-bundled-env'
-      | 'invalid-env'
-      | 'remote-connection-failure' = 'change'
-  ) {
-    if (this._serverConfigDialog) {
-      this._serverConfigDialog.window.focus();
-      return;
-    }
-
-    const dialog = new ServerConfigDialog({
-      reason,
-      bundledPythonPath: this._registry.getBundledPythonPath(),
-      pythonPath: this._applicationState.pythonPath,
-      remoteURL: this._applicationState.remoteURL,
-      persistSessionData: this._applicationState.persistSessionData,
-      envRequirements: this._registry.getRequirements()
-    });
-
-    this._serverConfigDialog = dialog;
-
-    dialog.window.on('close', () => {
-      this._serverConfigDialog = null;
+    const dialog = new UpdateDialog({
+      isDarkTheme: isDarkTheme(userSettings.getValue(SettingType.theme)),
+      type
     });
 
     dialog.load();
   }
 
-  private _checkForUpdates(showDialog: 'on-new-version' | 'always') {
+  checkForUpdates(showDialog: 'on-new-version' | 'always') {
     fetch(
       'https://github.com/jupyterlab/jupyterlab-desktop/releases/latest/download/latest.yml'
     )
@@ -815,48 +527,8 @@ export class JupyterApplication implements IApplication, IStatefulService {
       });
   }
 
-  private _openDevTools() {
-    this._window.getBrowserViews().forEach(view => {
-      view.webContents.openDevTools();
-    });
-  }
-
-  private _showPreferencesDialog() {
-    if (this._preferencesDialog) {
-      this._preferencesDialog.window.focus();
-      return;
-    }
-
-    const dialog = new PreferencesDialog({
-      theme: this._applicationState.theme,
-      syncJupyterLabTheme: this._applicationState.syncJupyterLabTheme,
-      frontEndMode: this._applicationState.frontEndMode,
-      checkForUpdatesAutomatically:
-        this._applicationState.checkForUpdatesAutomatically !== false,
-      installUpdatesAutomatically:
-        this._applicationState.installUpdatesAutomatically !== false
-    });
-
-    this._preferencesDialog = dialog;
-
-    dialog.window.on('close', () => {
-      this._preferencesDialog = null;
-    });
-
-    dialog.load();
-  }
-
-  private _showAboutDialog() {
-    const dialog = new AboutDialog();
-    dialog.load();
-  }
-
   private _quit(): void {
-    let closing: Promise<void>[] = this._closing.map((s: IClosingService) => {
-      return s.finished();
-    });
-
-    Promise.all(closing)
+    this.dispose()
       .then(() => {
         process.exit();
       })
@@ -866,50 +538,9 @@ export class JupyterApplication implements IApplication, IStatefulService {
       });
   }
 
-  private _appStateDB = new ElectronStateDB({
-    namespace: 'jupyterlab-desktop-data'
-  });
-
-  private _appState: Promise<JSONObject>;
-
-  private _applicationState: JupyterApplication.IState;
-
-  private _services: IStatefulService[] = [];
-
-  private _closing: IClosingService[] = [];
-
-  /**
-   * The most recently focused window
-   */
-  private _window: Electron.BrowserWindow;
-  private _serverInfoStateSet = false;
-  private _serverPageConfigSet = false;
-  private _serverConfigDialog: ServerConfigDialog;
-  private _preferencesDialog: PreferencesDialog;
+  private _cliArgs: ICLIArguments;
+  private _registry: IRegistry;
+  private _serverFactory: JupyterServerFactory;
+  private _disposePromise: Promise<void>;
+  private _sessionWindow: SessionWindow;
 }
-
-export namespace JupyterApplication {
-  export const APP_STATE_NAMESPACE = 'jupyterlab-desktop';
-
-  export interface IState extends JSONObject {
-    checkForUpdatesAutomatically?: boolean;
-    installUpdatesAutomatically?: boolean;
-    pythonPath?: string;
-    condaRootPath?: string;
-    remoteURL?: string;
-    persistSessionData?: boolean;
-    clearSessionDataOnNextLaunch?: boolean;
-    theme: 'system' | 'light' | 'dark';
-    syncJupyterLabTheme: boolean;
-    frontEndMode: 'web-app' | 'client-app';
-  }
-}
-
-let service: IService = {
-  requirements: ['IRegistry'],
-  provides: 'IApplication',
-  activate: (registry: IRegistry): IApplication => {
-    return new JupyterApplication(registry);
-  }
-};
-export default service;

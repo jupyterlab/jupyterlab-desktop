@@ -1,348 +1,19 @@
 // Copyright (c) Jupyter Development Team.
 // Distributed under the terms of the Modified BSD License.
 
-import { JSONValue } from '@lumino/coreutils';
-
-import { IApplication, IStatefulService } from './app';
-
-import { ISettingRegistry } from '@jupyterlab/settingregistry';
-
-import { IDataConnector } from '@jupyterlab/statedb';
-
-import { IService } from './main';
-
 import * as path from 'path';
 import * as fs from 'fs';
 import log from 'electron-log';
+import { AddressInfo, createServer, Socket } from 'net';
 import { app, nativeTheme } from 'electron';
 import { IPythonEnvironment } from './tokens';
 
 export const DarkThemeBGColor = '#212121';
 export const LightThemeBGColor = '#ffffff';
 
-export interface IAppConfiguration {
-  isRemote: boolean;
-  url: URL;
-  token: string;
-  pageConfig?: any;
-  cookies?: Electron.Cookie[];
-  persistSessionData: boolean;
-  clearSessionDataOnNextLaunch?: boolean;
-  frontEndMode: 'web-app' | 'client-app';
-  theme: 'system' | 'light' | 'dark';
-  syncJupyterLabTheme: boolean;
-}
-
-export const appConfig: IAppConfiguration = {
-  isRemote: false,
-  url: undefined,
-  token: 'jlab-token',
-  persistSessionData: true,
-  frontEndMode: 'web-app',
-  theme: 'system',
-  syncJupyterLabTheme: true
-};
-
 export interface ISaveOptions {
   id: string;
   raw: string;
-}
-
-export interface IElectronDataConnector
-  extends IDataConnector<ISettingRegistry.IPlugin, string> {}
-
-/**
- * Create a data connector to be used by the render
- * processes. Stores JupyterLab plugin settings that
- * need to be persistent.
- *
- * If settings are not found in the apllication data
- * directory, default settings are read in from the
- * application bundle.
- */
-export class JupyterLabDataConnector
-  implements IStatefulService, IElectronDataConnector {
-  SCHEMAS_PATH: string = getSchemasDir();
-  id: string = 'JupyterLabSettings';
-
-  constructor(app: IApplication) {
-    this._availableSchemas = this._getAllDefaultSchemas();
-
-    this._settings = app
-      .registerStatefulService(this)
-      .then((settings: Private.IPluginData) => {
-        if (!settings) {
-          return this._availableSchemas.then(schemas =>
-            this._getDefaultSettings(schemas)
-          );
-        }
-        return settings;
-      })
-      .catch(() => {
-        return this._availableSchemas.then(schemas =>
-          this._getDefaultSettings(schemas)
-        );
-      });
-  }
-
-  /**
-   * Fetch settings for a plugin.
-   *
-   * @param id The plugin id.
-   */
-  fetch(id: string): Promise<ISettingRegistry.IPlugin> {
-    return this._settings
-      .then(data => {
-        if (!data[id]) {
-          return this._availableSchemas.then(schemas => {
-            if (id in schemas) {
-              return this._loadSingleDefault(schemas[id], id).then(
-                pluginDefault => {
-                  data[id] = pluginDefault;
-
-                  return pluginDefault;
-                }
-              );
-            } else {
-              return Promise.reject(
-                new Error('Setting ' + id + ' not available')
-              );
-            }
-          });
-        } else {
-          return Promise.resolve({
-            id: id,
-            ...data[id]
-          });
-        }
-      })
-      .catch(reason => {
-        return Promise.reject(new Error(`Private data store failed to load.`));
-      });
-  }
-
-  list(
-    query?: string
-  ): Promise<{
-    ids: string[];
-    values: ISettingRegistry.IPlugin[];
-  }> {
-    return Promise.resolve({
-      ids: [],
-      values: []
-    });
-  }
-
-  /**
-   * Remove a setting. Not needed in this implementation.
-   *
-   * @param id The plugin id.
-   */
-  remove(id: string): Promise<void> {
-    return Promise.reject(
-      new Error('Removing setting resources is note supported.')
-    );
-  }
-
-  /**
-   * Save user settings for a plugin.
-   *
-   * @param id
-   * @param user
-   */
-  save(id: string, raw: string): Promise<void> {
-    const user = JSON.parse(raw);
-    let saving = this._settings.then(data => {
-      if (!user[id]) {
-        return this._availableSchemas.then(schemas => {
-          if (id in schemas) {
-            return this._loadSingleDefault(schemas[id], id).then(
-              pluginDefault => {
-                pluginDefault.data = user as ISettingRegistry.ISettingBundle;
-                pluginDefault.raw = raw;
-                data[id] = pluginDefault;
-
-                return data;
-              }
-            );
-          } else {
-            return Promise.reject(
-              new Error('Setting ' + id + ' not available')
-            );
-          }
-        });
-      } else {
-        data[id].data = user as ISettingRegistry.ISettingBundle;
-        data[id].raw = raw;
-        return Promise.resolve(data);
-      }
-    });
-
-    this._settings = saving;
-    return saving.then(() => {
-      return;
-    });
-  }
-
-  getStateBeforeQuit(): Promise<JSONValue> {
-    return this._settings;
-  }
-
-  verifyState(state: Private.IPluginData): boolean {
-    for (let key in state) {
-      if (state[key].schema === undefined || state[key].data === undefined) {
-        return false;
-      }
-    }
-    return true;
-  }
-
-  /**
-   * Get default JupyterLab settings from application
-   * bundle.
-   */
-  private _getDefaultSettings(
-    schemaPaths: Private.ISchemaPathContainer
-  ): Promise<Private.IPluginData> {
-    let buildRegistryPlugins: Promise<ISettingRegistry.IPlugin[]> = Promise.all(
-      Object.keys(schemaPaths).map(schemaID => {
-        let schemaPath = schemaPaths[schemaID];
-        return this._loadSingleDefault(schemaPath, schemaID);
-      })
-    );
-
-    return buildRegistryPlugins
-      .then((settings: ISettingRegistry.IPlugin[]) => {
-        let iSettings: Private.IPluginData = {};
-        settings.forEach(setting => {
-          if (!setting) {
-            return;
-          }
-          iSettings[setting.id] = setting;
-        });
-        return iSettings;
-      })
-      .catch(e => {
-        log.error(e);
-        return Promise.resolve({});
-      });
-  }
-
-  private _loadSingleDefault(
-    schemaPath: string,
-    schemaID: string
-  ): Promise<ISettingRegistry.IPlugin> {
-    return new Promise<ISettingRegistry.IPlugin>((resolve, reject) => {
-      fs.readFile(schemaPath, (err, data: Buffer) => {
-        if (err) {
-          reject(err);
-        } else {
-          let rawSchema = data.toString();
-
-          resolve({
-            id: schemaID,
-            schema: JSON.parse(rawSchema),
-            data: {} as ISettingRegistry.ISettingBundle,
-            raw: '{}',
-            version: ''
-          });
-        }
-      });
-    });
-  }
-
-  private _getAllDefaultSchemas(): Promise<Private.ISchemaPathContainer> {
-    let getSettingProviders = this._readDirectoryFilenames(this.SCHEMAS_PATH);
-
-    let buildPluginProvider: Promise<
-      { provider: string; name: string }[]
-    > = getSettingProviders.then(providers => {
-      return Promise.all(
-        providers.map(provider => {
-          return this._readDirectoryFilenames(
-            path.join(this.SCHEMAS_PATH, provider)
-          ).then(plugins => {
-            return plugins.map(plugin => {
-              return {
-                provider: provider,
-                name: plugin
-              };
-            });
-          });
-        })
-      ).then(nestedPlugins => {
-        return Array.prototype.concat.apply([], nestedPlugins);
-      });
-    });
-
-    return buildPluginProvider.then(plugins => {
-      return Promise.all(
-        plugins.map(plugin => {
-          return this._readDirectoryFilenames(
-            path.join(this.SCHEMAS_PATH, plugin.provider, plugin.name)
-          ).then(settingFiles => {
-            let allPlugins = settingFiles.map(settingFile => {
-              let schemaPath = path.join(
-                this.SCHEMAS_PATH,
-                plugin.provider,
-                plugin.name,
-                settingFile
-              );
-              let id =
-                plugin.provider +
-                '/' +
-                plugin.name +
-                ':' +
-                path.basename(settingFile, '.json');
-              return {
-                path: schemaPath,
-                id
-              };
-            });
-
-            return allPlugins;
-          });
-        })
-      ).then(nestPlugins => {
-        let flattenedPlugins: {
-          path: string;
-          id: string;
-        }[] = Array.prototype.concat.apply([], nestPlugins);
-        let schemaContainer = {} as Private.ISchemaPathContainer;
-
-        flattenedPlugins.forEach(plugin => {
-          schemaContainer[plugin.id] = plugin.path;
-        });
-
-        return schemaContainer;
-      });
-    });
-  }
-
-  private _readDirectoryFilenames(directoryPath: string): Promise<string[]> {
-    return new Promise((resolve, reject) => {
-      fs.readdir(directoryPath, (err, filenames) => {
-        if (err) {
-          reject(err);
-        } else {
-          resolve(filenames);
-        }
-      });
-    });
-  }
-
-  private _availableSchemas: Promise<Private.ISchemaPathContainer>;
-  private _settings: Promise<Private.IPluginData>;
-}
-
-namespace Private {
-  export interface IPluginData {
-    [id: string]: ISettingRegistry.IPlugin;
-  }
-
-  export interface ISchemaPathContainer {
-    [id: string]: string;
-  }
 }
 
 export function isDevMode(): boolean {
@@ -358,11 +29,12 @@ export function getAppDir(): string {
   return appDir;
 }
 
+export function getUserHomeDir(): string {
+  return app.getPath('home');
+}
+
 export function getUserDataDir(): string {
-  const userDataDir =
-    process.platform === 'darwin'
-      ? path.normalize(path.join(app.getPath('home'), 'Library', app.getName()))
-      : app.getPath('userData');
+  const userDataDir = app.getPath('userData');
 
   if (!fs.existsSync(userDataDir)) {
     try {
@@ -390,8 +62,50 @@ export function getEnvironmentPath(environment: IPythonEnvironment): string {
   return envPath;
 }
 
-export function getCurrentRootPath(): string {
-  return process.env.JLAB_DESKTOP_HOME || app.getPath('home');
+export function getBundledPythonInstallDir(): string {
+  // this directory path cannot have any spaces since
+  // conda constructor cannot install to such paths
+  const installDir =
+    process.platform === 'darwin'
+      ? path.normalize(path.join(app.getPath('home'), 'Library', app.getName()))
+      : app.getPath('userData');
+
+  if (!fs.existsSync(installDir)) {
+    try {
+      fs.mkdirSync(installDir, { recursive: true });
+    } catch (error) {
+      log.error(error);
+    }
+  }
+
+  return installDir;
+}
+
+// user data dir for<= 3.5.1-1
+export function getOldUserConfigPath() {
+  return path.join(getBundledPythonInstallDir(), 'jupyterlab-desktop-data');
+}
+
+export function getBundledPythonEnvPath(): string {
+  const userDataDir = getBundledPythonInstallDir();
+  let envPath = path.join(userDataDir, 'jlab_server');
+
+  return envPath;
+}
+
+export function getBundledPythonPath(): string {
+  const platform = process.platform;
+  let envPath = getBundledPythonEnvPath();
+  if (platform !== 'win32') {
+    envPath = path.join(envPath, 'bin');
+  }
+
+  const bundledPythonPath = path.join(
+    envPath,
+    `python${platform === 'win32' ? '.exe' : ''}`
+  );
+
+  return bundledPythonPath;
 }
 
 export function isDarkTheme(themeType: string) {
@@ -410,7 +124,8 @@ export function clearSession(session: Electron.Session): Promise<void> {
       Promise.all([
         session.clearCache(),
         session.clearAuthCache(),
-        session.clearStorageData()
+        session.clearStorageData(),
+        session.flushStorageData()
       ]).then(() => {
         resolve();
       });
@@ -420,14 +135,59 @@ export function clearSession(session: Electron.Session): Promise<void> {
   });
 }
 
-let service: IService = {
-  requirements: ['IApplication'],
-  provides: 'IElectronDataConnector',
-  activate: (
-    app: IApplication
-  ): IDataConnector<ISettingRegistry.IPlugin, string> => {
-    return new JupyterLabDataConnector(app);
-  },
-  autostart: true
-};
-export default service;
+export function isPortInUse(port: number): Promise<boolean> {
+  return new Promise<boolean>((resolve, reject) => {
+    let inUse = false;
+    const socket = new Socket();
+    socket.setTimeout(200);
+    socket.once('error', err => {
+      inUse = false;
+      socket.destroy();
+    });
+    socket.on('timeout', () => {
+      inUse = false;
+      socket.destroy();
+    });
+    socket.on('connect', () => {
+      inUse = true;
+      socket.destroy();
+    });
+    socket.on('close', exception => {
+      resolve(inUse);
+    });
+    socket.connect({ port: port, host: '127.0.0.1' });
+  });
+}
+
+export function getFreePort(): Promise<number> {
+  return new Promise<number>(resolve => {
+    const getPort = () => {
+      const server = createServer(socket => {
+        socket.write('Echo server\r\n');
+        socket.pipe(socket);
+      });
+
+      server.on('error', function (e) {
+        getPort();
+      });
+      server.on('listening', function (e: any) {
+        const port = (server.address() as AddressInfo).port;
+        server.close();
+
+        resolve(port);
+      });
+
+      server.listen(0, '127.0.0.1');
+    };
+
+    getPort();
+  });
+}
+
+export async function waitForDuration(duration: number): Promise<boolean> {
+  return new Promise(resolve => {
+    setTimeout(() => {
+      resolve(false);
+    }, duration);
+  });
+}

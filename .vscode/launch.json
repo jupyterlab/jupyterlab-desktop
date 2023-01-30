@@ -2,7 +2,7 @@
     "version": "0.1.0",
     "configurations": [
       {
-        "name": "Debug Electron App",
+        "name": "Debug",
         "type": "node",
         "request": "launch",
         "cwd": "${workspaceFolder}",
@@ -15,7 +15,20 @@
         }
       },
       {
-        "name": "Debug Electron App without Build",
+        "name": "Debug without webpack",
+        "type": "node",
+        "request": "launch",
+        "cwd": "${workspaceFolder}",
+        "runtimeExecutable": "${workspaceFolder}/node_modules/.bin/electron",
+        "args" : ["."],
+        "outputCapture": "std",
+        "preLaunchTask": "npm: build:no-pack",
+        "env": {
+          "NODE_ENV": "development"
+        }
+      },
+      {
+        "name": "Debug without build",
         "type": "node",
         "request": "launch",
         "cwd": "${workspaceFolder}",
