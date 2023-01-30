@@ -1,0 +1,19 @@
+version: 2
+updates:
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    ignore:
+      # we have our custom bot for updating jupyterlab dependencies when needed
+      - dependency-name: "@jupyterlab/*"
+      # we only want automated minor and patch updates, major updates of electron usually require manual action
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+  - package-ecosystem: "pip"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    ignore:
+      # we have our custom bot for updating jupyterlab dependencies when needed
+      - dependency-name: "jupyterlab*"
