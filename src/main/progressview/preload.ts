@@ -1,3 +1,5 @@
+import { EventTypeMain, EventTypeRenderer } from '../eventtypes';
+
 const { contextBridge, ipcRenderer } = require('electron');
 
 type ShowProgressListener = (
@@ -20,7 +22,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
     };
   },
   isDarkTheme: () => {
-    return ipcRenderer.invoke('is-dark-theme');
+    return ipcRenderer.invoke(EventTypeMain.IsDarkTheme);
   },
   onShowProgress: (callback: ShowProgressListener) => {
     onShowProgressListener = callback;
@@ -35,14 +37,17 @@ contextBridge.exposeInMainWorld('electronAPI', {
   }
 });
 
-ipcRenderer.on('show-progress', (event, title, detail, showAnimation) => {
-  if (onShowProgressListener) {
-    onShowProgressListener(title, detail, showAnimation);
+ipcRenderer.on(
+  EventTypeRenderer.ShowProgress,
+  (event, title, detail, showAnimation) => {
+    if (onShowProgressListener) {
+      onShowProgressListener(title, detail, showAnimation);
+    }
   }
-});
+);
 
 ipcRenderer.on(
-  'install-bundled-python-env-status',
+  EventTypeRenderer.InstallBundledPythonEnvStatus,
   (event, result, message) => {
     if (onInstallBundledPythonEnvStatusListener) {
       onInstallBundledPythonEnvStatusListener(result, message);

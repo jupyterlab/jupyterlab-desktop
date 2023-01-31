@@ -1,3 +1,5 @@
+import { EventTypeMain, EventTypeRenderer } from '../eventtypes';
+
 const { contextBridge, ipcRenderer } = require('electron');
 
 type SetRecentSessionListListener = (
@@ -28,34 +30,34 @@ contextBridge.exposeInMainWorld('electronAPI', {
     };
   },
   isDarkTheme: () => {
-    return ipcRenderer.invoke('is-dark-theme');
+    return ipcRenderer.invoke(EventTypeMain.IsDarkTheme);
   },
   newSession: (
     type: 'notebook' | 'blank' | 'open' | 'open-file' | 'open-folder' | 'remote'
   ) => {
     if (type === 'notebook' || type === 'blank') {
-      ipcRenderer.send('create-new-session', type);
+      ipcRenderer.send(EventTypeMain.CreateNewSession, type);
     } else if (type === 'open') {
-      ipcRenderer.send('open-file-or-folder');
+      ipcRenderer.send(EventTypeMain.OpenFileOrFolder);
     } else if (type === 'open-file') {
-      ipcRenderer.send('open-file');
+      ipcRenderer.send(EventTypeMain.OpenFile);
     } else if (type === 'open-folder') {
-      ipcRenderer.send('open-folder');
+      ipcRenderer.send(EventTypeMain.OpenFolder);
     } else if (type === 'remote') {
-      ipcRenderer.send('create-new-remote-session');
+      ipcRenderer.send(EventTypeMain.CreateNewRemoteSession);
     }
   },
   openRecentSession(sessionIndex: number) {
-    ipcRenderer.send('open-recent-session', sessionIndex);
+    ipcRenderer.send(EventTypeMain.OpenRecentSession, sessionIndex);
   },
   deleteRecentSession(sessionIndex: number) {
-    ipcRenderer.send('delete-recent-session', sessionIndex);
+    ipcRenderer.send(EventTypeMain.DeleteRecentSession, sessionIndex);
   },
   openDroppedFiles(files: string[]) {
-    ipcRenderer.send('open-dropped-files', files);
+    ipcRenderer.send(EventTypeMain.OpenDroppedFiles, files);
   },
   openNewsLink: (newsLink: string) => {
-    ipcRenderer.send('open-news-link', newsLink);
+    ipcRenderer.send(EventTypeMain.OpenNewsLink, newsLink);
   },
   sendMessageToMain: (message: string, ...args: any[]) => {
     ipcRenderer.send(message, ...args);
@@ -82,7 +84,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
 });
 
 ipcRenderer.on(
-  'set-recent-session-list',
+  EventTypeRenderer.SetRecentSessionList,
   (event, recentSessions, recentCollapseState) => {
     if (onSetRecentSessionListListener) {
       onSetRecentSessionListListener(recentSessions, recentCollapseState);
@@ -90,14 +92,14 @@ ipcRenderer.on(
   }
 );
 
-ipcRenderer.on('set-news-list', (event, list) => {
+ipcRenderer.on(EventTypeRenderer.SetNewsList, (event, list) => {
   if (onSetNewsListListener) {
     onSetNewsListListener(list);
   }
 });
 
 ipcRenderer.on(
-  'set-notification-message',
+  EventTypeRenderer.SetNotificationMessage,
   (event, message: string, closable: boolean) => {
     if (onSetNotificationMessageListener) {
       onSetNotificationMessageListener(message, closable);
@@ -105,14 +107,14 @@ ipcRenderer.on(
   }
 );
 
-ipcRenderer.on('disable-local-server-actions', event => {
+ipcRenderer.on(EventTypeRenderer.DisabledLocalServerActions, event => {
   if (onDisableLocalServerActionsListener) {
     onDisableLocalServerActionsListener();
   }
 });
 
 ipcRenderer.on(
-  'install-bundled-python-env-status',
+  EventTypeRenderer.InstallBundledPythonEnvStatus,
   (event, result, message) => {
     if (onInstallBundledPythonEnvStatusListener) {
       onInstallBundledPythonEnvStatusListener(result, message);

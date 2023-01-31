@@ -1,3 +1,5 @@
+import { EventTypeMain } from '../eventtypes';
+
 const { contextBridge, ipcRenderer } = require('electron');
 
 contextBridge.exposeInMainWorld('electronAPI', {
@@ -7,16 +9,16 @@ contextBridge.exposeInMainWorld('electronAPI', {
     };
   },
   isDarkTheme: () => {
-    return ipcRenderer.invoke('is-dark-theme');
+    return ipcRenderer.invoke(EventTypeMain.IsDarkTheme);
   },
   setCheckForUpdatesAutomatically: (check: boolean) => {
-    ipcRenderer.send('set-check-for-updates-automatically', check);
+    ipcRenderer.send(EventTypeMain.SetCheckForUpdatesAutomatically, check);
   },
   setInstallUpdatesAutomatically: (install: boolean) => {
-    ipcRenderer.send('set-install-updates-automatically', install);
+    ipcRenderer.send(EventTypeMain.SetInstallUpdatesAutomatically, install);
   },
   launchInstallerDownloadPage: () => {
-    ipcRenderer.send('launch-installer-download-page');
+    ipcRenderer.send(EventTypeMain.LaunchInstallerDownloadPage);
   }
 });
 

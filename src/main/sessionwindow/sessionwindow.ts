@@ -5,9 +5,9 @@ import {
   BrowserView,
   BrowserWindow,
   dialog,
-  ipcMain,
   Menu,
-  MenuItemConstructorOptions
+  MenuItemConstructorOptions,
+  shell
 } from 'electron';
 import * as fs from 'fs';
 import { WelcomeView } from '../welcomeview/welcomeview';
@@ -41,6 +41,8 @@ import { ProgressView } from '../progressview/progressview';
 import { appData } from '../config/appdata';
 import { SessionConfig } from '../config/sessionconfig';
 import { ISignal, Signal } from '@lumino/signaling';
+import { EventTypeMain } from '../eventtypes';
+import { EventManager } from '../eventmanager';
 
 export enum ContentViewType {
   Welcome = 'welcome',
@@ -226,7 +228,7 @@ export class SessionWindow implements IDisposable {
               'Failed to create session',
               `<div class="message-row">${error}</div>
           <div class="message-row">
-            <a href="javascript:void(0);" onclick="sendMessageToMain('show-welcome-view')">Go to Welcome Page</a>
+            <a href="javascript:void(0);" onclick="sendMessageToMain('${EventTypeMain.ShowWelcomeView}')">Go to Welcome Page</a>
           </div>`,
               false
             );
@@ -291,6 +293,8 @@ export class SessionWindow implements IDisposable {
     }
 
     this._disposePromise = new Promise<void>(resolve => {
+      this._evm.dispose();
+
       this._disposeSession().then(() => {
         this._disposePromise = null;
         resolve();
@@ -382,7 +386,7 @@ export class SessionWindow implements IDisposable {
         `
       <div class="message-row">Error: ${errorDescription}</div>
         <div class="message-row">
-          <a href="javascript:void(0);" onclick="sendMessageToMain('show-welcome-view')">Go to Welcome Page</a> 
+          <a href="javascript:void(0);" onclick="sendMessageToMain('${EventTypeMain.ShowWelcomeView}')">Go to Welcome Page</a> 
         </div>
       `,
         false
@@ -450,36 +454,54 @@ export class SessionWindow implements IDisposable {
       await this.dispose();
     });
 
-    ipcMain.on('minimize-window', event => {
+    this._evm.registerEventHandler(
+      EventTypeMain.OpenNewsLink,
+      (event, link) => {
+        if (event.sender !== this._welcomeView.view.webContents) {
+          return;
+        }
+
+        try {
+          const url = new URL(decodeURIComponent(link));
+          if (url.protocol === 'https:' || url.protocol === 'http:') {
+            shell.openExternal(url.href);
+          }
+        } catch (error) {
+          console.error('Invalid news URL');
+        }
+      }
+    );
+
+    this._evm.registerEventHandler(EventTypeMain.MinimizeWindow, event => {
       if (event.sender !== this._titleBarView.view.webContents) {
         return;
       }
       this._window.minimize();
     });
 
-    ipcMain.on('maximize-window', event => {
+    this._evm.registerEventHandler(EventTypeMain.MaximizeWindow, event => {
       if (event.sender !== this._titleBarView.view.webContents) {
         return;
       }
       this._window.maximize();
     });
 
-    ipcMain.on('restore-window', event => {
+    this._evm.registerEventHandler(EventTypeMain.RestoreWindow, event => {
       if (event.sender !== this._titleBarView.view.webContents) {
         return;
       }
       this._window.unmaximize();
     });
 
-    ipcMain.on('close-window', event => {
+    this._evm.registerEventHandler(EventTypeMain.CloseWindow, event => {
       if (event.sender !== this._titleBarView.view.webContents) {
         return;
       }
       this._window.close();
     });
 
-    ipcMain.on(
-      'create-new-session',
+    this._evm.registerEventHandler(
+      EventTypeMain.CreateNewSession,
       async (event, type: 'notebook' | 'blank') => {
         if (event.sender !== this.contentView.webContents) {
           return;
@@ -504,13 +526,13 @@ export class SessionWindow implements IDisposable {
             `
             <div class="message-row">${error}</div>
             <div class="message-row">
-              <a href="javascript:void(0);" onclick="sendMessageToMain('show-welcome-view')">Go to Welcome Page</a>
+              <a href="javascript:void(0);" onclick="sendMessageToMain('${EventTypeMain.ShowWelcomeView}')">Go to Welcome Page</a>
             </div>
             <div class="message-row">
               <a href="javascript:void(0);" onclick="sendMessageToMain('install-bundled-python-env')">Install / update Python environment using the bundled installer</a>
             </div>
             <div class="message-row">
-              <a href="javascript:void(0);" onclick="sendMessageToMain('show-server-preferences')">Change the default Python environment</a>
+              <a href="javascript:void(0);" onclick="sendMessageToMain('${EventTypeMain.ShowServerPreferences}')">Change the default Python environment</a>
             </div>
           `,
             false
@@ -537,15 +559,18 @@ export class SessionWindow implements IDisposable {
       }
     );
 
-    ipcMain.on('open-file-or-folder', async event => {
-      if (event.sender !== this.contentView.webContents) {
-        return;
+    this._evm.registerEventHandler(
+      EventTypeMain.OpenFileOrFolder,
+      async event => {
+        if (event.sender !== this.contentView.webContents) {
+          return;
+        }
+
+        this._handleFileOrFolderOpenSession('either');
       }
+    );
 
-      this._handleFileOrFolderOpenSession('either');
-    });
-
-    ipcMain.on('open-file', async event => {
+    this._evm.registerEventHandler(EventTypeMain.OpenFile, async event => {
       if (event.sender !== this.contentView.webContents) {
         return;
       }
@@ -553,7 +578,7 @@ export class SessionWindow implements IDisposable {
       this._handleFileOrFolderOpenSession('file');
     });
 
-    ipcMain.on('open-folder', async event => {
+    this._evm.registerEventHandler(EventTypeMain.OpenFolder, async event => {
       if (event.sender !== this.contentView.webContents) {
         return;
       }
@@ -561,16 +586,19 @@ export class SessionWindow implements IDisposable {
       this._handleFileOrFolderOpenSession('folder');
     });
 
-    ipcMain.on('create-new-remote-session', event => {
-      if (event.sender !== this.contentView.webContents) {
-        return;
+    this._evm.registerEventHandler(
+      EventTypeMain.CreateNewRemoteSession,
+      async event => {
+        if (event.sender !== this.contentView.webContents) {
+          return;
+        }
+
+        this._selectRemoteServerUrl();
       }
+    );
 
-      this._selectRemoteServerUrl();
-    });
-
-    ipcMain.on(
-      'set-remote-server-options',
+    this._evm.registerEventHandler(
+      EventTypeMain.SetRemoteServerOptions,
       (event, remoteUrl: string, persistSessionData: boolean) => {
         if (
           event.sender !== this._remoteServerSelectDialog.window.webContents
@@ -589,33 +617,39 @@ export class SessionWindow implements IDisposable {
       }
     );
 
-    ipcMain.on('open-recent-session', (event, sessionIndex: number) => {
-      if (event.sender !== this._welcomeView?.view?.webContents) {
-        return;
+    this._evm.registerEventHandler(
+      EventTypeMain.OpenRecentSession,
+      (event, sessionIndex: number) => {
+        if (event.sender !== this._welcomeView?.view?.webContents) {
+          return;
+        }
+
+        this._createSessionForRecent(sessionIndex);
       }
+    );
 
-      this._createSessionForRecent(sessionIndex);
-    });
+    this._evm.registerEventHandler(
+      EventTypeMain.DeleteRecentSession,
+      async (event, sessionIndex: number) => {
+        if (
+          !(
+            event.sender === this._welcomeView.view.webContents ||
+            event.sender === this._progressView.view.view.webContents
+          )
+        ) {
+          return;
+        }
 
-    ipcMain.on('delete-recent-session', async (event, sessionIndex: number) => {
-      if (
-        !(
-          event.sender === this._welcomeView.view.webContents ||
-          event.sender === this._progressView.view.view.webContents
-        )
-      ) {
-        return;
+        await appData.removeSessionFromRecents(sessionIndex);
+
+        if (event.sender === this._welcomeView.view.webContents) {
+          this._welcomeView.updateRecentSessionList(false);
+        }
       }
+    );
 
-      await appData.removeSessionFromRecents(sessionIndex);
-
-      if (event.sender === this._welcomeView.view.webContents) {
-        this._welcomeView.updateRecentSessionList(false);
-      }
-    });
-
-    ipcMain.on(
-      'open-recent-session-with-default-env',
+    this._evm.registerEventHandler(
+      EventTypeMain.OpenRecentSessionWithDefaultEnv,
       (event, sessionIndex: number) => {
         if (event.sender !== this._progressView.view.view.webContents) {
           return;
@@ -625,15 +659,18 @@ export class SessionWindow implements IDisposable {
       }
     );
 
-    ipcMain.on('open-dropped-files', (event, fileOrFolders: string[]) => {
-      if (event.sender !== this._welcomeView.view.webContents) {
-        return;
+    this._evm.registerEventHandler(
+      EventTypeMain.OpenDroppedFiles,
+      (event, fileOrFolders: string[]) => {
+        if (event.sender !== this._welcomeView.view.webContents) {
+          return;
+        }
+
+        this.handleOpenFilesOrFolders(fileOrFolders);
       }
+    );
 
-      this.handleOpenFilesOrFolders(fileOrFolders);
-    });
-
-    ipcMain.on('show-env-select-popup', event => {
+    this._evm.registerEventHandler(EventTypeMain.ShowEnvSelectPopup, event => {
       if (
         !(
           event.sender === this._titleBarView.view.webContents ||
@@ -646,7 +683,7 @@ export class SessionWindow implements IDisposable {
       this._showEnvSelectPopup();
     });
 
-    ipcMain.on('hide-env-select-popup', event => {
+    this._evm.registerEventHandler(EventTypeMain.HideEnvSelectPopup, event => {
       if (
         !(
           this._envSelectPopup &&
@@ -659,57 +696,60 @@ export class SessionWindow implements IDisposable {
       this._hideEnvSelectPopup();
     });
 
-    ipcMain.on('set-python-path', async (event, path) => {
-      if (event.sender !== this._envSelectPopup.view.view.webContents) {
-        return;
-      }
+    this._evm.registerEventHandler(
+      EventTypeMain.SetPythonPath,
+      async (event, path) => {
+        if (event.sender !== this._envSelectPopup.view.view.webContents) {
+          return;
+        }
 
-      this._hideEnvSelectPopup();
+        this._hideEnvSelectPopup();
 
-      this._showProgressView(
-        'Restarting server using the selected Python enviroment'
-      );
-
-      const env = this._registry.addEnvironment(path);
-
-      if (!env) {
         this._showProgressView(
-          'Invalid Environment',
-          `<div class="message-row">Error! Python environment at '${path}' is not compatible.</div>
-          <div class="message-row"><a href="javascript:void(0);" onclick="sendMessageToMain('show-env-select-popup')">Select another environment</a></div>
-          <div class="message-row"><a href="javascript:void(0);" onclick="sendMessageToMain('hide-progress-view')">Cancel</a></div>`,
-          false
+          'Restarting server using the selected Python enviroment'
         );
 
-        return;
-      }
+        const env = this._registry.addEnvironment(path);
 
-      this._wsSettings.setValue(SettingType.pythonPath, path);
-      this._sessionConfig.pythonPath = path;
-
-      this._disposeSession().then(async () => {
-        try {
-          await this._createServerForSession();
-          this._contentViewType = ContentViewType.Lab;
-          this._updateContentView();
-          // TODO: add ability to update popup's env list
-          // recreate env select popup to have newly added env listed
-          this._createEnvSelectPopup();
-          this._hideProgressView();
-        } catch (error) {
-          this._setProgress(
-            'Failed to create session',
-            `<div class="message-row">${error}</div>
-            <div class="message-row">
-              <a href="javascript:void(0);" onclick="sendMessageToMain('show-welcome-view')">Go to Welcome Page</a>
-            </div>`,
+        if (!env) {
+          this._showProgressView(
+            'Invalid Environment',
+            `<div class="message-row">Error! Python environment at '${path}' is not compatible.</div>
+          <div class="message-row"><a href="javascript:void(0);" onclick="sendMessageToMain('${EventTypeMain.ShowEnvSelectPopup}')">Select another environment</a></div>
+          <div class="message-row"><a href="javascript:void(0);" onclick="sendMessageToMain('${EventTypeMain.HideProgressView}')">Cancel</a></div>`,
             false
           );
-        }
-      });
-    });
 
-    ipcMain.on('show-app-context-menu', event => {
+          return;
+        }
+
+        this._wsSettings.setValue(SettingType.pythonPath, path);
+        this._sessionConfig.pythonPath = path;
+
+        this._disposeSession().then(async () => {
+          try {
+            await this._createServerForSession();
+            this._contentViewType = ContentViewType.Lab;
+            this._updateContentView();
+            // TODO: add ability to update popup's env list
+            // recreate env select popup to have newly added env listed
+            this._createEnvSelectPopup();
+            this._hideProgressView();
+          } catch (error) {
+            this._setProgress(
+              'Failed to create session',
+              `<div class="message-row">${error}</div>
+            <div class="message-row">
+              <a href="javascript:void(0);" onclick="sendMessageToMain('${EventTypeMain.ShowWelcomeView}')">Go to Welcome Page</a>
+            </div>`,
+              false
+            );
+          }
+        });
+      }
+    );
+
+    this._evm.registerEventHandler(EventTypeMain.ShowAppContextMenu, event => {
       if (event.sender !== this._titleBarView.view.webContents) {
         return;
       }
@@ -767,44 +807,56 @@ export class SessionWindow implements IDisposable {
       });
     });
 
-    ipcMain.on('hide-progress-view', async event => {
-      if (event.sender !== this._progressView.view.view.webContents) {
-        return;
+    this._evm.registerEventHandler(
+      EventTypeMain.HideProgressView,
+      async event => {
+        if (event.sender !== this._progressView.view.view.webContents) {
+          return;
+        }
+
+        this._hideProgressView();
       }
+    );
 
-      this._hideProgressView();
-    });
+    this._evm.registerEventHandler(
+      EventTypeMain.ShowWelcomeView,
+      async event => {
+        if (event.sender !== this._progressView.view.view.webContents) {
+          return;
+        }
 
-    ipcMain.on('show-welcome-view', async event => {
-      if (event.sender !== this._progressView.view.view.webContents) {
-        return;
+        this._showWelcomeView();
       }
+    );
 
-      this._showWelcomeView();
-    });
+    this._evm.registerEventHandler(
+      EventTypeMain.ShowServerPreferences,
+      async event => {
+        if (
+          !(
+            event.sender === this._progressView.view.view.webContents ||
+            event.sender === this._welcomeView.view.webContents
+          )
+        ) {
+          return;
+        }
 
-    ipcMain.on('show-server-preferences', async event => {
-      if (
-        !(
-          event.sender === this._progressView.view.view.webContents ||
-          event.sender === this._welcomeView.view.webContents
-        )
-      ) {
-        return;
+        this._showPreferencesDialog(PreferencesDialog.Tab.Server);
       }
+    );
 
-      this._showPreferencesDialog(PreferencesDialog.Tab.Server);
-    });
+    this._evm.registerEventHandler(
+      EventTypeMain.TitleBarMouseEvent,
+      (event, type: string, params: any) => {
+        if (event.sender !== this._titleBarView.view.webContents) {
+          return;
+        }
 
-    ipcMain.on('titlebar-mouse-event', (event, type: string, params: any) => {
-      if (event.sender !== this._titleBarView.view.webContents) {
-        return;
+        if (type === 'mousedown') {
+          this._hideEnvSelectPopup();
+        }
       }
-
-      if (type === 'mousedown') {
-        this._hideEnvSelectPopup();
-      }
-    });
+    );
   }
 
   getPythonEnvironment(): IPythonEnvironment {
@@ -1102,7 +1154,7 @@ export class SessionWindow implements IDisposable {
           'Failed to create session',
           `<div class="message-row">${error}</div>
           <div class="message-row">
-            <a href="javascript:void(0);" onclick="sendMessageToMain('show-welcome-view')">Go to Welcome Page</a>
+            <a href="javascript:void(0);" onclick="sendMessageToMain('${EventTypeMain.ShowWelcomeView}')">Go to Welcome Page</a>
           </div>`,
           false
         );
@@ -1143,7 +1195,7 @@ export class SessionWindow implements IDisposable {
             'Failed to create session',
             `<div class="message-row">${error}</div>
             <div class="message-row">
-              <a href="javascript:void(0);" onclick="sendMessageToMain('show-welcome-view')">Go to Welcome Page</a>
+              <a href="javascript:void(0);" onclick="sendMessageToMain('${EventTypeMain.ShowWelcomeView}')">Go to Welcome Page</a>
             </div>`,
             false
           );
@@ -1189,10 +1241,12 @@ export class SessionWindow implements IDisposable {
           `<div class="message-row">Error! Python environment at '${pythonPath}' is not compatible.</div>
           ${
             recentSessionIndex !== undefined
-              ? `<div class="message-row"><a href="javascript:void(0);" onclick="sendMessageToMain('open-recent-session-with-default-env', ${recentSessionIndex})">Reset to default Python environment</a></div>`
+              ? `<div class="message-row"><a href="javascript:void(0);" onclick="sendMessageToMain('${EventTypeMain.OpenRecentSessionWithDefaultEnv}', ${recentSessionIndex})">Reset to default Python environment</a></div>`
               : ''
           }
-          <div class="message-row"><a href="javascript:void(0);" onclick="sendMessageToMain('hide-progress-view')">Cancel</a></div>`,
+          <div class="message-row"><a href="javascript:void(0);" onclick="sendMessageToMain('${
+            EventTypeMain.HideProgressView
+          }')">Cancel</a></div>`,
           false
         );
 
@@ -1297,7 +1351,7 @@ export class SessionWindow implements IDisposable {
             'Connection Error',
             `<div class="message-row">${error.message}</div>
             <div class="message-row">
-              <a href="javascript:void(0);" onclick="sendMessageToMain('show-welcome-view')">Go to Welcome Page</a>
+              <a href="javascript:void(0);" onclick="sendMessageToMain('${EventTypeMain.ShowWelcomeView}')">Go to Welcome Page</a>
             </div>`,
             false
           );
@@ -1307,7 +1361,7 @@ export class SessionWindow implements IDisposable {
         'Connection Error',
         `<div class="message-row">${error.message}</div>
         <div class="message-row">
-          <a href="javascript:void(0);" onclick="sendMessageToMain('show-welcome-view')">Go to Welcome Page</a>
+          <a href="javascript:void(0);" onclick="sendMessageToMain('${EventTypeMain.ShowWelcomeView}')">Go to Welcome Page</a>
         </div>`,
         false
       );
@@ -1347,10 +1401,10 @@ export class SessionWindow implements IDisposable {
           Working directory "${recentSession.workingDirectory}" does not exist anymore.
           </div>
           <div class="message-row">
-            <a href="javascript:void(0);" onclick="sendMessageToMain('delete-recent-session', ${sessionIndex}); sendMessageToMain('show-welcome-view');">Remove from recents</a>
+            <a href="javascript:void(0);" onclick="sendMessageToMain('${EventTypeMain.DeleteRecentSession}', ${sessionIndex}); sendMessageToMain('${EventTypeMain.ShowWelcomeView}');">Remove from recents</a>
           </div>
           <div class="message-row">
-            <a href="javascript:void(0);" onclick="sendMessageToMain('hide-progress-view')">Go to Welcome Page</a>
+            <a href="javascript:void(0);" onclick="sendMessageToMain('${EventTypeMain.HideProgressView}')">Go to Welcome Page</a>
           </div>`,
           false
         );
@@ -1368,7 +1422,7 @@ export class SessionWindow implements IDisposable {
           'Failed to create session',
           `<div class="message-row">${error}</div>
           <div class="message-row">
-            <a href="javascript:void(0);" onclick="sendMessageToMain('show-welcome-view')">Go to Welcome Page</a>
+            <a href="javascript:void(0);" onclick="sendMessageToMain('${EventTypeMain.ShowWelcomeView}')">Go to Welcome Page</a>
           </div>`,
           false
         );
@@ -1447,6 +1501,7 @@ export class SessionWindow implements IDisposable {
   private _envSelectPopupVisible: boolean = false;
   private _disposePromise: Promise<void>;
   private _sessionConfigChanged = new Signal<this, void>(this);
+  private _evm = new EventManager();
 }
 
 export namespace SessionWindow {

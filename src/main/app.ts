@@ -1,7 +1,7 @@
 // Copyright (c) Jupyter Development Team.
 // Distributed under the terms of the Modified BSD License.
 
-import { app, autoUpdater, dialog, ipcMain, session, shell } from 'electron';
+import { app, autoUpdater, dialog, session, shell } from 'electron';
 import log from 'electron-log';
 import { IRegistry, Registry } from './registry';
 import fetch from 'node-fetch';
@@ -34,6 +34,8 @@ import {
 import { appData } from './config/appdata';
 import { ICLIArguments, IDisposable } from './tokens';
 import { SessionConfig } from './config/sessionconfig';
+import { EventManager } from './eventmanager';
+import { EventTypeMain } from './eventtypes';
 
 export interface IApplication {
   createNewEmptySession(): void;
@@ -323,209 +325,265 @@ export class JupyterApplication implements IApplication, IDisposable {
       this._quit();
     });
 
-    ipcMain.on('set-check-for-updates-automatically', (_event, autoUpdate) => {
-      userSettings.setValue(
-        SettingType.checkForUpdatesAutomatically,
-        autoUpdate
-      );
-    });
+    this._evm.registerEventHandler(
+      EventTypeMain.SetCheckForUpdatesAutomatically,
+      (_event, autoUpdate) => {
+        userSettings.setValue(
+          SettingType.checkForUpdatesAutomatically,
+          autoUpdate
+        );
+      }
+    );
 
-    ipcMain.on('set-install-updates-automatically', (_event, install) => {
-      userSettings.setValue(SettingType.installUpdatesAutomatically, install);
-    });
+    this._evm.registerEventHandler(
+      EventTypeMain.SetInstallUpdatesAutomatically,
+      (_event, install) => {
+        userSettings.setValue(SettingType.installUpdatesAutomatically, install);
+      }
+    );
 
-    ipcMain.on('launch-installer-download-page', () => {
-      shell.openExternal(
-        'https://github.com/jupyterlab/jupyterlab-desktop/releases'
-      );
-    });
+    this._evm.registerEventHandler(
+      EventTypeMain.LaunchInstallerDownloadPage,
+      () => {
+        shell.openExternal(
+          'https://github.com/jupyterlab/jupyterlab-desktop/releases'
+        );
+      }
+    );
 
-    ipcMain.on('launch-about-jupyter-page', () => {
+    this._evm.registerEventHandler(EventTypeMain.LaunchAboutJupyterPage, () => {
       shell.openExternal('https://jupyter.org/about.html');
     });
 
-    ipcMain.on('select-working-directory', event => {
-      const currentPath = userSettings.resolvedWorkingDirectory;
+    this._evm.registerEventHandler(
+      EventTypeMain.SelectWorkingDirectory,
+      event => {
+        const currentPath = userSettings.resolvedWorkingDirectory;
 
-      dialog
-        .showOpenDialog({
-          properties: ['openDirectory', 'showHiddenFiles', 'noResolveAliases'],
-          buttonLabel: 'Choose',
-          defaultPath: currentPath
-        })
-        .then(({ filePaths }) => {
-          if (filePaths.length > 0) {
-            event.sender.send('working-directory-selected', filePaths[0]);
+        dialog
+          .showOpenDialog({
+            properties: [
+              'openDirectory',
+              'showHiddenFiles',
+              'noResolveAliases'
+            ],
+            buttonLabel: 'Choose',
+            defaultPath: currentPath
+          })
+          .then(({ filePaths }) => {
+            if (filePaths.length > 0) {
+              event.sender.send('working-directory-selected', filePaths[0]);
+            }
+          });
+      }
+    );
+
+    this._evm.registerEventHandler(
+      EventTypeMain.SetDefaultWorkingDirectory,
+      (event, path: string) => {
+        try {
+          const resolved = resolveWorkingDirectory(path, false);
+          const stat = fs.lstatSync(resolved);
+          if (stat.isDirectory()) {
+            userSettings.setValue(SettingType.defaultWorkingDirectory, path);
+            event.sender.send(
+              'set-default-working-directory-result',
+              'SUCCESS'
+            );
+          } else {
+            event.sender.send(
+              'set-default-working-directory-result',
+              'INVALID-PATH'
+            );
+            console.error('Failed to set working directory');
           }
-        });
-    });
-
-    ipcMain.on('set-default-working-directory', (event, path: string) => {
-      try {
-        const resolved = resolveWorkingDirectory(path, false);
-        const stat = fs.lstatSync(resolved);
-        if (stat.isDirectory()) {
-          userSettings.setValue(SettingType.defaultWorkingDirectory, path);
-          event.sender.send('set-default-working-directory-result', 'SUCCESS');
-        } else {
-          event.sender.send(
-            'set-default-working-directory-result',
-            'INVALID-PATH'
-          );
+        } catch (error) {
+          event.sender.send('set-default-working-directory-result', 'FAILURE');
           console.error('Failed to set working directory');
         }
-      } catch (error) {
-        event.sender.send('set-default-working-directory-result', 'FAILURE');
-        console.error('Failed to set working directory');
       }
-    });
+    );
 
-    ipcMain.on('select-python-path', (event, currentPath) => {
-      if (!currentPath) {
-        currentPath = userSettings.getValue(SettingType.pythonPath);
-        if (currentPath === '') {
-          currentPath = getBundledPythonPath();
+    this._evm.registerEventHandler(
+      EventTypeMain.SelectPythonPath,
+      (event, currentPath) => {
+        if (!currentPath) {
+          currentPath = userSettings.getValue(SettingType.pythonPath);
+          if (currentPath === '') {
+            currentPath = getBundledPythonPath();
+          }
         }
-      }
 
-      dialog
-        .showOpenDialog({
-          properties: ['openFile', 'showHiddenFiles', 'noResolveAliases'],
-          buttonLabel: 'Use Path',
-          defaultPath: currentPath
-        })
-        .then(({ filePaths }) => {
-          if (filePaths.length > 0) {
-            event.sender.send('custom-python-path-selected', filePaths[0]);
+        dialog
+          .showOpenDialog({
+            properties: ['openFile', 'showHiddenFiles', 'noResolveAliases'],
+            buttonLabel: 'Use Path',
+            defaultPath: currentPath
+          })
+          .then(({ filePaths }) => {
+            if (filePaths.length > 0) {
+              event.sender.send('custom-python-path-selected', filePaths[0]);
+            }
+          });
+      }
+    );
+
+    this._evm.registerEventHandler(
+      EventTypeMain.InstallBundledPythonEnv,
+      async event => {
+        event.sender.send('install-bundled-python-env-status', 'STARTED');
+        const platform = process.platform;
+        const isWin = platform === 'win32';
+        const appDir = getAppDir();
+        const appVersion = app.getVersion();
+        const installerPath = isWin
+          ? `${appDir}\\env_installer\\JupyterLabDesktopAppServer-${appVersion}-Windows-x86_64.exe`
+          : platform === 'darwin'
+          ? `${appDir}/env_installer/JupyterLabDesktopAppServer-${appVersion}-MacOSX-x86_64.sh`
+          : `${appDir}/env_installer/JupyterLabDesktopAppServer-${appVersion}-Linux-x86_64.sh`;
+        const installPath = getBundledPythonEnvPath();
+
+        if (fs.existsSync(installPath)) {
+          const choice = dialog.showMessageBoxSync({
+            type: 'warning',
+            message: 'Do you want to overwrite?',
+            detail: `Install path (${installPath}) is not empty. Would you like to overwrite it?`,
+            buttons: ['Overwrite', 'Cancel'],
+            defaultId: 1,
+            cancelId: 1
+          });
+
+          if (choice === 0) {
+            // allow dialog to close
+            await waitForDuration(200);
+            fs.rmdirSync(installPath, { recursive: true });
+          } else {
+            event.sender.send('install-bundled-python-env-status', 'CANCELLED');
+            return;
+          }
+        }
+
+        const installerProc = execFile(
+          installerPath,
+          ['-b', '-p', installPath],
+          {
+            shell: isWin ? 'cmd.exe' : '/bin/bash',
+            env: {
+              ...process.env
+            }
+          }
+        );
+
+        installerProc.on('exit', (exitCode: number) => {
+          if (exitCode === 0) {
+            event.sender.send('install-bundled-python-env-status', 'SUCCESS');
+          } else {
+            const message = `Installer Exit: ${exitCode}`;
+            event.sender.send(
+              'install-bundled-python-env-status',
+              'FAILURE',
+              message
+            );
+            log.error(new Error(message));
           }
         });
-    });
 
-    ipcMain.on('install-bundled-python-env', async event => {
-      event.sender.send('install-bundled-python-env-status', 'STARTED');
-      const platform = process.platform;
-      const isWin = platform === 'win32';
-      const appDir = getAppDir();
-      const appVersion = app.getVersion();
-      const installerPath = isWin
-        ? `${appDir}\\env_installer\\JupyterLabDesktopAppServer-${appVersion}-Windows-x86_64.exe`
-        : platform === 'darwin'
-        ? `${appDir}/env_installer/JupyterLabDesktopAppServer-${appVersion}-MacOSX-x86_64.sh`
-        : `${appDir}/env_installer/JupyterLabDesktopAppServer-${appVersion}-Linux-x86_64.sh`;
-      const installPath = getBundledPythonEnvPath();
-
-      if (fs.existsSync(installPath)) {
-        const choice = dialog.showMessageBoxSync({
-          type: 'warning',
-          message: 'Do you want to overwrite?',
-          detail: `Install path (${installPath}) is not empty. Would you like to overwrite it?`,
-          buttons: ['Overwrite', 'Cancel'],
-          defaultId: 1,
-          cancelId: 1
-        });
-
-        if (choice === 0) {
-          // allow dialog to close
-          await waitForDuration(200);
-          fs.rmdirSync(installPath, { recursive: true });
-        } else {
-          event.sender.send('install-bundled-python-env-status', 'CANCELLED');
-          return;
-        }
-      }
-
-      const installerProc = execFile(installerPath, ['-b', '-p', installPath], {
-        shell: isWin ? 'cmd.exe' : '/bin/bash',
-        env: {
-          ...process.env
-        }
-      });
-
-      installerProc.on('exit', (exitCode: number) => {
-        if (exitCode === 0) {
-          event.sender.send('install-bundled-python-env-status', 'SUCCESS');
-        } else {
-          const message = `Installer Exit: ${exitCode}`;
+        installerProc.on('error', (err: Error) => {
           event.sender.send(
             'install-bundled-python-env-status',
             'FAILURE',
-            message
+            err.message
           );
-          log.error(new Error(message));
-        }
-      });
+          log.error(err);
+        });
+      }
+    );
 
-      installerProc.on('error', (err: Error) => {
-        event.sender.send(
-          'install-bundled-python-env-status',
-          'FAILURE',
-          err.message
+    this._evm.registerSyncEventHandler(
+      EventTypeMain.ValidatePythonPath,
+      (event, path) => {
+        return this._registry.validatePythonEnvironmentAtPath(path);
+      }
+    );
+
+    this._evm.registerSyncEventHandler(
+      EventTypeMain.ValidateRemoteServerUrl,
+      (event, url) => {
+        return new Promise<any>((resolve, reject) => {
+          this._validateRemoteServerUrl(url)
+            .then(value => {
+              resolve({ result: 'valid' });
+            })
+            .catch(error => {
+              resolve({ result: 'invalid', error: error.message });
+            });
+        });
+      }
+    );
+
+    this._evm.registerEventHandler(
+      EventTypeMain.ShowInvalidPythonPathMessage,
+      (event, path) => {
+        const requirements = this._registry.getRequirements();
+        const reqVersions = requirements.map(
+          req => `${req.name} ${req.versionRange.format()}`
         );
-        log.error(err);
-      });
-    });
+        const reqList = reqVersions.join(', ');
+        const message = `Failed to find a compatible Python environment at the configured path "${path}". Environment Python package requirements are: ${reqList}.`;
+        dialog.showMessageBox({ message, type: 'error' });
+      }
+    );
 
-    ipcMain.handle('validate-python-path', (event, path) => {
-      return this._registry.validatePythonEnvironmentAtPath(path);
-    });
+    this._evm.registerEventHandler(
+      EventTypeMain.SetDefaultPythonPath,
+      (event, path) => {
+        userSettings.setValue(SettingType.pythonPath, path);
+      }
+    );
 
-    ipcMain.handle('validate-remote-server-url', (event, url) => {
-      return new Promise<any>((resolve, reject) => {
-        this._validateRemoteServerUrl(url)
-          .then(value => {
-            resolve({ result: 'valid' });
-          })
-          .catch(error => {
-            resolve({ result: 'invalid', error: error.message });
-          });
-      });
-    });
+    this._evm.registerEventHandler(
+      EventTypeMain.SetStartupMode,
+      (_event, mode) => {
+        userSettings.setValue(SettingType.startupMode, mode);
+      }
+    );
 
-    ipcMain.on('show-invalid-python-path-message', (event, path) => {
-      const requirements = this._registry.getRequirements();
-      const reqVersions = requirements.map(
-        req => `${req.name} ${req.versionRange.format()}`
-      );
-      const reqList = reqVersions.join(', ');
-      const message = `Failed to find a compatible Python environment at the configured path "${path}". Environment Python package requirements are: ${reqList}.`;
-      dialog.showMessageBox({ message, type: 'error' });
-    });
-
-    ipcMain.on('set-default-python-path', (event, path) => {
-      userSettings.setValue(SettingType.pythonPath, path);
-    });
-
-    ipcMain.on('set-startup-mode', (_event, mode) => {
-      userSettings.setValue(SettingType.startupMode, mode);
-    });
-
-    ipcMain.on('set-theme', (_event, theme) => {
+    this._evm.registerEventHandler(EventTypeMain.SetTheme, (_event, theme) => {
       userSettings.setValue(SettingType.theme, theme);
     });
 
-    ipcMain.on('set-sync-jupyterlab-theme', (_event, sync) => {
-      userSettings.setValue(SettingType.syncJupyterLabTheme, sync);
-    });
+    this._evm.registerEventHandler(
+      EventTypeMain.SetSyncJupyterLabTheme,
+      (_event, sync) => {
+        userSettings.setValue(SettingType.syncJupyterLabTheme, sync);
+      }
+    );
 
-    ipcMain.on('set-show-news-theme', (_event, show) => {
-      userSettings.setValue(SettingType.showNewsFeed, show);
-    });
+    this._evm.registerEventHandler(
+      EventTypeMain.SetShowNewsFeed,
+      (_event, show) => {
+        userSettings.setValue(SettingType.showNewsFeed, show);
+      }
+    );
 
-    ipcMain.on('set-frontend-mode', (_event, mode) => {
-      userSettings.setValue(SettingType.frontEndMode, mode);
-    });
+    this._evm.registerEventHandler(
+      EventTypeMain.SetFrontendMode,
+      (_event, mode) => {
+        userSettings.setValue(SettingType.frontEndMode, mode);
+      }
+    );
 
-    ipcMain.on('restart-app', _event => {
+    this._evm.registerEventHandler(EventTypeMain.RestartApp, _event => {
       app.relaunch();
       app.quit();
     });
 
-    ipcMain.on('check-for-updates', _event => {
+    this._evm.registerEventHandler(EventTypeMain.CheckForUpdates, _event => {
       this.checkForUpdates('always');
     });
 
-    ipcMain.handle(
-      'get-server-info',
+    this._evm.registerSyncEventHandler(
+      EventTypeMain.GetServerInfo,
       (event): Promise<IServerInfo> => {
         for (const sessionWindow of this._sessionWindowManager.windows) {
           if (
@@ -538,12 +596,12 @@ export class JupyterApplication implements IApplication, IDisposable {
       }
     );
 
-    ipcMain.handle('is-dark-theme', event => {
+    this._evm.registerSyncEventHandler(EventTypeMain.IsDarkTheme, event => {
       return isDarkTheme(userSettings.getValue(SettingType.theme));
     });
 
-    ipcMain.handle(
-      'clear-history',
+    this._evm.registerSyncEventHandler(
+      EventTypeMain.ClearHistory,
       async (event, options: IClearHistoryOptions) => {
         if (options.recentRemoteURLs) {
           appData.recentRemoteURLs = [];
@@ -647,4 +705,5 @@ export class JupyterApplication implements IApplication, IDisposable {
   private _serverFactory: JupyterServerFactory;
   private _disposePromise: Promise<void>;
   private _sessionWindowManager: SessionWindowManager;
+  private _evm = new EventManager();
 }

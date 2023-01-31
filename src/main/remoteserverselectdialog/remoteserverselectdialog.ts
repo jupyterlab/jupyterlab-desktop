@@ -2,10 +2,12 @@
 // Distributed under the terms of the Modified BSD License.
 
 import * as ejs from 'ejs';
-import { BrowserWindow, ipcMain } from 'electron';
+import { BrowserWindow } from 'electron';
 import * as path from 'path';
 import { appData } from '../config/appdata';
 import { ThemedWindow } from '../dialog/themedwindow';
+import { EventManager } from '../eventmanager';
+import { EventTypeMain } from '../eventtypes';
 
 export class RemoteServerSelectDialog {
   constructor(options: RemoteServerSelectDialog.IOptions) {
@@ -230,11 +232,14 @@ export class RemoteServerSelectDialog {
       this
     );
 
-    ipcMain.on('delete-recent-remote-url', this._deleteRecentRemoteUrlHandler);
+    this._evm.registerEventHandler(
+      EventTypeMain.DeleteRecentRemoteURL,
+      this._deleteRecentRemoteUrlHandler
+    );
 
     this._window.window.on('closed', () => {
-      ipcMain.off(
-        'delete-recent-remote-url',
+      this._evm.unregisterEventHandler(
+        EventTypeMain.DeleteRecentRemoteURL,
         this._deleteRecentRemoteUrlHandler
       );
     });
@@ -291,6 +296,7 @@ export class RemoteServerSelectDialog {
     url: string
   ) => void;
   private _windowReady: Promise<void>;
+  private _evm = new EventManager();
 }
 
 export namespace RemoteServerSelectDialog {

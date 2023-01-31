@@ -1,3 +1,5 @@
+import { EventTypeMain, EventTypeRenderer } from '../eventtypes';
+
 const { contextBridge, ipcRenderer } = require('electron');
 
 type InstallBundledPythonEnvStatusListener = (status: string) => void;
@@ -15,52 +17,52 @@ contextBridge.exposeInMainWorld('electronAPI', {
     };
   },
   isDarkTheme: () => {
-    return ipcRenderer.invoke('is-dark-theme');
+    return ipcRenderer.invoke(EventTypeMain.IsDarkTheme);
   },
   restartApp: () => {
-    ipcRenderer.send('restart-app');
+    ipcRenderer.send(EventTypeMain.RestartApp);
   },
   setCheckForUpdatesAutomatically: (check: boolean) => {
-    ipcRenderer.send('set-check-for-updates-automatically', check);
+    ipcRenderer.send(EventTypeMain.SetCheckForUpdatesAutomatically, check);
   },
   setInstallUpdatesAutomatically: (install: boolean) => {
-    ipcRenderer.send('set-install-updates-automatically', install);
+    ipcRenderer.send(EventTypeMain.SetInstallUpdatesAutomatically, install);
   },
   checkForUpdates: () => {
-    ipcRenderer.send('check-for-updates');
+    ipcRenderer.send(EventTypeMain.CheckForUpdates);
   },
   launchInstallerDownloadPage: () => {
-    ipcRenderer.send('launch-installer-download-page');
+    ipcRenderer.send(EventTypeMain.LaunchInstallerDownloadPage);
   },
   setStartupMode: (mode: string) => {
-    ipcRenderer.send('set-startup-mode', mode);
+    ipcRenderer.send(EventTypeMain.SetStartupMode, mode);
   },
   setTheme: (theme: string) => {
-    ipcRenderer.send('set-theme', theme);
+    ipcRenderer.send(EventTypeMain.SetTheme, theme);
   },
   setSyncJupyterLabTheme: (sync: boolean) => {
-    ipcRenderer.send('set-sync-jupyterlab-theme', sync);
+    ipcRenderer.send(EventTypeMain.SetSyncJupyterLabTheme, sync);
   },
   setShowNewsFeed: (show: string) => {
-    ipcRenderer.send('set-show-news-theme', show);
+    ipcRenderer.send(EventTypeMain.SetShowNewsFeed, show);
   },
   setFrontEndMode: (mode: string) => {
-    ipcRenderer.send('set-frontend-mode', mode);
+    ipcRenderer.send(EventTypeMain.SetFrontendMode, mode);
   },
   selectWorkingDirectory: () => {
-    ipcRenderer.send('select-working-directory');
+    ipcRenderer.send(EventTypeMain.SelectWorkingDirectory);
   },
   onWorkingDirectorySelected: (callback: WorkingDirectorySelectedListener) => {
     onWorkingDirectorySelectedListener = callback;
   },
   setDefaultWorkingDirectory: (path: string) => {
-    ipcRenderer.send('set-default-working-directory', path);
+    ipcRenderer.send(EventTypeMain.SetDefaultWorkingDirectory, path);
   },
   installBundledPythonEnv: () => {
-    ipcRenderer.send('install-bundled-python-env');
+    ipcRenderer.send(EventTypeMain.InstallBundledPythonEnv);
   },
   updateBundledPythonEnv: () => {
-    ipcRenderer.send('install-bundled-python-env');
+    ipcRenderer.send(EventTypeMain.InstallBundledPythonEnv);
   },
   onInstallBundledPythonEnvStatus: (
     callback: InstallBundledPythonEnvStatusListener
@@ -68,38 +70,41 @@ contextBridge.exposeInMainWorld('electronAPI', {
     onInstallBundledPythonEnvStatusListener = callback;
   },
   selectPythonPath: () => {
-    ipcRenderer.send('select-python-path');
+    ipcRenderer.send(EventTypeMain.SelectPythonPath);
   },
   onCustomPythonPathSelected: (callback: CustomPythonPathSelectedListener) => {
     onCustomPythonPathSelectedListener = callback;
   },
   setDefaultPythonPath: (path: string) => {
-    ipcRenderer.send('set-default-python-path', path);
+    ipcRenderer.send(EventTypeMain.SetDefaultPythonPath, path);
   },
   validatePythonPath: (path: string) => {
-    return ipcRenderer.invoke('validate-python-path', path);
+    return ipcRenderer.invoke(EventTypeMain.ValidatePythonPath, path);
   },
   showInvalidPythonPathMessage: (path: string) => {
-    ipcRenderer.send('show-invalid-python-path-message', path);
+    ipcRenderer.send(EventTypeMain.ShowInvalidPythonPathMessage, path);
   },
   clearHistory: (options: any) => {
-    return ipcRenderer.invoke('clear-history', options);
+    return ipcRenderer.invoke(EventTypeMain.ClearHistory, options);
   }
 });
 
-ipcRenderer.on('working-directory-selected', (event, path) => {
+ipcRenderer.on(EventTypeRenderer.WorkingDirectorySelected, (event, path) => {
   if (onWorkingDirectorySelectedListener) {
     onWorkingDirectorySelectedListener(path);
   }
 });
 
-ipcRenderer.on('install-bundled-python-env-status', (event, result) => {
-  if (onInstallBundledPythonEnvStatusListener) {
-    onInstallBundledPythonEnvStatusListener(result);
+ipcRenderer.on(
+  EventTypeRenderer.InstallBundledPythonEnvStatus,
+  (event, result) => {
+    if (onInstallBundledPythonEnvStatusListener) {
+      onInstallBundledPythonEnvStatusListener(result);
+    }
   }
-});
+);
 
-ipcRenderer.on('custom-python-path-selected', (event, path) => {
+ipcRenderer.on(EventTypeRenderer.CustomPythonPathSelected, (event, path) => {
   if (onCustomPythonPathSelectedListener) {
     onCustomPythonPathSelectedListener(path);
   }

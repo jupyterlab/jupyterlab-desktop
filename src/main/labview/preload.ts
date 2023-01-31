@@ -1,11 +1,13 @@
+import { EventTypeMain } from '../eventtypes';
+
 const { contextBridge, ipcRenderer } = require('electron');
 
 contextBridge.exposeInMainWorld('electronAPI', {
   getServerInfo: () => {
-    return ipcRenderer.invoke('get-server-info');
+    return ipcRenderer.invoke(EventTypeMain.GetServerInfo);
   },
   broadcastLabUIReady: () => {
-    ipcRenderer.send('lab-ui-ready');
+    ipcRenderer.send(EventTypeMain.LabUIReady);
   }
 });
 

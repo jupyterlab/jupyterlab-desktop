@@ -1,3 +1,5 @@
+import { EventTypeMain } from '../eventtypes';
+
 const { contextBridge, ipcRenderer } = require('electron');
 
 contextBridge.exposeInMainWorld('electronAPI', {
@@ -7,10 +9,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
     };
   },
   isDarkTheme: () => {
-    return ipcRenderer.invoke('is-dark-theme');
+    return ipcRenderer.invoke(EventTypeMain.IsDarkTheme);
   },
   launchAboutJupyterPage: () => {
-    ipcRenderer.send('launch-about-jupyter-page');
+    ipcRenderer.send(EventTypeMain.LaunchAboutJupyterPage);
   }
 });
 
