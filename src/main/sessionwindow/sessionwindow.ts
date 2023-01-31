@@ -529,7 +529,7 @@ export class SessionWindow implements IDisposable {
               <a href="javascript:void(0);" onclick="sendMessageToMain('${EventTypeMain.ShowWelcomeView}')">Go to Welcome Page</a>
             </div>
             <div class="message-row">
-              <a href="javascript:void(0);" onclick="sendMessageToMain('install-bundled-python-env')">Install / update Python environment using the bundled installer</a>
+              <a href="javascript:void(0);" onclick="sendMessageToMain('${EventTypeMain.InstallBundledPythonEnv}')">Install / update Python environment using the bundled installer</a>
             </div>
             <div class="message-row">
               <a href="javascript:void(0);" onclick="sendMessageToMain('${EventTypeMain.ShowServerPreferences}')">Change the default Python environment</a>

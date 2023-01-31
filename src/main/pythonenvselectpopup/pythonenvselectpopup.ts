@@ -4,6 +4,7 @@
 import * as ejs from 'ejs';
 import * as path from 'path';
 import { ThemedView } from '../dialog/themedview';
+import { EventTypeRenderer } from '../eventtypes';
 import { IPythonEnvironment } from '../tokens';
 
 export class PythonEnvironmentSelectPopup {
@@ -203,7 +204,7 @@ export class PythonEnvironmentSelectPopup {
 
   setCurrentPythonPath(currentPythonPath: string) {
     this._view.view.webContents.send(
-      'set-current-python-path',
+      EventTypeRenderer.SetCurrentPythonPath,
       currentPythonPath
     );
   }

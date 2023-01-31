@@ -7,7 +7,7 @@ import * as path from 'path';
 import { appData } from '../config/appdata';
 import { ThemedWindow } from '../dialog/themedwindow';
 import { EventManager } from '../eventmanager';
-import { EventTypeMain } from '../eventtypes';
+import { EventTypeMain, EventTypeRenderer } from '../eventtypes';
 
 export class RemoteServerSelectDialog {
   constructor(options: RemoteServerSelectDialog.IOptions) {
@@ -262,7 +262,7 @@ export class RemoteServerSelectDialog {
   updateRecentRemoteURLs() {
     this._windowReady.then(() => {
       this._window.window.webContents.send(
-        'update-recent-remote-urls',
+        EventTypeRenderer.UpdateRecentRemoteURLs,
         appData.recentRemoteURLs
       );
     });
@@ -271,7 +271,7 @@ export class RemoteServerSelectDialog {
   setRunningServerList(runningServers: string[]) {
     this._windowReady.then(() => {
       this._window.window.webContents.send(
-        'set-running-server-list',
+        EventTypeRenderer.SetRunningServerList,
         runningServers
       );
     });

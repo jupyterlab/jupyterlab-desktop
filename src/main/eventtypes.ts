@@ -69,5 +69,6 @@ export enum EventTypeRenderer {
   SetRecentSessionList = 'set-recent-session-list',
   SetNewsList = 'set-news-list',
   SetNotificationMessage = 'set-notification-message',
-  DisabledLocalServerActions = 'disable-local-server-actions'
+  DisableLocalServerActions = 'disable-local-server-actions',
+  SetDefaultWorkingDirectoryResult = 'set-default-working-directory-result'
 }

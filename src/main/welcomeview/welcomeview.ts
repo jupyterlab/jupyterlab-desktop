@@ -10,7 +10,7 @@ import { XMLParser } from 'fast-xml-parser';
 import { SettingType, userSettings } from '../config/settings';
 import { appData, INewsItem } from '../config/appdata';
 import { IRegistry } from '../registry';
-import { EventTypeMain } from '../eventtypes';
+import { EventTypeMain, EventTypeRenderer } from '../eventtypes';
 
 const maxRecentItems = 5;
 
@@ -669,7 +669,7 @@ export class WelcomeView {
             <use href="#triangle-exclamation" />
           </svg>
         </div>
-        Python environment not found. <a href="javascript:void(0);" onclick="sendMessageToMain('install-bundled-python-env')">Install using the bundled installer</a> or <a href="javascript:void(0);" onclick="sendMessageToMain('${EventTypeMain.ShowServerPreferences}')">Change the default Python environment</a>
+        Python environment not found. <a href="javascript:void(0);" onclick="sendMessageToMain('${EventTypeMain.InstallBundledPythonEnv}')">Install using the bundled installer</a> or <a href="javascript:void(0);" onclick="sendMessageToMain('${EventTypeMain.ShowServerPreferences}')">Change the default Python environment</a>
         `,
         true
       );
@@ -678,14 +678,14 @@ export class WelcomeView {
 
   disableLocalServerActions() {
     this._viewReady.then(() => {
-      this._view.webContents.send('disable-local-server-actions');
+      this._view.webContents.send(EventTypeRenderer.DisableLocalServerActions);
     });
   }
 
   showNotification(message: string, closable: boolean) {
     this._viewReady.then(() => {
       this._view.webContents.send(
-        'set-notification-message',
+        EventTypeRenderer.SetNotificationMessage,
         message,
         closable
       );
@@ -717,7 +717,7 @@ export class WelcomeView {
             }
           }
 
-          this._view.webContents.send('set-news-list', newsList);
+          this._view.webContents.send(EventTypeRenderer.SetNewsList, newsList);
 
           WelcomeView._newsList = newsList;
           appData.newsList = [...newsList];
@@ -779,7 +779,7 @@ export class WelcomeView {
 
     this._viewReady.then(() => {
       this._view.webContents.send(
-        'set-recent-session-list',
+        EventTypeRenderer.SetRecentSessionList,
         recentSessionList,
         resetCollapseState
       );

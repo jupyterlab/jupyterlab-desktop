@@ -107,7 +107,7 @@ ipcRenderer.on(
   }
 );
 
-ipcRenderer.on(EventTypeRenderer.DisabledLocalServerActions, event => {
+ipcRenderer.on(EventTypeRenderer.DisableLocalServerActions, event => {
   if (onDisableLocalServerActionsListener) {
     onDisableLocalServerActionsListener();
   }

@@ -35,7 +35,7 @@ import { appData } from './config/appdata';
 import { ICLIArguments, IDisposable } from './tokens';
 import { SessionConfig } from './config/sessionconfig';
 import { EventManager } from './eventmanager';
-import { EventTypeMain } from './eventtypes';
+import { EventTypeMain, EventTypeRenderer } from './eventtypes';
 
 export interface IApplication {
   createNewEmptySession(): void;
@@ -372,7 +372,10 @@ export class JupyterApplication implements IApplication, IDisposable {
           })
           .then(({ filePaths }) => {
             if (filePaths.length > 0) {
-              event.sender.send('working-directory-selected', filePaths[0]);
+              event.sender.send(
+                EventTypeRenderer.WorkingDirectorySelected,
+                filePaths[0]
+              );
             }
           });
       }
@@ -387,18 +390,21 @@ export class JupyterApplication implements IApplication, IDisposable {
           if (stat.isDirectory()) {
             userSettings.setValue(SettingType.defaultWorkingDirectory, path);
             event.sender.send(
-              'set-default-working-directory-result',
+              EventTypeRenderer.SetDefaultWorkingDirectoryResult,
               'SUCCESS'
             );
           } else {
             event.sender.send(
-              'set-default-working-directory-result',
+              EventTypeRenderer.SetDefaultWorkingDirectoryResult,
               'INVALID-PATH'
             );
             console.error('Failed to set working directory');
           }
         } catch (error) {
-          event.sender.send('set-default-working-directory-result', 'FAILURE');
+          event.sender.send(
+            EventTypeRenderer.SetDefaultWorkingDirectoryResult,
+            'FAILURE'
+          );
           console.error('Failed to set working directory');
         }
       }
@@ -422,7 +428,10 @@ export class JupyterApplication implements IApplication, IDisposable {
           })
           .then(({ filePaths }) => {
             if (filePaths.length > 0) {
-              event.sender.send('custom-python-path-selected', filePaths[0]);
+              event.sender.send(
+                EventTypeRenderer.CustomPythonPathSelected,
+                filePaths[0]
+              );
             }
           });
       }
@@ -431,7 +440,10 @@ export class JupyterApplication implements IApplication, IDisposable {
     this._evm.registerEventHandler(
       EventTypeMain.InstallBundledPythonEnv,
       async event => {
-        event.sender.send('install-bundled-python-env-status', 'STARTED');
+        event.sender.send(
+          EventTypeRenderer.InstallBundledPythonEnvStatus,
+          'STARTED'
+        );
         const platform = process.platform;
         const isWin = platform === 'win32';
         const appDir = getAppDir();
@@ -458,7 +470,10 @@ export class JupyterApplication implements IApplication, IDisposable {
             await waitForDuration(200);
             fs.rmdirSync(installPath, { recursive: true });
           } else {
-            event.sender.send('install-bundled-python-env-status', 'CANCELLED');
+            event.sender.send(
+              EventTypeRenderer.InstallBundledPythonEnvStatus,
+              'CANCELLED'
+            );
             return;
           }
         }
@@ -476,11 +491,14 @@ export class JupyterApplication implements IApplication, IDisposable {
 
         installerProc.on('exit', (exitCode: number) => {
           if (exitCode === 0) {
-            event.sender.send('install-bundled-python-env-status', 'SUCCESS');
+            event.sender.send(
+              EventTypeRenderer.InstallBundledPythonEnvStatus,
+              'SUCCESS'
+            );
           } else {
             const message = `Installer Exit: ${exitCode}`;
             event.sender.send(
-              'install-bundled-python-env-status',
+              EventTypeRenderer.InstallBundledPythonEnvStatus,
               'FAILURE',
               message
             );
@@ -490,7 +508,7 @@ export class JupyterApplication implements IApplication, IDisposable {
 
         installerProc.on('error', (err: Error) => {
           event.sender.send(
-            'install-bundled-python-env-status',
+            EventTypeRenderer.InstallBundledPythonEnvStatus,
             'FAILURE',
             err.message
           );

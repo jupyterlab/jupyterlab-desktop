@@ -5,6 +5,7 @@ import * as path from 'path';
 import * as ejs from 'ejs';
 import * as fs from 'fs';
 import { ThemedView } from '../dialog/themedview';
+import { EventTypeMain, EventTypeRenderer } from '../eventtypes';
 
 export class ProgressView {
   constructor(options: ProgressView.IOptions) {
@@ -120,7 +121,7 @@ export class ProgressView {
 
         if (status === 'SUCCESS') {
           setTimeout(() => {
-            sendMessageToMain('restart-app');
+            sendMessageToMain('${EventTypeMain.RestartApp}');
           }, 2000);
         }
       });
@@ -148,7 +149,7 @@ export class ProgressView {
   setProgress(title: string, detail: string, showAnimation: boolean) {
     this._viewReady.then(() => {
       this._view.view.webContents.send(
-        'show-progress',
+        EventTypeRenderer.ShowProgress,
         title,
         detail,
         showAnimation
