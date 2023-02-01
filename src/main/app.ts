@@ -21,6 +21,8 @@ import { IServerFactory, JupyterServerFactory } from './server';
 import { connectAndGetServerInfo, IJupyterServerInfo } from './connect';
 import { UpdateDialog } from './updatedialog/updatedialog';
 import {
+  DEFAULT_WIN_HEIGHT,
+  DEFAULT_WIN_WIDTH,
   resolveWorkingDirectory,
   SettingType,
   StartupMode,
@@ -32,7 +34,7 @@ import {
   SessionWindow
 } from './sessionwindow/sessionwindow';
 import { appData } from './config/appdata';
-import { ICLIArguments, IDisposable } from './tokens';
+import { ICLIArguments, IDisposable, IRect } from './tokens';
 import { SessionConfig } from './config/sessionconfig';
 import { EventManager } from './eventmanager';
 import { EventTypeMain, EventTypeRenderer } from './eventtypes';
@@ -50,6 +52,9 @@ interface IClearHistoryOptions {
   recentSessions: boolean;
   userSetPythonEnvs: boolean;
 }
+
+const minimumWindowSpacing = 15;
+const windowSpacing = 30;
 
 class SessionWindowManager implements IDisposable {
   constructor(options: SessionWindowManager.IOptions) {
@@ -92,18 +97,61 @@ class SessionWindowManager implements IDisposable {
     return count;
   }
 
+  private _getNewWindowRect(): IRect {
+    // cannot require the screen module until the app is ready, so require here
+    const { screen } = require('electron');
+    const primaryDisplay = screen.getPrimaryDisplay();
+    const {
+      width: screenWidth,
+      height: screenHeight
+    } = primaryDisplay.workAreaSize;
+    const width = DEFAULT_WIN_WIDTH;
+    const height = DEFAULT_WIN_HEIGHT;
+    const x = Math.round((screenWidth - width) / 2);
+    const y = Math.round((screenHeight - height) / 2);
+
+    return { x, y, width, height };
+  }
+
+  private _isRectTooCloseToExistingWindows(rect: IRect): boolean {
+    for (const sessionWindow of this._windows) {
+      const winBounds = sessionWindow.window.getBounds();
+      if (
+        Math.abs(winBounds.x - rect.x) < minimumWindowSpacing ||
+        Math.abs(winBounds.y - rect.y) < minimumWindowSpacing
+      ) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
   createNew(
     contentView?: ContentViewType,
     sessionConfig?: SessionConfig,
     restorePosition?: boolean
   ): SessionWindow {
+    let rect: IRect;
+
+    if (!restorePosition) {
+      rect = this._getNewWindowRect();
+
+      // if any other window has top left too close to the new,
+      // move the new window rect
+      while (this._isRectTooCloseToExistingWindows(rect)) {
+        rect.x += windowSpacing;
+        rect.y += windowSpacing;
+      }
+    }
+
     const window = new SessionWindow({
       app: this._options.app,
       registry: this._options.registry,
       serverFactory: this._options.serverFactory,
       contentView: contentView,
       sessionConfig,
-      center: !restorePosition
+      rect
     });
     window.load();
 

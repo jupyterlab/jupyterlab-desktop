@@ -77,3 +77,10 @@ export interface ICLIArguments {
   pythonPath: string | unknown;
   workingDir: string | unknown;
 }
+
+export interface IRect {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}

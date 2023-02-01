@@ -29,7 +29,12 @@ import {
   LightThemeBGColor
 } from '../utils';
 import { IServerFactory, JupyterServer, JupyterServerFactory } from '../server';
-import { IDisposable, IPythonEnvironment, IVersionContainer } from '../tokens';
+import {
+  IDisposable,
+  IPythonEnvironment,
+  IRect,
+  IVersionContainer
+} from '../tokens';
 import { IRegistry } from '../registry';
 import { IApplication } from '../app';
 import { PreferencesDialog } from '../preferencesdialog/preferencesdialog';
@@ -96,16 +101,24 @@ export class SessionWindow implements IDisposable {
       this._wsSettings.getValue(SettingType.theme)
     );
 
-    const x = this._sessionConfig?.x || 0;
-    const y = this._sessionConfig?.y || 0;
-    const width = this._sessionConfig?.width || DEFAULT_WIN_WIDTH;
-    const height = this._sessionConfig?.height || DEFAULT_WIN_HEIGHT;
+    let rect: IRect;
+
+    if (options.rect) {
+      rect = options.rect;
+    } else {
+      rect = {
+        x: this._sessionConfig?.x || 100,
+        y: this._sessionConfig?.y || 100,
+        width: this._sessionConfig?.width || DEFAULT_WIN_WIDTH,
+        height: this._sessionConfig?.height || DEFAULT_WIN_HEIGHT
+      };
+    }
 
     this._window = new BrowserWindow({
-      x,
-      y,
-      width,
-      height,
+      x: rect.x,
+      y: rect.y,
+      width: rect.width,
+      height: rect.height,
       minWidth: 400,
       minHeight: 300,
       show: false,
@@ -119,26 +132,9 @@ export class SessionWindow implements IDisposable {
     });
 
     this._window.setMenuBarVisibility(false);
-
-    if (
-      this._sessionConfig?.x !== undefined &&
-      this._sessionConfig?.y !== undefined
-    ) {
-      this._window.setBounds({
-        x: this._sessionConfig.x,
-        y: this._sessionConfig.y,
-        height: this._sessionConfig.height,
-        width: this._sessionConfig.width
-      });
-    }
-
-    if (options.center !== false) {
-      this._window.center();
-    }
     this._window.show();
 
     this._registerListeners();
-
     this._createProgressView();
     this._createEnvSelectPopup();
   }
@@ -1530,6 +1526,6 @@ export namespace SessionWindow {
     registry: IRegistry;
     contentView: ContentViewType;
     sessionConfig?: SessionConfig;
-    center?: boolean;
+    rect?: IRect;
   }
 }
