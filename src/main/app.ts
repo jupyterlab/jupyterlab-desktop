@@ -96,13 +96,12 @@ class SessionWindowManager implements IDisposable {
 
     this._windows.push(window);
 
-    window.sessionConfigChanged.connect(() => {
-      this.syncSessionData();
-    });
+    window.sessionConfigChanged.connect(this.syncSessionData, this);
 
     window.window.on('close', async event => {
       const index = this._windows.indexOf(window);
       if (index !== -1) {
+        window.sessionConfigChanged.disconnect(this.syncSessionData, this);
         await window.dispose();
         this._windows.splice(index, 1);
       }

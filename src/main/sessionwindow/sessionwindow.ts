@@ -294,6 +294,10 @@ export class SessionWindow implements IDisposable {
 
     this._disposePromise = new Promise<void>(resolve => {
       this._evm.dispose();
+      appData.recentSessionsChanged.disconnect(
+        this._recentSessionsChangedHandler,
+        this
+      );
 
       this._disposeSession().then(() => {
         this._disposePromise = null;
@@ -445,10 +449,15 @@ export class SessionWindow implements IDisposable {
     return this._registry;
   }
 
+  private _recentSessionsChangedHandler() {
+    this._welcomeView?.updateRecentSessionList(true);
+  }
+
   private _registerListeners() {
-    appData.recentSessionsChanged.connect(() => {
-      this._welcomeView?.updateRecentSessionList(true);
-    });
+    appData.recentSessionsChanged.connect(
+      this._recentSessionsChangedHandler,
+      this
+    );
 
     this._window.on('close', async () => {
       await this.dispose();
