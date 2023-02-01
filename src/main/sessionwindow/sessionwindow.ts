@@ -1448,6 +1448,8 @@ export class SessionWindow implements IDisposable {
 
   private _newWindow() {
     this._app.createNewEmptySession();
+    // keep a free server up
+    this._app.createFreeServersIfNeeded();
   }
 
   private _closeSession() {
@@ -1462,7 +1464,7 @@ export class SessionWindow implements IDisposable {
       showWelcome();
       this._sessionConfigChanged.emit();
       // keep a free server up
-      this._serverFactory.createFreeServerIfNoneExists();
+      this._app.createFreeServersIfNeeded();
     });
   }
 

@@ -39,6 +39,7 @@ import { EventTypeMain, EventTypeRenderer } from './eventtypes';
 
 export interface IApplication {
   createNewEmptySession(): void;
+  createFreeServersIfNeeded(): void;
   checkForUpdates(showDialog: 'on-new-version' | 'always'): void;
   cliArgs: ICLIArguments;
 }
@@ -77,6 +78,18 @@ class SessionWindowManager implements IDisposable {
     }
 
     return this.createNewEmptyWindow();
+  }
+
+  getEmptyWindowCount(): number {
+    let count = 0;
+
+    this._windows.forEach(sessionWindow => {
+      if (sessionWindow.contentViewType === ContentViewType.Welcome) {
+        count++;
+      }
+    });
+
+    return count;
   }
 
   createNew(
@@ -200,6 +213,16 @@ export class JupyterApplication implements IApplication, IDisposable {
 
   createNewEmptySession() {
     this._sessionWindowManager.createNewEmptyWindow();
+  }
+
+  createFreeServersIfNeeded() {
+    const emptyWindowCount = this._sessionWindowManager.getEmptyWindowCount();
+    if (emptyWindowCount > 0) {
+      this._serverFactory.createFreeServersIfNeeded(
+        undefined,
+        emptyWindowCount
+      );
+    }
   }
 
   get cliArgs(): ICLIArguments {

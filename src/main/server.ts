@@ -497,8 +497,9 @@ export interface IServerFactory {
    *
    * @return the factory item.
    */
-  createFreeServerIfNoneExists: (
-    opts?: JupyterServer.IOptions
+  createFreeServersIfNeeded: (
+    opts?: JupyterServer.IOptions,
+    freeCount?: number
   ) => Promise<void>;
 
   /**
@@ -559,11 +560,12 @@ export class JupyterServerFactory implements IServerFactory, IDisposable {
     this._registry = registry;
   }
 
-  async createFreeServerIfNoneExists(
-    opts?: JupyterServer.IOptions
+  async createFreeServersIfNeeded(
+    opts?: JupyterServer.IOptions,
+    freeCount: number = 1
   ): Promise<void> {
-    const exists = this._findUnusedServer(opts);
-    if (!exists) {
+    const unusedServerCount = this._geUnusedServerCount();
+    for (let i = unusedServerCount; i < freeCount; ++i) {
       this.createFreeServer(opts);
     }
   }
@@ -728,6 +730,25 @@ export class JupyterServerFactory implements IServerFactory, IDisposable {
     );
 
     return result;
+  }
+
+  private _geUnusedServerCount(opts?: JupyterServer.IOptions): number {
+    let count = 0;
+
+    const workingDir =
+      opts?.workingDirectory || userSettings.resolvedWorkingDirectory;
+
+    this._servers.forEach(server => {
+      if (
+        !server.used &&
+        server.server.info.workingDirectory === workingDir &&
+        server.server.info.environment.path === opts?.environment?.path
+      ) {
+        count++;
+      }
+    });
+
+    return count;
   }
 
   private _removeFailedServer(factoryId: number): void {
