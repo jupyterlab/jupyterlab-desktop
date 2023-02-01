@@ -475,7 +475,7 @@ export class SessionWindow implements IDisposable {
     this._evm.registerEventHandler(
       EventTypeMain.OpenNewsLink,
       (event, link) => {
-        if (event.sender !== this._welcomeView.view.webContents) {
+        if (event.sender !== this._welcomeView?.view?.webContents) {
           return;
         }
 
@@ -491,28 +491,28 @@ export class SessionWindow implements IDisposable {
     );
 
     this._evm.registerEventHandler(EventTypeMain.MinimizeWindow, event => {
-      if (event.sender !== this._titleBarView.view.webContents) {
+      if (event.sender !== this._titleBarView?.view?.webContents) {
         return;
       }
       this._window.minimize();
     });
 
     this._evm.registerEventHandler(EventTypeMain.MaximizeWindow, event => {
-      if (event.sender !== this._titleBarView.view.webContents) {
+      if (event.sender !== this._titleBarView?.view?.webContents) {
         return;
       }
       this._window.maximize();
     });
 
     this._evm.registerEventHandler(EventTypeMain.RestoreWindow, event => {
-      if (event.sender !== this._titleBarView.view.webContents) {
+      if (event.sender !== this._titleBarView?.view?.webContents) {
         return;
       }
       this._window.unmaximize();
     });
 
     this._evm.registerEventHandler(EventTypeMain.CloseWindow, event => {
-      if (event.sender !== this._titleBarView.view.webContents) {
+      if (event.sender !== this._titleBarView?.view?.webContents) {
         return;
       }
       this._window.close();
@@ -521,7 +521,7 @@ export class SessionWindow implements IDisposable {
     this._evm.registerEventHandler(
       EventTypeMain.CreateNewSession,
       async (event, type: 'notebook' | 'blank') => {
-        if (event.sender !== this.contentView.webContents) {
+        if (event.sender !== this.contentView?.webContents) {
           return;
         }
 
@@ -580,7 +580,7 @@ export class SessionWindow implements IDisposable {
     this._evm.registerEventHandler(
       EventTypeMain.OpenFileOrFolder,
       async event => {
-        if (event.sender !== this.contentView.webContents) {
+        if (event.sender !== this.contentView?.webContents) {
           return;
         }
 
@@ -589,7 +589,7 @@ export class SessionWindow implements IDisposable {
     );
 
     this._evm.registerEventHandler(EventTypeMain.OpenFile, async event => {
-      if (event.sender !== this.contentView.webContents) {
+      if (event.sender !== this.contentView?.webContents) {
         return;
       }
 
@@ -597,7 +597,7 @@ export class SessionWindow implements IDisposable {
     });
 
     this._evm.registerEventHandler(EventTypeMain.OpenFolder, async event => {
-      if (event.sender !== this.contentView.webContents) {
+      if (event.sender !== this.contentView?.webContents) {
         return;
       }
 
@@ -607,7 +607,7 @@ export class SessionWindow implements IDisposable {
     this._evm.registerEventHandler(
       EventTypeMain.CreateNewRemoteSession,
       async event => {
-        if (event.sender !== this.contentView.webContents) {
+        if (event.sender !== this.contentView?.webContents) {
           return;
         }
 
@@ -619,7 +619,7 @@ export class SessionWindow implements IDisposable {
       EventTypeMain.SetRemoteServerOptions,
       (event, remoteUrl: string, persistSessionData: boolean) => {
         if (
-          event.sender !== this._remoteServerSelectDialog.window.webContents
+          event.sender !== this._remoteServerSelectDialog?.window?.webContents
         ) {
           return;
         }
@@ -651,8 +651,8 @@ export class SessionWindow implements IDisposable {
       async (event, sessionIndex: number) => {
         if (
           !(
-            event.sender === this._welcomeView.view.webContents ||
-            event.sender === this._progressView.view.view.webContents
+            event.sender === this._welcomeView?.view?.webContents ||
+            event.sender === this._progressView?.view?.view?.webContents
           )
         ) {
           return;
@@ -669,7 +669,7 @@ export class SessionWindow implements IDisposable {
     this._evm.registerEventHandler(
       EventTypeMain.OpenRecentSessionWithDefaultEnv,
       (event, sessionIndex: number) => {
-        if (event.sender !== this._progressView.view.view.webContents) {
+        if (event.sender !== this._progressView?.view?.view?.webContents) {
           return;
         }
 
@@ -680,7 +680,7 @@ export class SessionWindow implements IDisposable {
     this._evm.registerEventHandler(
       EventTypeMain.OpenDroppedFiles,
       (event, fileOrFolders: string[]) => {
-        if (event.sender !== this._welcomeView.view.webContents) {
+        if (event.sender !== this._welcomeView?.view?.webContents) {
           return;
         }
 
@@ -691,8 +691,8 @@ export class SessionWindow implements IDisposable {
     this._evm.registerEventHandler(EventTypeMain.ShowEnvSelectPopup, event => {
       if (
         !(
-          event.sender === this._titleBarView.view.webContents ||
-          event.sender === this._progressView.view.view.webContents
+          event.sender === this._titleBarView?.view?.webContents ||
+          event.sender === this._progressView?.view?.view?.webContents
         )
       ) {
         return;
@@ -702,12 +702,7 @@ export class SessionWindow implements IDisposable {
     });
 
     this._evm.registerEventHandler(EventTypeMain.HideEnvSelectPopup, event => {
-      if (
-        !(
-          this._envSelectPopup &&
-          event.sender === this._envSelectPopup.view.view.webContents
-        )
-      ) {
+      if (event.sender !== this._envSelectPopup?.view?.view?.webContents) {
         return;
       }
 
@@ -717,7 +712,7 @@ export class SessionWindow implements IDisposable {
     this._evm.registerEventHandler(
       EventTypeMain.SetPythonPath,
       async (event, path) => {
-        if (event.sender !== this._envSelectPopup.view.view.webContents) {
+        if (event.sender !== this._envSelectPopup?.view?.view?.webContents) {
           return;
         }
 
@@ -765,7 +760,7 @@ export class SessionWindow implements IDisposable {
     );
 
     this._evm.registerEventHandler(EventTypeMain.ShowAppContextMenu, event => {
-      if (event.sender !== this._titleBarView.view.webContents) {
+      if (event.sender !== this._titleBarView?.view?.webContents) {
         return;
       }
 
@@ -825,7 +820,7 @@ export class SessionWindow implements IDisposable {
     this._evm.registerEventHandler(
       EventTypeMain.HideProgressView,
       async event => {
-        if (event.sender !== this._progressView.view.view.webContents) {
+        if (event.sender !== this._progressView?.view?.view?.webContents) {
           return;
         }
 
@@ -836,7 +831,7 @@ export class SessionWindow implements IDisposable {
     this._evm.registerEventHandler(
       EventTypeMain.ShowWelcomeView,
       async event => {
-        if (event.sender !== this._progressView.view.view.webContents) {
+        if (event.sender !== this._progressView?.view?.view?.webContents) {
           return;
         }
 
@@ -849,8 +844,8 @@ export class SessionWindow implements IDisposable {
       async event => {
         if (
           !(
-            event.sender === this._progressView.view.view.webContents ||
-            event.sender === this._welcomeView.view.webContents
+            event.sender === this._progressView?.view?.view?.webContents ||
+            event.sender === this._welcomeView?.view?.webContents
           )
         ) {
           return;
@@ -863,7 +858,7 @@ export class SessionWindow implements IDisposable {
     this._evm.registerEventHandler(
       EventTypeMain.TitleBarMouseEvent,
       (event, type: string, params: any) => {
-        if (event.sender !== this._titleBarView.view.webContents) {
+        if (event.sender !== this._titleBarView?.view?.webContents) {
           return;
         }
 
