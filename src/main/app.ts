@@ -117,6 +117,7 @@ class SessionWindowManager implements IDisposable {
         window.sessionConfigChanged.disconnect(this.syncSessionData, this);
         await window.dispose();
         this._windows.splice(index, 1);
+        this.syncSessionData();
       }
     });
 
