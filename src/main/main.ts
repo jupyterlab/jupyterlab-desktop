@@ -50,9 +50,6 @@ function processArgs(argv: string[]) {
       .alias({
         h: 'help'
       })
-      // define Electron / macOS boolean options as hidden to prevent them disturbing file list
-      .option('allow-file-access-from-files', { type: 'boolean', hidden: true })
-      .option('enable-avfoundation', { type: 'boolean', hidden: true })
       .parseSync()
   );
 }
