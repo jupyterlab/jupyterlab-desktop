@@ -100,13 +100,14 @@ class SessionWindowManager implements IDisposable {
   private _getNewWindowRect(): IRect {
     // cannot require the screen module until the app is ready, so require here
     const { screen } = require('electron');
-    const primaryDisplay = screen.getPrimaryDisplay();
+    const cursorPt = screen.getCursorScreenPoint();
+    const display = screen.getDisplayNearestPoint(cursorPt);
     const {
       x: screenX,
       y: screenY,
       width: screenWidth,
       height: screenHeight
-    } = primaryDisplay.bounds;
+    } = display.bounds;
     const width = DEFAULT_WIN_WIDTH;
     const height = DEFAULT_WIN_HEIGHT;
     const x = screenX + Math.round((screenWidth - width) / 2);
