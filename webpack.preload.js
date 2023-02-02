@@ -11,7 +11,7 @@ const preloadFiles = [
   'aboutdialog/preload.js',
   'dialog/preload.js',
   'labview/preload.js',
-  'preferencesdialog/preload.js',
+  'settingsdialog/preload.js',
   'progressview/preload.js',
   'pythonenvselectpopup/preload.js',
   'remoteserverselectdialog/preload.js',

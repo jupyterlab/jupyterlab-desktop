@@ -26,7 +26,7 @@ export enum EventTypeMain {
   ShowAppContextMenu = 'show-app-context-menu',
   HideProgressView = 'hide-progress-view',
   ShowWelcomeView = 'show-welcome-view',
-  ShowServerPreferences = 'show-server-preferences',
+  ShowServerSettings = 'show-server-settings',
   TitleBarMouseEvent = 'titlebar-mouse-event',
   DeleteRecentRemoteURL = 'delete-recent-remote-url',
   LabUIReady = 'lab-ui-ready',

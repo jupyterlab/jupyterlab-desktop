@@ -11,11 +11,11 @@ import { FrontEndMode, StartupMode, ThemeType } from '../config/settings';
 import { getBundledPythonPath } from '../utils';
 import { IRegistry } from '../registry';
 
-export class PreferencesDialog {
-  constructor(options: PreferencesDialog.IOptions, registry: IRegistry) {
+export class SettingsDialog {
+  constructor(options: SettingsDialog.IOptions, registry: IRegistry) {
     this._window = new ThemedWindow({
       isDarkTheme: options.isDarkTheme,
-      title: 'Preferences',
+      title: 'Settings',
       width: 700,
       height: 400,
       preload: path.join(__dirname, './preload.js')
@@ -490,7 +490,7 @@ export class PreferencesDialog {
   private _pageBody: string;
 }
 
-export namespace PreferencesDialog {
+export namespace SettingsDialog {
   export enum Tab {
     General = 'general',
     Server = 'server',

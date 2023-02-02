@@ -37,7 +37,7 @@ import {
 } from '../tokens';
 import { IRegistry } from '../registry';
 import { IApplication } from '../app';
-import { PreferencesDialog } from '../preferencesdialog/preferencesdialog';
+import { SettingsDialog } from '../settingsdialog/settingsdialog';
 import { RemoteServerSelectDialog } from '../remoteserverselectdialog/remoteserverselectdialog';
 import { connectAndGetServerInfo, IJupyterServerInfo } from '../connect';
 import { PythonEnvironmentSelectPopup } from '../pythonenvselectpopup/pythonenvselectpopup';
@@ -549,7 +549,7 @@ export class SessionWindow implements IDisposable {
               <a href="javascript:void(0);" onclick="sendMessageToMain('${EventTypeMain.InstallBundledPythonEnv}')">Install / update Python environment using the bundled installer</a>
             </div>
             <div class="message-row">
-              <a href="javascript:void(0);" onclick="sendMessageToMain('${EventTypeMain.ShowServerPreferences}')">Change the default Python environment</a>
+              <a href="javascript:void(0);" onclick="sendMessageToMain('${EventTypeMain.ShowServerSettings}')">Change the default Python environment</a>
             </div>
           `,
             false
@@ -781,9 +781,9 @@ export class SessionWindow implements IDisposable {
         },
         { type: 'separator' },
         {
-          label: 'Preferences',
+          label: 'Settings',
           click: () => {
-            this._showPreferencesDialog();
+            this._showSettingsDialog();
           }
         },
         {
@@ -839,7 +839,7 @@ export class SessionWindow implements IDisposable {
     );
 
     this._evm.registerEventHandler(
-      EventTypeMain.ShowServerPreferences,
+      EventTypeMain.ShowServerSettings,
       async event => {
         if (
           !(
@@ -850,7 +850,7 @@ export class SessionWindow implements IDisposable {
           return;
         }
 
-        this._showPreferencesDialog(PreferencesDialog.Tab.Server);
+        this._showSettingsDialog(SettingsDialog.Tab.Server);
       }
     );
 
@@ -1010,15 +1010,15 @@ export class SessionWindow implements IDisposable {
     });
   }
 
-  private _showPreferencesDialog(activateTab?: PreferencesDialog.Tab) {
-    if (this._preferencesDialog) {
-      this._preferencesDialog.window.focus();
+  private _showSettingsDialog(activateTab?: SettingsDialog.Tab) {
+    if (this._settingsDialog) {
+      this._settingsDialog.window.focus();
       return;
     }
 
     const settings = this._wsSettings;
 
-    const dialog = new PreferencesDialog(
+    const dialog = new SettingsDialog(
       {
         isDarkTheme: this._isDarkTheme,
         startupMode: settings.getValue(SettingType.startupMode),
@@ -1041,10 +1041,10 @@ export class SessionWindow implements IDisposable {
       this._registry
     );
 
-    this._preferencesDialog = dialog;
+    this._settingsDialog = dialog;
 
     dialog.window.on('closed', () => {
-      this._preferencesDialog = null;
+      this._settingsDialog = null;
     });
 
     dialog.load();
@@ -1518,7 +1518,7 @@ export class SessionWindow implements IDisposable {
   private _app: IApplication;
   private _registry: IRegistry;
   private _server: JupyterServerFactory.IFactoryItem;
-  private _preferencesDialog: PreferencesDialog;
+  private _settingsDialog: SettingsDialog;
   private _remoteServerSelectDialog: RemoteServerSelectDialog;
   private _envSelectPopup: PythonEnvironmentSelectPopup;
   private _envSelectPopupVisible: boolean = false;
