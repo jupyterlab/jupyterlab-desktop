@@ -237,7 +237,7 @@ export class SessionWindow implements IDisposable {
 
     this._window.on('resize', () => {
       this._updateSessionWindowPositionConfig();
-      this._resizeViews();
+      this._resizeViewsDelayed();
     });
     this._window.on('maximize', () => {
       this._resizeViewsDelayed();
@@ -247,6 +247,9 @@ export class SessionWindow implements IDisposable {
     });
     this._window.on('restore', () => {
       this._resizeViewsDelayed();
+    });
+    this._window.on('move', () => {
+      this._updateSessionWindowPositionConfig();
     });
     this._window.on('moved', () => {
       this._updateSessionWindowPositionConfig();
@@ -1446,7 +1449,10 @@ export class SessionWindow implements IDisposable {
   private _newWindow() {
     this._app.createNewEmptySession();
     // keep a free server up
-    this._app.createFreeServersIfNeeded();
+    // launch server after a wait to prevent blocking UI
+    setTimeout(() => {
+      this._app.createFreeServersIfNeeded();
+    }, 500);
   }
 
   private _closeSession() {
@@ -1461,7 +1467,9 @@ export class SessionWindow implements IDisposable {
       showWelcome();
       this._sessionConfigChanged.emit();
       // keep a free server up
-      this._app.createFreeServersIfNeeded();
+      setTimeout(() => {
+        this._app.createFreeServersIfNeeded();
+      }, 200);
     });
   }
 
