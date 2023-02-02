@@ -102,13 +102,15 @@ class SessionWindowManager implements IDisposable {
     const { screen } = require('electron');
     const primaryDisplay = screen.getPrimaryDisplay();
     const {
+      x: screenX,
+      y: screenY,
       width: screenWidth,
       height: screenHeight
-    } = primaryDisplay.workAreaSize;
+    } = primaryDisplay.bounds;
     const width = DEFAULT_WIN_WIDTH;
     const height = DEFAULT_WIN_HEIGHT;
-    const x = Math.round((screenWidth - width) / 2);
-    const y = Math.round((screenHeight - height) / 2);
+    const x = screenX + Math.round((screenWidth - width) / 2);
+    const y = screenY + Math.round((screenHeight - height) / 2);
 
     return { x, y, width, height };
   }
