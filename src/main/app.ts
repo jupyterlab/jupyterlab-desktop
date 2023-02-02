@@ -75,7 +75,7 @@ class SessionWindowManager implements IDisposable {
 
   getOrCreateEmptyWindow(): SessionWindow {
     const emptySessionWindow = this._windows.find(sessionWindow => {
-      sessionWindow.contentViewType === ContentViewType.Welcome;
+      return sessionWindow.contentViewType === ContentViewType.Welcome;
     });
 
     if (emptySessionWindow) {
