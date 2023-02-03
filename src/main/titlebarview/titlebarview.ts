@@ -6,6 +6,7 @@ import * as path from 'path';
 import * as fs from 'fs';
 import * as ejs from 'ejs';
 import { DarkThemeBGColor, LightThemeBGColor } from '../utils';
+import { EventTypeRenderer } from '../eventtypes';
 
 export class TitleBarView {
   constructor(options: TitleBarView.IOptions) {
@@ -34,15 +35,15 @@ export class TitleBarView {
   }
 
   setTitle(title: string) {
-    this._view.webContents.send('set-title', title);
+    this._view.webContents.send(EventTypeRenderer.SetTitle, title);
   }
 
   activate() {
-    this._view.webContents.send('set-active', true);
+    this._view.webContents.send(EventTypeRenderer.SetActive, true);
   }
 
   deactivate() {
-    this._view.webContents.send('set-active', false);
+    this._view.webContents.send(EventTypeRenderer.SetActive, false);
   }
 
   load() {
@@ -62,7 +63,7 @@ export class TitleBarView {
   }
 
   showServerStatus(show: boolean) {
-    this._view.webContents.send('show-server-status', show);
+    this._view.webContents.send(EventTypeRenderer.ShowServerStatus, show);
   }
 
   private _view: BrowserView;

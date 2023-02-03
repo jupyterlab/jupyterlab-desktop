@@ -1,4 +1,5 @@
 import { IRecentRemoteURL } from '../config/appdata';
+import { EventTypeMain, EventTypeRenderer } from '../eventtypes';
 const { contextBridge, ipcRenderer } = require('electron');
 
 type RecentRemoteURLsUpdatedListener = (
@@ -16,13 +17,17 @@ contextBridge.exposeInMainWorld('electronAPI', {
     };
   },
   isDarkTheme: () => {
-    return ipcRenderer.invoke('is-dark-theme');
+    return ipcRenderer.invoke(EventTypeMain.IsDarkTheme);
   },
   setRemoteServerOptions: (url: string, persistSessionData: boolean) => {
-    ipcRenderer.send('set-remote-server-options', url, persistSessionData);
+    ipcRenderer.send(
+      EventTypeMain.SetRemoteServerOptions,
+      url,
+      persistSessionData
+    );
   },
   deleteRecentRemoteURL: (url: string) => {
-    ipcRenderer.send('delete-recent-remote-url', url);
+    ipcRenderer.send(EventTypeMain.DeleteRecentRemoteURL, url);
   },
   onRecentRemoteURLsUpdated: (callback: RecentRemoteURLsUpdatedListener) => {
     onRecentRemoteURLsUpdatedListener = callback;
@@ -33,7 +38,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
 });
 
 ipcRenderer.on(
-  'update-recent-remote-urls',
+  EventTypeRenderer.UpdateRecentRemoteURLs,
   (event, recentServers: IRecentRemoteURL[]) => {
     if (onRecentRemoteURLsUpdatedListener) {
       onRecentRemoteURLsUpdatedListener(recentServers);
@@ -41,10 +46,13 @@ ipcRenderer.on(
   }
 );
 
-ipcRenderer.on('set-running-server-list', (event, runningServers: string[]) => {
-  if (onRunningServerListSetListener) {
-    onRunningServerListSetListener(runningServers);
+ipcRenderer.on(
+  EventTypeRenderer.SetRunningServerList,
+  (event, runningServers: string[]) => {
+    if (onRunningServerListSetListener) {
+      onRunningServerListSetListener(runningServers);
+    }
   }
-});
+);
 
 export {};

@@ -1,7 +1,7 @@
 // Copyright (c) Jupyter Development Team.
 // Distributed under the terms of the Modified BSD License.
 
-import { BrowserView, ipcMain, shell } from 'electron';
+import { BrowserView } from 'electron';
 import { DarkThemeBGColor, getUserHomeDir, LightThemeBGColor } from '../utils';
 import * as path from 'path';
 import * as fs from 'fs';
@@ -10,6 +10,7 @@ import { XMLParser } from 'fast-xml-parser';
 import { SettingType, userSettings } from '../config/settings';
 import { appData, INewsItem } from '../config/appdata';
 import { IRegistry } from '../registry';
+import { EventTypeMain, EventTypeRenderer } from '../eventtypes';
 
 const maxRecentItems = 5;
 
@@ -636,8 +637,6 @@ export class WelcomeView {
         </body>
       </html>
       `;
-
-    this._registerListeners();
   }
 
   get view(): BrowserView {
@@ -670,7 +669,7 @@ export class WelcomeView {
             <use href="#triangle-exclamation" />
           </svg>
         </div>
-        Python environment not found. <a href="javascript:void(0);" onclick="sendMessageToMain('install-bundled-python-env')">Install using the bundled installer</a> or <a href="javascript:void(0);" onclick="sendMessageToMain('show-server-preferences')">Change the default Python environment</a>
+        Python environment not found. <a href="javascript:void(0);" onclick="sendMessageToMain('${EventTypeMain.InstallBundledPythonEnv}')">Install using the bundled installer</a> or <a href="javascript:void(0);" onclick="sendMessageToMain('${EventTypeMain.ShowServerSettings}')">Change the default Python environment</a>
         `,
         true
       );
@@ -679,34 +678,17 @@ export class WelcomeView {
 
   disableLocalServerActions() {
     this._viewReady.then(() => {
-      this._view.webContents.send('disable-local-server-actions');
+      this._view.webContents.send(EventTypeRenderer.DisableLocalServerActions);
     });
   }
 
   showNotification(message: string, closable: boolean) {
     this._viewReady.then(() => {
       this._view.webContents.send(
-        'set-notification-message',
+        EventTypeRenderer.SetNotificationMessage,
         message,
         closable
       );
-    });
-  }
-
-  private _registerListeners() {
-    ipcMain.on('open-news-link', (event, link) => {
-      if (event.sender !== this._view.webContents) {
-        return;
-      }
-
-      try {
-        const url = new URL(decodeURIComponent(link));
-        if (url.protocol === 'https:' || url.protocol === 'http:') {
-          shell.openExternal(url.href);
-        }
-      } catch (error) {
-        console.error('Invalid news URL');
-      }
     });
   }
 
@@ -735,7 +717,7 @@ export class WelcomeView {
             }
           }
 
-          this._view.webContents.send('set-news-list', newsList);
+          this._view.webContents.send(EventTypeRenderer.SetNewsList, newsList);
 
           WelcomeView._newsList = newsList;
           appData.newsList = [...newsList];
@@ -797,7 +779,7 @@ export class WelcomeView {
 
     this._viewReady.then(() => {
       this._view.webContents.send(
-        'set-recent-session-list',
+        EventTypeRenderer.SetRecentSessionList,
         recentSessionList,
         resetCollapseState
       );

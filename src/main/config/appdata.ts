@@ -8,6 +8,7 @@ import { IEnvironmentType, IPythonEnvironment } from '../tokens';
 import { SessionConfig } from './sessionconfig';
 import { getOldSettings } from './settings';
 import { session as electronSession } from 'electron';
+import { ISignal, Signal } from '@lumino/signaling';
 
 const MAX_RECENT_SESSIONS = 20;
 
@@ -49,13 +50,8 @@ export class ApplicationData {
     return _appDataSingleton;
   }
 
-  setLastSession(sessionConfig: SessionConfig | null) {
-    if (sessionConfig) {
-      this.sessions.unshift(sessionConfig);
-      this.sessions.length = 1;
-    } else {
-      this.sessions = [];
-    }
+  setActiveSessions(sessionConfigs: SessionConfig[]) {
+    this.sessions = sessionConfigs;
   }
 
   read() {
@@ -343,6 +339,8 @@ export class ApplicationData {
         await this.removeSessionFromRecents(i);
       }
     }
+
+    this._recentSessionsChanged.emit();
   }
 
   async removeSessionFromRecents(sessionIndex: number) {
@@ -357,6 +355,12 @@ export class ApplicationData {
       }
       this.recentSessions.splice(sessionIndex, 1);
     }
+
+    this._recentSessionsChanged.emit();
+  }
+
+  get recentSessionsChanged(): ISignal<this, void> {
+    return this._recentSessionsChanged;
   }
 
   private _getAppDataPath(): string {
@@ -378,6 +382,8 @@ export class ApplicationData {
 
   discoveredPythonEnvs: IPythonEnvironment[] = [];
   userSetPythonEnvs: IPythonEnvironment[] = [];
+
+  private _recentSessionsChanged = new Signal<this, void>(this);
 }
 
 export const appData = ApplicationData.getSingleton();

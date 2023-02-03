@@ -6,6 +6,7 @@ import * as fs from 'fs';
 import log from 'electron-log';
 const which = require('which');
 const WinRegistry = require('winreg');
+import { ISignal, Signal } from '@lumino/signaling';
 import {
   EnvironmentTypeName,
   IDisposable,
@@ -43,6 +44,7 @@ export interface IRegistry {
   getEnvironmentInfo(pythonPath: string): Promise<IPythonEnvironment>;
   getRunningServerList(): Promise<string[]>;
   dispose(): Promise<void>;
+  environmentListUpdated: ISignal<this, void>;
 }
 
 export const SERVER_TOKEN_PREFIX = 'jlab:srvr:';
@@ -158,6 +160,10 @@ export class Registry implements IRegistry, IDisposable {
           );
         }
       });
+  }
+
+  get environmentListUpdated(): ISignal<this, void> {
+    return this._environmentListUpdated;
   }
 
   private async _resolveEnvironments(
@@ -303,6 +309,7 @@ export class Registry implements IRegistry, IDisposable {
       if (env) {
         this._userSetEnvironments.push(env);
         this._updateEnvironments();
+        this._environmentListUpdated.emit();
       }
 
       return env;
@@ -1061,6 +1068,7 @@ export class Registry implements IRegistry, IDisposable {
   private _registryBuilt: Promise<void>;
   private _requirements: Registry.IRequirement[];
   private _disposing: boolean = false;
+  private _environmentListUpdated = new Signal<this, void>(this);
 }
 
 export namespace Registry {
@@ -1094,9 +1102,4 @@ export namespace Registry {
     join(getUserHomeDir(), 'miniconda3'),
     join(getUserHomeDir(), 'miniconda')
   ];
-
-  // Copied from https://raw.githubusercontent.com/sindresorhus/semver-regex/master/index.js
-  export const SEMVER_REGEX = /\bv?(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)(?:-[\da-z\-]+(?:\.[\da-z\-]+)*)?(?:\+[\da-z\-]+(?:\.[\da-z\-]+)*)?\b/gi;
-
-  export const NO_MODULE_SENTINEL = 'NO MODULE OR VERSION FOUND';
 }

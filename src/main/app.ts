@@ -1,7 +1,7 @@
 // Copyright (c) Jupyter Development Team.
 // Distributed under the terms of the Modified BSD License.
 
-import { app, autoUpdater, dialog, ipcMain, session, shell } from 'electron';
+import { app, autoUpdater, dialog, session, shell } from 'electron';
 import log from 'electron-log';
 import { IRegistry, Registry } from './registry';
 import fetch from 'node-fetch';
@@ -17,21 +17,31 @@ import {
   waitForDuration
 } from './utils';
 import { execFile } from 'child_process';
-import { JupyterServerFactory } from './server';
+import { IServerFactory, JupyterServerFactory } from './server';
 import { connectAndGetServerInfo, IJupyterServerInfo } from './connect';
 import { UpdateDialog } from './updatedialog/updatedialog';
 import {
+  DEFAULT_WIN_HEIGHT,
+  DEFAULT_WIN_WIDTH,
   resolveWorkingDirectory,
   SettingType,
   StartupMode,
   userSettings
 } from './config/settings';
-import { ContentViewType, SessionWindow } from './sessionwindow/sessionwindow';
+import {
+  ContentViewType,
+  IServerInfo,
+  SessionWindow
+} from './sessionwindow/sessionwindow';
 import { appData } from './config/appdata';
-import { ICLIArguments, IDisposable } from './tokens';
+import { ICLIArguments, IDisposable, IRect } from './tokens';
 import { SessionConfig } from './config/sessionconfig';
+import { EventManager } from './eventmanager';
+import { EventTypeMain, EventTypeRenderer } from './eventtypes';
 
 export interface IApplication {
+  createNewEmptySession(): void;
+  createFreeServersIfNeeded(): void;
   checkForUpdates(showDialog: 'on-new-version' | 'always'): void;
   cliArgs: ICLIArguments;
 }
@@ -43,6 +53,173 @@ interface IClearHistoryOptions {
   userSetPythonEnvs: boolean;
 }
 
+const minimumWindowSpacing = 15;
+const windowSpacing = 30;
+
+class SessionWindowManager implements IDisposable {
+  constructor(options: SessionWindowManager.IOptions) {
+    this._options = options;
+  }
+
+  createNewEmptyWindow(): SessionWindow {
+    return this.createNew(ContentViewType.Welcome);
+  }
+
+  restoreLabWindow(sessionConfig?: SessionConfig): SessionWindow {
+    return this.createNew(ContentViewType.Lab, sessionConfig, true);
+  }
+
+  createNewLabWindow(sessionConfig?: SessionConfig): SessionWindow {
+    return this.createNew(ContentViewType.Lab, sessionConfig);
+  }
+
+  getOrCreateEmptyWindow(): SessionWindow {
+    const emptySessionWindow = this._windows.find(sessionWindow => {
+      return sessionWindow.contentViewType === ContentViewType.Welcome;
+    });
+
+    if (emptySessionWindow) {
+      return emptySessionWindow;
+    }
+
+    return this.createNewEmptyWindow();
+  }
+
+  getEmptyWindowCount(): number {
+    let count = 0;
+
+    this._windows.forEach(sessionWindow => {
+      if (sessionWindow.contentViewType === ContentViewType.Welcome) {
+        count++;
+      }
+    });
+
+    return count;
+  }
+
+  private _getNewWindowRect(): IRect {
+    // cannot require the screen module until the app is ready, so require here
+    const { screen } = require('electron');
+    const cursorPt = screen.getCursorScreenPoint();
+    const display = screen.getDisplayNearestPoint(cursorPt);
+    const {
+      x: screenX,
+      y: screenY,
+      width: screenWidth,
+      height: screenHeight
+    } = display.bounds;
+    const width = DEFAULT_WIN_WIDTH;
+    const height = DEFAULT_WIN_HEIGHT;
+    const x = screenX + Math.round((screenWidth - width) / 2);
+    const y = screenY + Math.round((screenHeight - height) / 2);
+
+    return { x, y, width, height };
+  }
+
+  private _isRectTooCloseToExistingWindows(rect: IRect): boolean {
+    for (const sessionWindow of this._windows) {
+      const winBounds = sessionWindow.window.getBounds();
+      if (
+        Math.abs(winBounds.x - rect.x) < minimumWindowSpacing ||
+        Math.abs(winBounds.y - rect.y) < minimumWindowSpacing
+      ) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  createNew(
+    contentView?: ContentViewType,
+    sessionConfig?: SessionConfig,
+    restorePosition?: boolean
+  ): SessionWindow {
+    let rect: IRect;
+
+    if (!restorePosition) {
+      rect = this._getNewWindowRect();
+
+      // if any other window has top left too close to the new,
+      // move the new window rect
+      while (this._isRectTooCloseToExistingWindows(rect)) {
+        rect.x += windowSpacing;
+        rect.y += windowSpacing;
+      }
+    }
+
+    const window = new SessionWindow({
+      app: this._options.app,
+      registry: this._options.registry,
+      serverFactory: this._options.serverFactory,
+      contentView: contentView,
+      sessionConfig,
+      rect
+    });
+    window.load();
+
+    this._windows.push(window);
+
+    window.sessionConfigChanged.connect(this.syncSessionData, this);
+
+    window.window.on('close', async event => {
+      const index = this._windows.indexOf(window);
+      if (index !== -1) {
+        window.sessionConfigChanged.disconnect(this.syncSessionData, this);
+        await window.dispose();
+        this._windows.splice(index, 1);
+        this.syncSessionData();
+      }
+    });
+
+    return window;
+  }
+
+  get windows(): SessionWindow[] {
+    return this._windows;
+  }
+
+  syncSessionData() {
+    const sessionConfigs: SessionConfig[] = [];
+    this._windows.forEach(sessionWindow => {
+      if (sessionWindow.contentViewType === ContentViewType.Lab) {
+        sessionConfigs.push(sessionWindow.sessionConfig);
+      }
+    });
+
+    appData.setActiveSessions(sessionConfigs);
+  }
+
+  dispose(): Promise<void> {
+    return new Promise<void>((resolve, reject) => {
+      return Promise.all([
+        this._windows.map(sessionWindow => sessionWindow.dispose())
+      ])
+        .then(() => {
+          resolve();
+        })
+        .catch(error => {
+          console.error(
+            'There was a problem shutting down the application',
+            error
+          );
+          resolve();
+        });
+    });
+  }
+
+  private _options: SessionWindowManager.IOptions;
+  private _windows: SessionWindow[] = [];
+}
+
+namespace SessionWindowManager {
+  export interface IOptions {
+    app: JupyterApplication;
+    registry: IRegistry;
+    serverFactory: IServerFactory;
+  }
+}
+
 export class JupyterApplication implements IApplication, IDisposable {
   /**
    * Construct the Jupyter application
@@ -51,6 +228,13 @@ export class JupyterApplication implements IApplication, IDisposable {
     this._cliArgs = cliArgs;
     this._registry = new Registry();
     this._serverFactory = new JupyterServerFactory(this._registry);
+
+    this._sessionWindowManager = new SessionWindowManager({
+      app: this,
+      registry: this._registry,
+      serverFactory: this._serverFactory
+    });
+
     // create a server in advance
     this._serverFactory.createFreeServer().catch(error => {
       console.error('Failed to create free server', error);
@@ -79,6 +263,20 @@ export class JupyterApplication implements IApplication, IDisposable {
     this.startup();
   }
 
+  createNewEmptySession() {
+    this._sessionWindowManager.createNewEmptyWindow();
+  }
+
+  createFreeServersIfNeeded() {
+    const emptyWindowCount = this._sessionWindowManager.getEmptyWindowCount();
+    if (emptyWindowCount > 0) {
+      this._serverFactory.createFreeServersIfNeeded(
+        undefined,
+        emptyWindowCount
+      );
+    }
+  }
+
   get cliArgs(): ICLIArguments {
     return this._cliArgs;
   }
@@ -92,16 +290,7 @@ export class JupyterApplication implements IApplication, IDisposable {
     const sessionConfig = SessionConfig.createFromArgs(this._cliArgs);
 
     if (sessionConfig) {
-      const window = new SessionWindow({
-        app: this,
-        registry: this._registry,
-        serverFactory: this._serverFactory,
-        contentView: ContentViewType.Lab,
-        sessionConfig
-      });
-      window.load();
-      this._sessionWindow = window;
-
+      this._sessionWindowManager.createNewLabWindow(sessionConfig);
       return;
     }
 
@@ -109,62 +298,39 @@ export class JupyterApplication implements IApplication, IDisposable {
       startupMode === StartupMode.LastSessions &&
       appData.sessions.length > 0
     ) {
-      const sessionConfig = appData.sessions[0];
-      const window = new SessionWindow({
-        app: this,
-        registry: this._registry,
-        serverFactory: this._serverFactory,
-        contentView: ContentViewType.Lab,
-        sessionConfig,
-        center: false
+      appData.sessions.forEach(sessionConfig => {
+        this._sessionWindowManager.restoreLabWindow(sessionConfig);
       });
-      window.load();
-      this._sessionWindow = window;
-
       return;
     }
 
     if (startupMode === StartupMode.NewLocalSession) {
       const sessionConfig = SessionConfig.createLocal();
-      const window = new SessionWindow({
-        app: this,
-        registry: this._registry,
-        serverFactory: this._serverFactory,
-        contentView: ContentViewType.Lab,
-        sessionConfig
-      });
-      window.load();
-      this._sessionWindow = window;
+      this._sessionWindowManager.createNewLabWindow(sessionConfig);
     } else {
-      const window = new SessionWindow({
-        app: this,
-        registry: this._registry,
-        serverFactory: this._serverFactory,
-        contentView: ContentViewType.Welcome
-      });
-      window.load();
-      this._sessionWindow = window;
+      this._sessionWindowManager.createNewEmptyWindow();
     }
-  }
-
-  focus() {
-    if (!this._sessionWindow) {
-      return;
-    }
-
-    if (this._sessionWindow.window.isMinimized()) {
-      this._sessionWindow.window.restore();
-    }
-
-    this._sessionWindow.window.focus();
   }
 
   handleOpenFilesOrFolders(fileOrFolders?: string[]) {
-    this._sessionWindow.handleOpenFilesOrFolders(fileOrFolders);
+    const sessionWindow = this._sessionWindowManager.getOrCreateEmptyWindow();
+    sessionWindow.handleOpenFilesOrFolders(fileOrFolders);
+
+    this.focusSession(sessionWindow);
   }
 
   openSession(sessionConfig: SessionConfig) {
-    this._sessionWindow.openSession(sessionConfig);
+    const sessionWindow = this._sessionWindowManager.getOrCreateEmptyWindow();
+    sessionWindow.openSession(sessionConfig);
+
+    this.focusSession(sessionWindow);
+  }
+
+  focusSession(sessionWindow: SessionWindow) {
+    if (sessionWindow.window.isMinimized()) {
+      sessionWindow.window.restore();
+    }
+    sessionWindow.window.focus();
   }
 
   dispose(): Promise<void> {
@@ -174,9 +340,9 @@ export class JupyterApplication implements IApplication, IDisposable {
 
     this._disposePromise = new Promise<void>((resolve, reject) => {
       Promise.all([
-        this._registry.dispose(),
+        this._sessionWindowManager.dispose(),
         this._serverFactory.dispose(),
-        this._sessionWindow.dispose()
+        this._registry.dispose()
       ])
         .then(() => {
           resolve();
@@ -233,213 +399,301 @@ export class JupyterApplication implements IApplication, IDisposable {
       this._quit();
     });
 
-    ipcMain.on('set-check-for-updates-automatically', (_event, autoUpdate) => {
-      userSettings.setValue(
-        SettingType.checkForUpdatesAutomatically,
-        autoUpdate
-      );
-    });
+    this._evm.registerEventHandler(
+      EventTypeMain.SetCheckForUpdatesAutomatically,
+      (_event, autoUpdate) => {
+        userSettings.setValue(
+          SettingType.checkForUpdatesAutomatically,
+          autoUpdate
+        );
+      }
+    );
 
-    ipcMain.on('set-install-updates-automatically', (_event, install) => {
-      userSettings.setValue(SettingType.installUpdatesAutomatically, install);
-    });
+    this._evm.registerEventHandler(
+      EventTypeMain.SetInstallUpdatesAutomatically,
+      (_event, install) => {
+        userSettings.setValue(SettingType.installUpdatesAutomatically, install);
+      }
+    );
 
-    ipcMain.on('launch-installer-download-page', () => {
-      shell.openExternal(
-        'https://github.com/jupyterlab/jupyterlab-desktop/releases'
-      );
-    });
+    this._evm.registerEventHandler(
+      EventTypeMain.LaunchInstallerDownloadPage,
+      () => {
+        shell.openExternal(
+          'https://github.com/jupyterlab/jupyterlab-desktop/releases'
+        );
+      }
+    );
 
-    ipcMain.on('launch-about-jupyter-page', () => {
+    this._evm.registerEventHandler(EventTypeMain.LaunchAboutJupyterPage, () => {
       shell.openExternal('https://jupyter.org/about.html');
     });
 
-    ipcMain.on('select-working-directory', event => {
-      const currentPath = userSettings.resolvedWorkingDirectory;
+    this._evm.registerEventHandler(
+      EventTypeMain.SelectWorkingDirectory,
+      event => {
+        const currentPath = userSettings.resolvedWorkingDirectory;
 
-      dialog
-        .showOpenDialog({
-          properties: ['openDirectory', 'showHiddenFiles', 'noResolveAliases'],
-          buttonLabel: 'Choose',
-          defaultPath: currentPath
-        })
-        .then(({ filePaths }) => {
-          if (filePaths.length > 0) {
-            event.sender.send('working-directory-selected', filePaths[0]);
+        dialog
+          .showOpenDialog({
+            properties: [
+              'openDirectory',
+              'showHiddenFiles',
+              'noResolveAliases'
+            ],
+            buttonLabel: 'Choose',
+            defaultPath: currentPath
+          })
+          .then(({ filePaths }) => {
+            if (filePaths.length > 0) {
+              event.sender.send(
+                EventTypeRenderer.WorkingDirectorySelected,
+                filePaths[0]
+              );
+            }
+          });
+      }
+    );
+
+    this._evm.registerEventHandler(
+      EventTypeMain.SetDefaultWorkingDirectory,
+      (event, path: string) => {
+        try {
+          const resolved = resolveWorkingDirectory(path, false);
+          const stat = fs.lstatSync(resolved);
+          if (stat.isDirectory()) {
+            userSettings.setValue(SettingType.defaultWorkingDirectory, path);
+            event.sender.send(
+              EventTypeRenderer.SetDefaultWorkingDirectoryResult,
+              'SUCCESS'
+            );
+          } else {
+            event.sender.send(
+              EventTypeRenderer.SetDefaultWorkingDirectoryResult,
+              'INVALID-PATH'
+            );
+            console.error('Failed to set working directory');
           }
-        });
-    });
-
-    ipcMain.on('set-default-working-directory', (event, path: string) => {
-      try {
-        const resolved = resolveWorkingDirectory(path, false);
-        const stat = fs.lstatSync(resolved);
-        if (stat.isDirectory()) {
-          userSettings.setValue(SettingType.defaultWorkingDirectory, path);
-          event.sender.send('set-default-working-directory-result', 'SUCCESS');
-        } else {
+        } catch (error) {
           event.sender.send(
-            'set-default-working-directory-result',
-            'INVALID-PATH'
+            EventTypeRenderer.SetDefaultWorkingDirectoryResult,
+            'FAILURE'
           );
           console.error('Failed to set working directory');
         }
-      } catch (error) {
-        event.sender.send('set-default-working-directory-result', 'FAILURE');
-        console.error('Failed to set working directory');
       }
-    });
+    );
 
-    ipcMain.on('select-python-path', (event, currentPath) => {
-      if (!currentPath) {
-        currentPath = userSettings.getValue(SettingType.pythonPath);
-        if (currentPath === '') {
-          currentPath = getBundledPythonPath();
+    this._evm.registerEventHandler(
+      EventTypeMain.SelectPythonPath,
+      (event, currentPath) => {
+        if (!currentPath) {
+          currentPath = userSettings.getValue(SettingType.pythonPath);
+          if (currentPath === '') {
+            currentPath = getBundledPythonPath();
+          }
         }
-      }
 
-      dialog
-        .showOpenDialog({
-          properties: ['openFile', 'showHiddenFiles', 'noResolveAliases'],
-          buttonLabel: 'Use Path',
-          defaultPath: currentPath
-        })
-        .then(({ filePaths }) => {
-          if (filePaths.length > 0) {
-            event.sender.send('custom-python-path-selected', filePaths[0]);
+        dialog
+          .showOpenDialog({
+            properties: ['openFile', 'showHiddenFiles', 'noResolveAliases'],
+            buttonLabel: 'Use Path',
+            defaultPath: currentPath
+          })
+          .then(({ filePaths }) => {
+            if (filePaths.length > 0) {
+              event.sender.send(
+                EventTypeRenderer.CustomPythonPathSelected,
+                filePaths[0]
+              );
+            }
+          });
+      }
+    );
+
+    this._evm.registerEventHandler(
+      EventTypeMain.InstallBundledPythonEnv,
+      async event => {
+        event.sender.send(
+          EventTypeRenderer.InstallBundledPythonEnvStatus,
+          'STARTED'
+        );
+        const platform = process.platform;
+        const isWin = platform === 'win32';
+        const appDir = getAppDir();
+        const appVersion = app.getVersion();
+        const installerPath = isWin
+          ? `${appDir}\\env_installer\\JupyterLabDesktopAppServer-${appVersion}-Windows-x86_64.exe`
+          : platform === 'darwin'
+          ? `${appDir}/env_installer/JupyterLabDesktopAppServer-${appVersion}-MacOSX-x86_64.sh`
+          : `${appDir}/env_installer/JupyterLabDesktopAppServer-${appVersion}-Linux-x86_64.sh`;
+        const installPath = getBundledPythonEnvPath();
+
+        if (fs.existsSync(installPath)) {
+          const choice = dialog.showMessageBoxSync({
+            type: 'warning',
+            message: 'Do you want to overwrite?',
+            detail: `Install path (${installPath}) is not empty. Would you like to overwrite it?`,
+            buttons: ['Overwrite', 'Cancel'],
+            defaultId: 1,
+            cancelId: 1
+          });
+
+          if (choice === 0) {
+            // allow dialog to close
+            await waitForDuration(200);
+            fs.rmdirSync(installPath, { recursive: true });
+          } else {
+            event.sender.send(
+              EventTypeRenderer.InstallBundledPythonEnvStatus,
+              'CANCELLED'
+            );
+            return;
+          }
+        }
+
+        const installerProc = execFile(
+          installerPath,
+          ['-b', '-p', installPath],
+          {
+            shell: isWin ? 'cmd.exe' : '/bin/bash',
+            env: {
+              ...process.env
+            }
+          }
+        );
+
+        installerProc.on('exit', (exitCode: number) => {
+          if (exitCode === 0) {
+            event.sender.send(
+              EventTypeRenderer.InstallBundledPythonEnvStatus,
+              'SUCCESS'
+            );
+          } else {
+            const message = `Installer Exit: ${exitCode}`;
+            event.sender.send(
+              EventTypeRenderer.InstallBundledPythonEnvStatus,
+              'FAILURE',
+              message
+            );
+            log.error(new Error(message));
           }
         });
-    });
 
-    ipcMain.on('install-bundled-python-env', async event => {
-      event.sender.send('install-bundled-python-env-status', 'STARTED');
-      const platform = process.platform;
-      const isWin = platform === 'win32';
-      const appDir = getAppDir();
-      const appVersion = app.getVersion();
-      const installerPath = isWin
-        ? `${appDir}\\env_installer\\JupyterLabDesktopAppServer-${appVersion}-Windows-x86_64.exe`
-        : platform === 'darwin'
-        ? `${appDir}/env_installer/JupyterLabDesktopAppServer-${appVersion}-MacOSX-x86_64.sh`
-        : `${appDir}/env_installer/JupyterLabDesktopAppServer-${appVersion}-Linux-x86_64.sh`;
-      const installPath = getBundledPythonEnvPath();
-
-      if (fs.existsSync(installPath)) {
-        const choice = dialog.showMessageBoxSync({
-          type: 'warning',
-          message: 'Do you want to overwrite?',
-          detail: `Install path (${installPath}) is not empty. Would you like to overwrite it?`,
-          buttons: ['Overwrite', 'Cancel'],
-          defaultId: 1,
-          cancelId: 1
-        });
-
-        if (choice === 0) {
-          // allow dialog to close
-          await waitForDuration(200);
-          fs.rmdirSync(installPath, { recursive: true });
-        } else {
-          event.sender.send('install-bundled-python-env-status', 'CANCELLED');
-          return;
-        }
-      }
-
-      const installerProc = execFile(installerPath, ['-b', '-p', installPath], {
-        shell: isWin ? 'cmd.exe' : '/bin/bash',
-        env: {
-          ...process.env
-        }
-      });
-
-      installerProc.on('exit', (exitCode: number) => {
-        if (exitCode === 0) {
-          event.sender.send('install-bundled-python-env-status', 'SUCCESS');
-        } else {
-          const message = `Installer Exit: ${exitCode}`;
+        installerProc.on('error', (err: Error) => {
           event.sender.send(
-            'install-bundled-python-env-status',
+            EventTypeRenderer.InstallBundledPythonEnvStatus,
             'FAILURE',
-            message
+            err.message
           );
-          log.error(new Error(message));
-        }
-      });
+          log.error(err);
+        });
+      }
+    );
 
-      installerProc.on('error', (err: Error) => {
-        event.sender.send(
-          'install-bundled-python-env-status',
-          'FAILURE',
-          err.message
+    this._evm.registerSyncEventHandler(
+      EventTypeMain.ValidatePythonPath,
+      (event, path) => {
+        return this._registry.validatePythonEnvironmentAtPath(path);
+      }
+    );
+
+    this._evm.registerSyncEventHandler(
+      EventTypeMain.ValidateRemoteServerUrl,
+      (event, url) => {
+        return new Promise<any>((resolve, reject) => {
+          this._validateRemoteServerUrl(url)
+            .then(value => {
+              resolve({ result: 'valid' });
+            })
+            .catch(error => {
+              resolve({ result: 'invalid', error: error.message });
+            });
+        });
+      }
+    );
+
+    this._evm.registerEventHandler(
+      EventTypeMain.ShowInvalidPythonPathMessage,
+      (event, path) => {
+        const requirements = this._registry.getRequirements();
+        const reqVersions = requirements.map(
+          req => `${req.name} ${req.versionRange.format()}`
         );
-        log.error(err);
-      });
-    });
+        const reqList = reqVersions.join(', ');
+        const message = `Failed to find a compatible Python environment at the configured path "${path}". Environment Python package requirements are: ${reqList}.`;
+        dialog.showMessageBox({ message, type: 'error' });
+      }
+    );
 
-    ipcMain.handle('validate-python-path', (event, path) => {
-      return this._registry.validatePythonEnvironmentAtPath(path);
-    });
+    this._evm.registerEventHandler(
+      EventTypeMain.SetDefaultPythonPath,
+      (event, path) => {
+        userSettings.setValue(SettingType.pythonPath, path);
+      }
+    );
 
-    ipcMain.handle('validate-remote-server-url', (event, url) => {
-      return new Promise<any>((resolve, reject) => {
-        this._validateRemoteServerUrl(url)
-          .then(value => {
-            resolve({ result: 'valid' });
-          })
-          .catch(error => {
-            resolve({ result: 'invalid', error: error.message });
-          });
-      });
-    });
+    this._evm.registerEventHandler(
+      EventTypeMain.SetStartupMode,
+      (_event, mode) => {
+        userSettings.setValue(SettingType.startupMode, mode);
+      }
+    );
 
-    ipcMain.on('show-invalid-python-path-message', (event, path) => {
-      const requirements = this._registry.getRequirements();
-      const reqVersions = requirements.map(
-        req => `${req.name} ${req.versionRange.format()}`
-      );
-      const reqList = reqVersions.join(', ');
-      const message = `Failed to find a compatible Python environment at the configured path "${path}". Environment Python package requirements are: ${reqList}.`;
-      dialog.showMessageBox({ message, type: 'error' });
-    });
-
-    ipcMain.on('set-default-python-path', (event, path) => {
-      userSettings.setValue(SettingType.pythonPath, path);
-    });
-
-    ipcMain.on('set-startup-mode', (_event, mode) => {
-      userSettings.setValue(SettingType.startupMode, mode);
-    });
-
-    ipcMain.on('set-theme', (_event, theme) => {
+    this._evm.registerEventHandler(EventTypeMain.SetTheme, (_event, theme) => {
       userSettings.setValue(SettingType.theme, theme);
     });
 
-    ipcMain.on('set-sync-jupyterlab-theme', (_event, sync) => {
-      userSettings.setValue(SettingType.syncJupyterLabTheme, sync);
-    });
+    this._evm.registerEventHandler(
+      EventTypeMain.SetSyncJupyterLabTheme,
+      (_event, sync) => {
+        userSettings.setValue(SettingType.syncJupyterLabTheme, sync);
+      }
+    );
 
-    ipcMain.on('set-show-news-theme', (_event, show) => {
-      userSettings.setValue(SettingType.showNewsFeed, show);
-    });
+    this._evm.registerEventHandler(
+      EventTypeMain.SetShowNewsFeed,
+      (_event, show) => {
+        userSettings.setValue(SettingType.showNewsFeed, show);
+      }
+    );
 
-    ipcMain.on('set-frontend-mode', (_event, mode) => {
-      userSettings.setValue(SettingType.frontEndMode, mode);
-    });
+    this._evm.registerEventHandler(
+      EventTypeMain.SetFrontendMode,
+      (_event, mode) => {
+        userSettings.setValue(SettingType.frontEndMode, mode);
+      }
+    );
 
-    ipcMain.on('restart-app', _event => {
+    this._evm.registerEventHandler(EventTypeMain.RestartApp, _event => {
       app.relaunch();
       app.quit();
     });
 
-    ipcMain.on('check-for-updates', _event => {
+    this._evm.registerEventHandler(EventTypeMain.CheckForUpdates, _event => {
       this.checkForUpdates('always');
     });
 
-    ipcMain.handle('is-dark-theme', event => {
+    this._evm.registerSyncEventHandler(
+      EventTypeMain.GetServerInfo,
+      (event): Promise<IServerInfo> => {
+        for (const sessionWindow of this._sessionWindowManager.windows) {
+          if (
+            event.sender === sessionWindow.titleBarView?.view?.webContents ||
+            event.sender === sessionWindow.labView?.view?.webContents
+          ) {
+            return sessionWindow.getServerInfo();
+          }
+        }
+      }
+    );
+
+    this._evm.registerSyncEventHandler(EventTypeMain.IsDarkTheme, event => {
       return isDarkTheme(userSettings.getValue(SettingType.theme));
     });
 
-    ipcMain.handle(
-      'clear-history',
+    this._evm.registerSyncEventHandler(
+      EventTypeMain.ClearHistory,
       async (event, options: IClearHistoryOptions) => {
         if (options.recentRemoteURLs) {
           appData.recentRemoteURLs = [];
@@ -474,9 +728,9 @@ export class JupyterApplication implements IApplication, IDisposable {
         if (options.recentSessions) {
           appData.recentSessions = [];
 
-          if (this._sessionWindow) {
-            this._sessionWindow.updateRecentSessionList(true);
-          }
+          this._sessionWindowManager.windows.forEach(sessionWindow => {
+            sessionWindow.updateRecentSessionList(true);
+          });
         }
 
         return true;
@@ -542,5 +796,6 @@ export class JupyterApplication implements IApplication, IDisposable {
   private _registry: IRegistry;
   private _serverFactory: JupyterServerFactory;
   private _disposePromise: Promise<void>;
-  private _sessionWindow: SessionWindow;
+  private _sessionWindowManager: SessionWindowManager;
+  private _evm = new EventManager();
 }

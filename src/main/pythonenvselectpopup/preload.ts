@@ -1,3 +1,5 @@
+import { EventTypeMain, EventTypeRenderer } from '../eventtypes';
+
 const { contextBridge, ipcRenderer } = require('electron');
 
 type CurrentPythonPathSetListener = (path: string) => void;
@@ -13,13 +15,13 @@ contextBridge.exposeInMainWorld('electronAPI', {
     };
   },
   isDarkTheme: () => {
-    return ipcRenderer.invoke('is-dark-theme');
+    return ipcRenderer.invoke(EventTypeMain.IsDarkTheme);
   },
   browsePythonPath: (currentPath: string) => {
-    ipcRenderer.send('select-python-path', currentPath);
+    ipcRenderer.send(EventTypeMain.SelectPythonPath, currentPath);
   },
   setPythonPath: (path: string) => {
-    ipcRenderer.send('set-python-path', path);
+    ipcRenderer.send(EventTypeMain.SetPythonPath, path);
   },
   onCurrentPythonPathSet: (callback: CurrentPythonPathSetListener) => {
     onCurrentPythonPathSetListener = callback;
@@ -28,17 +30,17 @@ contextBridge.exposeInMainWorld('electronAPI', {
     onCustomPythonPathSelectedListener = callback;
   },
   hideEnvSelectPopup: () => {
-    ipcRenderer.send('hide-env-select-popup');
+    ipcRenderer.send(EventTypeMain.HideEnvSelectPopup);
   }
 });
 
-ipcRenderer.on('set-current-python-path', (event, path) => {
+ipcRenderer.on(EventTypeRenderer.SetCurrentPythonPath, (event, path) => {
   if (onCurrentPythonPathSetListener) {
     onCurrentPythonPathSetListener(path);
   }
 });
 
-ipcRenderer.on('custom-python-path-selected', (event, path) => {
+ipcRenderer.on(EventTypeRenderer.CustomPythonPathSelected, (event, path) => {
   if (onCustomPythonPathSelectedListener) {
     onCustomPythonPathSelectedListener(path);
   }

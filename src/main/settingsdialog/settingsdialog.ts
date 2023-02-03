@@ -11,11 +11,11 @@ import { FrontEndMode, StartupMode, ThemeType } from '../config/settings';
 import { getBundledPythonPath } from '../utils';
 import { IRegistry } from '../registry';
 
-export class PreferencesDialog {
-  constructor(options: PreferencesDialog.IOptions, registry: IRegistry) {
+export class SettingsDialog {
+  constructor(options: SettingsDialog.IOptions, registry: IRegistry) {
     this._window = new ThemedWindow({
       isDarkTheme: options.isDarkTheme,
-      title: 'Preferences',
+      title: 'Settings',
       width: 700,
       height: 400,
       preload: path.join(__dirname, './preload.js')
@@ -173,7 +173,7 @@ export class PreferencesDialog {
                 <label slot="label">On startup</label>
                 <jp-radio name="startup-mode" value="welcome-page" <%= startupMode === 'welcome-page' ? 'checked' : '' %>>Show welcome page</jp-radio>
                 <jp-radio name="startup-mode" value="new-local-session" <%= startupMode === 'new-local-session' ? 'checked' : '' %>>Start new session</jp-radio>
-                <jp-radio name="startup-mode" value="restore-sessions" <%= startupMode === 'restore-sessions' ? 'checked' : '' %>>Restore last session</jp-radio>
+                <jp-radio name="startup-mode" value="restore-sessions" <%= startupMode === 'restore-sessions' ? 'checked' : '' %>>Restore last sessions</jp-radio>
               </jp-radio-group>
               
               <jp-radio-group orientation="horizontal">
@@ -490,7 +490,7 @@ export class PreferencesDialog {
   private _pageBody: string;
 }
 
-export namespace PreferencesDialog {
+export namespace SettingsDialog {
   export enum Tab {
     General = 'general',
     Server = 'server',

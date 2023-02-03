@@ -4,7 +4,6 @@
 import {
   BrowserView,
   clipboard,
-  ipcMain,
   Menu,
   MenuItemConstructorOptions
 } from 'electron';
@@ -28,6 +27,8 @@ import {
 } from '../config/settings';
 import { IDisposable } from '../tokens';
 import { SessionConfig } from '../config/sessionconfig';
+import { EventManager } from '../eventmanager';
+import { EventTypeMain } from '../eventtypes';
 
 export type ILoadErrorCallback = (
   errorCode: number,
@@ -92,7 +93,7 @@ export class LabView implements IDisposable {
     }
 
     if (!this._sessionConfig.isRemote) {
-      ipcMain.once('lab-ui-ready', event => {
+      this._evm.registerEventHandler(EventTypeMain.LabUIReady, event => {
         if (event.sender !== this._view.webContents) {
           return;
         }
@@ -217,6 +218,7 @@ export class LabView implements IDisposable {
   }
 
   dispose(): Promise<void> {
+    this._evm.dispose();
     this._unregisterBrowserEventHandlers();
 
     // if local or remote with no data persistence, clear session data
@@ -304,7 +306,7 @@ export class LabView implements IDisposable {
     );
 
     if (this._wsSettings.getValue(SettingType.syncJupyterLabTheme)) {
-      ipcMain.once('lab-ui-ready', event => {
+      this._evm.registerEventHandler(EventTypeMain.LabUIReady, event => {
         if (event.sender !== this._view.webContents) {
           return;
         }
@@ -312,11 +314,14 @@ export class LabView implements IDisposable {
       });
     }
 
-    ipcMain.on('set-theme', async (_event, theme) => {
-      if (this._wsSettings.getValue(SettingType.syncJupyterLabTheme)) {
-        await this._setJupyterLabTheme(theme);
+    this._evm.registerEventHandler(
+      EventTypeMain.SetTheme,
+      async (_event, theme) => {
+        if (this._wsSettings.getValue(SettingType.syncJupyterLabTheme)) {
+          await this._setJupyterLabTheme(theme);
+        }
       }
-    });
+    );
 
     if (
       this._wsSettings.getValue(SettingType.frontEndMode) == FrontEndMode.WebApp
@@ -580,6 +585,7 @@ export class LabView implements IDisposable {
   private _jlabBaseUrl: string;
   private _wsSettings: WorkspaceSettings;
   private _labUIReady = false;
+  private _evm = new EventManager();
 }
 
 export namespace LabView {

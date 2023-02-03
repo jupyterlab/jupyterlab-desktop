@@ -1,3 +1,5 @@
+import { EventTypeMain, EventTypeRenderer } from '../eventtypes';
+
 const { contextBridge, ipcRenderer } = require('electron');
 
 type SetTitleListener = (title: string) => void;
@@ -15,31 +17,31 @@ contextBridge.exposeInMainWorld('electronAPI', {
     };
   },
   showAppContextMenu: () => {
-    ipcRenderer.send('show-app-context-menu');
+    ipcRenderer.send(EventTypeMain.ShowAppContextMenu);
   },
   closeWindow: () => {
-    ipcRenderer.send('close-window');
+    ipcRenderer.send(EventTypeMain.CloseWindow);
   },
   isDarkTheme: () => {
-    return ipcRenderer.invoke('is-dark-theme');
+    return ipcRenderer.invoke(EventTypeMain.IsDarkTheme);
   },
   minimizeWindow: () => {
-    ipcRenderer.send('minimize-window');
+    ipcRenderer.send(EventTypeMain.MinimizeWindow);
   },
   maximizeWindow: () => {
-    ipcRenderer.send('maximize-window');
+    ipcRenderer.send(EventTypeMain.MaximizeWindow);
   },
   restoreWindow: () => {
-    ipcRenderer.send('restore-window');
+    ipcRenderer.send(EventTypeMain.RestoreWindow);
   },
   getServerInfo: () => {
-    return ipcRenderer.invoke('get-server-info');
+    return ipcRenderer.invoke(EventTypeMain.GetServerInfo);
   },
   showEnvSelectPopup: () => {
-    ipcRenderer.send('show-env-select-popup');
+    ipcRenderer.send(EventTypeMain.ShowEnvSelectPopup);
   },
   sendMouseEvent: (type: string, params: any) => {
-    ipcRenderer.send('titlebar-mouse-event', type, params);
+    ipcRenderer.send(EventTypeMain.TitleBarMouseEvent, type, params);
   },
   onSetTitle: (callback: SetTitleListener) => {
     onSetTitleListener = callback;
@@ -52,19 +54,19 @@ contextBridge.exposeInMainWorld('electronAPI', {
   }
 });
 
-ipcRenderer.on('set-title', (event, title) => {
+ipcRenderer.on(EventTypeRenderer.SetTitle, (event, title) => {
   if (onSetTitleListener) {
     onSetTitleListener(title);
   }
 });
 
-ipcRenderer.on('set-active', (event, active) => {
+ipcRenderer.on(EventTypeRenderer.SetActive, (event, active) => {
   if (onSetActiveListener) {
     onSetActiveListener(active);
   }
 });
 
-ipcRenderer.on('show-server-status', (event, show) => {
+ipcRenderer.on(EventTypeRenderer.ShowServerStatus, (event, show) => {
   if (onShowServerStatusListener) {
     onShowServerStatusListener(show);
   }

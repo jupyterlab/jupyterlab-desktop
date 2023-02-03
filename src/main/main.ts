@@ -19,42 +19,37 @@ let fileToOpenInMainInstance = '';
 require('fix-path')();
 
 function processArgs(argv: string[]) {
-  return (
-    yargs(argv)
-      .usage('jlab [options] folder/file paths')
-      .example('jlab', 'Launch in default working directory')
-      .example('jlab .', 'Launch in current directory')
-      .example(
-        'jlab /data/nb/test.ipynb',
-        'Launch in /data/nb and open test.ipynb'
-      )
-      .example('jlab /data/nb', 'Launch in /data/nb')
-      .example(
-        'jlab --working-dir /data/nb test.ipynb sub/test2.ipynb',
-        'Launch in /data/nb and open /data/nb/test.ipynb and /data/nb/sub/test2.ipynb'
-      )
-      .option('python-path', {
-        describe: 'Python path',
-        type: 'string'
-      })
-      .option('working-dir', {
-        describe: 'Working directory',
-        type: 'string'
-      })
-      .option('log-level', {
-        describe: 'Log level',
-        choices: ['error', 'warn', 'info', 'verbose', 'debug'],
-        default: 'debug'
-      })
-      .help('h')
-      .alias({
-        h: 'help'
-      })
-      // define Electron / macOS boolean options as hidden to prevent them disturbing file list
-      .option('allow-file-access-from-files', { type: 'boolean', hidden: true })
-      .option('enable-avfoundation', { type: 'boolean', hidden: true })
-      .parseSync()
-  );
+  return yargs(argv)
+    .usage('jlab [options] folder/file paths')
+    .example('jlab', 'Launch in default working directory')
+    .example('jlab .', 'Launch in current directory')
+    .example(
+      'jlab /data/nb/test.ipynb',
+      'Launch in /data/nb and open test.ipynb'
+    )
+    .example('jlab /data/nb', 'Launch in /data/nb')
+    .example(
+      'jlab --working-dir /data/nb test.ipynb sub/test2.ipynb',
+      'Launch in /data/nb and open /data/nb/test.ipynb and /data/nb/sub/test2.ipynb'
+    )
+    .option('python-path', {
+      describe: 'Python path',
+      type: 'string'
+    })
+    .option('working-dir', {
+      describe: 'Working directory',
+      type: 'string'
+    })
+    .option('log-level', {
+      describe: 'Log level',
+      choices: ['error', 'warn', 'info', 'verbose', 'debug'],
+      default: 'debug'
+    })
+    .help('h')
+    .alias({
+      h: 'help'
+    })
+    .parseSync();
 }
 
 const argv = processArgs(process.argv.slice(isDevMode() ? 2 : 1));
@@ -230,8 +225,6 @@ function handleMultipleAppInstances(): Promise<void> {
           );
           jupyterApp.openSession(sessionConfig);
         }
-
-        jupyterApp.focus();
       });
       resolve();
     } else {

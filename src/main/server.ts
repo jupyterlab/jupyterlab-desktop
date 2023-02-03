@@ -497,8 +497,9 @@ export interface IServerFactory {
    *
    * @return the factory item.
    */
-  createFreeServerIfNoneExists: (
-    opts?: JupyterServer.IOptions
+  createFreeServersIfNeeded: (
+    opts?: JupyterServer.IOptions,
+    freeCount?: number
   ) => Promise<void>;
 
   /**
@@ -559,11 +560,12 @@ export class JupyterServerFactory implements IServerFactory, IDisposable {
     this._registry = registry;
   }
 
-  async createFreeServerIfNoneExists(
-    opts?: JupyterServer.IOptions
+  async createFreeServersIfNeeded(
+    opts?: JupyterServer.IOptions,
+    freeCount: number = 1
   ): Promise<void> {
-    const exists = this._findUnusedServer(opts);
-    if (!exists) {
+    const unusedServerCount = await this._geUnusedServerCount();
+    for (let i = unusedServerCount; i < freeCount; ++i) {
       this.createFreeServer(opts);
     }
   }
@@ -623,7 +625,7 @@ export class JupyterServerFactory implements IServerFactory, IDisposable {
 
     opts = { ...opts, ...{ environment: env } };
 
-    item = this._findUnusedServer(opts) || this._createServer(opts);
+    item = (await this._findUnusedServer(opts)) || this._createServer(opts);
     item.used = true;
 
     item.server.start().catch(error => {
@@ -711,23 +713,50 @@ export class JupyterServerFactory implements IServerFactory, IDisposable {
     return item;
   }
 
-  private _findUnusedServer(
+  private async _findUnusedServer(
     opts?: JupyterServer.IOptions
-  ): JupyterServerFactory.IFactoryItem | null {
+  ): Promise<JupyterServerFactory.IFactoryItem | null> {
     const workingDir =
       opts?.workingDirectory || userSettings.resolvedWorkingDirectory;
+    const env =
+      opts?.environment || (await this._registry.getDefaultEnvironment());
+
     let result = ArrayExt.findFirstValue(
       this._servers,
       (server: JupyterServerFactory.IFactoryItem, idx: number) => {
         return (
           !server.used &&
           server.server.info.workingDirectory === workingDir &&
-          server.server.info.environment.path === opts?.environment?.path
+          server.server.info.environment.path === env?.path
         );
       }
     );
 
     return result;
+  }
+
+  private async _geUnusedServerCount(
+    opts?: JupyterServer.IOptions
+  ): Promise<number> {
+    let count = 0;
+
+    const workingDir =
+      opts?.workingDirectory || userSettings.resolvedWorkingDirectory;
+
+    const env =
+      opts?.environment || (await this._registry.getDefaultEnvironment());
+
+    this._servers.forEach(server => {
+      if (
+        !server.used &&
+        server.server.info.workingDirectory === workingDir &&
+        server.server.info.environment.path === env?.path
+      ) {
+        count++;
+      }
+    });
+
+    return count;
   }
 
   private _removeFailedServer(factoryId: number): void {
