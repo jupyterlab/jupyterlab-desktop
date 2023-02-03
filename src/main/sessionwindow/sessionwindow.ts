@@ -453,6 +453,9 @@ export class SessionWindow implements IDisposable {
   }
 
   private _recentSessionsChangedHandler() {
+    if (this._recentSessionRemovalByThis) {
+      return;
+    }
     this._welcomeView?.updateRecentSessionList(true);
   }
 
@@ -657,7 +660,12 @@ export class SessionWindow implements IDisposable {
           return;
         }
 
+        // update this window's list without resetting collapse state
+        this._recentSessionRemovalByThis = true;
+
         await appData.removeSessionFromRecents(sessionIndex);
+
+        this._recentSessionRemovalByThis = false;
 
         if (event.sender === this._welcomeView.view.webContents) {
           this._welcomeView.updateRecentSessionList(false);
@@ -1138,6 +1146,7 @@ export class SessionWindow implements IDisposable {
 
   async openSession(sessionConfig: SessionConfig) {
     if (this._sessionConfig && this._contentViewType === ContentViewType.Lab) {
+      // TODO: this shouldn't happen anymore since sessions are launched in new empty window. remove after testing
       const choice = dialog.showMessageBoxSync({
         type: 'warning',
         message: 'Replace existing session',
@@ -1180,6 +1189,7 @@ export class SessionWindow implements IDisposable {
         this._sessionConfig &&
         this._contentViewType === ContentViewType.Lab
       ) {
+        // TODO: this shouldn't happen anymore since sessions are launched in new empty window. remove after testing
         const choice = dialog.showMessageBoxSync({
           type: 'warning',
           message: 'Replace existing session',
@@ -1525,6 +1535,7 @@ export class SessionWindow implements IDisposable {
   private _disposePromise: Promise<void>;
   private _sessionConfigChanged = new Signal<this, void>(this);
   private _evm = new EventManager();
+  private _recentSessionRemovalByThis = false;
 }
 
 export namespace SessionWindow {

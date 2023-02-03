@@ -699,7 +699,7 @@ export class JupyterApplication implements IApplication, IDisposable {
           appData.recentRemoteURLs = [];
         }
         if (options.userSetPythonEnvs) {
-          appData.userSetPythonEnvs = [];
+          this._registry.clearUserSetPythonEnvs();
         }
         if (options.sessionData || options.recentSessions) {
           appData.recentSessions.forEach(async recentSession => {
