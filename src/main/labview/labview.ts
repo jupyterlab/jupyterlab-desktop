@@ -367,7 +367,13 @@ export class LabView implements IDisposable {
       this._view.webContents.executeJavaScript(`
         // disable splash animation
         const style = document.createElement('style');
-        style.textContent = '#jupyterlab-splash { display: none !important; }';
+        style.textContent = \`
+        #jupyterlab-splash,
+        #jp-mainmenu-file li[data-command="filemenu:logout"],
+        #jp-mainmenu-file li[data-command="filemenu:shutdown"] {
+          display: none !important;
+        }       
+        \`;
         document.head.append(style);
 
         async function getLab() {

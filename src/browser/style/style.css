@@ -1,3 +1,5 @@
-#jupyterlab-splash {
+#jupyterlab-splash,
+#jp-mainmenu-file li[data-command='filemenu:logout'],
+#jp-mainmenu-file li[data-command='filemenu:shutdown'] {
   display: none !important;
 }
