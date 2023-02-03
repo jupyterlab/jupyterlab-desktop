@@ -7,6 +7,7 @@ import { execSync } from 'child_process';
 import { JupyterApplication } from './app';
 import { ICLIArguments } from './tokens';
 import { SessionConfig } from './config/sessionconfig';
+import { SettingType, userSettings } from './config/settings';
 
 let jupyterApp: JupyterApplication;
 let fileToOpenInMainInstance = '';
@@ -18,7 +19,7 @@ let fileToOpenInMainInstance = '';
  */
 require('fix-path')();
 
-function processArgs(argv: string[]) {
+function parseArgs(argv: string[]) {
   return yargs(argv)
     .usage('jlab [options] folder/file paths')
     .example('jlab', 'Launch in default working directory')
@@ -43,7 +44,7 @@ function processArgs(argv: string[]) {
     .option('log-level', {
       describe: 'Log level',
       choices: ['error', 'warn', 'info', 'verbose', 'debug'],
-      default: 'debug'
+      default: isDevMode() ? 'debug' : 'warn'
     })
     .help('h')
     .alias({
@@ -52,16 +53,26 @@ function processArgs(argv: string[]) {
     .parseSync();
 }
 
-const argv = processArgs(process.argv.slice(isDevMode() ? 2 : 1));
+function getLogLevel(): LevelOption {
+  const cliLogLevelSet = process.argv?.indexOf('--log-level') > -1;
+  if (cliLogLevelSet) {
+    return argv.logLevel as LevelOption;
+  }
+
+  return userSettings.getValue(SettingType.logLevel);
+}
+
+const argv = parseArgs(process.argv.slice(isDevMode() ? 2 : 1));
+const logLevel = getLogLevel();
 
 if (isDevMode()) {
-  log.transports.console.level = argv.logLevel as LevelOption;
+  log.transports.console.level = logLevel;
   log.transports.file.level = false;
 
   log.info('In development mode');
   log.info(`Logging to console at '${log.transports.console.level}' level`);
 } else {
-  log.transports.file.level = argv.logLevel as LevelOption;
+  log.transports.file.level = logLevel;
   log.transports.console.level = false;
 
   log.info('In production mode');

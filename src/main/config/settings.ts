@@ -25,6 +25,14 @@ export enum StartupMode {
   LastSessions = 'restore-sessions'
 }
 
+export enum LogLevel {
+  Error = 'error',
+  Warn = 'warn',
+  Info = 'info',
+  Verbose = 'verbose',
+  Debug = 'debug'
+}
+
 export enum SettingType {
   checkForUpdatesAutomatically = 'checkForUpdatesAutomatically',
   installUpdatesAutomatically = 'installUpdatesAutomatically',
@@ -37,7 +45,9 @@ export enum SettingType {
   defaultWorkingDirectory = 'defaultWorkingDirectory',
   pythonPath = 'pythonPath',
 
-  startupMode = 'startupMode'
+  startupMode = 'startupMode',
+
+  logLevel = 'logLevel'
 }
 
 export class Setting<T> {
@@ -98,7 +108,9 @@ export class UserSettings {
       defaultWorkingDirectory: new Setting<string>(''),
       pythonPath: new Setting<string>('', { wsOverridable: true }),
 
-      startupMode: new Setting<StartupMode>(StartupMode.WelcomePage)
+      startupMode: new Setting<StartupMode>(StartupMode.WelcomePage),
+
+      logLevel: new Setting<string>(LogLevel.Warn)
     };
 
     if (readSettings) {
