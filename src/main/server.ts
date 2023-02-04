@@ -60,7 +60,8 @@ function createLaunchScript(
     // use our token rather than any pre-configured password
     '--ServerApp.password=""',
     // enable hidden files (let user decide whether to display them)
-    '--ContentsManager.allow_hidden=True'
+    '--ContentsManager.allow_hidden=True',
+    '--LabApp.quit_button=False'
   ];
 
   if (
