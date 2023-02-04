@@ -7,7 +7,12 @@ import * as path from 'path';
 import * as fs from 'fs';
 const semver = require('semver');
 import { ThemedWindow } from '../dialog/themedwindow';
-import { FrontEndMode, StartupMode, ThemeType } from '../config/settings';
+import {
+  FrontEndMode,
+  LogLevel,
+  StartupMode,
+  ThemeType
+} from '../config/settings';
 import { getBundledPythonPath } from '../utils';
 import { IRegistry } from '../registry';
 
@@ -28,7 +33,8 @@ export class SettingsDialog {
       showNewsFeed,
       frontEndMode,
       checkForUpdatesAutomatically,
-      defaultWorkingDirectory
+      defaultWorkingDirectory,
+      logLevel
     } = options;
     const installUpdatesAutomaticallyEnabled = process.platform === 'darwin';
     const installUpdatesAutomatically =
@@ -151,22 +157,20 @@ export class SettingsDialog {
       #clear-history-progress {
         visibility: hidden;
       }
+      .setting-section {
+        margin: 10px 0;
+        display: flex;
+        flex-direction: column;
+        align-items: baseline;
+      }
       </style>
       <div id="container">
         <div id="content-area">
           <jp-tabs id="category-tabs" false="" orientation="vertical">
-            <jp-tab id="tab-general">
-              General
-            </jp-tab>
-            <jp-tab id="tab-server">
-              Server
-            </jp-tab>
-            <jp-tab id="tab-updates">
-              Updates
-            </jp-tab>
-            <jp-tab id="tab-privacy">
-              Privacy
-            </jp-tab>
+            <jp-tab id="tab-general">General</jp-tab>
+            <jp-tab id="tab-server">Server</jp-tab>
+            <jp-tab id="tab-privacy">Privacy</jp-tab>
+            <jp-tab id="tab-advanced">Advanced</jp-tab>
 
             <jp-tab-panel id="tab-panel-general">
               <jp-radio-group orientation="horizontal">
@@ -331,38 +335,6 @@ export class SettingsDialog {
               </script>
             </jp-tab-panel>
 
-            <jp-tab-panel id="tab-panel-updates">
-              <jp-checkbox id='checkbox-update-check' type='checkbox' <%= checkForUpdatesAutomatically ? 'checked' : '' %> onchange='handleAutoCheckForUpdates(this);'>Check for updates automatically</jp-checkbox>
-              <jp-checkbox id='checkbox-update-install' type='checkbox' <%= installUpdatesAutomatically ? 'checked' : '' %> <%= installUpdatesAutomaticallyEnabled ? '' : 'disabled' %>>Download and install updates automatically</jp-checkbox>
-
-              <jp-button onclick='handleCheckForUpdates(this);'>Check now</jp-button>
-              <script>
-                const autoUpdateCheckCheckbox = document.getElementById('checkbox-update-check');
-                const autoInstallCheckbox = document.getElementById('checkbox-update-install');
-
-                function handleAutoCheckForUpdates(el) {
-                  updateAutoInstallCheckboxState();
-                }
-
-                function updateAutoInstallCheckboxState() {
-                  if (<%= installUpdatesAutomaticallyEnabled ? 'true' : 'false' %> /* installUpdatesAutomaticallyEnabled */ &&
-                    autoUpdateCheckCheckbox.checked) {
-                    autoInstallCheckbox.removeAttribute('disabled');
-                  } else {
-                    autoInstallCheckbox.setAttribute('disabled', 'disabled');
-                  }
-                }
-
-                function handleCheckForUpdates(el) {
-                  window.electronAPI.checkForUpdates();
-                }
-
-                document.addEventListener("DOMContentLoaded", () => {
-                  updateAutoInstallCheckboxState();
-                });
-              </script>
-            </jp-tab-panel>
-
             <jp-tab-panel id="tab-panel-privacy">
               <div id="clear-history">
                 <div class="row" style="line-height: 30px;">
@@ -395,6 +367,66 @@ export class SettingsDialog {
                     clearHistoryProgress.style.visibility = 'hidden';
                   });
                 }
+              </script>
+            </jp-tab-panel>
+
+            <jp-tab-panel id="tab-panel-advanced">
+              <div class="row setting-section">
+                <div class="row">
+                  <label for="log-level">Log level</label>
+                </div>
+
+                <div class="row">
+                  <jp-select id="log-level" name="log-level" value="<%= logLevel %>" position="below" onchange="onLogLevelChanged(this)">
+                    <jp-option value="error">Error</jp-option>
+                    <jp-option value="warn">Warn</jp-option>
+                    <jp-option value="info">Info</jp-option>
+                    <jp-option value="verbose">Verbose</jp-option>
+                    <jp-option value="debug">Debug</jp-option>
+                  </jp-select>
+                </div>
+              </div>
+
+              <div class="row setting-section">
+                <div class="row">
+                  <jp-checkbox id='checkbox-update-check' type='checkbox' <%= checkForUpdatesAutomatically ? 'checked' : '' %> onchange='handleAutoCheckForUpdates(this);'>Check for updates automatically</jp-checkbox>
+                </div>
+                <div class="row">
+                  <jp-checkbox id='checkbox-update-install' type='checkbox' <%= installUpdatesAutomatically ? 'checked' : '' %> <%= installUpdatesAutomaticallyEnabled ? '' : 'disabled' %>>Download and install updates automatically</jp-checkbox>
+                </div>
+                <div class="row">
+                  <jp-button onclick='handleCheckForUpdates(this);'>Check for updates now</jp-button>
+                </div>
+              </div>
+
+              <script>
+                const autoUpdateCheckCheckbox = document.getElementById('checkbox-update-check');
+                const autoInstallCheckbox = document.getElementById('checkbox-update-install');
+
+                function handleAutoCheckForUpdates(el) {
+                  updateAutoInstallCheckboxState();
+                }
+
+                function updateAutoInstallCheckboxState() {
+                  if (<%= installUpdatesAutomaticallyEnabled ? 'true' : 'false' %> /* installUpdatesAutomaticallyEnabled */ &&
+                    autoUpdateCheckCheckbox.checked) {
+                    autoInstallCheckbox.removeAttribute('disabled');
+                  } else {
+                    autoInstallCheckbox.setAttribute('disabled', 'disabled');
+                  }
+                }
+
+                function handleCheckForUpdates(el) {
+                  window.electronAPI.checkForUpdates();
+                }
+
+                function onLogLevelChanged(el) {
+                  window.electronAPI.setLogLevel(el.value);
+                }
+
+                document.addEventListener("DOMContentLoaded", () => {
+                  updateAutoInstallCheckboxState();
+                });
               </script>
             </jp-tab-panel>
           </jp-tabs>
@@ -474,7 +506,8 @@ export class SettingsDialog {
       defaultPythonPath,
       selectBundledPythonPath,
       bundledEnvInstallationExists,
-      bundledEnvInstallationLatest
+      bundledEnvInstallationLatest,
+      logLevel
     });
   }
 
@@ -509,5 +542,6 @@ export namespace SettingsDialog {
     defaultWorkingDirectory: string;
     defaultPythonPath: string;
     activateTab?: Tab;
+    logLevel: LogLevel;
   }
 }

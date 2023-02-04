@@ -23,6 +23,7 @@ import { UpdateDialog } from './updatedialog/updatedialog';
 import {
   DEFAULT_WIN_HEIGHT,
   DEFAULT_WIN_WIDTH,
+  LogLevel,
   resolveWorkingDirectory,
   SettingType,
   StartupMode,
@@ -673,6 +674,13 @@ export class JupyterApplication implements IApplication, IDisposable {
     this._evm.registerEventHandler(EventTypeMain.CheckForUpdates, _event => {
       this.checkForUpdates('always');
     });
+
+    this._evm.registerEventHandler(
+      EventTypeMain.SetLogLevel,
+      (_event, logLevel: LogLevel) => {
+        userSettings.setValue(SettingType.logLevel, logLevel);
+      }
+    );
 
     this._evm.registerSyncEventHandler(
       EventTypeMain.GetServerInfo,

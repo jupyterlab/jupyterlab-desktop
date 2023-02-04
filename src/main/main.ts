@@ -44,7 +44,7 @@ function parseArgs(argv: string[]) {
     .option('log-level', {
       describe: 'Log level',
       choices: ['error', 'warn', 'info', 'verbose', 'debug'],
-      default: isDevMode() ? 'debug' : 'warn'
+      default: 'warn'
     })
     .help('h')
     .alias({
@@ -54,6 +54,10 @@ function parseArgs(argv: string[]) {
 }
 
 function getLogLevel(): LevelOption {
+  if (isDevMode()) {
+    return 'debug';
+  }
+
   const cliLogLevelSet = process.argv?.indexOf('--log-level') > -1;
   if (cliLogLevelSet) {
     return argv.logLevel as LevelOption;

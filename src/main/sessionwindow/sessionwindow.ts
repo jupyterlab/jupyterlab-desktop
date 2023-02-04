@@ -1044,6 +1044,7 @@ export class SessionWindow implements IDisposable {
           SettingType.defaultWorkingDirectory
         ),
         defaultPythonPath: userSettings.getValue(SettingType.pythonPath),
+        logLevel: userSettings.getValue(SettingType.logLevel),
         activateTab: activateTab
       },
       this._registry

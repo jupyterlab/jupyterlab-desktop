@@ -86,6 +86,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   },
   clearHistory: (options: any) => {
     return ipcRenderer.invoke(EventTypeMain.ClearHistory, options);
+  },
+  setLogLevel: (level: string) => {
+    ipcRenderer.send(EventTypeMain.SetLogLevel, level);
   }
 });
 
