@@ -39,11 +39,13 @@ import { ICLIArguments, IDisposable, IRect } from './tokens';
 import { SessionConfig } from './config/sessionconfig';
 import { EventManager } from './eventmanager';
 import { EventTypeMain, EventTypeRenderer } from './eventtypes';
+import { SettingsDialog } from './settingsdialog/settingsdialog';
 
 export interface IApplication {
   createNewEmptySession(): void;
   createFreeServersIfNeeded(): void;
   checkForUpdates(showDialog: 'on-new-version' | 'always'): void;
+  showSettingsDialog(activateTab?: SettingsDialog.Tab): void;
   cliArgs: ICLIArguments;
 }
 
@@ -170,6 +172,10 @@ class SessionWindowManager implements IDisposable {
         await window.dispose();
         this._windows.splice(index, 1);
         this.syncSessionData();
+
+        if (this._windows.length === 0) {
+          this._options.app.closeSettingsDialog();
+        }
       }
     });
 
@@ -261,6 +267,8 @@ export class JupyterApplication implements IApplication, IDisposable {
       }
     }
 
+    this._isDarkTheme = isDarkTheme(userSettings.getValue(SettingType.theme));
+
     this.startup();
   }
 
@@ -334,10 +342,60 @@ export class JupyterApplication implements IApplication, IDisposable {
     sessionWindow.window.focus();
   }
 
+  showSettingsDialog(activateTab?: SettingsDialog.Tab) {
+    if (this._settingsDialog) {
+      this._settingsDialog.window.focus();
+      return;
+    }
+
+    const settings = userSettings;
+
+    const dialog = new SettingsDialog(
+      {
+        isDarkTheme: this._isDarkTheme,
+        startupMode: settings.getValue(SettingType.startupMode),
+        theme: settings.getValue(SettingType.theme),
+        syncJupyterLabTheme: settings.getValue(SettingType.syncJupyterLabTheme),
+        showNewsFeed: settings.getValue(SettingType.showNewsFeed),
+        frontEndMode: settings.getValue(SettingType.frontEndMode),
+        checkForUpdatesAutomatically: settings.getValue(
+          SettingType.checkForUpdatesAutomatically
+        ),
+        installUpdatesAutomatically: settings.getValue(
+          SettingType.installUpdatesAutomatically
+        ),
+        defaultWorkingDirectory: userSettings.getValue(
+          SettingType.defaultWorkingDirectory
+        ),
+        defaultPythonPath: userSettings.getValue(SettingType.pythonPath),
+        logLevel: userSettings.getValue(SettingType.logLevel),
+        activateTab: activateTab
+      },
+      this._registry
+    );
+
+    this._settingsDialog = dialog;
+
+    dialog.window.on('closed', () => {
+      this._settingsDialog = null;
+    });
+
+    dialog.load();
+  }
+
+  closeSettingsDialog() {
+    if (this._settingsDialog) {
+      this._settingsDialog.window.close();
+      this._settingsDialog = null;
+    }
+  }
+
   dispose(): Promise<void> {
     if (this._disposePromise) {
       return this._disposePromise;
     }
+
+    this.closeSettingsDialog();
 
     this._disposePromise = new Promise<void>((resolve, reject) => {
       Promise.all([
@@ -806,4 +864,6 @@ export class JupyterApplication implements IApplication, IDisposable {
   private _disposePromise: Promise<void>;
   private _sessionWindowManager: SessionWindowManager;
   private _evm = new EventManager();
+  private _settingsDialog: SettingsDialog;
+  private _isDarkTheme: boolean;
 }

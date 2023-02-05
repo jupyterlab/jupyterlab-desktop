@@ -791,7 +791,7 @@ export class SessionWindow implements IDisposable {
         {
           label: 'Settings',
           click: () => {
-            this._showSettingsDialog();
+            this._app.showSettingsDialog();
           }
         },
         {
@@ -858,7 +858,7 @@ export class SessionWindow implements IDisposable {
           return;
         }
 
-        this._showSettingsDialog(SettingsDialog.Tab.Server);
+        this._app.showSettingsDialog(SettingsDialog.Tab.Server);
       }
     );
 
@@ -1016,47 +1016,6 @@ export class SessionWindow implements IDisposable {
     this._window.getBrowserViews().forEach(view => {
       view.webContents.openDevTools();
     });
-  }
-
-  private _showSettingsDialog(activateTab?: SettingsDialog.Tab) {
-    if (this._settingsDialog) {
-      this._settingsDialog.window.focus();
-      return;
-    }
-
-    const settings = this._wsSettings;
-
-    const dialog = new SettingsDialog(
-      {
-        isDarkTheme: this._isDarkTheme,
-        startupMode: settings.getValue(SettingType.startupMode),
-        theme: settings.getValue(SettingType.theme),
-        syncJupyterLabTheme: settings.getValue(SettingType.syncJupyterLabTheme),
-        showNewsFeed: settings.getValue(SettingType.showNewsFeed),
-        frontEndMode: settings.getValue(SettingType.frontEndMode),
-        checkForUpdatesAutomatically: settings.getValue(
-          SettingType.checkForUpdatesAutomatically
-        ),
-        installUpdatesAutomatically: settings.getValue(
-          SettingType.installUpdatesAutomatically
-        ),
-        defaultWorkingDirectory: userSettings.getValue(
-          SettingType.defaultWorkingDirectory
-        ),
-        defaultPythonPath: userSettings.getValue(SettingType.pythonPath),
-        logLevel: userSettings.getValue(SettingType.logLevel),
-        activateTab: activateTab
-      },
-      this._registry
-    );
-
-    this._settingsDialog = dialog;
-
-    dialog.window.on('closed', () => {
-      this._settingsDialog = null;
-    });
-
-    dialog.load();
   }
 
   private async _selectRemoteServerUrl() {
@@ -1529,7 +1488,6 @@ export class SessionWindow implements IDisposable {
   private _app: IApplication;
   private _registry: IRegistry;
   private _server: JupyterServerFactory.IFactoryItem;
-  private _settingsDialog: SettingsDialog;
   private _remoteServerSelectDialog: RemoteServerSelectDialog;
   private _envSelectPopup: PythonEnvironmentSelectPopup;
   private _envSelectPopupVisible: boolean = false;
