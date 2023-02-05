@@ -41,7 +41,6 @@ import { SettingsDialog } from '../settingsdialog/settingsdialog';
 import { RemoteServerSelectDialog } from '../remoteserverselectdialog/remoteserverselectdialog';
 import { connectAndGetServerInfo, IJupyterServerInfo } from '../connect';
 import { PythonEnvironmentSelectPopup } from '../pythonenvselectpopup/pythonenvselectpopup';
-import { AboutDialog } from '../aboutdialog/aboutdialog';
 import { ProgressView } from '../progressview/progressview';
 import { appData } from '../config/appdata';
 import { SessionConfig } from '../config/sessionconfig';
@@ -813,7 +812,7 @@ export class SessionWindow implements IDisposable {
         {
           label: 'About',
           click: () => {
-            this._showAboutDialog();
+            this._app.showAboutDialog();
           }
         }
       ];
@@ -1031,11 +1030,6 @@ export class SessionWindow implements IDisposable {
     this._registry.getRunningServerList().then(runningServers => {
       this._remoteServerSelectDialog.setRunningServerList(runningServers);
     });
-  }
-
-  private _showAboutDialog() {
-    const dialog = new AboutDialog({ isDarkTheme: this._isDarkTheme });
-    dialog.load();
   }
 
   private async _createEnvSelectPopup() {

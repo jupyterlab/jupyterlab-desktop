@@ -40,12 +40,14 @@ import { SessionConfig } from './config/sessionconfig';
 import { EventManager } from './eventmanager';
 import { EventTypeMain, EventTypeRenderer } from './eventtypes';
 import { SettingsDialog } from './settingsdialog/settingsdialog';
+import { AboutDialog } from './aboutdialog/aboutdialog';
 
 export interface IApplication {
   createNewEmptySession(): void;
   createFreeServersIfNeeded(): void;
   checkForUpdates(showDialog: 'on-new-version' | 'always'): void;
   showSettingsDialog(activateTab?: SettingsDialog.Tab): void;
+  showAboutDialog(): void;
   cliArgs: ICLIArguments;
 }
 
@@ -175,6 +177,7 @@ class SessionWindowManager implements IDisposable {
 
         if (this._windows.length === 0) {
           this._options.app.closeSettingsDialog();
+          this._options.app.closeAboutDialog();
         }
       }
     });
@@ -390,12 +393,37 @@ export class JupyterApplication implements IApplication, IDisposable {
     }
   }
 
+  showAboutDialog() {
+    if (this._aboutDialog) {
+      this._aboutDialog.window.window.focus();
+      return;
+    }
+
+    const dialog = new AboutDialog({ isDarkTheme: this._isDarkTheme });
+
+    this._aboutDialog = dialog;
+
+    dialog.window.window.on('closed', () => {
+      this._aboutDialog = null;
+    });
+
+    this._aboutDialog.load();
+  }
+
+  closeAboutDialog() {
+    if (this._aboutDialog) {
+      this._aboutDialog.window.window.close();
+      this._aboutDialog = null;
+    }
+  }
+
   dispose(): Promise<void> {
     if (this._disposePromise) {
       return this._disposePromise;
     }
 
     this.closeSettingsDialog();
+    this.closeAboutDialog();
 
     this._disposePromise = new Promise<void>((resolve, reject) => {
       Promise.all([
@@ -865,5 +893,6 @@ export class JupyterApplication implements IApplication, IDisposable {
   private _sessionWindowManager: SessionWindowManager;
   private _evm = new EventManager();
   private _settingsDialog: SettingsDialog;
+  private _aboutDialog: AboutDialog;
   private _isDarkTheme: boolean;
 }
