@@ -45,6 +45,7 @@ export interface IRegistry {
   getRunningServerList(): Promise<string[]>;
   dispose(): Promise<void>;
   environmentListUpdated: ISignal<this, void>;
+  clearUserSetPythonEnvs(): void;
 }
 
 export const SERVER_TOKEN_PREFIX = 'jlab:srvr:';
@@ -164,6 +165,16 @@ export class Registry implements IRegistry, IDisposable {
 
   get environmentListUpdated(): ISignal<this, void> {
     return this._environmentListUpdated;
+  }
+
+  clearUserSetPythonEnvs(): void {
+    if (this._userSetEnvironments.length === 0) {
+      return;
+    }
+
+    this._userSetEnvironments = [];
+    this._updateEnvironments();
+    this._environmentListUpdated.emit();
   }
 
   private async _resolveEnvironments(

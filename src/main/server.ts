@@ -60,7 +60,8 @@ function createLaunchScript(
     // use our token rather than any pre-configured password
     '--ServerApp.password=""',
     // enable hidden files (let user decide whether to display them)
-    '--ContentsManager.allow_hidden=True'
+    '--ContentsManager.allow_hidden=True',
+    '--LabApp.quit_button=False'
   ];
 
   if (
@@ -103,6 +104,8 @@ function createLaunchScript(
 
   const ext = isWin ? 'bat' : 'sh';
   const scriptPath = createTempFile(`launch.${ext}`, script);
+
+  console.debug(`Server launch script:\n${script}`);
 
   if (!isWin) {
     fs.chmodSync(scriptPath, 0o755);
@@ -244,7 +247,7 @@ export class JupyterServer {
           'desktop-workspaces'
         );
 
-        this._nbServer = execFile(launchScriptPath, {
+        const execOptions = {
           cwd: this._info.workingDirectory,
           shell: isWin ? 'cmd.exe' : '/bin/bash',
           env: {
@@ -255,7 +258,15 @@ export class JupyterServer {
             JUPYTERLAB_WORKSPACES_DIR:
               process.env.JLAB_DESKTOP_WORKSPACES_DIR || jlabWorkspacesDir
           }
-        });
+        };
+
+        console.debug(
+          `Server launch parameters:\n  [script]: ${launchScriptPath}\n  [options]: ${JSON.stringify(
+            execOptions
+          )}`
+        );
+
+        this._nbServer = execFile(launchScriptPath, execOptions);
 
         Promise.race([
           waitUntilServerIsUp(this._info.url),

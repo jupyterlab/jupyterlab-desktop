@@ -23,6 +23,7 @@ import { UpdateDialog } from './updatedialog/updatedialog';
 import {
   DEFAULT_WIN_HEIGHT,
   DEFAULT_WIN_WIDTH,
+  LogLevel,
   resolveWorkingDirectory,
   SettingType,
   StartupMode,
@@ -38,11 +39,15 @@ import { ICLIArguments, IDisposable, IRect } from './tokens';
 import { SessionConfig } from './config/sessionconfig';
 import { EventManager } from './eventmanager';
 import { EventTypeMain, EventTypeRenderer } from './eventtypes';
+import { SettingsDialog } from './settingsdialog/settingsdialog';
+import { AboutDialog } from './aboutdialog/aboutdialog';
 
 export interface IApplication {
   createNewEmptySession(): void;
   createFreeServersIfNeeded(): void;
   checkForUpdates(showDialog: 'on-new-version' | 'always'): void;
+  showSettingsDialog(activateTab?: SettingsDialog.Tab): void;
+  showAboutDialog(): void;
   cliArgs: ICLIArguments;
 }
 
@@ -169,6 +174,11 @@ class SessionWindowManager implements IDisposable {
         await window.dispose();
         this._windows.splice(index, 1);
         this.syncSessionData();
+
+        if (this._windows.length === 0) {
+          this._options.app.closeSettingsDialog();
+          this._options.app.closeAboutDialog();
+        }
       }
     });
 
@@ -260,6 +270,8 @@ export class JupyterApplication implements IApplication, IDisposable {
       }
     }
 
+    this._isDarkTheme = isDarkTheme(userSettings.getValue(SettingType.theme));
+
     this.startup();
   }
 
@@ -333,10 +345,85 @@ export class JupyterApplication implements IApplication, IDisposable {
     sessionWindow.window.focus();
   }
 
+  showSettingsDialog(activateTab?: SettingsDialog.Tab) {
+    if (this._settingsDialog) {
+      this._settingsDialog.window.focus();
+      return;
+    }
+
+    const settings = userSettings;
+
+    const dialog = new SettingsDialog(
+      {
+        isDarkTheme: this._isDarkTheme,
+        startupMode: settings.getValue(SettingType.startupMode),
+        theme: settings.getValue(SettingType.theme),
+        syncJupyterLabTheme: settings.getValue(SettingType.syncJupyterLabTheme),
+        showNewsFeed: settings.getValue(SettingType.showNewsFeed),
+        frontEndMode: settings.getValue(SettingType.frontEndMode),
+        checkForUpdatesAutomatically: settings.getValue(
+          SettingType.checkForUpdatesAutomatically
+        ),
+        installUpdatesAutomatically: settings.getValue(
+          SettingType.installUpdatesAutomatically
+        ),
+        defaultWorkingDirectory: userSettings.getValue(
+          SettingType.defaultWorkingDirectory
+        ),
+        defaultPythonPath: userSettings.getValue(SettingType.pythonPath),
+        logLevel: userSettings.getValue(SettingType.logLevel),
+        activateTab: activateTab
+      },
+      this._registry
+    );
+
+    this._settingsDialog = dialog;
+
+    dialog.window.on('closed', () => {
+      this._settingsDialog = null;
+    });
+
+    dialog.load();
+  }
+
+  closeSettingsDialog() {
+    if (this._settingsDialog) {
+      this._settingsDialog.window.close();
+      this._settingsDialog = null;
+    }
+  }
+
+  showAboutDialog() {
+    if (this._aboutDialog) {
+      this._aboutDialog.window.window.focus();
+      return;
+    }
+
+    const dialog = new AboutDialog({ isDarkTheme: this._isDarkTheme });
+
+    this._aboutDialog = dialog;
+
+    dialog.window.window.on('closed', () => {
+      this._aboutDialog = null;
+    });
+
+    this._aboutDialog.load();
+  }
+
+  closeAboutDialog() {
+    if (this._aboutDialog) {
+      this._aboutDialog.window.window.close();
+      this._aboutDialog = null;
+    }
+  }
+
   dispose(): Promise<void> {
     if (this._disposePromise) {
       return this._disposePromise;
     }
+
+    this.closeSettingsDialog();
+    this.closeAboutDialog();
 
     this._disposePromise = new Promise<void>((resolve, reject) => {
       Promise.all([
@@ -674,6 +761,13 @@ export class JupyterApplication implements IApplication, IDisposable {
       this.checkForUpdates('always');
     });
 
+    this._evm.registerEventHandler(
+      EventTypeMain.SetLogLevel,
+      (_event, logLevel: LogLevel) => {
+        userSettings.setValue(SettingType.logLevel, logLevel);
+      }
+    );
+
     this._evm.registerSyncEventHandler(
       EventTypeMain.GetServerInfo,
       (event): Promise<IServerInfo> => {
@@ -699,7 +793,7 @@ export class JupyterApplication implements IApplication, IDisposable {
           appData.recentRemoteURLs = [];
         }
         if (options.userSetPythonEnvs) {
-          appData.userSetPythonEnvs = [];
+          this._registry.clearUserSetPythonEnvs();
         }
         if (options.sessionData || options.recentSessions) {
           appData.recentSessions.forEach(async recentSession => {
@@ -798,4 +892,7 @@ export class JupyterApplication implements IApplication, IDisposable {
   private _disposePromise: Promise<void>;
   private _sessionWindowManager: SessionWindowManager;
   private _evm = new EventManager();
+  private _settingsDialog: SettingsDialog;
+  private _aboutDialog: AboutDialog;
+  private _isDarkTheme: boolean;
 }

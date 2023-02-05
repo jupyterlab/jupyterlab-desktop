@@ -41,7 +41,6 @@ import { SettingsDialog } from '../settingsdialog/settingsdialog';
 import { RemoteServerSelectDialog } from '../remoteserverselectdialog/remoteserverselectdialog';
 import { connectAndGetServerInfo, IJupyterServerInfo } from '../connect';
 import { PythonEnvironmentSelectPopup } from '../pythonenvselectpopup/pythonenvselectpopup';
-import { AboutDialog } from '../aboutdialog/aboutdialog';
 import { ProgressView } from '../progressview/progressview';
 import { appData } from '../config/appdata';
 import { SessionConfig } from '../config/sessionconfig';
@@ -453,6 +452,9 @@ export class SessionWindow implements IDisposable {
   }
 
   private _recentSessionsChangedHandler() {
+    if (this._recentSessionRemovalByThis) {
+      return;
+    }
     this._welcomeView?.updateRecentSessionList(true);
   }
 
@@ -657,7 +659,12 @@ export class SessionWindow implements IDisposable {
           return;
         }
 
+        // update this window's list without resetting collapse state
+        this._recentSessionRemovalByThis = true;
+
         await appData.removeSessionFromRecents(sessionIndex);
+
+        this._recentSessionRemovalByThis = false;
 
         if (event.sender === this._welcomeView.view.webContents) {
           this._welcomeView.updateRecentSessionList(false);
@@ -783,7 +790,7 @@ export class SessionWindow implements IDisposable {
         {
           label: 'Settings',
           click: () => {
-            this._showSettingsDialog();
+            this._app.showSettingsDialog();
           }
         },
         {
@@ -805,7 +812,7 @@ export class SessionWindow implements IDisposable {
         {
           label: 'About',
           click: () => {
-            this._showAboutDialog();
+            this._app.showAboutDialog();
           }
         }
       ];
@@ -850,7 +857,7 @@ export class SessionWindow implements IDisposable {
           return;
         }
 
-        this._showSettingsDialog(SettingsDialog.Tab.Server);
+        this._app.showSettingsDialog(SettingsDialog.Tab.Server);
       }
     );
 
@@ -1010,46 +1017,6 @@ export class SessionWindow implements IDisposable {
     });
   }
 
-  private _showSettingsDialog(activateTab?: SettingsDialog.Tab) {
-    if (this._settingsDialog) {
-      this._settingsDialog.window.focus();
-      return;
-    }
-
-    const settings = this._wsSettings;
-
-    const dialog = new SettingsDialog(
-      {
-        isDarkTheme: this._isDarkTheme,
-        startupMode: settings.getValue(SettingType.startupMode),
-        theme: settings.getValue(SettingType.theme),
-        syncJupyterLabTheme: settings.getValue(SettingType.syncJupyterLabTheme),
-        showNewsFeed: settings.getValue(SettingType.showNewsFeed),
-        frontEndMode: settings.getValue(SettingType.frontEndMode),
-        checkForUpdatesAutomatically: settings.getValue(
-          SettingType.checkForUpdatesAutomatically
-        ),
-        installUpdatesAutomatically: settings.getValue(
-          SettingType.installUpdatesAutomatically
-        ),
-        defaultWorkingDirectory: userSettings.getValue(
-          SettingType.defaultWorkingDirectory
-        ),
-        defaultPythonPath: userSettings.getValue(SettingType.pythonPath),
-        activateTab: activateTab
-      },
-      this._registry
-    );
-
-    this._settingsDialog = dialog;
-
-    dialog.window.on('closed', () => {
-      this._settingsDialog = null;
-    });
-
-    dialog.load();
-  }
-
   private async _selectRemoteServerUrl() {
     this._remoteServerSelectDialog = new RemoteServerSelectDialog({
       isDarkTheme: this._isDarkTheme,
@@ -1063,11 +1030,6 @@ export class SessionWindow implements IDisposable {
     this._registry.getRunningServerList().then(runningServers => {
       this._remoteServerSelectDialog.setRunningServerList(runningServers);
     });
-  }
-
-  private _showAboutDialog() {
-    const dialog = new AboutDialog({ isDarkTheme: this._isDarkTheme });
-    dialog.load();
   }
 
   private async _createEnvSelectPopup() {
@@ -1138,6 +1100,7 @@ export class SessionWindow implements IDisposable {
 
   async openSession(sessionConfig: SessionConfig) {
     if (this._sessionConfig && this._contentViewType === ContentViewType.Lab) {
+      // TODO: this shouldn't happen anymore since sessions are launched in new empty window. remove after testing
       const choice = dialog.showMessageBoxSync({
         type: 'warning',
         message: 'Replace existing session',
@@ -1180,6 +1143,7 @@ export class SessionWindow implements IDisposable {
         this._sessionConfig &&
         this._contentViewType === ContentViewType.Lab
       ) {
+        // TODO: this shouldn't happen anymore since sessions are launched in new empty window. remove after testing
         const choice = dialog.showMessageBoxSync({
           type: 'warning',
           message: 'Replace existing session',
@@ -1518,13 +1482,13 @@ export class SessionWindow implements IDisposable {
   private _app: IApplication;
   private _registry: IRegistry;
   private _server: JupyterServerFactory.IFactoryItem;
-  private _settingsDialog: SettingsDialog;
   private _remoteServerSelectDialog: RemoteServerSelectDialog;
   private _envSelectPopup: PythonEnvironmentSelectPopup;
   private _envSelectPopupVisible: boolean = false;
   private _disposePromise: Promise<void>;
   private _sessionConfigChanged = new Signal<this, void>(this);
   private _evm = new EventManager();
+  private _recentSessionRemovalByThis = false;
 }
 
 export namespace SessionWindow {

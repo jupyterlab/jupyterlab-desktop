@@ -51,7 +51,8 @@ export enum EventTypeMain {
   GetServerInfo = 'get-server-info',
   IsDarkTheme = 'is-dark-theme',
   ClearHistory = 'clear-history',
-  ShowInvalidPythonPathMessage = 'show-invalid-python-path-message'
+  ShowInvalidPythonPathMessage = 'show-invalid-python-path-message',
+  SetLogLevel = 'set-log-level'
 }
 
 // events sent to Renderer process
