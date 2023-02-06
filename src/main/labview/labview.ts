@@ -67,6 +67,17 @@ export class LabView implements IDisposable {
       } else {
         partition = `partition-${Date.now()}`;
       }
+    } else if (
+      this._wsSettings.getValue(SettingType.frontEndMode) ===
+      FrontEndMode.ClientApp
+    ) {
+      /*
+      use a dedicated partition (session) for client app mode, even though PDF
+      rendering doesn't work. without a dedicated session, intercepting buffer
+      protocol doesn't work since it is listening on the session object.
+      TODO: remove support for Client App mode.
+      */
+      partition = `partition-${Date.now()}`;
     }
     this._view = new BrowserView({
       webPreferences: {
@@ -334,8 +345,9 @@ export class LabView implements IDisposable {
 
   private _unregisterBrowserEventHandlers() {
     if (
+      !this._parent.window.isDestroyed() &&
       this._wsSettings.getValue(SettingType.frontEndMode) ==
-      FrontEndMode.ClientApp
+        FrontEndMode.ClientApp
     ) {
       this._view.webContents.session.protocol.uninterceptProtocol('http');
       this._view.webContents.session.protocol.uninterceptProtocol('https');
@@ -446,7 +458,7 @@ export class LabView implements IDisposable {
   ): void {
     if (req.url.startsWith(this.desktopAppAssetsPrefix)) {
       this._handleDesktopAppAssetRequest(req, callback);
-    } else {
+    } else if (req.url.startsWith(this._sessionConfig.url.origin)) {
       this._handleRemoteAssetRequest(req, callback);
     }
   }
