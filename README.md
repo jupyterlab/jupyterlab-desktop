@@ -15,7 +15,7 @@ If you have an existing JupyterLab Desktop installation, please uninstall it fir
 
 Additionally, JupyterLab Desktop can be installed on Windows via winget: `winget install jupyterlab`.
 
-Please check out the [Python Environment Customization Guide](user-guide.md#Customizing-the-Bundled-Python-Environment) if you plan to customize the Python environment to add new packages. 
+Please check out the [Python Environment Customization Guide](user-guide.md#Customizing-the-Bundled-Python-Environment) if you plan to customize the Python environment to add new packages.
 
 ## Launching JupyterLab Desktop
 
@@ -47,6 +47,5 @@ For additional CLI options run `jlab --help` in command line.
 JupyterLab Desktop currently supports user-friendly [prebuilt](https://jupyterlab.readthedocs.io/en/stable/extension/extension_dev.html#overview-of-extensions) extensions. Source extensions which require rebuilding are not supported.
 
 ### See [user guide](user-guide.md) for configuration options
-
 
 ### For contributing, see [developer documentation](#dev.md)

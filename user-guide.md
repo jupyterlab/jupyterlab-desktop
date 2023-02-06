@@ -152,6 +152,7 @@ JupyterLab Desktop stores user settings, project settings and application data i
 - User settings: `{jlab-desktop-user-data-dir}/settings.json`
 
   This file contains application settings such as default Python path and theme. These settings can be configured from Settings dialog in the application UI.
+
 - Project settings: `{working-directory}/.jupyter/desktop-settings.json`
 
   This file contains project (working directory) specific overrides of user settings. Currently only `pythonPath` (which is the Python executable path for the Python environment to use for the working directory) setting can be overridden.
@@ -161,6 +162,7 @@ JupyterLab Desktop stores user settings, project settings and application data i
   This file contains data used by the application, e.g. recent sessions list, news feed cache, Python environment list cache.
 
 `{jlab-desktop-user-data-dir}` is OS specific and as below
+
 - `%APPDATA%\jupyterlab-desktop` on Windows
 - `$XDG_CONFIG_HOME/jupyterlab-desktop` or `~/.config/jupyterlab-desktop` on Linux
 - `~/Library/Application Support/jupyterlab-desktop` on macOS
