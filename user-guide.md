@@ -4,11 +4,12 @@ JupyterLab Desktop comes with a bundled Python environment which has the essenti
 
 Active Python environment info is shown on the title bar. If you hover on it you will see the details of the environment such as its path and certain package versions, along with the currently running JupyterLab server instance information.
 
-<img src="media/python-env-status.png" alt="Python environment status" width=400 /> 
+<img src="media/python-env-status.png" alt="Python environment status" width=400 />
 
 JupyterLab Desktop allows you to change the default Python environment used for all new sessions and also set project (working directory) specific Python environments.
 
 ### To change the default Python environment:
+
 - Open the settings dialog from the to right menu and go to `Server` tab.
 
 <img src="media/server-settings-custom-python-env.png" alt="Custom Python environment" width=800 />
