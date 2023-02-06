@@ -145,7 +145,31 @@ On Windows, JupyterLab Desktop is installed in two parts, one for the python env
 
 In order to remove application cache, delete `C:\Users\<username>\AppData\Roaming\jupyterlab-desktop` directory.
 
-# Configuration
+# Configuration and data files
+
+JupyterLab Desktop stores user settings, project settings and application data in different locations as JSON files. Below are the storage locations and type of data they contain.
+
+- User settings: `{jlab-desktop-user-data-dir}/settings.json`
+
+  This file contains application settings such as default Python path and theme. These settings can be configured from Settings dialog in the application UI.
+- Project settings: `{working-directory}/.jupyter/desktop-settings.json`
+
+  This file contains project (working directory) specific overrides of user settings. Currently only `pythonPath` (which is the Python executable path for the Python environment to use for the working directory) setting can be overridden.
+
+- Application data: `{jlab-desktop-user-data-dir}/app-data.json`
+
+  This file contains data used by the application, e.g. recent sessions list, news feed cache, Python environment list cache.
+
+`{jlab-desktop-user-data-dir}` is OS specific and as below
+- `%APPDATA%\jupyterlab-desktop` on Windows
+- `$XDG_CONFIG_HOME/jupyterlab-desktop` or `~/.config/jupyterlab-desktop` on Linux
+- `~/Library/Application Support/jupyterlab-desktop` on macOS
+
+JupyterLab Desktop also uses custom configuration paths for better user experience and to prevent clashes with existing Jupyter installations.
+
+Jupyter config files directory (`JUPYTER_CONFIG_DIR`) is set to `{jlab-desktop-user-data-dir}`. jupyter-server settings, jupyterlab settings, and any other Jupyter configuration are saved to and loaded from this directory. You can change the configuration path by specifying `JLAB_DESKTOP_CONFIG_DIR` environment variable.
+
+JupyterLab workspace data is stored into the working directory, for each folder a new session is started in. This allows restoring open files and UI layout of sessions for different working directories. `{working-directory}/.jupyter/desktop-workspaces` directory is automatically created and used to save and load workspace data for each working directory. You can change this behavior by specifying `JLAB_DESKTOP_WORKSPACES_DIR` environment variable.
 
 ## Copying configuration from previous installation
 

@@ -1,16 +1,12 @@
 # JupyterLab Desktop
 
-A desktop application for [JupyterLab](https://github.com/jupyterlab/jupyterlab), based on [Electron](https://www.electronjs.org/).
+JupyterLab Desktop is the desktop application for [JupyterLab](https://github.com/jupyterlab/jupyterlab). It is the quickest and easiest way to get started with Jupyter notebooks on your personal computer, with the flexibility for advanced use cases.
 
 ![JupyterLab Desktop](media/jupyterlab-desktop.png)
 
-JupyterLab Desktop currently supports user-friendly [prebuilt](https://jupyterlab.readthedocs.io/en/stable/extension/extension_dev.html#overview-of-extensions) extensions. Source extensions which require rebuilding are not supported.
+## Installation
 
-## Download
-
-![GitHub release (latest by date)](https://img.shields.io/github/v/release/jupyterlab/jupyterlab-desktop)
-
-Before installing please read the [Python Environment Customization Guide](user-guide.md#Customizing-the-Bundled-Python-Environment) if you plan to customize the Python environment to add new packages. If you have an existing JupyterLab Desktop installation, please uninstall it first by following the [uninstall instructions](user-guide.md#uninstalling-jupyterlab-desktop).
+If you have an existing JupyterLab Desktop installation, please uninstall it first by following the [uninstall instructions](user-guide.md#uninstalling-jupyterlab-desktop).
 
 - [Debian, Ubuntu Linux Installer](https://github.com/jupyterlab/jupyterlab-desktop/releases/latest/download/JupyterLab-Setup-Debian.deb)
 - [Red Hat, Fedora, SUSE Linux Installer](https://github.com/jupyterlab/jupyterlab-desktop/releases/latest/download/JupyterLab-Setup-Fedora.rpm)
@@ -18,6 +14,8 @@ Before installing please read the [Python Environment Customization Guide](user-
 - [Windows Installer](https://github.com/jupyterlab/jupyterlab-desktop/releases/latest/download/JupyterLab-Setup-Windows.exe)
 
 Additionally, JupyterLab Desktop can be installed on Windows via winget: `winget install jupyterlab`.
+
+Please check out the [Python Environment Customization Guide](user-guide.md#Customizing-the-Bundled-Python-Environment) if you plan to customize the Python environment to add new packages. 
 
 ## Launching JupyterLab Desktop
 
@@ -39,109 +37,16 @@ JupyterLab Desktop sets File Browser's root directory based on the launch method
   - `jlab /Users/username/notebooks/test.ipynb` launch notebook with absolute path
   - `jlab ../notebooks/test.ipynb` launch notebook with relative path
   - `jlab ../test.py` launch python file with relative path
+- Open with a custom Python environment
+  - `jlab --python-path /Users/username/custom_env/bin/python ../notebooks/test.ipynb` launch notebook with custom Python environment
 
-### Configuration files
+For additional CLI options run `jlab --help` in command line.
 
-By default JupyterLab Desktop will only load and write to Jupyter configuration located in:
+### JupyterLab Extension support
 
-- `%APPDATA%\jupyterlab-desktop` on Windows
-- `$XDG_CONFIG_HOME/jupyterlab-desktop` or `~/.config/jupyterlab-desktop` on Linux
-- `~/Library/jupyterlab-desktop` on macOS
+JupyterLab Desktop currently supports user-friendly [prebuilt](https://jupyterlab.readthedocs.io/en/stable/extension/extension_dev.html#overview-of-extensions) extensions. Source extensions which require rebuilding are not supported.
 
-ignoring any other Jupyter configuration which may be present in standard Jupyter paths as defined by `jupyter --paths`.
-This includes `jupyter-server` settings, `jupyterlab` settings and workspaces, and any other configuration which would
-normally be shared between Jupyter installations.
-This is necessary to prevent a clash between the Desktop and any previous Jupyter installation.
+### See [user guide](user-guide.md) for configuration options
 
-You can change the configuration path by specifying `JLAB_DESKTOP_CONFIG_DIR` environment variable.
 
-For instructions on how to copy the settings from previous JupyterLab installation please see the [user guide](user-guide.md#Copying-configuration-from-previous-installation).
-
-## Build dependencies
-
-- [conda](https://docs.conda.io)
-
-  You can install `conda` as part of a [Miniforge](https://github.com/conda-forge/miniforge) installer.
-
-- [(conda) Constructor](https://github.com/conda/constructor) to bundle JupyterLab Desktop Server into the stand-alone application. You can install Constructor using:
-
-  ```bash
-  conda install -c conda-forge constructor
-  ```
-
-- nodejs
-
-  You can install from https://nodejs.org/en/download/ or run:
-
-  ```bash
-  conda install -c conda-forge nodejs
-  ```
-
-- yarn
-
-  Install using
-
-  ```bash
-  npm install --global yarn
-  ```
-
-## Local development
-
-JupyterLab Desktop bundles JupyterLab front-end and a conda environment as JupyterLab Desktop Server as its backend into an Electron application.
-
-`<platform>`: mac, linux or win
-
-- Get the project source code
-
-  ```bash
-  git clone https://github.com/jupyterlab/jupyterlab-desktop.git
-  ```
-
-- Install dependencies and build JupyterLab Desktop
-
-  ```bash
-  yarn
-  yarn build
-  ```
-
-- Create the JupyterLab Desktop Server installer using
-
-  ```bash
-  yarn create_env_installer:<platform>
-  ```
-
-  Installer will be created in one of `env_installer/JupyterLabDesktopAppServer<version>-MacOSX-x86_64.sh`, `env_installer/JupyterLabDesktopAppServer-<version>-Linux-x86_64.sh`, `env_installer/JupyterLabDesktopAppServer-<version>-Windows-x86_64.exe` based on your platform
-
-- Now you can launch the JupyterLab Desktop locally using:
-
-  ```bash
-  yarn start
-  ```
-
-  If JupyterLab Desktop does not find a compatible Python environment configured, it will prompt for installation using JupyterLab Desktop Server installer or let you choose a custom environment on your computer at first launch.
-
-## Building for distribution
-
-- Build the application
-
-  ```bash
-  yarn run clean && yarn build
-  ```
-
-- Create JupyterLab Desktop Server installer
-
-  ```bash
-  yarn create_env_installer:<platform>
-  ```
-
-- Create JupyterLab Desktop installer which will also bundle JupyterLab Desktop Server installer.
-
-  ```bash
-  yarn dist:<platform>
-  ```
-
-  Application Installer will be created in `dist/JupyterLab.dmg` (macOS), `dist/JupyterLab.deb` (Debian, Ubuntu), `dist/JupyterLab.rpm` (Red Hat, Fedora) and `dist/JupyterLab-Setup.exe` (Windows) based on the platform
-
-## Release Instructions
-
-For instructions on updating bundled JupyterLab packages and cutting a new release, please follow [Release.md](Release.md) document.
+### For contributing, see [developer documentation](#dev.md)
