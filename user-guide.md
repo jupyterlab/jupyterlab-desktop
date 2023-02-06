@@ -11,7 +11,7 @@ JupyterLab Desktop allows you to change the default Python environment used for 
 ### To change the default Python environment:
 - Open the settings dialog from the to right menu and go to `Server` tab.
 
-<img src="media/server-settings-custom-python-env.png" alt="Select Python environment" />
+<img src="media/server-settings-custom-python-env.png" alt="Custom Python environment" width=800 />
 
 - In Server tab, select `Custom Python environment` option and either enter the path to Python executable you would like to use or click `Select Python path` to browse for it.
 
@@ -21,7 +21,7 @@ JupyterLab Desktop allows you to change the default Python environment used for 
 
 - Click on the server status button on the title bar to launch Python environment selector menu. Compatible Python environments discovered on your computer and any previously used environments will be listed in the menu.
 
-<img src="media/python-env-select.png" alt="Select Python environment" />
+<img src="media/python-env-select.png" alt="Python environment popup" width=700 />
 
 - You can choose from one of the Python paths listed on the menu or click the browse button on top right to browse and select any other Python paths existing on your computer.
 
@@ -31,17 +31,19 @@ JupyterLab Desktop allows you to change the default Python environment used for 
 
 - Once you select a new environment, JupyterLab server will be restarted using the new environment without restarting the application.
 
+- Another way to set project specific Python environment is by using the CLI. You can set the `--python-path` CLI parameter (e.g. `jlab --python-path /Users/username/custom_env/bin/python .`) and then the application will launch in the specified project directory with the Python environment set. The setting will be saved to project settings and restored at next launch via CLI or UI.
+
 Python environment selections are saved in user settings or project settings and restored at launch. See the [Configuration and data files](#Configuration-and-data-files) section for more information about the settings storage. Python environment is stored with `pythonPath` key in those files. Setting the value to empty string or removing the key will reset the change.
 
-# Connecting to a an existing JupyterLab Server
+# Connecting to an existing JupyterLab Server
 
 JupyterLab Desktop creates new JupyterLab sessions by launching a locally running JupyterLab server and connecting to it. It can also connect to an existing JupyterLab server instance that is running locally or remotely. In order to connect to a server, click the `Connect...` button in the Start section of the Welcome Page.
 
-<img src="media/start-session-connect.png" alt="Remote Server configuration" width=200 />
+<img src="media/start-session-connect.png" alt="Connect to server" width=250 />
 
 This will launch a dialog that automatically discovers and lists the locally running JupyterLab server instances and previously connected local or remote servers in the app history.
 
-<img src="media/connect-to-server.png" alt="Remote Server configuration" />
+<img src="media/connect-to-server.png" alt="Connect to server list" width=700 />
 
 Select a server from the list or enter the URL of the JupyterLab application server including `/lab` in the URL. If the server requires a token for authentication, make sure to include it as a query parameter of the URL as well (`/lab?token=<token-value>`). After entering a URL hit `Enter` key to connect.
 
@@ -49,7 +51,7 @@ JupyterLab Desktop can connect to remote server instances that require additiona
 
 You can delete the stored session data manually at any time by using the `Clear History` option in the Privacy tab of Settings dialog.
 
-<img src="media/settings-privacy.png" alt="Remote Server configuration" />
+<img src="media/settings-privacy.png" alt="Clear History" width=800 />
 
 ## How to create a Custom Python Environment
 
@@ -58,7 +60,7 @@ You can delete the stored session data manually at any time by using the `Clear 
 ```bash
 conda create -n custom_venv
 conda activate custom_venv
-conda install -c conda-forge jupyterlab==3.2.3
+conda install -c conda-forge jupyterlab==3.6.1
 # install custom packages
 conda install -c conda-forge scikit-learn
 ```
@@ -69,7 +71,7 @@ conda install -c conda-forge scikit-learn
 python3 -m venv custom_venv
 source custom_venv/bin/activate
 pip install --upgrade pip
-pip install jupyterlab==3.2.3
+pip install jupyterlab==3.6.1
 # install custom packages
 pip install scikit-learn
 ```
@@ -103,6 +105,7 @@ Make sure you installed JupyterLab Desktop following the steps outlined above in
   %pip install scikit-learn
   ```
 - In order to use the newly installed package you need to restart your active notebook's kernel or create a new notebook
+- If you install a new JupyterLab extension with UI components, then you will need to create a new session for changes to take effect
 
 # Uninstalling JupyterLab Desktop
 
