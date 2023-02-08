@@ -108,64 +108,6 @@ Make sure you installed JupyterLab Desktop following the steps outlined above in
 - In order to use the newly installed package you need to restart your active notebook's kernel or create a new notebook
 - If you install a new JupyterLab extension with UI components, then you will need to create a new session for changes to take effect
 
-# Uninstalling JupyterLab Desktop
-
-## Debian, Ubuntu Linux
-
-```bash
-sudo apt-get purge jupyterlab-desktop # remove application
-rm /usr/bin/jlab # remove command symlink
-
-# to remove application cache and bundled Python environment
-rm -rf ~/.config/jupyterlab-desktop
-```
-
-## Red Hat, Fedora, SUSE Linux
-
-```bash
-sudo rpm -e jupyterlab-desktop # remove application
-rm /usr/bin/jlab # remove command symlink
-
-# to remove application cache and bundled Python environment
-rm -rf ~/.config/jupyterlab-desktop
-```
-
-## macOS
-
-Find the application installation `JupyterLab.app` in Finder (in /Applications or ~/Applications) and move to Trash by using `CMD + Delete`. Clean other application generated files using:
-
-For versions 3.3.2-2 and newer
-
-```bash
-rm /usr/local/bin/jlab # remove command symlink
-
-# to remove application cache and bundled Python environment
-rm -rf ~/Library/jupyterlab-desktop
-```
-
-For versions 3.3.2-1 and older
-
-```bash
-rm /usr/local/bin/jlab # remove command symlink
-
-# to remove application cache and bundled Python environment
-rm -rf ~/Library/Application\ Support/jupyterlab-desktop
-```
-
-## Windows
-
-On Windows, JupyterLab Desktop is installed in two parts, one for the python environment and another for the application itself. Go to `Windows Apps & Features` dialog using `Start Menu` -> `Settings` -> `Apps` and make sure to uninstall the components in the following order:
-
-- First uninstall JupyterLab Desktop python environment
-
-<img src="media/uninstall-windows-python-environment.png" alt="Uninstall Python environment" height=200 />
-
-- Then uninstall JupyterLab Desktop application
-
-<img src="media/uninstall-windows-application.png" alt="Uninstall the application" height=200 />
-
-In order to remove application cache, delete `C:\Users\<username>\AppData\Roaming\jupyterlab-desktop` directory.
-
 # Configuration and data files
 
 JupyterLab Desktop stores user settings, project settings and application data in different locations as JSON files. Below are the storage locations and type of data they contain.
@@ -196,21 +138,60 @@ JupyterLab workspace data is stored into the working directory, for each folder 
 
 ## Copying configuration from previous installation
 
-Starting with version v3.2.4-2 the configuration (`jupyter-server` settings, `jupyterlab` settings and workspaces, etc)
-is no longer shared between JupyterLab Desktop and other installations of Jupyter(Lab) to avoid workspace leakage,
-user confusion, and errors such as reported by users who had a pre-existing configuration clashing with a newer
-version of Jupyter shipped with JupyterLab Desktop.
-
-You can keep your previous JupyterLab settings by copying them over to the new [configuration path](https://github.com/jupyterlab/jupyterlab-desktop#configuration-files):
+You can transfer settings from previous JupyterLab installations into JupyterLab Desktop by copying them over to the new configuration path `{jlab-desktop-user-data-dir}` by following these steps:
 
 1. Run `jupyter --paths` to determine where your `config` is stored.
 2. Find directory called `lab` in one of these paths.
-3. If there is a `user-settings` directory in `lab`, you can copy the `lab` directory over to the [configuration path](https://github.com/jupyterlab/jupyterlab-desktop#configuration-files) of JupyterLab Desktop to keep your old JupyterLab settings. If there is `workspaces` directory you can decide if you want to keep or remove it.
+3. If there is a `user-settings` directory in `lab`, you can copy the `lab` directory over to the configuration path `{jlab-desktop-user-data-dir}` of JupyterLab Desktop to keep your old JupyterLab settings.
 
-For example, on Linux it could (depending on installation) require the following:
-
-```
-cp -r ~/.jupyter/lab/ ~/.config/jupyterlab-desktop
-```
 
 **Warning**: If you copy over settings from an older major version of JupyterLab (e.g. 2.x) those might cause an error on startup.
+
+# Uninstalling JupyterLab Desktop
+
+## Debian, Ubuntu Linux
+
+```bash
+sudo apt-get purge jupyterlab-desktop # remove application
+rm /usr/bin/jlab # remove command symlink
+
+# to remove application cache and bundled Python environment
+rm -rf ~/.config/jupyterlab-desktop
+```
+
+## Red Hat, Fedora, SUSE Linux
+
+```bash
+sudo rpm -e jupyterlab-desktop # remove application
+rm /usr/bin/jlab # remove command symlink
+
+# to remove application cache and bundled Python environment
+rm -rf ~/.config/jupyterlab-desktop
+```
+
+## macOS
+
+Find the application installation `JupyterLab.app` in Finder (in /Applications or ~/Applications) and move to Trash by using `CMD + Delete`. Clean other application generated files using:
+
+```bash
+rm /usr/local/bin/jlab # remove command symlink
+
+# to remove application cache and bundled Python environment
+rm -rf ~/Library/jupyterlab-desktop
+# to remove user data
+rm -rf ~/Library/Application\ Support/jupyterlab-desktop
+```
+
+## Windows
+
+On Windows, JupyterLab Desktop is installed in two parts, one for the python environment and another for the application itself. Go to `Windows Apps & Features` dialog using `Start Menu` -> `Settings` -> `Apps` and make sure to uninstall the components in the following order:
+
+- First uninstall JupyterLab Desktop python environment
+
+<img src="media/uninstall-windows-python-environment.png" alt="Uninstall Python environment" height=200 />
+
+- Then uninstall JupyterLab Desktop application
+
+<img src="media/uninstall-windows-application.png" alt="Uninstall the application" height=200 />
+
+In order to remove application cache, delete `C:\Users\<username>\AppData\Roaming\jupyterlab-desktop` directory.
