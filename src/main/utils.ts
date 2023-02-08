@@ -191,3 +191,42 @@ export async function waitForDuration(duration: number): Promise<boolean> {
     }, duration);
   });
 }
+
+/**
+ * Wait for a function to finish for max. timeout milliseconds (copied from galata)
+ *
+ * @param fn Function
+ * @param timeout Timeout
+ */
+export async function waitForFunction(
+  fn: () => boolean,
+  timeout?: number
+): Promise<void> {
+  return new Promise((resolve, reject) => {
+    let checkTimer: NodeJS.Timeout = null;
+    let timeoutTimer: NodeJS.Timeout = null;
+    const check = async () => {
+      checkTimer = null;
+      if (await Promise.resolve(fn())) {
+        if (timeoutTimer) {
+          clearTimeout(timeoutTimer);
+        }
+        resolve();
+      } else {
+        checkTimer = setTimeout(check, 200);
+      }
+    };
+
+    void check();
+
+    if (timeout) {
+      timeoutTimer = setTimeout(() => {
+        timeoutTimer = null;
+        if (checkTimer) {
+          clearTimeout(checkTimer);
+        }
+        reject(new Error('Timed out waiting for condition to be fulfilled.'));
+      }, timeout);
+    }
+  });
+}
