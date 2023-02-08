@@ -565,7 +565,7 @@
     react "^17.0.1"
     y-codemirror "^3.0.1"
 
-"@jupyterlab/collaboration-extension@^3.6.1", "@jupyterlab/collaboration-extension@~3.6.1":
+"@jupyterlab/collaboration-extension@3.6.1", "@jupyterlab/collaboration-extension@^3.6.1", "@jupyterlab/collaboration-extension@~3.6.1":
   version "3.6.1"
   resolved "https://registry.yarnpkg.com/@jupyterlab/collaboration-extension/-/collaboration-extension-3.6.1.tgz#b80bbea32e97e64c684e50895960359b47e8a59f"
   integrity sha512-nQVtuZOO5g8FWr0fjR+SasHd83rA7q6lRx+OlEKAlymmyUklFNlTe+0bZKdVDOP39GAWB4OkkKN9j8rFcZviLQ==
@@ -583,7 +583,7 @@
     y-websocket "^1.3.15"
     yjs "^13.5.17"
 
-"@jupyterlab/collaboration@^3.6.1", "@jupyterlab/collaboration@~3.6.1":
+"@jupyterlab/collaboration@3.6.1", "@jupyterlab/collaboration@^3.6.1", "@jupyterlab/collaboration@~3.6.1":
   version "3.6.1"
   resolved "https://registry.yarnpkg.com/@jupyterlab/collaboration/-/collaboration-3.6.1.tgz#dcac349e7aeb9a8adc165e25097b9659a6d70655"
   integrity sha512-GjRMadMF9FgPsoyF3Xi8wz8q+hY5WXE7tOLjmsdIn/8U0/jGzaXYNWKsZV77ED3ydjD00gELi3kIolvoNwl9vA==
