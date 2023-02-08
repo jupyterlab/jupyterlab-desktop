@@ -1,6 +1,6 @@
 # JupyterLab Desktop
 
-JupyterLab Desktop is the desktop application for [JupyterLab](https://github.com/jupyterlab/jupyterlab). It is the quickest and easiest way to get started with Jupyter notebooks on your personal computer, with the flexibility for advanced use cases.
+JupyterLab Desktop is the cross-platform desktop application for [JupyterLab](https://github.com/jupyterlab/jupyterlab). It is the quickest and easiest way to get started with Jupyter notebooks on your personal computer, with the flexibility for advanced use cases.
 
 ![JupyterLab Desktop](media/jupyterlab-desktop.png)
 
@@ -23,9 +23,32 @@ JupyterLab Desktop can be launched from the GUI of your operating system by clic
 
 JupyterLab Desktop sets File Browser's root directory based on the launch method.
 
-- If launched from the application icon on GUI or by using `jlab` command without any arguments, then user's home is set as the root directory.
-- If launched by double clicking `.ipynb` file or `jlab` command with a file path as the argument, then file's parent directory is set as the root directory.
-- If `jlab` command is used with a directory path as the argument then the directory in the argument is set as the root directory.
+- If launched from the application icon on GUI or by using `jlab` command without any arguments, then the default working directory is set as the root directory. The default working directory is user home directory but it can be customized from the Settings dialog.
+- If launched by double clicking `.ipynb` file or `jlab` command with a file path as the argument, then file's parent directory is set as the root directory. Similarly, if a file is opened using the `Open...` or `Open File...` links in the Start section or by using drag & drop, then file's parent directory is set as the root directory.
+- If `jlab` command is used with a directory path as the argument or with the `--working-dir` argument then the directory in the argument is set as the root directory. Similarly, if a folder is opened using the `Open Folder...` link in the Start section or by using drag & drop, then the opened directory is set as the root directory
+
+## Sessions and Projects
+
+Sessions represent local project launches and connections to existing JupyterLab servers. Each JupyterLab UI window in the app is associated with a separate session and sessions can be restored with the same configuration later on.
+
+Each launch of JupyterLab in a different working directory is a separate project and projects can have their own configuration such as Python environment and UI layout.
+
+### Session start options
+
+You can start a new session by using the links at the Start section of the Welcome Page.
+
+<img src="media/start-session.png" alt="Start session" width=220 />
+
+- `New notebook...` creates a new notebook in the default working directory.
+- `New session...` launches a new JupyterLab session in the default working directory.
+- `Open...` starts a new JupyterLab session in the selected working directory. If files are chosen, selected files' parent directory becomes the working directory and selected files are opened in the session. On Windows and Linux `Open Folder...` and `Open Files...` options are presented as separate items.
+- `Connect...` creates a session by connecting to an existing JupyterLab server running locally or remotely. Locally running JupyterLab servers are automatically detected and listed in the Connect dialog.
+
+Similarly, CLI launches of the application, dropping files and folders, and double clicking to open files create new sessions as well.
+
+Previously opened sessions are stored as part of application data and they are listed on Welcome Page. Clicking an item in the `Recent sessions` list restores the selected session.
+
+<img src="media/recent-sessions.png" alt="Start session" width=300 />
 
 ### jlab command-line launch examples
 
