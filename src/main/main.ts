@@ -2,7 +2,7 @@ import { app, Menu, MenuItem } from 'electron';
 import log, { LevelOption } from 'electron-log';
 import yargs from 'yargs/yargs';
 import * as fs from 'fs';
-import { getAppDir, isDevMode } from './utils';
+import { getAppDir, isDevMode, waitForFunction } from './utils';
 import { execSync } from 'child_process';
 import { JupyterApplication } from './app';
 import { ICLIArguments } from './tokens';
@@ -11,6 +11,17 @@ import { SettingType, userSettings } from './config/settings';
 
 let jupyterApp: JupyterApplication;
 let fileToOpenInMainInstance = '';
+
+async function appReady(): Promise<boolean> {
+  // wait for electron app ready
+  await app.whenReady();
+  // wait for jupyterApp created
+  await waitForFunction((): boolean => {
+    return !!jupyterApp;
+  });
+
+  return true;
+}
 
 /**
  *  * On Mac OSX the PATH env variable a packaged app gets does not
@@ -111,7 +122,7 @@ app.on('open-file', (event: Electron.Event, filePath: string) => {
   // open-file will be called early at launch, so there is chance to pass to main instance
   fileToOpenInMainInstance = filePath;
 
-  app.whenReady().then(() => {
+  appReady().then(() => {
     let fileOrFolders: string[] = [];
 
     try {

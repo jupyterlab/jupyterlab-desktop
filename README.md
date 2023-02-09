@@ -1,16 +1,12 @@
 # JupyterLab Desktop
 
-A desktop application for [JupyterLab](https://github.com/jupyterlab/jupyterlab), based on [Electron](https://www.electronjs.org/).
+JupyterLab Desktop is the cross-platform desktop application for [JupyterLab](https://github.com/jupyterlab/jupyterlab). It is the quickest and easiest way to get started with Jupyter notebooks on your personal computer, with the flexibility for advanced use cases.
 
 ![JupyterLab Desktop](media/jupyterlab-desktop.png)
 
-JupyterLab Desktop currently supports user-friendly [prebuilt](https://jupyterlab.readthedocs.io/en/stable/extension/extension_dev.html#overview-of-extensions) extensions. Source extensions which require rebuilding are not supported.
+## Installation
 
-## Download
-
-![GitHub release (latest by date)](https://img.shields.io/github/v/release/jupyterlab/jupyterlab-desktop)
-
-Before installing please read the [Python Environment Customization Guide](user-guide.md#Customizing-the-Bundled-Python-Environment) if you plan to customize the Python environment to add new packages. If you have an existing JupyterLab Desktop installation, please uninstall it first by following the [uninstall instructions](user-guide.md#uninstalling-jupyterlab-desktop).
+If you have an existing JupyterLab Desktop installation, please uninstall it first by following the [uninstall instructions](user-guide.md#uninstalling-jupyterlab-desktop).
 
 - [Debian, Ubuntu Linux Installer](https://github.com/jupyterlab/jupyterlab-desktop/releases/latest/download/JupyterLab-Setup-Debian.deb)
 - [Red Hat, Fedora, SUSE Linux Installer](https://github.com/jupyterlab/jupyterlab-desktop/releases/latest/download/JupyterLab-Setup-Fedora.rpm)
@@ -19,15 +15,40 @@ Before installing please read the [Python Environment Customization Guide](user-
 
 Additionally, JupyterLab Desktop can be installed on Windows via winget: `winget install jupyterlab`.
 
+Please check out the [Python Environment Customization Guide](user-guide.md#Customizing-the-Bundled-Python-Environment) if you plan to customize the Python environment to add new packages.
+
 ## Launching JupyterLab Desktop
 
 JupyterLab Desktop can be launched from the GUI of your operating system by clicking the application's icon or by using `jlab` command from the command line. Double clicking `.ipynb` files is also supported and it will launch JupyterLab Desktop and load the notebook file.
 
 JupyterLab Desktop sets File Browser's root directory based on the launch method.
 
-- If launched from the application icon on GUI or by using `jlab` command without any arguments, then user's home is set as the root directory.
-- If launched by double clicking `.ipynb` file or `jlab` command with a file path as the argument, then file's parent directory is set as the root directory.
-- If `jlab` command is used with a directory path as the argument then the directory in the argument is set as the root directory.
+- If launched from the application icon on GUI or by using `jlab` command without any arguments, then the default working directory is set as the root directory. The default working directory is user home directory but it can be customized from the Settings dialog.
+- If launched by double clicking `.ipynb` file or `jlab` command with a file path as the argument, then file's parent directory is set as the root directory. Similarly, if a file is opened using the `Open...` or `Open File...` links in the Start section or by using drag & drop, then file's parent directory is set as the root directory.
+- If `jlab` command is used with a directory path as the argument or with the `--working-dir` argument then the directory in the argument is set as the root directory. Similarly, if a folder is opened using the `Open Folder...` link in the Start section or by using drag & drop, then the opened directory is set as the root directory
+
+## Sessions and Projects
+
+Sessions represent local project launches and connections to existing JupyterLab servers. Each JupyterLab UI window in the app is associated with a separate session and sessions can be restored with the same configuration later on.
+
+Each launch of JupyterLab in a different working directory is a separate project and projects can have their own configuration such as Python environment and UI layout.
+
+### Session start options
+
+You can start a new session by using the links at the Start section of the Welcome Page.
+
+<img src="media/start-session.png" alt="Start session" width=220 />
+
+- `New notebook...` creates a new notebook in the default working directory.
+- `New session...` launches a new JupyterLab session in the default working directory.
+- `Open...` starts a new JupyterLab session in the selected working directory. If files are chosen, selected files' parent directory becomes the working directory and selected files are opened in the session. On Windows and Linux `Open Folder...` and `Open Files...` options are presented as separate items.
+- `Connect...` creates a session by connecting to an existing JupyterLab server running locally or remotely. Locally running JupyterLab servers are automatically detected and listed in the Connect dialog.
+
+Similarly, CLI launches of the application, dropping files and folders, and double clicking to open files create new sessions as well.
+
+Previously opened sessions are stored as part of application data and they are listed on Welcome Page. Clicking an item in the `Recent sessions` list restores the selected session.
+
+<img src="media/recent-sessions.png" alt="Start session" width=300 />
 
 ### jlab command-line launch examples
 
@@ -39,109 +60,15 @@ JupyterLab Desktop sets File Browser's root directory based on the launch method
   - `jlab /Users/username/notebooks/test.ipynb` launch notebook with absolute path
   - `jlab ../notebooks/test.ipynb` launch notebook with relative path
   - `jlab ../test.py` launch python file with relative path
+- Open with a custom Python environment
+  - `jlab --python-path /Users/username/custom_env/bin/python ../notebooks/test.ipynb` launch notebook with custom Python environment
 
-### Configuration files
+For additional CLI options run `jlab --help` in command line.
 
-By default JupyterLab Desktop will only load and write to Jupyter configuration located in:
+### JupyterLab Extension support
 
-- `%APPDATA%\jupyterlab-desktop` on Windows
-- `$XDG_CONFIG_HOME/jupyterlab-desktop` or `~/.config/jupyterlab-desktop` on Linux
-- `~/Library/jupyterlab-desktop` on macOS
+JupyterLab Desktop currently supports user-friendly [prebuilt](https://jupyterlab.readthedocs.io/en/stable/extension/extension_dev.html#overview-of-extensions) extensions. Source extensions which require rebuilding are not supported.
 
-ignoring any other Jupyter configuration which may be present in standard Jupyter paths as defined by `jupyter --paths`.
-This includes `jupyter-server` settings, `jupyterlab` settings and workspaces, and any other configuration which would
-normally be shared between Jupyter installations.
-This is necessary to prevent a clash between the Desktop and any previous Jupyter installation.
+### See [user guide](user-guide.md) for configuration options
 
-You can change the configuration path by specifying `JLAB_DESKTOP_CONFIG_DIR` environment variable.
-
-For instructions on how to copy the settings from previous JupyterLab installation please see the [user guide](user-guide.md#Copying-configuration-from-previous-installation).
-
-## Build dependencies
-
-- [conda](https://docs.conda.io)
-
-  You can install `conda` as part of a [Miniforge](https://github.com/conda-forge/miniforge) installer.
-
-- [(conda) Constructor](https://github.com/conda/constructor) to bundle JupyterLab Desktop Server into the stand-alone application. You can install Constructor using:
-
-  ```bash
-  conda install -c conda-forge constructor
-  ```
-
-- nodejs
-
-  You can install from https://nodejs.org/en/download/ or run:
-
-  ```bash
-  conda install -c conda-forge nodejs
-  ```
-
-- yarn
-
-  Install using
-
-  ```bash
-  npm install --global yarn
-  ```
-
-## Local development
-
-JupyterLab Desktop bundles JupyterLab front-end and a conda environment as JupyterLab Desktop Server as its backend into an Electron application.
-
-`<platform>`: mac, linux or win
-
-- Get the project source code
-
-  ```bash
-  git clone https://github.com/jupyterlab/jupyterlab-desktop.git
-  ```
-
-- Install dependencies and build JupyterLab Desktop
-
-  ```bash
-  yarn
-  yarn build
-  ```
-
-- Create the JupyterLab Desktop Server installer using
-
-  ```bash
-  yarn create_env_installer:<platform>
-  ```
-
-  Installer will be created in one of `env_installer/JupyterLabDesktopAppServer<version>-MacOSX-x86_64.sh`, `env_installer/JupyterLabDesktopAppServer-<version>-Linux-x86_64.sh`, `env_installer/JupyterLabDesktopAppServer-<version>-Windows-x86_64.exe` based on your platform
-
-- Now you can launch the JupyterLab Desktop locally using:
-
-  ```bash
-  yarn start
-  ```
-
-  If JupyterLab Desktop does not find a compatible Python environment configured, it will prompt for installation using JupyterLab Desktop Server installer or let you choose a custom environment on your computer at first launch.
-
-## Building for distribution
-
-- Build the application
-
-  ```bash
-  yarn run clean && yarn build
-  ```
-
-- Create JupyterLab Desktop Server installer
-
-  ```bash
-  yarn create_env_installer:<platform>
-  ```
-
-- Create JupyterLab Desktop installer which will also bundle JupyterLab Desktop Server installer.
-
-  ```bash
-  yarn dist:<platform>
-  ```
-
-  Application Installer will be created in `dist/JupyterLab.dmg` (macOS), `dist/JupyterLab.deb` (Debian, Ubuntu), `dist/JupyterLab.rpm` (Red Hat, Fedora) and `dist/JupyterLab-Setup.exe` (Windows) based on the platform
-
-## Release Instructions
-
-For instructions on updating bundled JupyterLab packages and cutting a new release, please follow [Release.md](Release.md) document.
+### For contributing, see [developer documentation](dev.md)

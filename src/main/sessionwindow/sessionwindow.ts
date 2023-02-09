@@ -1210,7 +1210,7 @@ export class SessionWindow implements IDisposable {
         this._wsSettings.setValue(SettingType.pythonPath, '');
 
         this._showProgressView(
-          'Invalid Environment configured for workspace',
+          'Invalid Environment configured for project',
           `<div class="message-row">Error! Python environment at '${pythonPath}' is not compatible.</div>
           ${
             recentSessionIndex !== undefined
