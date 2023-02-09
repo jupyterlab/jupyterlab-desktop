@@ -144,7 +144,7 @@ You can transfer settings from previous JupyterLab installations into JupyterLab
 2. Find directory called `lab` in one of these paths.
 3. If there is a `user-settings` directory in `lab`, you can copy the `lab` directory over to the configuration path `{jlab-desktop-user-data-dir}` of JupyterLab Desktop to keep your old JupyterLab settings.
 
-**Warning**: If you copy over settings from an older major version of JupyterLab (e.g. 2.x) those might cause an error on startup.
+**Warning**: If you copy over settings from an older major version of JupyterLab (e.g. 2.x) those might cause an error on startup. Similarly, if you copy settings from a newer (major or minor) version you may see errors.
 
 # Uninstalling JupyterLab Desktop
 
