@@ -23,7 +23,7 @@ jobs:
 
     steps:
       - uses: actions/checkout@v3
-      - uses: s-weigand/setup-conda@v1
+      - uses: s-weigand/setup-conda@v2
 
       - name: Install node
         uses: actions/setup-node@v3
@@ -34,7 +34,7 @@ jobs:
       - name: Install dependencies
         run: |
           npm install --global yarn --prefer-offline
-          conda install -c conda-forge 'constructor>=3.4.2'
+          conda install -c conda-forge constructor
           yarn install
 
       - name: Check JupyterLab version match
