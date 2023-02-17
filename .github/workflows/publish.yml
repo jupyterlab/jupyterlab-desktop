@@ -34,7 +34,7 @@ jobs:
       - name: Install dependencies
         run: |
           npm install --global yarn --prefer-offline
-          conda clean --all
+          conda clean --all -y
           conda install -c conda-forge constructor
           yarn install
 
