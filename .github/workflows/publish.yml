@@ -24,8 +24,6 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - uses: s-weigand/setup-conda@v1
-        run: |
-          conda update -n base -c defaults conda
 
       - name: Install node
         uses: actions/setup-node@v3
@@ -36,6 +34,7 @@ jobs:
       - name: Install dependencies
         run: |
           npm install --global yarn --prefer-offline
+          conda update -n base -c defaults conda
           conda install -c conda-forge constructor
           yarn install
 
