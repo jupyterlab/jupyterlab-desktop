@@ -123,9 +123,17 @@ export class LabView implements IDisposable {
 
     this._view.webContents.once(
       'did-fail-load',
-      (event: Electron.Event, errorCode: number, errorDescription: string) => {
-        if (errorCallback) {
+      (
+        event: Electron.Event,
+        errorCode: number,
+        errorDescription: string,
+        validatedURL: string,
+        isMainFrame: boolean
+      ) => {
+        if (isMainFrame && errorCallback) {
           errorCallback(errorCode, errorDescription);
+        } else {
+          console.warn('Failed to load labview', errorDescription);
         }
       }
     );

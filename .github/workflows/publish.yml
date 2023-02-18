@@ -24,6 +24,8 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - uses: s-weigand/setup-conda@v1
+      # downgrade conda since v23.1.0 is causing issues in "Create Application Server Installer" step
+      - run: conda install -c conda-forge conda=22.11.1 -y
 
       - name: Install node
         uses: actions/setup-node@v3
