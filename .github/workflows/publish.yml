@@ -34,9 +34,6 @@ jobs:
       - name: Install dependencies
         run: |
           npm install --global yarn --prefer-offline
-          conda config --set channel_priority false
-          conda update conda
-          conda update --all --yes
           conda install -c conda-forge constructor
           yarn install
 
