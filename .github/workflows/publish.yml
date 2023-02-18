@@ -15,8 +15,8 @@ jobs:
       matrix:
         cfg:
         - { platform: linux, platform_name: Linux,  os: ubuntu-latest }
-        # - { platform: mac, platform_name: macOS, os: macos-latest }
-        # - { platform: win, platform_name: Windows, os: windows-latest }
+        - { platform: mac, platform_name: macOS, os: macos-latest }
+        - { platform: win, platform_name: Windows, os: windows-latest }
 
     name: '${{ matrix.cfg.platform_name }} installer'
     runs-on: ${{ matrix.cfg.os }}
@@ -25,7 +25,7 @@ jobs:
       - uses: actions/checkout@v3
       - uses: s-weigand/setup-conda@v1
       - run: conda --version
-      - run: which python
+      # downgrade conda since v23.1.0 is causing issues in "Create Application Server Installer" step
       - run: conda install conda=22.11.1 -y
       - run: conda install -c conda-forge constructor -y
 
