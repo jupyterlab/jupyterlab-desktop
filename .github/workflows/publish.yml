@@ -26,6 +26,7 @@ jobs:
       - uses: s-weigand/setup-conda@v1
       - run: conda --version
       - run: which python
+      - run: conda install conda=22.11.1 -y
       - run: conda install -c conda-forge constructor -y
 
       - name: Install node
