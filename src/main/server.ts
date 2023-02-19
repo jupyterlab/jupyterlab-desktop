@@ -16,7 +16,14 @@ import {
   getUserDataDir,
   waitForDuration
 } from './utils';
-import { FrontEndMode, SettingType, userSettings } from './config/settings';
+import {
+  FrontEndMode,
+  serverLaunchArgsDefault,
+  serverLaunchArgsFixed,
+  SettingType,
+  userSettings,
+  WorkspaceSettings
+} from './config/settings';
 import { randomBytes } from 'crypto';
 
 const SERVER_LAUNCH_TIMEOUT = 30000; // milliseconds
@@ -37,46 +44,49 @@ function createTempFile(
 }
 
 function createLaunchScript(
-  environment: IPythonEnvironment,
+  serverInfo: JupyterServer.IInfo,
   baseCondaPath: string,
   schemasDir: string,
-  port: number
+  port: number,
+  token: string
 ): string {
   const isWin = process.platform === 'win32';
-  const envPath = getEnvironmentPath(environment);
+  const envPath = getEnvironmentPath(serverInfo.environment);
 
   // note: traitlets<5.0 require fully specified arguments to
   // be followed by equals sign without a space; this can be
   // removed once jupyter_server requires traitlets>5.0
-  const launchArgs = [
-    'python',
-    '-m',
-    'jupyterlab',
-    '--no-browser',
-    '--expose-app-in-browser',
-    // do not use any config file
-    '--JupyterApp.config_file_name=""',
-    `--ServerApp.port=${port}`,
-    // use our token rather than any pre-configured password
-    '--ServerApp.password=""',
-    // enable hidden files (let user decide whether to display them)
-    '--ContentsManager.allow_hidden=True',
-    '--LabApp.quit_button=False'
-  ];
+  const launchArgs = ['python', '-m', 'jupyterlab'];
+
+  const strPort = port.toString();
+
+  for (const arg of serverLaunchArgsFixed) {
+    launchArgs.push(arg.replace('{port}', strPort).replace('{token}', token));
+  }
+
+  if (!serverInfo.overrideDefaultServerArgs) {
+    for (const arg of serverLaunchArgsDefault) {
+      launchArgs.push(arg);
+    }
+  }
 
   if (
     userSettings.getValue(SettingType.frontEndMode) === FrontEndMode.ClientApp
   ) {
-    launchArgs.push('--ServerApp.allow_origin="*"');
+    // launchArgs.push('--ServerApp.allow_origin="*"');
     launchArgs.push(`--LabServerApp.schemas_dir="${schemasDir}"`);
   }
 
-  const launchCmd = launchArgs.join(' ');
+  let launchCmd = launchArgs.join(' ');
+
+  if (serverInfo.serverArgs) {
+    launchCmd += ` ${serverInfo.serverArgs}`;
+  }
 
   let script: string;
   const isConda =
-    environment.type === IEnvironmentType.CondaRoot ||
-    environment.type === IEnvironmentType.CondaEnv;
+    serverInfo.environment.type === IEnvironmentType.CondaRoot ||
+    serverInfo.environment.type === IEnvironmentType.CondaEnv;
 
   if (isWin) {
     if (isConda) {
@@ -152,6 +162,12 @@ export class JupyterServer {
       this._options.workingDirectory || userSettings.resolvedWorkingDirectory;
     this._info.workingDirectory = workingDir;
     this._registry = registry;
+
+    const wsSettings = new WorkspaceSettings(workingDir);
+    this._info.serverArgs = wsSettings.getValue(SettingType.serverArgs);
+    this._info.overrideDefaultServerArgs = wsSettings.getValue(
+      SettingType.overrideDefaultServerArgs
+    );
   }
 
   get info(): JupyterServer.IInfo {
@@ -235,10 +251,11 @@ export class JupyterServer {
         }
 
         const launchScriptPath = createLaunchScript(
-          this._info.environment,
+          this._info,
           baseCondaPath,
           getSchemasDir(),
-          this._info.port
+          this._info.port,
+          this._info.token
         );
 
         const jlabWorkspacesDir = path.join(
@@ -252,7 +269,6 @@ export class JupyterServer {
           shell: isWin ? 'cmd.exe' : '/bin/bash',
           env: {
             ...process.env,
-            JUPYTER_TOKEN: this._info.token,
             JUPYTER_CONFIG_DIR:
               process.env.JLAB_DESKTOP_CONFIG_DIR || getUserDataDir(),
             JUPYTERLAB_WORKSPACES_DIR:
@@ -473,6 +489,8 @@ export class JupyterServer {
     token: null,
     workingDirectory: null,
     environment: null,
+    serverArgs: '',
+    overrideDefaultServerArgs: false,
     version: null
   };
   private _registry: IRegistry;
@@ -495,6 +513,8 @@ export namespace JupyterServer {
     token: string;
     environment: IPythonEnvironment;
     workingDirectory: string;
+    serverArgs: string;
+    overrideDefaultServerArgs: boolean;
     version?: string;
     pageConfig?: any;
   }

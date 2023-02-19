@@ -372,7 +372,11 @@ export class JupyterApplication implements IApplication, IDisposable {
         ),
         defaultPythonPath: userSettings.getValue(SettingType.pythonPath),
         logLevel: userSettings.getValue(SettingType.logLevel),
-        activateTab: activateTab
+        activateTab: activateTab,
+        serverArgs: userSettings.getValue(SettingType.serverArgs),
+        overrideDefaultServerArgs: userSettings.getValue(
+          SettingType.overrideDefaultServerArgs
+        )
       },
       this._registry
     );
@@ -765,6 +769,17 @@ export class JupyterApplication implements IApplication, IDisposable {
       EventTypeMain.SetLogLevel,
       (_event, logLevel: LogLevel) => {
         userSettings.setValue(SettingType.logLevel, logLevel);
+      }
+    );
+
+    this._evm.registerEventHandler(
+      EventTypeMain.SetServerLaunchArgs,
+      (_event, serverArgs: string, overrideDefaultServerArgs: boolean) => {
+        userSettings.setValue(SettingType.serverArgs, serverArgs || '');
+        userSettings.setValue(
+          SettingType.overrideDefaultServerArgs,
+          overrideDefaultServerArgs
+        );
       }
     );
 

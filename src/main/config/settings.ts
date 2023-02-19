@@ -44,11 +44,30 @@ export enum SettingType {
 
   defaultWorkingDirectory = 'defaultWorkingDirectory',
   pythonPath = 'pythonPath',
+  serverArgs = 'serverArgs',
+  overrideDefaultServerArgs = 'overrideDefaultServerArgs',
 
   startupMode = 'startupMode',
 
   logLevel = 'logLevel'
 }
+
+export const serverLaunchArgsFixed = [
+  '--no-browser',
+  '--expose-app-in-browser',
+  `--ServerApp.port={port}`,
+  // use our token rather than any pre-configured password
+  '--ServerApp.password=""',
+  `--ServerApp.token="{token}"`,
+  '--LabApp.quit_button=False'
+];
+
+export const serverLaunchArgsDefault = [
+  // do not use any config file
+  '--JupyterApp.config_file_name=""',
+  // enable hidden files (let user decide whether to display them)
+  '--ContentsManager.allow_hidden=True'
+];
 
 export class Setting<T> {
   constructor(defaultValue: T, options?: Setting.IOptions) {
@@ -107,6 +126,10 @@ export class UserSettings {
 
       defaultWorkingDirectory: new Setting<string>(''),
       pythonPath: new Setting<string>('', { wsOverridable: true }),
+      serverArgs: new Setting<string>('', { wsOverridable: true }),
+      overrideDefaultServerArgs: new Setting<boolean>(false, {
+        wsOverridable: true
+      }),
 
       startupMode: new Setting<StartupMode>(StartupMode.WelcomePage),
 

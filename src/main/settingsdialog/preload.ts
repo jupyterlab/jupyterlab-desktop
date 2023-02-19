@@ -89,6 +89,16 @@ contextBridge.exposeInMainWorld('electronAPI', {
   },
   setLogLevel: (level: string) => {
     ipcRenderer.send(EventTypeMain.SetLogLevel, level);
+  },
+  setServerLaunchArgs: (
+    serverArgs: string,
+    overrideDefaultServerArgs: boolean
+  ) => {
+    ipcRenderer.send(
+      EventTypeMain.SetServerLaunchArgs,
+      serverArgs,
+      overrideDefaultServerArgs
+    );
   }
 });
 

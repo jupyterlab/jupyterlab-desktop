@@ -10,6 +10,8 @@ import { ThemedWindow } from '../dialog/themedwindow';
 import {
   FrontEndMode,
   LogLevel,
+  serverLaunchArgsDefault,
+  serverLaunchArgsFixed,
   StartupMode,
   ThemeType
 } from '../config/settings';
@@ -34,7 +36,9 @@ export class SettingsDialog {
       frontEndMode,
       checkForUpdatesAutomatically,
       defaultWorkingDirectory,
-      logLevel
+      logLevel,
+      serverArgs,
+      overrideDefaultServerArgs
     } = options;
     const installUpdatesAutomaticallyEnabled = process.platform === 'darwin';
     const installUpdatesAutomatically =
@@ -163,6 +167,12 @@ export class SettingsDialog {
         flex-direction: column;
         align-items: baseline;
       }
+      #additional-server-args, #server-launch-command-preview {
+        width: 100%;
+      }
+      #additional-server-args::part(control) {
+        height: 40px;
+      }
       </style>
       <div id="container">
         <div id="content-area">
@@ -239,6 +249,20 @@ export class SettingsDialog {
                 </div>
               </div>
 
+              <div class="row">
+                <jp-text-area id='additional-server-args' appearance="outline" resize="vertical" rows="2" value="<%= serverArgs %>" oninput='handleAdditionalServerArgsInput(this);'>
+                Additional JupyterLab Server launch args
+                </jp-text-area>
+              </div>
+              <div class="row">
+                <jp-checkbox id='override-default-server-args' type='checkbox' <%= overrideDefaultServerArgs ? 'checked' : '' %> onchange='handleOverrideDefaultServerArgsChange(this);'>Override default server launch args</jp-checkbox>
+              </div>
+              <div class="row">
+                <jp-text-area id='server-launch-command-preview' appearance="outline" resize="vertical" rows="2" readonly="">
+                Server launch command preview
+                </jp-text-area>
+              </div>
+
               <script>
               const workingDirectoryInput = document.getElementById('working-directory');
               const bundledEnvRadio = document.getElementById('bundled-env');
@@ -249,6 +273,10 @@ export class SettingsDialog {
               const bundledEnvWarningMessage = document.getElementById('bundled-env-warning-message');
               const installBundledEnvButton = document.getElementById('install-bundled-env');
               const updateBundledEnvButton = document.getElementById('update-bundled-env');
+
+              const additionalServerArgs = document.getElementById('additional-server-args');
+              const overrideDefaultServerArgs = document.getElementById('override-default-server-args');
+              const serverLaunchCommandPreview  = document.getElementById('server-launch-command-preview');
 
               function handleSelectWorkingDirectory(el) {
                 window.electronAPI.selectWorkingDirectory();
@@ -299,6 +327,29 @@ export class SettingsDialog {
                 window.electronAPI.updateBundledPythonEnv();
               }
 
+              function handleAdditionalServerArgsInput(el) {
+                updateServerLaunchCommandPreview();
+              }
+
+              function handleOverrideDefaultServerArgsChange(el) {
+                updateServerLaunchCommandPreview();
+              }
+
+              function updateServerLaunchCommandPreview() {
+                let launchCommand = 'python -m jupyterlab ${serverLaunchArgsFixed.join(
+                  ' '
+                )}';
+                if (!overrideDefaultServerArgs.checked) {
+                  launchCommand += ' ${serverLaunchArgsDefault.join(' ')}';
+                }
+
+                if (additionalServerArgs.value) {
+                  launchCommand += ' ' + additionalServerArgs.value;
+                }
+
+                serverLaunchCommandPreview.value = launchCommand;
+              }
+
               window.electronAPI.onInstallBundledPythonEnvStatus((status) => {
                 const message = status === 'STARTED' ?
                   'Installing Python environment' :
@@ -331,7 +382,8 @@ export class SettingsDialog {
 
               handleEnvTypeChange();
               <%- !bundledEnvInstallationExists ? 'showBundledEnvWarning("does-not-exist");' : '' %> 
-              <%- (bundledEnvInstallationExists && !bundledEnvInstallationLatest) ? 'showBundledEnvWarning("not-latest");' : '' %> 
+              <%- (bundledEnvInstallationExists && !bundledEnvInstallationLatest) ? 'showBundledEnvWarning("not-latest");' : '' %>
+              updateServerLaunchCommandPreview();
               </script>
             </jp-tab-panel>
 
@@ -464,6 +516,8 @@ export class SettingsDialog {
 
           window.electronAPI.setDefaultWorkingDirectory(workingDirectoryInput.value);
 
+          window.electronAPI.setServerLaunchArgs(additionalServerArgs.value, overrideDefaultServerArgs.checked);
+
           if (defaultPythonEnvChanged) {
             if (bundledEnvRadio.checked) {
               window.electronAPI.setDefaultPythonPath('');
@@ -507,7 +561,9 @@ export class SettingsDialog {
       selectBundledPythonPath,
       bundledEnvInstallationExists,
       bundledEnvInstallationLatest,
-      logLevel
+      logLevel,
+      serverArgs,
+      overrideDefaultServerArgs
     });
   }
 
@@ -543,5 +599,7 @@ export namespace SettingsDialog {
     defaultPythonPath: string;
     activateTab?: Tab;
     logLevel: LogLevel;
+    serverArgs: string;
+    overrideDefaultServerArgs: boolean;
   }
 }
