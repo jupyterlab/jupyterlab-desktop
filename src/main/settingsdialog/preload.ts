@@ -99,6 +99,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
       serverArgs,
       overrideDefaultServerArgs
     );
+  },
+  setServerEnvVars: (serverEnvVars: any) => {
+    ipcRenderer.send(EventTypeMain.SetServerEnvVars, serverEnvVars);
   }
 });
 

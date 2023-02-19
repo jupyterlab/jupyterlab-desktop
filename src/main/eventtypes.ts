@@ -53,7 +53,8 @@ export enum EventTypeMain {
   ClearHistory = 'clear-history',
   ShowInvalidPythonPathMessage = 'show-invalid-python-path-message',
   SetLogLevel = 'set-log-level',
-  SetServerLaunchArgs = 'set-server-launch-args'
+  SetServerLaunchArgs = 'set-server-launch-args',
+  SetServerEnvVars = 'set-server-env-vars'
 }
 
 // events sent to Renderer process

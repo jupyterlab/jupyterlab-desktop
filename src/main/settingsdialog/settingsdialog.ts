@@ -9,6 +9,7 @@ const semver = require('semver');
 import { ThemedWindow } from '../dialog/themedwindow';
 import {
   FrontEndMode,
+  KeyValueMap,
   LogLevel,
   serverLaunchArgsDefault,
   serverLaunchArgsFixed,
@@ -38,7 +39,8 @@ export class SettingsDialog {
       defaultWorkingDirectory,
       logLevel,
       serverArgs,
-      overrideDefaultServerArgs
+      overrideDefaultServerArgs,
+      serverEnvVars
     } = options;
     const installUpdatesAutomaticallyEnabled = process.platform === 'darwin';
     const installUpdatesAutomatically =
@@ -73,6 +75,13 @@ export class SettingsDialog {
         }
       } catch (error) {
         console.error('Failed to check bundled environment update', error);
+      }
+    }
+
+    let strServerEnvVars = '';
+    if (Object.keys(serverEnvVars).length > 0) {
+      for (const key in serverEnvVars) {
+        strServerEnvVars += `${key}= "${serverEnvVars[key]}"\n`;
       }
     }
 
@@ -167,11 +176,19 @@ export class SettingsDialog {
         flex-direction: column;
         align-items: baseline;
       }
-      #additional-server-args, #server-launch-command-preview {
+      #additional-server-args,
+      #server-launch-command-preview,
+      #additional-server-env-vars {
         width: 100%;
       }
       #additional-server-args::part(control) {
         height: 40px;
+      }
+      #tab-panel-server {
+        padding-bottom: 20px;
+      }
+      #additional-server-env-vars.invalid::part(control) {
+        border-color: red;
       }
       </style>
       <div id="container">
@@ -250,7 +267,7 @@ export class SettingsDialog {
               </div>
 
               <div class="row">
-                <jp-text-area id='additional-server-args' appearance="outline" resize="vertical" rows="2" value="<%= serverArgs %>" oninput='handleAdditionalServerArgsInput(this);'>
+                <jp-text-area id='additional-server-args' appearance="outline" resize="vertical" rows="2" value="<%= serverArgs %>" oninput='handleAdditionalServerArgsInput(this);' spellcheck="false" placeholder="Enter additional server launch args separated by space">
                 Additional JupyterLab Server launch args
                 </jp-text-area>
               </div>
@@ -258,8 +275,13 @@ export class SettingsDialog {
                 <jp-checkbox id='override-default-server-args' type='checkbox' <%= overrideDefaultServerArgs ? 'checked' : '' %> onchange='handleOverrideDefaultServerArgsChange(this);'>Override default server launch args</jp-checkbox>
               </div>
               <div class="row">
-                <jp-text-area id='server-launch-command-preview' appearance="outline" resize="vertical" rows="2" readonly="">
+                <jp-text-area id='server-launch-command-preview' appearance="outline" resize="vertical" rows="2" readonly="" spellcheck="false">
                 Server launch command preview
+                </jp-text-area>
+              </div>
+              <div class="row">
+                <jp-text-area id='additional-server-env-vars' appearance="outline" resize="vertical" rows="2" value="<%= serverEnvVars %>" oninput='handleAdditionalServerEnvsInput(this);' spellcheck="false" placeholder='Enter additional environment variables in NAME="Value" format in separate lines'>
+                Additional JupyterLab Server environment variables
                 </jp-text-area>
               </div>
 
@@ -277,6 +299,7 @@ export class SettingsDialog {
               const additionalServerArgs = document.getElementById('additional-server-args');
               const overrideDefaultServerArgs = document.getElementById('override-default-server-args');
               const serverLaunchCommandPreview  = document.getElementById('server-launch-command-preview');
+              const additionalServerEnvVars = document.getElementById('additional-server-env-vars');
 
               function handleSelectWorkingDirectory(el) {
                 window.electronAPI.selectWorkingDirectory();
@@ -331,6 +354,10 @@ export class SettingsDialog {
                 updateServerLaunchCommandPreview();
               }
 
+              function handleAdditionalServerEnvsInput(el) {
+                updateServerEnvVarsValidity();
+              }
+
               function handleOverrideDefaultServerArgsChange(el) {
                 updateServerLaunchCommandPreview();
               }
@@ -348,6 +375,41 @@ export class SettingsDialog {
                 }
 
                 serverLaunchCommandPreview.value = launchCommand;
+              }
+
+              function parseServerEnvVars() {
+                const serverEnvVars = additionalServerEnvVars.value;
+                try {
+                  const envVars = {};
+                  const lines = serverEnvVars.trim().split('\\n');
+      
+                  for (const line of lines) {
+                    const equalPos = line.indexOf('=');
+                    if (equalPos > 0) {
+                      const name = line.substring(0, equalPos).trim();
+                      const value = line.substring(equalPos + 1).trim();
+                      if (name && value.length > 1 && value.startsWith('"') && value.endsWith('"')) {
+                        envVars[name] = value.substring(1, value.length - 1);
+                      }
+                    }
+                  }
+
+                  if (serverEnvVars !== '' && Object.keys(envVars).length < lines.length) {
+                    return undefined;
+                  }
+
+                  return envVars;
+                } catch (error) {
+                  return undefined;
+                }
+              }
+
+              function updateServerEnvVarsValidity() {
+                if (parseServerEnvVars() === undefined) {
+                  additionalServerEnvVars.classList.add('invalid');
+                } else {
+                  additionalServerEnvVars.classList.remove('invalid');
+                }
               }
 
               window.electronAPI.onInstallBundledPythonEnvStatus((status) => {
@@ -517,6 +579,7 @@ export class SettingsDialog {
           window.electronAPI.setDefaultWorkingDirectory(workingDirectoryInput.value);
 
           window.electronAPI.setServerLaunchArgs(additionalServerArgs.value, overrideDefaultServerArgs.checked);
+          window.electronAPI.setServerEnvVars(parseServerEnvVars());
 
           if (defaultPythonEnvChanged) {
             if (bundledEnvRadio.checked) {
@@ -563,7 +626,8 @@ export class SettingsDialog {
       bundledEnvInstallationLatest,
       logLevel,
       serverArgs,
-      overrideDefaultServerArgs
+      overrideDefaultServerArgs,
+      serverEnvVars: strServerEnvVars
     });
   }
 
@@ -601,5 +665,6 @@ export namespace SettingsDialog {
     logLevel: LogLevel;
     serverArgs: string;
     overrideDefaultServerArgs: boolean;
+    serverEnvVars: KeyValueMap;
   }
 }

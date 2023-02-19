@@ -33,6 +33,8 @@ export enum LogLevel {
   Debug = 'debug'
 }
 
+export type KeyValueMap = { [key: string]: string };
+
 export enum SettingType {
   checkForUpdatesAutomatically = 'checkForUpdatesAutomatically',
   installUpdatesAutomatically = 'installUpdatesAutomatically',
@@ -46,6 +48,7 @@ export enum SettingType {
   pythonPath = 'pythonPath',
   serverArgs = 'serverArgs',
   overrideDefaultServerArgs = 'overrideDefaultServerArgs',
+  serverEnvVars = 'serverEnvVars',
 
   startupMode = 'startupMode',
 
@@ -130,6 +133,7 @@ export class UserSettings {
       overrideDefaultServerArgs: new Setting<boolean>(false, {
         wsOverridable: true
       }),
+      serverEnvVars: new Setting<KeyValueMap>({}, { wsOverridable: true }),
 
       startupMode: new Setting<StartupMode>(StartupMode.WelcomePage),
 

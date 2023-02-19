@@ -18,6 +18,7 @@ import {
 } from './utils';
 import {
   FrontEndMode,
+  KeyValueMap,
   serverLaunchArgsDefault,
   serverLaunchArgsFixed,
   SettingType,
@@ -168,6 +169,7 @@ export class JupyterServer {
     this._info.overrideDefaultServerArgs = wsSettings.getValue(
       SettingType.overrideDefaultServerArgs
     );
+    this._info.serverEnvVars = wsSettings.getValue(SettingType.serverEnvVars);
   }
 
   get info(): JupyterServer.IInfo {
@@ -268,6 +270,7 @@ export class JupyterServer {
           cwd: this._info.workingDirectory,
           shell: isWin ? 'cmd.exe' : '/bin/bash',
           env: {
+            ...this._info.serverEnvVars,
             ...process.env,
             JUPYTER_CONFIG_DIR:
               process.env.JLAB_DESKTOP_CONFIG_DIR || getUserDataDir(),
@@ -491,6 +494,7 @@ export class JupyterServer {
     environment: null,
     serverArgs: '',
     overrideDefaultServerArgs: false,
+    serverEnvVars: {},
     version: null
   };
   private _registry: IRegistry;
@@ -515,6 +519,7 @@ export namespace JupyterServer {
     workingDirectory: string;
     serverArgs: string;
     overrideDefaultServerArgs: boolean;
+    serverEnvVars: KeyValueMap;
     version?: string;
     pageConfig?: any;
   }

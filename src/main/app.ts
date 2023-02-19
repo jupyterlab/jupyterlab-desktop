@@ -376,7 +376,8 @@ export class JupyterApplication implements IApplication, IDisposable {
         serverArgs: userSettings.getValue(SettingType.serverArgs),
         overrideDefaultServerArgs: userSettings.getValue(
           SettingType.overrideDefaultServerArgs
-        )
+        ),
+        serverEnvVars: userSettings.getValue(SettingType.serverEnvVars)
       },
       this._registry
     );
@@ -780,6 +781,13 @@ export class JupyterApplication implements IApplication, IDisposable {
           SettingType.overrideDefaultServerArgs,
           overrideDefaultServerArgs
         );
+      }
+    );
+
+    this._evm.registerEventHandler(
+      EventTypeMain.SetServerEnvVars,
+      (_event, serverEnvVars: any) => {
+        userSettings.setValue(SettingType.serverEnvVars, serverEnvVars || {});
       }
     );
 
