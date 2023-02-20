@@ -74,7 +74,6 @@ function createLaunchScript(
   if (
     userSettings.getValue(SettingType.frontEndMode) === FrontEndMode.ClientApp
   ) {
-    // launchArgs.push('--ServerApp.allow_origin="*"');
     launchArgs.push(`--LabServerApp.schemas_dir="${schemasDir}"`);
   }
 
@@ -270,12 +269,12 @@ export class JupyterServer {
           cwd: this._info.workingDirectory,
           shell: isWin ? 'cmd.exe' : '/bin/bash',
           env: {
-            ...this._info.serverEnvVars,
             ...process.env,
             JUPYTER_CONFIG_DIR:
               process.env.JLAB_DESKTOP_CONFIG_DIR || getUserDataDir(),
             JUPYTERLAB_WORKSPACES_DIR:
-              process.env.JLAB_DESKTOP_WORKSPACES_DIR || jlabWorkspacesDir
+              process.env.JLAB_DESKTOP_WORKSPACES_DIR || jlabWorkspacesDir,
+            ...this._info.serverEnvVars
           }
         };
 
