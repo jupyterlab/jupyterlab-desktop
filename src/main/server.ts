@@ -265,6 +265,16 @@ export class JupyterServer {
           'desktop-workspaces'
         );
 
+        const serverEnvVars = { ...this._info.serverEnvVars };
+
+        // allow modifying PATH without replacing by using {PATH} variable
+        if (process.env.PATH && 'PATH' in serverEnvVars) {
+          serverEnvVars.PATH = serverEnvVars.PATH.replace(
+            '{PATH}',
+            process.env.PATH
+          );
+        }
+
         const execOptions = {
           cwd: this._info.workingDirectory,
           shell: isWin ? 'cmd.exe' : '/bin/bash',
@@ -274,7 +284,7 @@ export class JupyterServer {
               process.env.JLAB_DESKTOP_CONFIG_DIR || getUserDataDir(),
             JUPYTERLAB_WORKSPACES_DIR:
               process.env.JLAB_DESKTOP_WORKSPACES_DIR || jlabWorkspacesDir,
-            ...this._info.serverEnvVars
+            ...serverEnvVars
           }
         };
 
