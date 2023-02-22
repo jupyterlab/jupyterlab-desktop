@@ -394,23 +394,30 @@ export class SettingsDialog {
                     }
                   }
 
+                  let valid = true;
+
                   if (serverEnvVars !== '' && Object.keys(envVars).length < lines.length) {
-                    return undefined;
+                    valid = false;
                   }
 
-                  return envVars;
+                  return { valid, envVars };
                 } catch (error) {
-                  return undefined;
+                  return { valid: false, envVars: {} };
                 }
               }
 
               function updateServerEnvVarsValidity() {
-                if (parseServerEnvVars() === undefined) {
-                  additionalServerEnvVars.classList.add('invalid');
-                } else {
+                if (parseServerEnvVars().valid) {
                   additionalServerEnvVars.classList.remove('invalid');
+                } else {
+                  additionalServerEnvVars.classList.add('invalid');
                 }
               }
+
+              document.addEventListener("DOMContentLoaded", () => {
+                updateServerLaunchCommandPreview();
+                updateServerEnvVarsValidity();
+              });
 
               window.electronAPI.onInstallBundledPythonEnvStatus((status) => {
                 const message = status === 'STARTED' ?
@@ -579,7 +586,7 @@ export class SettingsDialog {
           window.electronAPI.setDefaultWorkingDirectory(workingDirectoryInput.value);
 
           window.electronAPI.setServerLaunchArgs(additionalServerArgs.value, overrideDefaultServerArgs.checked);
-          window.electronAPI.setServerEnvVars(parseServerEnvVars());
+          window.electronAPI.setServerEnvVars(parseServerEnvVars().envVars);
 
           if (defaultPythonEnvChanged) {
             if (bundledEnvRadio.checked) {
