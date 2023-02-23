@@ -154,6 +154,24 @@ Jupyter config files directory (`JUPYTER_CONFIG_DIR`) is set to `{jlab-desktop-u
 
 JupyterLab workspace data is stored into the working directory, for each folder a new session is started in. This allows restoring open files and UI layout of sessions for different working directories. `{working-directory}/.jupyter/desktop-workspaces` directory is automatically created and used to save and load workspace data for each working directory. You can change this behavior by specifying `JLAB_DESKTOP_WORKSPACES_DIR` environment variable.
 
+## Project overridable settings
+
+JupyterLab Desktop allows a subset of user settings to be overridden by project settings. Below is the list of settings that can be overridden by each project (working directory) with example values.
+
+Example `/.jupyter/desktop-settings.json`
+
+```JSON
+{
+  "pythonPath" : "/opt/miniconda/env/bin/python",
+  "serverArgs": "--GatewayClient.url=\"https://example.org:8888\"",
+  "overrideDefaultServerArgs": true,
+  "serverEnvVars": {
+    "PYTHONPATH": "/opt/dev/pythonmodule",
+    "SERVICE_API": "https://service.example.org:9999/api"
+  }
+}
+```
+
 ## Copying configuration from previous installation
 
 You can transfer settings from previous JupyterLab installations into JupyterLab Desktop by copying them over to the new configuration path `{jlab-desktop-user-data-dir}` by following these steps:
