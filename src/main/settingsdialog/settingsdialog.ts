@@ -452,7 +452,6 @@ export class SettingsDialog {
               handleEnvTypeChange();
               <%- !bundledEnvInstallationExists ? 'showBundledEnvWarning("does-not-exist");' : '' %> 
               <%- (bundledEnvInstallationExists && !bundledEnvInstallationLatest) ? 'showBundledEnvWarning("not-latest");' : '' %>
-              updateServerLaunchCommandPreview();
               </script>
             </jp-tab-panel>
 
