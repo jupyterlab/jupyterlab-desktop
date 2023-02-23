@@ -36,6 +36,24 @@ JupyterLab Desktop allows you to change the default Python environment used for 
 
 Python environment selections are saved in user settings or project settings and restored at launch. See the [Configuration and data files](#Configuration-and-data-files) section for more information about the settings storage. Python environment is stored with `pythonPath` key in those files. Setting the value to empty string or removing the key will reset the change.
 
+# Configuring JupyterLab Server launch
+
+## Server Launch Arguments
+
+JupyterLab Desktop sets several launch arguments when launching the JupyterLab Server instances. Some arguments are fixed and cannot be changed and some default arguments are added to the fixed arguments. Server tab in the settings dialog allows you to add custom arguments and override the default arguments. You can see the preview of the server launch command as you make changes.
+
+<img src="media/server-launch-args.png" alt="Server launch args" width=800 />
+
+## Server Environment Variables
+
+When JupyterLab Server is launched, environment variables are passed from desktop application to the server process. These environment variables depend on how you launched the desktop app (from CLI or via OS GUI). Also note that your Python environment is activated during JupyterLab Server launch and that activation adds additonal environment variables and modifies the PATH environment variable for the server process.
+
+You can set additional environment variables for the JupyterLab server process by using the Server tab of the settings dialog, as shown below.
+
+If the environment variable you set already exists, it will be replaced by your setting. `PATH` environment variable is handled specially and you can modify it instead of replacing. You can use existing PATH environment variable in your setting by referring to it as `{PATH}`. This way you can append or prepend to the existing PATH environment variable.
+
+<img src="media/server-env-vars.png" alt="Server environment vars" width=800 />
+
 # Connecting to an existing JupyterLab Server
 
 JupyterLab Desktop creates new JupyterLab sessions by launching a locally running JupyterLab server and connecting to it. It can also connect to an existing JupyterLab server instance that is running locally or remotely. In order to connect to a server, click the `Connect...` button in the Start section of the Welcome Page.
