@@ -36,6 +36,24 @@ JupyterLab Desktop allows you to change the default Python environment used for 
 
 Python environment selections are saved in user settings or project settings and restored at launch. See the [Configuration and data files](#Configuration-and-data-files) section for more information about the settings storage. Python environment is stored with `pythonPath` key in those files. Setting the value to empty string or removing the key will reset the change.
 
+# Configuring JupyterLab Server launch
+
+## Server Launch Arguments
+
+JupyterLab Desktop sets several launch arguments when launching the JupyterLab Server instances. Some arguments are fixed and cannot be changed and some default arguments are added to the fixed arguments. Server tab in the settings dialog allows you to add custom arguments and override the default arguments. You can see the preview of the server launch command as you make changes.
+
+<img src="media/server-launch-args.png" alt="Server launch args" width=800 />
+
+## Server Environment Variables
+
+When JupyterLab Server is launched, environment variables are passed from desktop application to the server process. These environment variables depend on how you launched the desktop app (from CLI or via OS GUI). Also note that your Python environment is activated during JupyterLab Server launch and that activation adds additonal environment variables and modifies the PATH environment variable for the server process.
+
+You can set additional environment variables for the JupyterLab server process by using the Server tab of the settings dialog, as shown below.
+
+If the environment variable you set already exists, it will be replaced by your setting. `PATH` environment variable is handled specially and you can modify it instead of replacing. You can use existing PATH environment variable in your setting by referring to it as `{PATH}`. This way you can append or prepend to the existing PATH environment variable.
+
+<img src="media/server-env-vars.png" alt="Server environment vars" width=800 />
+
 # Connecting to an existing JupyterLab Server
 
 JupyterLab Desktop creates new JupyterLab sessions by launching a locally running JupyterLab server and connecting to it. It can also connect to an existing JupyterLab server instance that is running locally or remotely. In order to connect to a server, click the `Connect...` button in the Start section of the Welcome Page.
@@ -136,6 +154,24 @@ Jupyter config files directory (`JUPYTER_CONFIG_DIR`) is set to `{jlab-desktop-u
 
 JupyterLab workspace data is stored into the working directory, for each folder a new session is started in. This allows restoring open files and UI layout of sessions for different working directories. `{working-directory}/.jupyter/desktop-workspaces` directory is automatically created and used to save and load workspace data for each working directory. You can change this behavior by specifying `JLAB_DESKTOP_WORKSPACES_DIR` environment variable.
 
+## Project overridable settings
+
+JupyterLab Desktop allows a subset of user settings to be overridden by project settings. Below is the list of settings that can be overridden by each project (working directory) with example values.
+
+Example `/.jupyter/desktop-settings.json`
+
+```JSON
+{
+  "pythonPath" : "/opt/miniconda/env/bin/python",
+  "serverArgs": "--GatewayClient.url=\"https://example.org:8888\"",
+  "overrideDefaultServerArgs": true,
+  "serverEnvVars": {
+    "PYTHONPATH": "/opt/dev/pythonmodule",
+    "SERVICE_API": "https://service.example.org:9999/api"
+  }
+}
+```
+
 ## Copying configuration from previous installation
 
 You can transfer settings from previous JupyterLab installations into JupyterLab Desktop by copying them over to the new configuration path `{jlab-desktop-user-data-dir}` by following these steps:
@@ -145,6 +181,14 @@ You can transfer settings from previous JupyterLab installations into JupyterLab
 3. If there is a `user-settings` directory in `lab`, you can copy the `lab` directory over to the configuration path `{jlab-desktop-user-data-dir}` of JupyterLab Desktop to keep your old JupyterLab settings.
 
 **Warning**: If you copy over settings from an older major version of JupyterLab (e.g. 2.x) those might cause an error on startup. Similarly, if you copy settings from a newer (major or minor) version you may see errors.
+
+# Theming
+
+JupyterLab Desktop supports light and dark themes for the application interface. In the settings dialog you can choose `Light`, `Dark` or `System` options to set the desired theme as shown below. `System` option detects the theme used by your OS and sets that as the app theme.
+
+The themes for the JupyterLab UIs shown in the session windows are controlled separately. If you choose `Sync JupyterLab theme` option in the settings dialog then the app theme chosen is applied to the JupyterLab UIs as well but they correspond to `JupyterLab Light` and `JupyterLab Dark` themes. If you would like to use a theme other than `JupyterLab Light` or `JupyterLab Dark` then you need to uncheck the `Sync JupyterLab theme` option.
+
+<img src="media/themes.png" alt="Server launch args" width=700 />
 
 # Uninstalling JupyterLab Desktop
 
