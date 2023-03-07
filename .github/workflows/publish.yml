@@ -36,7 +36,7 @@ jobs:
       - name: Install dependencies
         run: |
           npm install --global yarn --prefer-offline
-          conda install -c conda-forge constructor
+          conda install -c conda-forge constructor Pillow=9.3.0
           yarn install
 
       - name: Check JupyterLab version match
