@@ -34,6 +34,7 @@ jobs:
           cache: 'yarn'
 
       - name: Install dependencies
+        # pin Pillow version to prevent Windows build errors
         run: |
           npm install --global yarn --prefer-offline
           conda install -c conda-forge constructor Pillow=9.3.0
