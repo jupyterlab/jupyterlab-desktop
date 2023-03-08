@@ -54,7 +54,8 @@ export enum EventTypeMain {
   ShowInvalidPythonPathMessage = 'show-invalid-python-path-message',
   SetLogLevel = 'set-log-level',
   SetServerLaunchArgs = 'set-server-launch-args',
-  SetServerEnvVars = 'set-server-env-vars'
+  SetServerEnvVars = 'set-server-env-vars',
+  SetCtrlWBehavior = 'set-ctrl-w-behavior'
 }
 
 // events sent to Renderer process

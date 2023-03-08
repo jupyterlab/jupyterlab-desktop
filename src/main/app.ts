@@ -21,6 +21,7 @@ import { IServerFactory, JupyterServerFactory } from './server';
 import { connectAndGetServerInfo, IJupyterServerInfo } from './connect';
 import { UpdateDialog } from './updatedialog/updatedialog';
 import {
+  CtrlWBehavior,
   DEFAULT_WIN_HEIGHT,
   DEFAULT_WIN_WIDTH,
   LogLevel,
@@ -377,7 +378,8 @@ export class JupyterApplication implements IApplication, IDisposable {
         overrideDefaultServerArgs: userSettings.getValue(
           SettingType.overrideDefaultServerArgs
         ),
-        serverEnvVars: userSettings.getValue(SettingType.serverEnvVars)
+        serverEnvVars: userSettings.getValue(SettingType.serverEnvVars),
+        ctrlWBehavior: userSettings.getValue(SettingType.ctrlWBehavior)
       },
       this._registry
     );
@@ -788,6 +790,13 @@ export class JupyterApplication implements IApplication, IDisposable {
       EventTypeMain.SetServerEnvVars,
       (_event, serverEnvVars: any) => {
         userSettings.setValue(SettingType.serverEnvVars, serverEnvVars || {});
+      }
+    );
+
+    this._evm.registerEventHandler(
+      EventTypeMain.SetCtrlWBehavior,
+      (_event, behavior: CtrlWBehavior) => {
+        userSettings.setValue(SettingType.ctrlWBehavior, behavior);
       }
     );
 

@@ -4,6 +4,7 @@
 import {
   BrowserView,
   clipboard,
+  dialog,
   Menu,
   MenuItemConstructorOptions
 } from 'electron';
@@ -21,8 +22,10 @@ import {
 } from '../utils';
 import { SessionWindow } from '../sessionwindow/sessionwindow';
 import {
+  CtrlWBehavior,
   FrontEndMode,
   SettingType,
+  userSettings,
   WorkspaceSettings
 } from '../config/settings';
 import { IDisposable } from '../tokens';
@@ -110,6 +113,37 @@ export class LabView implements IDisposable {
         }
 
         this._labUIReady = true;
+      });
+    }
+
+    const ctrlWBehavior = userSettings.getValue(SettingType.ctrlWBehavior);
+
+    if (ctrlWBehavior !== CtrlWBehavior.Close) {
+      this._view.webContents.on('before-input-event', (event, input) => {
+        if (
+          input.code === 'KeyW' &&
+          ((input.meta && process.platform === 'darwin') || input.control)
+        ) {
+          let skipClose = false;
+
+          if (ctrlWBehavior === CtrlWBehavior.Warn) {
+            const choice = dialog.showMessageBoxSync({
+              type: 'warning',
+              message: 'Do you want to close the session?',
+              buttons: ['Close session', 'Cancel'],
+              defaultId: 1,
+              cancelId: 1
+            });
+
+            skipClose = choice === 1;
+          } else {
+            skipClose = true;
+          }
+
+          if (skipClose) {
+            event.preventDefault();
+          }
+        }
       });
     }
   }

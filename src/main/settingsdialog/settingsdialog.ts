@@ -8,6 +8,7 @@ import * as fs from 'fs';
 const semver = require('semver');
 import { ThemedWindow } from '../dialog/themedwindow';
 import {
+  CtrlWBehavior,
   FrontEndMode,
   KeyValueMap,
   LogLevel,
@@ -40,7 +41,8 @@ export class SettingsDialog {
       logLevel,
       serverArgs,
       overrideDefaultServerArgs,
-      serverEnvVars
+      serverEnvVars,
+      ctrlWBehavior
     } = options;
     const installUpdatesAutomaticallyEnabled = process.platform === 'darwin';
     const installUpdatesAutomatically =
@@ -84,6 +86,8 @@ export class SettingsDialog {
         strServerEnvVars += `${key}= "${serverEnvVars[key]}"\n`;
       }
     }
+
+    const ctrlWLabel = process.platform === 'darwin' ? 'Cmd + W' : 'Ctrl + W';
 
     const template = `
       <style>
@@ -492,6 +496,15 @@ export class SettingsDialog {
 
             <jp-tab-panel id="tab-panel-advanced">
               <div class="row setting-section">
+                <jp-radio-group orientation="horizontal">
+                  <label slot="label">${ctrlWLabel} behavior</label>
+                  <jp-radio name="ctrl-w-behavior" value="close" <%= ctrlWBehavior === 'close' ? 'checked' : '' %>>Close session</jp-radio>
+                  <jp-radio name="ctrl-w-behavior" value="warn" <%= ctrlWBehavior === 'warn' ? 'checked' : '' %>>Warn before close</jp-radio>
+                  <jp-radio name="ctrl-w-behavior" value="do-not-close" <%= ctrlWBehavior === 'do-not-close' ? 'checked' : '' %>>Do not close</jp-radio>
+                </jp-radio-group>
+              </div>
+
+              <div class="row setting-section">
                 <div class="row">
                   <label for="log-level">Log level</label>
                 </div>
@@ -587,6 +600,9 @@ export class SettingsDialog {
           window.electronAPI.setServerLaunchArgs(additionalServerArgs.value, overrideDefaultServerArgs.checked);
           window.electronAPI.setServerEnvVars(parseServerEnvVars().envVars);
 
+          const ctrlWBehavior = document.querySelector('jp-radio[name="ctrl-w-behavior"].checked').value;
+          window.electronAPI.setCtrlWBehavior(ctrlWBehavior);
+
           if (defaultPythonEnvChanged) {
             if (bundledEnvRadio.checked) {
               window.electronAPI.setDefaultPythonPath('');
@@ -633,7 +649,8 @@ export class SettingsDialog {
       logLevel,
       serverArgs,
       overrideDefaultServerArgs,
-      serverEnvVars: strServerEnvVars
+      serverEnvVars: strServerEnvVars,
+      ctrlWBehavior
     });
   }
 
@@ -672,5 +689,6 @@ export namespace SettingsDialog {
     serverArgs: string;
     overrideDefaultServerArgs: boolean;
     serverEnvVars: KeyValueMap;
+    ctrlWBehavior: CtrlWBehavior;
   }
 }
