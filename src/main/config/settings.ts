@@ -33,6 +33,12 @@ export enum LogLevel {
   Debug = 'debug'
 }
 
+export enum CtrlWBehavior {
+  Close = 'close',
+  Warn = 'warn',
+  DoNotClose = 'do-not-close'
+}
+
 export type KeyValueMap = { [key: string]: string };
 
 export enum SettingType {
@@ -51,6 +57,8 @@ export enum SettingType {
   serverEnvVars = 'serverEnvVars',
 
   startupMode = 'startupMode',
+
+  ctrlWBehavior = 'ctrlWBehavior',
 
   logLevel = 'logLevel'
 }
@@ -136,6 +144,8 @@ export class UserSettings {
       serverEnvVars: new Setting<KeyValueMap>({}, { wsOverridable: true }),
 
       startupMode: new Setting<StartupMode>(StartupMode.WelcomePage),
+
+      ctrlWBehavior: new Setting<CtrlWBehavior>(CtrlWBehavior.Close),
 
       logLevel: new Setting<string>(LogLevel.Warn)
     };

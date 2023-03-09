@@ -102,6 +102,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   },
   setServerEnvVars: (serverEnvVars: any) => {
     ipcRenderer.send(EventTypeMain.SetServerEnvVars, serverEnvVars);
+  },
+  setCtrlWBehavior: (behavior: string) => {
+    ipcRenderer.send(EventTypeMain.SetCtrlWBehavior, behavior);
   }
 });
 
