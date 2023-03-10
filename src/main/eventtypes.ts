@@ -55,7 +55,8 @@ export enum EventTypeMain {
   SetLogLevel = 'set-log-level',
   SetServerLaunchArgs = 'set-server-launch-args',
   SetServerEnvVars = 'set-server-env-vars',
-  SetCtrlWBehavior = 'set-ctrl-w-behavior'
+  SetCtrlWBehavior = 'set-ctrl-w-behavior',
+  SetAuthDialogResponse = 'set-auth-dialog-response'
 }
 
 // events sent to Renderer process

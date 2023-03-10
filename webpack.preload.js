@@ -9,6 +9,7 @@ const path = require('path');
 const preloadPrefix = 'build/out/main';
 const preloadFiles = [
   'aboutdialog/preload.js',
+  'authdialog/preload.js',
   'dialog/preload.js',
   'labview/preload.js',
   'settingsdialog/preload.js',
