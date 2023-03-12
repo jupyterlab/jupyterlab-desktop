@@ -1,7 +1,14 @@
 // Copyright (c) Jupyter Development Team.
 // Distributed under the terms of the Modified BSD License.
 
-import { app, autoUpdater, dialog, session, shell } from 'electron';
+import {
+  app,
+  autoUpdater,
+  BrowserWindow,
+  dialog,
+  session,
+  shell
+} from 'electron';
 import log from 'electron-log';
 import { IRegistry, Registry } from './registry';
 import fetch from 'node-fetch';
@@ -38,10 +45,11 @@ import {
 import { appData } from './config/appdata';
 import { ICLIArguments, IDisposable, IRect } from './tokens';
 import { SessionConfig } from './config/sessionconfig';
-import { EventManager } from './eventmanager';
+import { AsyncEventHandlerMain, EventManager } from './eventmanager';
 import { EventTypeMain, EventTypeRenderer } from './eventtypes';
 import { SettingsDialog } from './settingsdialog/settingsdialog';
 import { AboutDialog } from './aboutdialog/aboutdialog';
+import { AuthDialog } from './authdialog/authdialog';
 
 export interface IApplication {
   createNewEmptySession(): void;
@@ -481,10 +489,62 @@ export class JupyterApplication implements IApplication, IDisposable {
     return connectAndGetServerInfo(url, { showDialog: true, incognito: true });
   }
 
+  private async _showAuthDialog(
+    host: string,
+    parent?: BrowserWindow
+  ): Promise<any> {
+    return new Promise((resolve, reject) => {
+      const dialog = new AuthDialog({
+        isDarkTheme: isDarkTheme(userSettings.getValue(SettingType.theme)),
+        host,
+        parent
+      });
+
+      const handler: AsyncEventHandlerMain = (_event, username, password) => {
+        dialog.window.window.close();
+
+        this._evm.unregisterEventHandler(
+          EventTypeMain.SetAuthDialogResponse,
+          handler
+        );
+
+        resolve({ username, password });
+      };
+
+      dialog.window.window.on('closed', () => {
+        this._evm.unregisterEventHandler(
+          EventTypeMain.SetAuthDialogResponse,
+          handler
+        );
+        reject();
+      });
+
+      this._evm.registerEventHandler(
+        EventTypeMain.SetAuthDialogResponse,
+        handler
+      );
+
+      dialog.load();
+    });
+  }
+
   /**
    * Register all application event listeners
    */
   private _registerListeners(): void {
+    app.on('login', async (event, webContents, request, authInfo, callback) => {
+      if (authInfo.scheme === 'basic') {
+        event.preventDefault();
+        try {
+          const parent = BrowserWindow.fromWebContents(webContents);
+          const userInfo = await this._showAuthDialog(authInfo.host, parent);
+          callback(userInfo.username, userInfo.password);
+        } catch (error) {
+          console.warn('Failed to login using HTTP Basic Authentication');
+        }
+      }
+    });
+
     app.on('will-quit', event => {
       event.preventDefault();
       appData.save();
