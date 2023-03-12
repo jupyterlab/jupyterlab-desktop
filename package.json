@@ -112,8 +112,20 @@
     "mac": {
       "category": "public.app-category.productivity",
       "target": [
-        "dmg",
-        "zip"
+        {
+          "target": "dmg",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        },
+        {
+          "target": "zip",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        }
       ],
       "icon": "dist-resources/icon.icns",
       "entitlements": "build/entitlements.plist",
@@ -121,7 +133,7 @@
       "darkModeSupport": true,
       "hardenedRuntime": true,
       "gatekeeperAssess": false,
-      "artifactName": "${productName}.${ext}",
+      "artifactName": "${productName}-${arch}.${ext}",
       "extraResources": [
         {
           "from": "dist-resources/darwin/jlab.sh",
