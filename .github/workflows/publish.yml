@@ -108,13 +108,21 @@ jobs:
           path: |
             dist/JupyterLab.rpm
 
-      - name: Upload macOS Installer
+      - name: Upload macOS x64 Installer
         if: matrix.cfg.platform == 'mac'
         uses: actions/upload-artifact@v3
         with:
-          name: mac-installer
+          name: mac-installer-x64
           path: |
-            dist/JupyterLab.dmg
+            dist/JupyterLab-x64.dmg
+
+      - name: Upload macOS arm64 Installer
+        if: matrix.cfg.platform == 'mac'
+        uses: actions/upload-artifact@v3
+        with:
+          name: mac-installer-arm64
+          path: |
+            dist/JupyterLab-arm64.dmg
 
       - name: Upload Windows Installer
         if: matrix.cfg.platform == 'win'
@@ -144,23 +152,43 @@ jobs:
           tag: v${{ steps.package-info.outputs.version}}
           overwrite: true
 
-      - name: Upload macOS Installer as Release asset
+      - name: Upload macOS x64 Installer as Release asset
         if: matrix.cfg.platform == 'mac' && steps.release-exists.outputs.result == 'true'
         uses: svenstaro/upload-release-action@v2
         with:
           repo_token: ${{ secrets.JLAB_APP_TOKEN }}
-          file: dist/JupyterLab.dmg
-          asset_name: JupyterLab-Setup-macOS.dmg
+          file: dist/JupyterLab-x64.dmg
+          asset_name: JupyterLab-Setup-macOS-x64.dmg
           tag: v${{ steps.package-info.outputs.version}}
           overwrite: true
 
-      - name: Upload macOS App as Release asset
+      - name: Upload macOS arm64 Installer as Release asset
         if: matrix.cfg.platform == 'mac' && steps.release-exists.outputs.result == 'true'
         uses: svenstaro/upload-release-action@v2
         with:
           repo_token: ${{ secrets.JLAB_APP_TOKEN }}
-          file: dist/JupyterLab.zip
-          asset_name: JupyterLab-macOS.zip
+          file: dist/JupyterLab-arm64.dmg
+          asset_name: JupyterLab-Setup-macOS-arm64.dmg
+          tag: v${{ steps.package-info.outputs.version}}
+          overwrite: true
+
+      - name: Upload macOS x64 App as Release asset
+        if: matrix.cfg.platform == 'mac' && steps.release-exists.outputs.result == 'true'
+        uses: svenstaro/upload-release-action@v2
+        with:
+          repo_token: ${{ secrets.JLAB_APP_TOKEN }}
+          file: dist/JupyterLab-x64.zip
+          asset_name: JupyterLab-macOS-x64.zip
+          tag: v${{ steps.package-info.outputs.version}}
+          overwrite: true
+      
+      - name: Upload macOS arm64 App as Release asset
+        if: matrix.cfg.platform == 'mac' && steps.release-exists.outputs.result == 'true'
+        uses: svenstaro/upload-release-action@v2
+        with:
+          repo_token: ${{ secrets.JLAB_APP_TOKEN }}
+          file: dist/JupyterLab-arm64.zip
+          asset_name: JupyterLab-macOS-arm64.zip
           tag: v${{ steps.package-info.outputs.version}}
           overwrite: true
 
