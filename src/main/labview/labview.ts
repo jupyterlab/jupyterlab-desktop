@@ -9,11 +9,8 @@ import {
   MenuItemConstructorOptions
 } from 'electron';
 import log from 'electron-log';
-import { request as httpRequest, IncomingMessage } from 'http';
-import { request as httpsRequest } from 'https';
 import * as path from 'path';
 import * as fs from 'fs';
-import * as ejs from 'ejs';
 import {
   clearSession,
   DarkThemeBGColor,
@@ -23,7 +20,6 @@ import {
 import { SessionWindow } from '../sessionwindow/sessionwindow';
 import {
   CtrlWBehavior,
-  FrontEndMode,
   SettingType,
   userSettings,
   WorkspaceSettings
@@ -39,18 +35,6 @@ export type ILoadErrorCallback = (
 ) => void;
 
 const DESKTOP_APP_ASSETS_PATH = 'desktop-app-assets';
-
-// file name to variables map
-const templateAssetPaths = new Map([
-  [
-    'index.html',
-    (sessionConfig: SessionConfig) => {
-      return {
-        pageConfig: JSON.stringify(sessionConfig.pageConfig)
-      };
-    }
-  ]
-]);
 
 export class LabView implements IDisposable {
   constructor(options: LabView.IOptions) {
@@ -70,17 +54,6 @@ export class LabView implements IDisposable {
       } else {
         partition = `partition-${Date.now()}`;
       }
-    } else if (
-      this._wsSettings.getValue(SettingType.frontEndMode) ===
-      FrontEndMode.ClientApp
-    ) {
-      /*
-      use a dedicated partition (session) for client app mode, even though PDF
-      rendering doesn't work. without a dedicated session, intercepting buffer
-      protocol doesn't work since it is listening on the session object.
-      TODO: remove support for Client App mode.
-      */
-      partition = `partition-${Date.now()}`;
     }
     this._view = new BrowserView({
       webPreferences: {
@@ -95,16 +68,6 @@ export class LabView implements IDisposable {
 
     this._registerBrowserEventHandlers();
     this._addFallbackContextMenu();
-
-    if (
-      this._wsSettings.getValue(SettingType.frontEndMode) ===
-        FrontEndMode.ClientApp &&
-      this._sessionConfig.cookies
-    ) {
-      this._sessionConfig.cookies.forEach((cookie: any) => {
-        this._cookies.set(cookie.name, `${cookie.name}=${cookie.value}`);
-      });
-    }
 
     if (!this._sessionConfig.isRemote) {
       this._evm.registerEventHandler(EventTypeMain.LabUIReady, event => {
@@ -172,16 +135,7 @@ export class LabView implements IDisposable {
       }
     );
 
-    if (
-      this._wsSettings.getValue(SettingType.frontEndMode) ===
-      FrontEndMode.WebApp
-    ) {
-      this._view.webContents.loadURL(sessionConfig.url.href);
-    } else {
-      this._view.webContents.loadURL(
-        `${this.jlabBaseUrl}/${DESKTOP_APP_ASSETS_PATH}/index.html`
-      );
-    }
+    this._view.webContents.loadURL(sessionConfig.url.href);
   }
 
   get jlabBaseUrl(): string {
@@ -272,7 +226,6 @@ export class LabView implements IDisposable {
 
   dispose(): Promise<void> {
     this._evm.dispose();
-    this._unregisterBrowserEventHandlers();
 
     // if local or remote with no data persistence, clear session data
     if (
@@ -376,24 +329,7 @@ export class LabView implements IDisposable {
       }
     );
 
-    if (
-      this._wsSettings.getValue(SettingType.frontEndMode) == FrontEndMode.WebApp
-    ) {
-      this._registerWebAppFrontEndHandlers();
-    } else {
-      this._registerClientAppFrontEndHandlers();
-    }
-  }
-
-  private _unregisterBrowserEventHandlers() {
-    if (
-      !this._parent.window.isDestroyed() &&
-      this._wsSettings.getValue(SettingType.frontEndMode) ==
-        FrontEndMode.ClientApp
-    ) {
-      this._view.webContents.session.protocol.uninterceptProtocol('http');
-      this._view.webContents.session.protocol.uninterceptProtocol('https');
-    }
+    this._registerWebAppFrontEndHandlers();
   }
 
   private async _setJupyterLabTheme(theme: string) {
@@ -453,189 +389,9 @@ export class LabView implements IDisposable {
     });
   }
 
-  private _registerClientAppFrontEndHandlers() {
-    const sessionConfig = this._sessionConfig;
-    this._view.webContents.session.protocol.interceptBufferProtocol(
-      'http',
-      this._handleInterceptBufferProtocol.bind(this)
-    );
-
-    this._view.webContents.session.protocol.interceptBufferProtocol(
-      'https',
-      this._handleInterceptBufferProtocol.bind(this)
-    );
-
-    const filter = {
-      urls: [
-        `ws://${sessionConfig.url.host}/*`,
-        `wss://${sessionConfig.url.host}/*`
-      ]
-    };
-
-    this._view.webContents.session.webRequest.onBeforeSendHeaders(
-      filter,
-      (details, callback) => {
-        const requestHeaders: Record<string, string> = {
-          ...details.requestHeaders
-        };
-
-        if (
-          this._cookies.size > 0 &&
-          new URL(details.url).host === this._sessionConfig.url.host
-        ) {
-          requestHeaders['Cookie'] = Array.from(this._cookies.values()).join(
-            '; '
-          );
-          requestHeaders['Host'] = sessionConfig.url.host;
-          requestHeaders['Origin'] = sessionConfig.url.origin;
-        }
-        callback({ cancel: false, requestHeaders });
-      }
-    );
-  }
-
-  private _handleInterceptBufferProtocol(
-    req: Electron.ProtocolRequest,
-    callback: (response: Buffer | Electron.ProtocolResponse) => void
-  ): void {
-    if (req.url.startsWith(this.desktopAppAssetsPrefix)) {
-      this._handleDesktopAppAssetRequest(req, callback);
-    } else if (req.url.startsWith(this._sessionConfig.url.origin)) {
-      this._handleRemoteAssetRequest(req, callback);
-    }
-  }
-
-  private _handleDesktopAppAssetRequest(
-    req: Electron.ProtocolRequest,
-    callback: (response: Buffer | Electron.ProtocolResponse) => void
-  ): void {
-    let assetPath = req.url.substring(this.desktopAppAssetsPrefix.length + 1);
-    const qMark = assetPath.indexOf('?');
-    if (qMark !== -1) {
-      assetPath = assetPath.substring(0, qMark);
-    }
-    const assetFilePath = path.normalize(
-      path.join(this.appAssetsDir, assetPath)
-    );
-
-    // make sure asset is in appAssetsDir, prevent access to lower level directories
-    if (assetFilePath.indexOf(this.appAssetsDir) === 0) {
-      if (!fs.existsSync(assetFilePath)) {
-        callback({ statusCode: 404 });
-        return;
-      }
-      let assetContent = fs.readFileSync(assetFilePath);
-      if (templateAssetPaths.has(assetPath)) {
-        assetContent = Buffer.from(
-          ejs.render(
-            assetContent.toString(),
-            templateAssetPaths.get(assetPath)(this._sessionConfig)
-          )
-        );
-      }
-
-      callback(assetContent);
-    }
-  }
-
-  private _handleRemoteAssetRequest(
-    req: Electron.ProtocolRequest,
-    callback: (response: Buffer | Electron.ProtocolResponse) => void
-  ): void {
-    const sessionConfig = this._sessionConfig;
-    const headers: any = {
-      ...req.headers,
-      Referer: req.referrer,
-      Authorization: `token ${sessionConfig.token}`
-    };
-
-    if (
-      sessionConfig.url &&
-      req.url.startsWith(
-        `${sessionConfig.url.protocol}//${sessionConfig.url.host}`
-      )
-    ) {
-      let cookieArray: string[] = [];
-      if (sessionConfig.cookies) {
-        sessionConfig.cookies.forEach((cookie: any) => {
-          if (cookie.domain === sessionConfig.url.hostname) {
-            cookieArray.push(`${cookie.name}=${cookie.value}`);
-            if (cookie.name === '_xsrf') {
-              headers['X-XSRFToken'] = cookie.value;
-            }
-          }
-        });
-      }
-      headers['Cookie'] = cookieArray.join('; ');
-    }
-
-    const remoteUrl = req.url;
-    const requestFn = remoteUrl.startsWith('https')
-      ? httpsRequest
-      : httpRequest;
-
-    const request = requestFn(remoteUrl, {
-      headers: headers,
-      method: req.method
-    });
-    request.on('response', (res: IncomingMessage) => {
-      if (req.url.startsWith(this.jlabBaseUrl) && 'set-cookie' in res.headers) {
-        for (let cookie of res.headers['set-cookie']) {
-          const cookieName = this._parseCookieName(cookie);
-          if (cookieName) {
-            this._cookies.set(cookieName, cookie);
-          }
-        }
-      }
-
-      const chunks: Buffer[] = [];
-
-      res.on('data', (chunk: any) => {
-        chunks.push(Buffer.from(chunk));
-      });
-
-      res.on('end', async () => {
-        const file = Buffer.concat(chunks);
-        callback({
-          statusCode: res.statusCode,
-          headers: res.headers,
-          method: res.method,
-          url: res.url,
-          data: file
-        });
-      });
-    });
-
-    if (req.uploadData) {
-      req.uploadData.forEach(part => {
-        if (part.bytes) {
-          request.write(part.bytes);
-        } else if (part.file) {
-          request.write(fs.readFileSync(part.file));
-        }
-      });
-    }
-
-    request.end();
-  }
-
-  private _parseCookieName(cookie: string): string | undefined {
-    const parts = cookie.split(';');
-    if (parts.length < 1) {
-      return undefined;
-    }
-    const firstPart = parts[0];
-    const eqLoc = firstPart.indexOf('=');
-    if (eqLoc === -1) {
-      return undefined;
-    }
-    return firstPart.substring(0, eqLoc).trim();
-  }
-
   private _view: BrowserView;
   private _parent: SessionWindow;
   private _sessionConfig: SessionConfig;
-  private _cookies: Map<string, string> = new Map();
   private _jlabBaseUrl: string;
   private _wsSettings: WorkspaceSettings;
   private _labUIReady = false;

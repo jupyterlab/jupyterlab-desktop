@@ -9,7 +9,6 @@ const semver = require('semver');
 import { ThemedWindow } from '../dialog/themedwindow';
 import {
   CtrlWBehavior,
-  FrontEndMode,
   KeyValueMap,
   LogLevel,
   serverLaunchArgsDefault,
@@ -35,7 +34,6 @@ export class SettingsDialog {
       theme,
       syncJupyterLabTheme,
       showNewsFeed,
-      frontEndMode,
       checkForUpdatesAutomatically,
       defaultWorkingDirectory,
       logLevel,
@@ -223,12 +221,6 @@ export class SettingsDialog {
                 <label slot="label">News Feed</label>
                 <jp-checkbox id='checkbox-show-news-feed' type='checkbox' <%= showNewsFeed ? 'checked' : '' %> onchange='handleAutoCheckForUpdates(this);'>Show news feed on welcome page</jp-checkbox>
               </div>
-
-              <jp-radio-group orientation="horizontal">
-                <label slot="label">JupyterLab UI mode</label>
-                <jp-radio name="frontend-mode" value="web-app" <%= frontEndMode === 'web-app' ? 'checked' : '' %> title="Use the server supplied web application as JupyterLab UI">Web app</jp-radio>
-                <jp-radio name="frontend-mode" value="client-app" <%= frontEndMode === 'client-app' ? 'checked' : '' %> title="Use the bundled client application as JupyterLab UI">Client app</jp-radio>
-              </jp-radio-group>
 
               <script>
               const syncJupyterLabThemeCheckbox = document.getElementById('checkbox-sync-jupyterlab-theme');
@@ -590,8 +582,6 @@ export class SettingsDialog {
           window.electronAPI.setSyncJupyterLabTheme(syncJupyterLabThemeCheckbox.checked);
           const showNewsFeedCheckbox = document.getElementById('checkbox-show-news-feed');
           window.electronAPI.setShowNewsFeed(showNewsFeedCheckbox.checked);
-          const frontEndMode = document.querySelector('jp-radio[name="frontend-mode"].checked').value;
-          window.electronAPI.setFrontEndMode(frontEndMode);
           window.electronAPI.setCheckForUpdatesAutomatically(autoUpdateCheckCheckbox.checked);
           window.electronAPI.setInstallUpdatesAutomatically(autoInstallCheckbox.checked);
 
@@ -640,7 +630,6 @@ export class SettingsDialog {
       checkForUpdatesAutomatically,
       installUpdatesAutomaticallyEnabled,
       installUpdatesAutomatically,
-      frontEndMode,
       defaultWorkingDirectory,
       defaultPythonPath,
       selectBundledPythonPath,
@@ -679,7 +668,6 @@ export namespace SettingsDialog {
     theme: ThemeType;
     syncJupyterLabTheme: boolean;
     showNewsFeed: boolean;
-    frontEndMode: FrontEndMode;
     checkForUpdatesAutomatically: boolean;
     installUpdatesAutomatically: boolean;
     defaultWorkingDirectory: string;
