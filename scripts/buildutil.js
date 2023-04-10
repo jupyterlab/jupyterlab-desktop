@@ -2,7 +2,6 @@ const meow = require('meow');
 const fs = require('fs-extra');
 const path = require('path');
 const semver = require('semver');
-const lockfile = require('@yarnpkg/lockfile');
 const yaml = require('js-yaml');
 
 const pkgjsonFilePath = path.resolve(__dirname, '../package.json');
@@ -96,40 +95,6 @@ if (cli.flags.checkVersionMatch) {
   const appVersion = pkgjsonFileData['version'];
   console.log(`JupyterLab Desktop version: ${appVersion}`);
 
-  // parse JupyterLab version bundled to application UI
-  const yarnlockFilePath = path.resolve(__dirname, '../yarn.lock');
-  if (!fs.existsSync(yarnlockFilePath)) {
-    console.error('yarn.lock not found!');
-    process.exit(1);
-  }
-
-  const yarnLockFileContent = fs.readFileSync(yarnlockFilePath, 'utf8');
-  const yarnLockData = lockfile.parse(yarnLockFileContent).object;
-  const yarnPackages = Object.keys(yarnLockData);
-  const metapackage = yarnPackages.find(pkg =>
-    pkg.startsWith('@jupyterlab/metapackage')
-  );
-  if (!metapackage) {
-    console.error('@jupyterlab/metapackage not found!');
-    process.exit(1);
-  }
-
-  const jlabVersion = yarnLockData[metapackage].version;
-  console.log(`JupyterLab version: ${jlabVersion}`);
-
-  if (
-    !semver.valid(appVersion) ||
-    !semver.valid(jlabVersion) ||
-    semver.major(appVersion) !== semver.major(jlabVersion) ||
-    semver.minor(appVersion) !== semver.minor(jlabVersion) ||
-    semver.patch(appVersion) !== semver.patch(jlabVersion)
-  ) {
-    console.error(
-      `Application package version ${appVersion} doesn't match bundled JupyterLab version ${jlabVersion}`
-    );
-    process.exit(1);
-  }
-
   // check JupyterLab version bundled to Application Server
   const constructorData = yaml.load(
     fs.readFileSync(
@@ -158,14 +123,18 @@ if (cli.flags.checkVersionMatch) {
   const appServerJLabVersion = specParts[1];
   console.log(`Application Server JupyterLab version: ${appServerJLabVersion}`);
 
-  if (appServerJLabVersion !== jlabVersion) {
+  if (
+    !semver.valid(appVersion) ||
+    !semver.valid(appServerJLabVersion) ||
+    semver.major(appVersion) !== semver.major(appServerJLabVersion) ||
+    semver.minor(appVersion) !== semver.minor(appServerJLabVersion) ||
+    semver.patch(appVersion) !== semver.patch(appServerJLabVersion)
+  ) {
     console.error(
-      `Application Server package version ${appServerJLabVersion} doesn't match bundled JupyterLab version ${jlabVersion}`
+      `Application package version ${appVersion} doesn't match bundled JupyterLab Python package version ${appServerJLabVersion}`
     );
     process.exit(1);
   }
-
-  checkExtensionImports();
 
   console.log('JupyterLab version match satisfied!');
   process.exit(0);
