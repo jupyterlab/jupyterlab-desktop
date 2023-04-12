@@ -44,7 +44,7 @@ Note that after updating the bundled JupyterLab version, it is necessary to bump
 yarn check_version_match
 ```
 
-## Relase Workflow
+## Release Workflow
 
 1. Create a new release on GitHub as `pre-release`. Set the release `tag` to the value of target application version and prefix it with `v` (for example `v3.1.12-1` for JupyterLab Desktop version `3.1.12-1`). Enter release title and release notes. Release needs to stay as `pre-release` for GitHub Actions to be able to attach installers to the release.
 
