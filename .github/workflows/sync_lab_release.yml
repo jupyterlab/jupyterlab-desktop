@@ -41,7 +41,6 @@ jobs:
           set -eux
           export LATEST=$(python scripts/get_latest_lab_version.py)
           echo "latest=${LATEST}" >> $GITHUB_ENV
-          yarn set_jupyterlab_version ${LATEST}
           if [[ ! -z "$(git status --porcelain package.json)" ]]; then
             tbump --only-patch ${LATEST}-1 --non-interactive
             yarn install

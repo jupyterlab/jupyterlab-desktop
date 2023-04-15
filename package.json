@@ -29,7 +29,6 @@
     "create_env_installer:mac": "rimraf ./env_installer/JupyterLab*.sh && constructor ./env_installer --platform=osx-64 --output-dir ./env_installer",
     "create_env_installer:win": "rimraf ./env_installer/JupyterLab*.exe && constructor ./env_installer --platform=win-64 --output-dir ./env_installer",
     "check_version_match": "node scripts/buildutil.js --check-version-match",
-    "set_jupyterlab_version": "node scripts/buildutil.js --set-jupyterlab-version",
     "eslint": "eslint --ext .js,.jsx,.ts,.tsx --cache --fix .",
     "eslint:check": "eslint --ext .js,.jsx,.ts,.tsx --cache .",
     "eslint:check:typed": "eslint --config .eslintrc.typecheck.js --ext .js,.jsx,.ts,.tsx .",
