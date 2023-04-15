@@ -59,6 +59,7 @@
       "env_installer/JupyterLabDesktopAppServer-*[.sh,.exe]",
       "build/schemas"
     ],
+    "afterSign": "scripts/notarize.js",
     "linux": {
       "target": [
         "deb",
