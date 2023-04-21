@@ -148,6 +148,7 @@ export class SettingsDialog {
       }
       .footer-row {
         height: 50px;
+        min-height: 50px;
         overflow-y: hidden;
         display: flex;
         flex-direction: row;
