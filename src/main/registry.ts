@@ -21,7 +21,7 @@ import {
   getUserHomeDir,
   isPortInUse
 } from './utils';
-import { FrontEndMode, SettingType, userSettings } from './config/settings';
+import { SettingType, userSettings } from './config/settings';
 import { appData } from './config/appdata';
 
 const envInfoPyCode = fs
@@ -52,10 +52,7 @@ export const SERVER_TOKEN_PREFIX = 'jlab:srvr:';
 
 export class Registry implements IRegistry, IDisposable {
   constructor() {
-    const minJLabVersionRequired =
-      userSettings.getValue(SettingType.frontEndMode) === FrontEndMode.ClientApp
-        ? '3.4.5'
-        : '3.0.0';
+    const minJLabVersionRequired = '3.0.0';
 
     this._requirements = [
       {

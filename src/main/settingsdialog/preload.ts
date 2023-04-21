@@ -46,9 +46,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
   setShowNewsFeed: (show: string) => {
     ipcRenderer.send(EventTypeMain.SetShowNewsFeed, show);
   },
-  setFrontEndMode: (mode: string) => {
-    ipcRenderer.send(EventTypeMain.SetFrontendMode, mode);
-  },
   selectWorkingDirectory: () => {
     ipcRenderer.send(EventTypeMain.SelectWorkingDirectory);
   },

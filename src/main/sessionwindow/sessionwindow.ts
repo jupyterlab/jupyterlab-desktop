@@ -15,9 +15,7 @@ import { LabView } from '../labview/labview';
 import {
   DEFAULT_WIN_HEIGHT,
   DEFAULT_WIN_WIDTH,
-  FrontEndMode,
   SettingType,
-  userSettings,
   WorkspaceSettings
 } from '../config/settings';
 import { TitleBarView } from '../titlebarview/titlebarview';
@@ -39,7 +37,6 @@ import { IRegistry } from '../registry';
 import { IApplication } from '../app';
 import { SettingsDialog } from '../settingsdialog/settingsdialog';
 import { RemoteServerSelectDialog } from '../remoteserverselectdialog/remoteserverselectdialog';
-import { connectAndGetServerInfo, IJupyterServerInfo } from '../connect';
 import { PythonEnvironmentSelectPopup } from '../pythonenvselectpopup/pythonenvselectpopup';
 import { ProgressView } from '../progressview/progressview';
 import { appData } from '../config/appdata';
@@ -162,19 +159,6 @@ export class SessionWindow implements IDisposable {
     this._sessionConfig.token = serverInfo.token;
     this._sessionConfig.url = serverInfo.url;
     this._sessionConfig.defaultKernel = serverInfo.environment.defaultKernel;
-
-    if (
-      userSettings.getValue(SettingType.frontEndMode) === FrontEndMode.ClientApp
-    ) {
-      const serverInfo = await connectAndGetServerInfo(
-        this._sessionConfig.url.href,
-        { showDialog: false }
-      );
-      if (serverInfo) {
-        this._sessionConfig.pageConfig = serverInfo.pageConfig;
-        this._sessionConfig.cookies = serverInfo.cookies;
-      }
-    }
   }
 
   load() {
@@ -893,14 +877,6 @@ export class SessionWindow implements IDisposable {
         persistSessionData: this._sessionConfig.persistSessionData
       };
 
-      if (
-        userSettings.getValue(SettingType.frontEndMode) ===
-        FrontEndMode.ClientApp
-      ) {
-        serverInfo.url = this._sessionConfig.url.href;
-        serverInfo.pageConfig = this._sessionConfig.pageConfig;
-      }
-
       return serverInfo;
     } else {
       if (this._server?.server) {
@@ -916,13 +892,6 @@ export class SessionWindow implements IDisposable {
           defaultKernel: info.environment.defaultKernel,
           url: this._sessionConfig.url?.href
         };
-
-        if (
-          userSettings.getValue(SettingType.frontEndMode) ===
-          FrontEndMode.ClientApp
-        ) {
-          serverInfo.pageConfig = this._sessionConfig.pageConfig;
-        }
 
         return serverInfo;
       }
@@ -1260,75 +1229,29 @@ export class SessionWindow implements IDisposable {
 
     try {
       const url = new URL(remoteURL);
-      const isLocalUrl =
-        url.hostname === 'localhost' || url.hostname === '127.0.0.1';
-      const getServerInfo =
-        userSettings.getValue(SettingType.frontEndMode) ===
-        FrontEndMode.ClientApp;
+      const token = url.searchParams.get('token');
 
-      const fetchServerInfo = new Promise<IJupyterServerInfo>(
-        (resolve, reject) => {
-          if (getServerInfo) {
-            connectAndGetServerInfo(remoteURL, {
-              showDialog: !isLocalUrl,
-              partition
-            })
-              .then(serverInfo => {
-                resolve({
-                  pageConfig: serverInfo.pageConfig,
-                  cookies: serverInfo.cookies
-                });
-              })
-              .catch(reject);
-          } else {
-            resolve({
-              pageConfig: undefined,
-              cookies: []
-            });
-          }
-        }
+      this._sessionConfig = SessionConfig.createRemote(
+        remoteURL,
+        persistSessionData,
+        partition
       );
+      const sessionConfig = this._sessionConfig;
+      sessionConfig.url = url;
+      sessionConfig.token = token;
 
-      fetchServerInfo
-        .then(serverInfo => {
-          const token = url.searchParams.get('token');
-          const pageConfig = serverInfo.pageConfig;
-          const cookies = serverInfo.cookies;
+      appData.addRemoteURLToRecents(remoteURL);
+      appData.addSessionToRecents({
+        remoteURL,
+        persistSessionData,
+        partition: sessionConfig.partition
+      });
 
-          this._sessionConfig = SessionConfig.createRemote(
-            remoteURL,
-            persistSessionData,
-            partition
-          );
-          const sessionConfig = this._sessionConfig;
-          sessionConfig.url = url;
-          sessionConfig.token = token;
-          sessionConfig.pageConfig = pageConfig;
-          sessionConfig.cookies = cookies;
-
-          appData.addRemoteURLToRecents(remoteURL);
-          appData.addSessionToRecents({
-            remoteURL,
-            persistSessionData,
-            partition: sessionConfig.partition
-          });
-
-          this._contentViewType = ContentViewType.Lab;
-          this._updateContentView();
-          this._hideProgressView();
-          this._updateSessionWindowPositionConfig();
-          this._sessionConfigChanged.emit();
-        })
-        .catch(error => {
-          this._setProgress(
-            'Connection Error',
-            `<div class="message-row">${error.message}</div>
-            <div class="message-row">
-              <a href="javascript:void(0);" onclick="sendMessageToMain('${EventTypeMain.ShowWelcomeView}')">Go to Welcome Page</a>
-            </div>`,
-            false
-          );
-        });
+      this._contentViewType = ContentViewType.Lab;
+      this._updateContentView();
+      this._hideProgressView();
+      this._updateSessionWindowPositionConfig();
+      this._sessionConfigChanged.emit();
     } catch (error) {
       this._setProgress(
         'Connection Error',

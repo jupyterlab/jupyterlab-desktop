@@ -17,7 +17,6 @@ import {
   waitForDuration
 } from './utils';
 import {
-  FrontEndMode,
   KeyValueMap,
   serverLaunchArgsDefault,
   serverLaunchArgsFixed,
@@ -69,12 +68,6 @@ function createLaunchScript(
     for (const arg of serverLaunchArgsDefault) {
       launchArgs.push(arg);
     }
-  }
-
-  if (
-    userSettings.getValue(SettingType.frontEndMode) === FrontEndMode.ClientApp
-  ) {
-    launchArgs.push(`--LabServerApp.schemas_dir="${schemasDir}"`);
   }
 
   let launchCmd = launchArgs.join(' ');

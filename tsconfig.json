@@ -11,7 +11,7 @@
     "target": "es2020",
     "lib": ["es2020", "dom"],
     "baseUrl": ".",
-    "outDir": "./build/out",
+    "outDir": "./build/out/main",
     "sourceMap": true
   },
   "include": ["./src/**/*.*"]

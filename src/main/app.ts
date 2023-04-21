@@ -369,7 +369,6 @@ export class JupyterApplication implements IApplication, IDisposable {
         theme: settings.getValue(SettingType.theme),
         syncJupyterLabTheme: settings.getValue(SettingType.syncJupyterLabTheme),
         showNewsFeed: settings.getValue(SettingType.showNewsFeed),
-        frontEndMode: settings.getValue(SettingType.frontEndMode),
         checkForUpdatesAutomatically: settings.getValue(
           SettingType.checkForUpdatesAutomatically
         ),
@@ -809,13 +808,6 @@ export class JupyterApplication implements IApplication, IDisposable {
       EventTypeMain.SetShowNewsFeed,
       (_event, show) => {
         userSettings.setValue(SettingType.showNewsFeed, show);
-      }
-    );
-
-    this._evm.registerEventHandler(
-      EventTypeMain.SetFrontendMode,
-      (_event, mode) => {
-        userSettings.setValue(SettingType.frontEndMode, mode);
       }
     );
 

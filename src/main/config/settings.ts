@@ -14,11 +14,6 @@ export enum ThemeType {
   Dark = 'dark'
 }
 
-export enum FrontEndMode {
-  WebApp = 'web-app',
-  ClientApp = 'client-app'
-}
-
 export enum StartupMode {
   WelcomePage = 'welcome-page',
   NewLocalSession = 'new-local-session',
@@ -48,7 +43,6 @@ export enum SettingType {
   theme = 'theme',
   syncJupyterLabTheme = 'syncJupyterLabTheme',
   showNewsFeed = 'showNewsFeed',
-  frontEndMode = 'frontEndMode',
 
   defaultWorkingDirectory = 'defaultWorkingDirectory',
   pythonPath = 'pythonPath',
@@ -133,7 +127,6 @@ export class UserSettings {
       */
       theme: new Setting<ThemeType>(ThemeType.System),
       syncJupyterLabTheme: new Setting<boolean>(true),
-      frontEndMode: new Setting<FrontEndMode>(FrontEndMode.WebApp),
 
       defaultWorkingDirectory: new Setting<string>(''),
       pythonPath: new Setting<string>('', { wsOverridable: true }),

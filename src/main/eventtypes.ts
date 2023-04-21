@@ -45,7 +45,6 @@ export enum EventTypeMain {
   SetStartupMode = 'set-startup-mode',
   SetSyncJupyterLabTheme = 'set-sync-jupyterlab-theme',
   SetShowNewsFeed = 'set-show-news-feed',
-  SetFrontendMode = 'set-frontend-mode',
   RestartApp = 'restart-app',
   CheckForUpdates = 'check-for-updates',
   GetServerInfo = 'get-server-info',
