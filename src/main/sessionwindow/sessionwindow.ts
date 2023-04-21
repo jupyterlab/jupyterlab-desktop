@@ -512,7 +512,7 @@ export class SessionWindow implements IDisposable {
 
         this._showProgressView('Creating new session');
 
-        const sessionConfig = new SessionConfig();
+        const sessionConfig = SessionConfig.createLocal();
         this._sessionConfig = sessionConfig;
         this._wsSettings = new WorkspaceSettings(
           sessionConfig.workingDirectory

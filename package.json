@@ -14,7 +14,6 @@
     "watch:assets": "node ./scripts/extract.js && node ./scripts/copyassets.js watch",
     "watch": "concurrently \"yarn watch:tsc\" \"yarn watch:assets\" ",
     "build": "tsc && yarn bundle:preload && node ./scripts/extract.js && node ./scripts/copyassets.js",
-    "build:no-pack": "tsc &&  yarn bundle:preload && node ./scripts/extract.js && node ./scripts/copyassets.js",
     "build:all": "yarn clean && yarn build && yarn start",
     "bundle:preload": "webpack --config webpack.preload.js",
     "extract": "node scripts/extract.js",
