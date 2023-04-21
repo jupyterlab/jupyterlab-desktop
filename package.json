@@ -201,7 +201,7 @@
     "fix-path": "^3.0.0",
     "js-yaml": "^4.1.0",
     "node-fetch": "^2.6.7",
-    "semver": "^7.3.4",
+    "semver": "^7.5.0",
     "update-electron-app": "^2.0.1",
     "which": "^2.0.2",
     "winreg": "^1.2.4",

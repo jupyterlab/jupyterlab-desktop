@@ -778,10 +778,14 @@ export class Registry implements IRegistry, IDisposable {
   ): boolean {
     return requirements.every((req, index, reqSelf) => {
       try {
-        return semver.satisfies(
-          environment.versions[req.name],
-          req.versionRange
-        );
+        const version = environment.versions[req.name];
+        // remove alpha / beta suffixes
+        const versionWithoutSuffix = `${semver.major(version, {
+          loose: true
+        })}.${semver.minor(version, {
+          loose: true
+        })}.${semver.patch(version, { loose: true })}`;
+        return semver.satisfies(versionWithoutSuffix, req.versionRange);
       } catch (e) {
         return false;
       }
