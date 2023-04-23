@@ -3,6 +3,7 @@
 
 import * as path from 'path';
 import * as fs from 'fs';
+import * as semver from 'semver';
 import log from 'electron-log';
 import { AddressInfo, createServer, Socket } from 'net';
 import { app, nativeTheme } from 'electron';
@@ -229,4 +230,11 @@ export async function waitForFunction(
       }, timeout);
     }
   });
+}
+
+// remove alpha / beta suffixes
+export function versionWithoutSuffix(version: string) {
+  return `${semver.major(version, { loose: true })}.${semver.minor(version, {
+    loose: true
+  })}.${semver.patch(version, { loose: true })}`;
 }

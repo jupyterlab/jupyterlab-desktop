@@ -19,7 +19,8 @@ import {
   getBundledPythonPath,
   getEnvironmentPath,
   getUserHomeDir,
-  isPortInUse
+  isPortInUse,
+  versionWithoutSuffix
 } from './utils';
 import { SettingType, userSettings } from './config/settings';
 import { appData } from './config/appdata';
@@ -779,13 +780,10 @@ export class Registry implements IRegistry, IDisposable {
     return requirements.every((req, index, reqSelf) => {
       try {
         const version = environment.versions[req.name];
-        // remove alpha / beta suffixes
-        const versionWithoutSuffix = `${semver.major(version, {
-          loose: true
-        })}.${semver.minor(version, {
-          loose: true
-        })}.${semver.patch(version, { loose: true })}`;
-        return semver.satisfies(versionWithoutSuffix, req.versionRange);
+        return semver.satisfies(
+          versionWithoutSuffix(version),
+          req.versionRange
+        );
       } catch (e) {
         return false;
       }
