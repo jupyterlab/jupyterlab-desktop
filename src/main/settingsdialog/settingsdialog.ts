@@ -5,7 +5,6 @@ import * as ejs from 'ejs';
 import { app, BrowserWindow } from 'electron';
 import * as path from 'path';
 import * as fs from 'fs';
-const semver = require('semver');
 import { ThemedWindow } from '../dialog/themedwindow';
 import {
   CtrlWBehavior,
@@ -16,7 +15,7 @@ import {
   StartupMode,
   ThemeType
 } from '../config/settings';
-import { getBundledPythonPath } from '../utils';
+import { getBundledPythonPath, versionWithoutSuffix } from '../utils';
 import { IRegistry } from '../registry';
 
 export class SettingsDialog {
@@ -69,8 +68,10 @@ export class SettingsDialog {
         const bundledEnv = registry.getEnvironmentByPath(bundledPythonPath);
         const jlabVersion = bundledEnv.versions['jupyterlab'];
         const appVersion = app.getVersion();
-        const diff = semver.diff(appVersion, jlabVersion);
-        if (diff !== 'prerelease') {
+
+        if (
+          versionWithoutSuffix(jlabVersion) !== versionWithoutSuffix(appVersion)
+        ) {
           bundledEnvInstallationLatest = false;
         }
       } catch (error) {
