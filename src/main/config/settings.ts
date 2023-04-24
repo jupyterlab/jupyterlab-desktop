@@ -29,8 +29,9 @@ export enum LogLevel {
 }
 
 export enum CtrlWBehavior {
-  Close = 'close',
+  CloseWindow = 'close',
   Warn = 'warn',
+  CloseTab = 'close-tab',
   DoNotClose = 'do-not-close'
 }
 
@@ -138,7 +139,7 @@ export class UserSettings {
 
       startupMode: new Setting<StartupMode>(StartupMode.WelcomePage),
 
-      ctrlWBehavior: new Setting<CtrlWBehavior>(CtrlWBehavior.Close),
+      ctrlWBehavior: new Setting<CtrlWBehavior>(CtrlWBehavior.CloseTab),
 
       logLevel: new Setting<string>(LogLevel.Warn)
     };
