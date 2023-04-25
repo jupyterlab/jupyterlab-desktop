@@ -11,6 +11,4 @@ jobs:
         # https://github.com/vedantmgoyal2009/winget-releaser
         with:
           identifier: ProjectJupyter.JupyterLab
-          release-tag: ${{ steps.package-info.outputs.version}}
-          version: ${{ steps.package-info.outputs.version}}
           token: ${{ secrets.WINGET_TOKEN }}
