@@ -492,8 +492,9 @@ export class SettingsDialog {
               <div class="row setting-section">
                 <jp-radio-group orientation="horizontal">
                   <label slot="label">${ctrlWLabel} behavior</label>
+                  <jp-radio name="ctrl-w-behavior" value="close-tab" <%= ctrlWBehavior === 'close-tab' ? 'checked' : '' %>>Close tab</jp-radio>
                   <jp-radio name="ctrl-w-behavior" value="close" <%= ctrlWBehavior === 'close' ? 'checked' : '' %>>Close session</jp-radio>
-                  <jp-radio name="ctrl-w-behavior" value="warn" <%= ctrlWBehavior === 'warn' ? 'checked' : '' %>>Warn before close</jp-radio>
+                  <jp-radio name="ctrl-w-behavior" value="warn" <%= ctrlWBehavior === 'warn' ? 'checked' : '' %>>Warn and close session</jp-radio>
                   <jp-radio name="ctrl-w-behavior" value="do-not-close" <%= ctrlWBehavior === 'do-not-close' ? 'checked' : '' %>>Do not close</jp-radio>
                 </jp-radio-group>
               </div>

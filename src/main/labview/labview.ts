@@ -81,15 +81,27 @@ export class LabView implements IDisposable {
 
     const ctrlWBehavior = userSettings.getValue(SettingType.ctrlWBehavior);
 
-    if (ctrlWBehavior !== CtrlWBehavior.Close) {
-      this._view.webContents.on('before-input-event', (event, input) => {
+    if (ctrlWBehavior !== CtrlWBehavior.CloseWindow) {
+      this._view.webContents.on('before-input-event', async (event, input) => {
         if (
           input.code === 'KeyW' &&
           ((input.meta && process.platform === 'darwin') || input.control)
         ) {
           let skipClose = false;
 
-          if (ctrlWBehavior === CtrlWBehavior.Warn) {
+          if (ctrlWBehavior === CtrlWBehavior.CloseTab) {
+            event.preventDefault();
+            await this._view.webContents.executeJavaScript(`
+              {
+                const lab = window.jupyterapp || window.jupyterlab;
+                if (lab) {
+                  lab.commands.execute('application:close');
+                }
+              }
+              0; // response
+            `);
+            skipClose = true;
+          } else if (ctrlWBehavior === CtrlWBehavior.Warn) {
             const choice = dialog.showMessageBoxSync({
               type: 'warning',
               message: 'Do you want to close the session?',
