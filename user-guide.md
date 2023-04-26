@@ -237,4 +237,4 @@ On Windows, JupyterLab Desktop is installed in two parts, one for the python env
 
 <img src="media/uninstall-windows-application.png" alt="Uninstall the application" height=200 />
 
-In order to remove application cache, delete `C:\Users\<username>\AppData\Roaming\jupyterlab-desktop` directory.
+In order to remove application cache, delete `%appdata%\jupyterlab-desktop` directory.
