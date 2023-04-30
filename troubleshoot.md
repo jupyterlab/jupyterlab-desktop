@@ -89,7 +89,7 @@ Another way to debug server launch errors is by trying to launch JupyterLab by u
 1. Go to Settings dialog in desktop app and open the `Server` tab.
 2. Server tab shows `Server launch command preview` as shown below. Copy the command to clipboard.
 
-    <img src="media/server-lauch-command-preview.png" alt="Set log level" width=800 />
+<img src="media/server-lauch-command-preview.png" alt="Set log level" width=800 />
 
 3. Open a system Terminal and activate the custom Python environment you would like to debug.
 4. Run the command copied from the preview after replacing `{port}` with a value like `8888` and `{token}` with a value like `abcde`.
@@ -104,11 +104,13 @@ JLD installers use the following paths for application and bundled Python enviro
 - On Linux `/opt/JupyterLab`
 
 Bundled Python environment installers are located in:
+
 - On Windows: `C:\JupyterLab\resources\env_installer`
 - On macOS: `/Applications/JupyterLab.app/Contents/Resources/env_installer`
 - On Linux `/opt/JupyterLab/resources/env_installer`
 
 Bundled Python environment is installed to
+
 - On Windows: `%AppData%\jupyterlab-desktop\jlab_server`
 - On macOS: `~/Library/jupyterlab-desktop/jlab_server`
 - On Linux `~/.config/jupyterlab-desktop/jlab_server`
@@ -134,9 +136,11 @@ JLD provides an easy way to update the bundled Python environment installation. 
 On macOS, bundled Python environment is installed into a non user data directory (`~/Library/jupyterlab-desktop/jlab_server`) due to conda environment path limitations. Make sure that you have write permissions to `~/Library` directory. If you are having issues with bundled Python environment in macOS, check that envinronment is properly installed in there. If `~/Library/jupyterlab-desktop/jlab_server/bin/python` file exists and you can manually launch Python by using this path on a macOS Terminal, then your bundled Python environment installation was sucessful.
 
 JLD installers for Windows and Linux create `jlab` CLI command as part of the installation process. However, macOS creates this command at first launch and after updates. This command creation might sometimes fail if the user doesn't have the right permissions. This command is created as a symlink at `/usr/local/bin/jlab`. The symlink points to `/Applications/JupyterLab.app/Contents/Resources/app/jlab` script that launches the desktop application. If you are having issues with running `jlab` command on macOS. Try these:
+
 - Make sure you can launch JLD from desktop launcher links
 - Make sure you have write access to `/usr/local/bin/` directory
 - If you are still having issues make sure `/Applications/JupyterLab.app/Contents/Resources/app/jlab` is executable. You can run the command below to enable execution.
+
 ```bash
 chmod 755 /Applications/JupyterLab.app/Contents/Resources/app/jlab
 ```
@@ -148,6 +152,7 @@ chmod 755 /Applications/JupyterLab.app/Contents/Resources/app/jlab
 ## Windows uninstall issues
 
 Since the bundled Python environment is installed into the same directory, installing and uninstalling multiple versions might leave dangling install metadata in registry. You can clean these records by following these steps.
+
 1. Make sure no JupyterLab Desktop or server instance is running (rebooting Windows should terminate them if any)
 2. If you want to uninstall any existing JupyterLab Desktop and/or Server installation, go to Add / Remove Programs remove all of the related installations.
 3. If there are any dangling installations that cannot be removed from Add / Remove Programs then remove those dangling ones by following [the instructions here](https://support.microsoft.com/en-us/topic/removing-invalid-entries-in-the-add-remove-programs-tool-0dae27c1-0b06-2559-311b-635cd532a6d5) with care.
@@ -162,6 +167,7 @@ JupyterLab Desktop installers automatically associate `.ipynb` files with the ap
 Some of the issues are obviously JupyterLab Desktop issues such as inability to launch the application, persistence settings etc. However, we also get issues reported or features requested in this repo for JupyterLab Web Application or other dependency Python libraries. You can check if a problem is specific to Desktop application by testing the same feature in JupyterLab Web Application. You can launch JupyterLab Web Application manually by following the instructions in [Launching JupyterLab Server manually](#Launching-JupyterLab-Server-manually) section.
 
 Another method to launch the web application within the same Python environment is by using the Terminal in JupyterLab Desktop. Just note that this might not always work if you have a bash profile that activates a Python environment by default. Follow these steps to launch the web application from JLD.
+
 1. Open a new Terminal by using `File` -> `New Launcher` menu and then clicking `Terminal` icon in the `Other` section.
 2. Run `jupyter lab` command in terminal to launch the web application in the external browser
 3. Once you are done testing, make sure to stop JupyterLab by using `Ctrl + C` keys in Terminal.
