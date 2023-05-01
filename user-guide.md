@@ -46,7 +46,7 @@ JupyterLab Desktop sets several launch arguments when launching the JupyterLab S
 
 ## Server Environment Variables
 
-When JupyterLab Server is launched, environment variables are passed from desktop application to the server process. These environment variables depend on how you launched the desktop app (from CLI or via OS GUI). Also note that your Python environment is activated during JupyterLab Server launch and that activation adds additonal environment variables and modifies the PATH environment variable for the server process.
+When JupyterLab Server is launched, environment variables are passed from desktop application to the server process. These environment variables depend on how you launched the desktop app (from CLI or via OS GUI). Also note that your Python environment is activated during JupyterLab Server launch and that activation adds additional environment variables and modifies the PATH environment variable for the server process.
 
 You can set additional environment variables for the JupyterLab server process by using the Server tab of the settings dialog, as shown below.
 
@@ -109,7 +109,7 @@ On macOS, JupyterLab Desktop is installed into `/Applications/JupyterLab` and Py
 
 ## Windows Instructions
 
-On Windows, there are two installers, one of them is run during initial setup for the main JupyterLab Desktop applicationa and the other one is run when a Python environment needs to be installed. Both of them should be installed to their default install locations. It is `C:\JupyterLab\` for JupyterLab Desktop and `C:\Users\<username>\AppData\Roaming\jupyterlab-desktop\jlab_server` for JupyterLab Desktop Server.
+On Windows, there are two installers, one of them is run during initial setup for the main JupyterLab Desktop application and the other one is run when a Python environment needs to be installed. Both of them should be installed to their default install locations. It is `C:\JupyterLab\` for JupyterLab Desktop and `C:\Users\<username>\AppData\Roaming\jupyterlab-desktop\jlab_server` for JupyterLab Desktop Server.
 
 # Installing New Python Packages
 
@@ -154,7 +154,7 @@ Jupyter config files directory (`JUPYTER_CONFIG_DIR`) is set to `{jlab-desktop-u
 
 JupyterLab workspace data is stored into the working directory, for each folder a new session is started in. This allows restoring open files and UI layout of sessions for different working directories. `{working-directory}/.jupyter/desktop-workspaces` directory is automatically created and used to save and load workspace data for each working directory. You can change this behavior by specifying `JLAB_DESKTOP_WORKSPACES_DIR` environment variable.
 
-## Project overridable settings
+## Project settings that can be overridden
 
 JupyterLab Desktop allows a subset of user settings to be overridden by project settings. Below is the list of settings that can be overridden by each project (working directory) with example values.
 
@@ -223,6 +223,8 @@ rm /usr/local/bin/jlab # remove command symlink
 rm -rf ~/Library/jupyterlab-desktop
 # to remove user data
 rm -rf ~/Library/Application\ Support/jupyterlab-desktop
+# to remove logs
+rm -rf ~/Library/Logs/jupyterlab-desktop
 ```
 
 ## Windows
@@ -237,4 +239,4 @@ On Windows, JupyterLab Desktop is installed in two parts, one for the python env
 
 <img src="media/uninstall-windows-application.png" alt="Uninstall the application" height=200 />
 
-In order to remove application cache, delete `%appdata%\jupyterlab-desktop` directory.
+In order to remove application cache, delete `%APPDATA%\jupyterlab-desktop` directory.
