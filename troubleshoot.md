@@ -13,10 +13,10 @@ Below are detailed information on topics which commonly come up in questions and
 - [Launching JupyterLab Server manually](#Launching-JupyterLab-Server-manually)
 - [Installation Paths](#Installation-Paths)
 - [Theme persistence issues](#Theme-persistence-issues)
-- [JLD updated but still running old JupyterLab Web Application version](#JLD-updated-but-still-running-old-JupyterLab-Web-Application-version)
+- [After JupyterLab Desktop update, why there is still the old JupyterLab Web Application version?](#after-jupyterlab-desktop-update-why-there-is-still-the-old-jupyterlab-web-application-version)
 - [macOS write permission issues](#macOS-write-permission-issues)
 - [Windows uninstall issues](#Windows-uninstall-issues)
-- [Double clicking .ipynb files not launching JLD](#Double-clicking-.ipynb-files-not-launching-JLD)
+- [Double clicking .ipynb files not launching JLD](#double-clicking-ipynb-files-not-launching-jld)
 - [Detecting if an issue is specific to JupyterLab Desktop or not](#Detecting-if-an-issue-is-specific-to-JupyterLab-Desktop-or-not)
 - [Debugging application launch issues](#Debugging-application-launch-issues)
 
@@ -136,7 +136,7 @@ Bundled Python environment is installed to:
 
 ## After JupyterLab Desktop update, why there is still the old JupyterLab Web Application version?
 
-Updating JLD application doesn't automatically update the Python environment previously used by the application, for various reasons. However, bundled Python environment installer is updated if the new JLD has a version upgrade other than suffix (`-n`) change. You can compare the versions of JLD application and jupyterlab package versions in the Python environment as described in [versions section above](#JupyterLab-Desktop-vs-jupyterlab-Python-package-versions).
+Updating JLD application doesn't automatically update the Python environment previously used by the application, for various reasons. However, bundled Python environment installer is updated if the new JLD has a version upgrade other than suffix (`-n`) change. You can compare the versions of JLD application and jupyterlab package versions in the Python environment as described in [versions section above](#jupyterlab-desktop-vs-jupyterlab-web-application-versions).
 
 JLD provides an easy way to update the bundled Python environment installation. Simply go to `Hamburger Menu` -> `Settings` -> `Server` tab. If your bundled Python environment installation is out-dated then you will see a notification and a button to update the installation.
 
