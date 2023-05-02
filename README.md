@@ -71,4 +71,6 @@ JupyterLab Desktop currently supports user-friendly [prebuilt](https://jupyterla
 
 ### See [user guide](user-guide.md) for configuration options
 
+### See [troubleshooting guide](troubleshoot.md) for troubleshooting issues
+
 ### For contributing, see [developer documentation](dev.md)

@@ -10,6 +10,7 @@ Before creating a new issue:
 * Search for relevant issues in both:
    - this repository
    - the main JupyterLab repository: https://github.com/jupyterlab/jupyterlab
+* Follow the relevant Troubleshooting Guide (troubleshoot.md) topics to resolve the issue yourself
 * Follow the issue reporting guidelines:
 https://jupyterlab.readthedocs.io/en/latest/getting_started/issue.html
 -->
@@ -46,14 +47,13 @@ https://jupyterlab.readthedocs.io/en/latest/getting_started/issue.html
 
 <details><summary>Troubleshoot Output</summary>
 <pre>
-Paste the output from running `jupyter troubleshoot` from the terminal inside of JupyterLab-Desktop here.
+Paste the output from running `jupyter troubleshoot` from the terminal inside of JupyterLab Desktop here.
 You may want to sanitize the paths in the output.
 </pre>
 </details>
 
 <details><summary>Browser Output (required for interface issues after loading)</summary>
-<!--Go to `Help` menu -> `Open Developer Console` to access the JavaScript console-->
-<!--If you do not see such a menu entry, please try Ctrl + Shift + I, after focusing on JupyterLab file browser-->
+<!--Go to `Application` menu -> `Open Developer Tools` to access the JavaScript console-->
 <pre>
 Paste the output from the DevTools JavaScript console here, if applicable.
 
@@ -61,11 +61,11 @@ Paste the output from the DevTools JavaScript console here, if applicable.
 </details>
 
 <details><summary>Logs (required for issues with loading, server and startup)</summary>
-<!--Start application from command line as `jlab --verbose 4`, wait until it settles-->
+<!--Start application from command line as `jlab --log-level debug`, wait until it settles-->
 <!--Copy-paste the logs from the following location:-->
 <!--on Linux: ~/.config/jupyterlab-desktop/logs/main.log-->
 <!--on macOS: ~/Library/Logs/jupyterlab-desktop/main.log-->
-<!--on Windows: %USERPROFILE%\AppData\Roaming\jupyterlab-desktop\logs\main.log-->
+<!--on Windows: %APPDATA%\jupyterlab-desktop\logs\main.log-->
 <pre>
 Paste the logs from the `main.log` file here (optionally also from `renderer.log`).
 
