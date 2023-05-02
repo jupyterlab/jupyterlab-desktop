@@ -74,8 +74,8 @@ In order to set log level via `settings.json` file, add the `logLevel` key with 
 
 ```json
 {
-    "logLevel": "debug",
-    // ...other settings
+  "logLevel": "debug"
+  // ...other settings
 }
 ```
 
