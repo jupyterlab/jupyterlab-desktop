@@ -48,7 +48,7 @@ Similarly, CLI launches of the application, dropping files and folders, and doub
 
 Previously opened sessions are stored as part of application data and they are listed on Welcome Page. Clicking an item in the `Recent sessions` list restores the selected session.
 
-<img src="media/recent-sessions.png" alt="Start session" width=300 />
+<img src="media/recent-sessions.png" alt="Recent sessions" width=300 />
 
 ### jlab command-line launch examples
 
@@ -70,5 +70,7 @@ For additional CLI options run `jlab --help` in command line.
 JupyterLab Desktop currently supports user-friendly [prebuilt](https://jupyterlab.readthedocs.io/en/stable/extension/extension_dev.html#overview-of-extensions) extensions. Source extensions which require rebuilding are not supported.
 
 ### See [user guide](user-guide.md) for configuration options
+
+### See [troubleshooting guide](troubleshoot.md) for troubleshooting issues
 
 ### For contributing, see [developer documentation](dev.md)

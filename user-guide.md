@@ -1,3 +1,23 @@
+# How JupyterLab Desktop works
+
+JupyterLab Desktop (JLD) is the cross-platform desktop application for [JupyterLab](https://github.com/jupyterlab/jupyterlab). It is the quickest and easiest way to get started with Jupyter notebooks on your personal computer, with the flexibility for advanced use cases. It is bundled with a Python environment that includes jupyterlab Python package and several popular Python libraries ready to use in scientific computing and data science workflows.
+
+## JupyterLab Desktop vs JupyterLab Web Application
+
+The standard distribution of JupyterLab is a Web Application which is available as a Python package named `jupyterlab` and it can be installed using `pip install` and `conda install` commands. Once you install it, you can launch JupyterLab using `jupyter lab` CLI command. When this command is run, JupyterLab server is launched on the computer and the Web Application UI can be accessed from the browser. This setup process requires you to install Python and other scientific computing dependencies manually using Terminal commands. If you are working with multiple Python environments, the process gets more complex for setting up and launching JupyterLab. Opening notebook files on your PC, working with multiple projects in different directories with different Python environments can be challenging for many users when using JupyterLab Web Application directly from CLI.
+
+JupyterLab Desktop makes installing and launching JupyterLab much easier and provides other user friendly features. It comes with one click installers for different operating systems. It still uses the JupyterLab Web Application behind the scenes but it hides the complexities of installation, launch, upgrades and other common tasks. It enables working with different projects in different directories with their own Python environment configuration and UI layout. It keeps a history of previous sessions for easy restore. It also shows a news feed with latest blog posts from Jupyter Blog to keep the users up to date with the Jupyter ecosystem projects. All of these features and more are provided with user friendly GUI, with simple clicks.
+
+When JLD is first launched Users are presented with the Welcome Page. It contains links to several session create options on the left and the Jupyter News feed on the right. The news feed is populated using the Jupyter blog contents and is aimed to keep you up to date with the news and events related to Jupyter ecosystem projects. Clicking on a news item opens the blog post in external browser. This page is only present in the Desktop application and provides user friendly features for desktop integration and working with multiple projects.
+
+<img src="media/welcome-page.png" alt="Welcome page" width=900 />
+
+JupyterLab Desktop launches JupyterLab server instances in the background for user sessions and displays JupyterLab Web Application UI in an embedded browser. Below is a screenshot of the JLD UI highlighting some of the components critical to understanding the application architecture.
+
+<img src="media/desktop-app-frame.png" alt="Desktop app components" width=1024 />
+
+JLD supports multiple session windows. Each session window has a corresponding JupyterLab server process. Users can launch multiple session windows in different directories and for each session they can use a different Python environment. Python environments could have different jupyterlab versions and different set of dependency Python packages.
+
 # Changing the Python Environment used by JupyterLab Desktop
 
 JupyterLab Desktop comes with a bundled Python environment which has the essential Python packages for scientific computing and data science workflows. For more advanced use cases and specific needs, you can set the Python environment used by JupyterLab Desktop to another `conda`, `venv`, or `pyenv` virtual environment available on your computer.
@@ -46,7 +66,7 @@ JupyterLab Desktop sets several launch arguments when launching the JupyterLab S
 
 ## Server Environment Variables
 
-When JupyterLab Server is launched, environment variables are passed from desktop application to the server process. These environment variables depend on how you launched the desktop app (from CLI or via OS GUI). Also note that your Python environment is activated during JupyterLab Server launch and that activation adds additonal environment variables and modifies the PATH environment variable for the server process.
+When JupyterLab Server is launched, environment variables are passed from desktop application to the server process. These environment variables depend on how you launched the desktop app (from CLI or via OS GUI). Also note that your Python environment is activated during JupyterLab Server launch and that activation adds additional environment variables and modifies the PATH environment variable for the server process.
 
 You can set additional environment variables for the JupyterLab server process by using the Server tab of the settings dialog, as shown below.
 
@@ -109,7 +129,7 @@ On macOS, JupyterLab Desktop is installed into `/Applications/JupyterLab` and Py
 
 ## Windows Instructions
 
-On Windows, there are two installers, one of them is run during initial setup for the main JupyterLab Desktop applicationa and the other one is run when a Python environment needs to be installed. Both of them should be installed to their default install locations. It is `C:\JupyterLab\` for JupyterLab Desktop and `C:\Users\<username>\AppData\Roaming\jupyterlab-desktop\jlab_server` for JupyterLab Desktop Server.
+On Windows, there are two installers, one of them is run during initial setup for the main JupyterLab Desktop application and the other one is run when a Python environment needs to be installed. Both of them should be installed to their default install locations. It is `C:\JupyterLab\` for JupyterLab Desktop and `C:\Users\<username>\AppData\Roaming\jupyterlab-desktop\jlab_server` for JupyterLab Desktop Server.
 
 # Installing New Python Packages
 
@@ -154,7 +174,7 @@ Jupyter config files directory (`JUPYTER_CONFIG_DIR`) is set to `{jlab-desktop-u
 
 JupyterLab workspace data is stored into the working directory, for each folder a new session is started in. This allows restoring open files and UI layout of sessions for different working directories. `{working-directory}/.jupyter/desktop-workspaces` directory is automatically created and used to save and load workspace data for each working directory. You can change this behavior by specifying `JLAB_DESKTOP_WORKSPACES_DIR` environment variable.
 
-## Project overridable settings
+## Project settings that can be overridden
 
 JupyterLab Desktop allows a subset of user settings to be overridden by project settings. Below is the list of settings that can be overridden by each project (working directory) with example values.
 
@@ -188,7 +208,7 @@ JupyterLab Desktop supports light and dark themes for the application interface.
 
 The themes for the JupyterLab UIs shown in the session windows are controlled separately. If you choose `Sync JupyterLab theme` option in the settings dialog then the app theme chosen is applied to the JupyterLab UIs as well but they correspond to `JupyterLab Light` and `JupyterLab Dark` themes. If you would like to use a theme other than `JupyterLab Light` or `JupyterLab Dark` then you need to uncheck the `Sync JupyterLab theme` option.
 
-<img src="media/themes.png" alt="Server launch args" width=700 />
+<img src="media/themes.png" alt="Themes" width=700 />
 
 # Uninstalling JupyterLab Desktop
 
@@ -223,6 +243,8 @@ rm /usr/local/bin/jlab # remove command symlink
 rm -rf ~/Library/jupyterlab-desktop
 # to remove user data
 rm -rf ~/Library/Application\ Support/jupyterlab-desktop
+# to remove logs
+rm -rf ~/Library/Logs/jupyterlab-desktop
 ```
 
 ## Windows
@@ -237,4 +259,4 @@ On Windows, JupyterLab Desktop is installed in two parts, one for the python env
 
 <img src="media/uninstall-windows-application.png" alt="Uninstall the application" height=200 />
 
-In order to remove application cache, delete `%appdata%\jupyterlab-desktop` directory.
+In order to remove application cache, delete `%APPDATA%\jupyterlab-desktop` directory.
