@@ -106,7 +106,7 @@ Another way to debug server launch errors is by trying to launch JupyterLab by u
 1. Go to Settings dialog in desktop app and open the `Server` tab.
 2. Server tab shows `Server launch command preview` as shown below. Copy the command to clipboard.
 
-<img src="media/server-launch-command-preview.png" alt="Set log level" width=800 />
+<img src="media/server-launch-command-preview.png" alt="Launch command preview" width=800 />
 
 3. Open a system Terminal and activate the custom Python environment you would like to debug.
 4. Run the command copied from the preview after replacing `{port}` with a value like `8888` and `{token}` with a value like `abcde`.
@@ -140,7 +140,7 @@ Updating JLD application doesn't automatically update the Python environment pre
 
 JLD provides an easy way to update the bundled Python environment installation. Simply go to `Hamburger Menu` -> `Settings` -> `Server` tab. If your bundled Python environment installation is out-dated then you will see a notification and a button to update the installation.
 
-<img src="media/bundled-env-update.png" alt="Set log level" width=700 />
+<img src="media/bundled-env-update.png" alt="Bundled environment update" width=700 />
 
 ## macOS write permission issues
 

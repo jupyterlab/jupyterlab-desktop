@@ -10,7 +10,7 @@ JupyterLab Desktop makes installing and launching JupyterLab much easier and pro
 
 When JLD is first launched Users are presented with the Welcome Page. It contains links to several session create options on the left and the Jupyter News feed on the right. The news feed is populated using the Jupyter blog contents and is aimed to keep you up to date with the news and events related to Jupyter ecosystem projects. Clicking on a news item opens the blog post in external browser. This page is only present in the Desktop application and provides user friendly features for desktop integration and working with multiple projects.
 
-<img src="media/welcome-page.png" alt="Desktop app components" width=900 />
+<img src="media/welcome-page.png" alt="Welcome page" width=900 />
 
 JupyterLab Desktop launches JupyterLab server instances in the background for user sessions and displays JupyterLab Web Application UI in an embedded browser. Below is a screenshot of the JLD UI highlighting some of the components critical to understanding the application architecture.
 
@@ -208,7 +208,7 @@ JupyterLab Desktop supports light and dark themes for the application interface.
 
 The themes for the JupyterLab UIs shown in the session windows are controlled separately. If you choose `Sync JupyterLab theme` option in the settings dialog then the app theme chosen is applied to the JupyterLab UIs as well but they correspond to `JupyterLab Light` and `JupyterLab Dark` themes. If you would like to use a theme other than `JupyterLab Light` or `JupyterLab Dark` then you need to uncheck the `Sync JupyterLab theme` option.
 
-<img src="media/themes.png" alt="Server launch args" width=700 />
+<img src="media/themes.png" alt="Themes" width=700 />
 
 # Uninstalling JupyterLab Desktop
 

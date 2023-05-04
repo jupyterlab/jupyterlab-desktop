@@ -48,7 +48,7 @@ Similarly, CLI launches of the application, dropping files and folders, and doub
 
 Previously opened sessions are stored as part of application data and they are listed on Welcome Page. Clicking an item in the `Recent sessions` list restores the selected session.
 
-<img src="media/recent-sessions.png" alt="Start session" width=300 />
+<img src="media/recent-sessions.png" alt="Recent sessions" width=300 />
 
 ### jlab command-line launch examples
 
