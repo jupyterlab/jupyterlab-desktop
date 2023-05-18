@@ -156,6 +156,8 @@ JLD installers for Windows and Linux create `jlab` CLI command as part of the in
 chmod 755 /Applications/JupyterLab.app/Contents/Resources/app/jlab
 ```
 
+- If you get `Operation not permitted` errors with the command above then you will need to allow Terminal to update other applications. In order to do that, go to `Settings` -> `Privacy & Security` -> `App Management` on your macOS and toggle Terminal in the list. Restart Terminal and try the command above again.
+
 ## Windows uninstall issues
 
 Since the bundled Python environment is installed into the same directory for all versions, installing and uninstalling multiple versions might leave dangling install metadata in the registry. You can clean these records by following these steps.
