@@ -714,13 +714,12 @@ export class JupyterApplication implements IApplication, IDisposable {
         }
 
         const unpackCommand = isWin
-          ? `
-          CALL ${installPath}\\Scripts\\activate.bat
-          CALL conda-unpack`
-          : `source "${installPath}/bin/activate"
-          conda-unpack`;
+          ? `${installPath}\\Scripts\\activate.bat && conda-unpack`
+          : `source "${installPath}/bin/activate" && conda-unpack`;
 
-        const installerProc = exec(unpackCommand);
+        const installerProc = exec(unpackCommand, {
+          shell: isWin ? 'cmd.exe' : '/bin/bash'
+        });
 
         installerProc.on('exit', (exitCode: number) => {
           if (exitCode === 0) {
