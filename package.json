@@ -52,11 +52,11 @@
     },
     "files": [
       "!**/*.d.ts",
-      "!env_installer/JupyterLab*.*"
+      "!env_installer",
+      "!workflow_env"
     ],
     "extraResources": [
-      "env_installer/jlab_server.tar.gz",
-      "build/schemas"
+      "env_installer/jlab_server.tar.gz"
     ],
     "linux": {
       "target": [
