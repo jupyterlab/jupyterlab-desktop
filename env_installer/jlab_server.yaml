@@ -1,0 +1,13 @@
+name: jlab_server
+channels:
+  - conda-forge
+dependencies:
+  - ipywidgets >= 8.0.1
+  - jupyterlab 4.0.1
+  - ipympl >= 0.8.2
+  - matplotlib-base
+  - numpy
+  - pandas
+  - pip
+  - python 3.8*
+  - scipy

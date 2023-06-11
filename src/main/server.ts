@@ -84,8 +84,7 @@ function createLaunchScript(
   if (isWin) {
     if (isConda) {
       script = `
-        CALL ${baseCondaPath}\\condabin\\activate.bat
-        CALL conda activate ${envPath}
+        CALL ${envPath}\\Scripts\\activate.bat
         CALL ${launchCmd}`;
     } else {
       script = `
@@ -93,16 +92,9 @@ function createLaunchScript(
         CALL ${launchCmd}`;
     }
   } else {
-    if (isConda) {
-      script = `
-        source "${baseCondaPath}/bin/activate"
-        conda activate "${envPath}"
-        ${launchCmd}`;
-    } else {
-      script = `
-        source "${envPath}/bin/activate"
-        ${launchCmd}`;
-    }
+    script = `
+      source "${envPath}/bin/activate"
+      ${launchCmd}`;
   }
 
   const ext = isWin ? 'bat' : 'sh';

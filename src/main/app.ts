@@ -15,6 +15,7 @@ import fetch from 'node-fetch';
 import * as yaml from 'js-yaml';
 import * as semver from 'semver';
 import * as fs from 'fs';
+import * as tar from 'tar';
 import {
   clearSession,
   getAppDir,
@@ -23,7 +24,7 @@ import {
   isDarkTheme,
   waitForDuration
 } from './utils';
-import { execFile } from 'child_process';
+import { exec } from 'child_process';
 import { IServerFactory, JupyterServerFactory } from './server';
 import { connectAndGetServerInfo, IJupyterServerInfo } from './connect';
 import { UpdateDialog } from './updatedialog/updatedialog';
@@ -674,12 +675,7 @@ export class JupyterApplication implements IApplication, IDisposable {
         const platform = process.platform;
         const isWin = platform === 'win32';
         const appDir = getAppDir();
-        const appVersion = app.getVersion();
-        const installerPath = isWin
-          ? `${appDir}\\env_installer\\JupyterLabDesktopAppServer-${appVersion}-Windows-x86_64.exe`
-          : platform === 'darwin'
-          ? `${appDir}/env_installer/JupyterLabDesktopAppServer-${appVersion}-MacOSX-x86_64.sh`
-          : `${appDir}/env_installer/JupyterLabDesktopAppServer-${appVersion}-Linux-x86_64.sh`;
+        const installerPath = `${appDir}/env_installer/jlab_server.tar.gz`;
         const installPath = getBundledPythonEnvPath();
 
         if (fs.existsSync(installPath)) {
@@ -705,16 +701,26 @@ export class JupyterApplication implements IApplication, IDisposable {
           }
         }
 
-        const installerProc = execFile(
-          installerPath,
-          ['-b', '-p', installPath],
-          {
-            shell: isWin ? 'cmd.exe' : '/bin/bash',
-            env: {
-              ...process.env
-            }
-          }
-        );
+        try {
+          fs.mkdirSync(installPath, { recursive: true });
+          await tar.x({ C: installPath, file: installerPath });
+        } catch (error) {
+          event.sender.send(
+            EventTypeRenderer.InstallBundledPythonEnvStatus,
+            'FAILURE',
+            'Failed to install the environment'
+          );
+          log.error(new Error(`Installer Exit: ${error}`));
+        }
+
+        const unpackCommand = isWin
+          ? `
+          CALL ${installPath}\\Scripts\\activate.bat
+          CALL conda-unpack`
+          : `source "${installPath}/bin/activate"
+          conda-unpack`;
+
+        const installerProc = exec(unpackCommand);
 
         installerProc.on('exit', (exitCode: number) => {
           if (exitCode === 0) {
