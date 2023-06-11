@@ -9,3 +9,5 @@
 # ms IDE stuff
 .history/
 .vscode/
+
+env_installer

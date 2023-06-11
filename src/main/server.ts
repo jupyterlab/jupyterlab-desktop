@@ -81,10 +81,42 @@ function createLaunchScript(
     serverInfo.environment.type === IEnvironmentType.CondaRoot ||
     serverInfo.environment.type === IEnvironmentType.CondaEnv;
 
+  // conda activate is only available in base conda environments or
+  // conda-packed environments
+
+  let condaActivatePath = '';
+  let isBaseCondaActivate = true;
+
+  // use activate from the environment instead of base when possible
+  if (isConda) {
+    if (isWin) {
+      const envActivatePath = path.join(envPath, 'condabin', 'activate.bat');
+      if (fs.existsSync(envActivatePath)) {
+        condaActivatePath = envActivatePath;
+        isBaseCondaActivate = false;
+      } else {
+        condaActivatePath = path.join(
+          baseCondaPath,
+          'condabin',
+          'activate.bat'
+        );
+      }
+    } else {
+      const envActivatePath = path.join(envPath, 'bin', 'activate');
+      if (fs.existsSync(envActivatePath)) {
+        condaActivatePath = envActivatePath;
+        isBaseCondaActivate = false;
+      } else {
+        condaActivatePath = path.join(baseCondaPath, 'bin', 'activate');
+      }
+    }
+  }
+
   if (isWin) {
     if (isConda) {
       script = `
-        CALL ${envPath}\\Scripts\\activate.bat
+        CALL ${condaActivatePath}
+        ${isBaseCondaActivate ? `CALL conda activate ${envPath}` : ''}
         CALL ${launchCmd}`;
     } else {
       script = `
@@ -92,9 +124,16 @@ function createLaunchScript(
         CALL ${launchCmd}`;
     }
   } else {
-    script = `
-      source "${envPath}/bin/activate"
-      ${launchCmd}`;
+    if (isConda) {
+      script = `
+        source "${condaActivatePath}"
+        ${isBaseCondaActivate ? `conda activate "${envPath}"` : ''}
+        ${launchCmd}`;
+    } else {
+      script = `
+        source "${envPath}/bin/activate"
+        ${launchCmd}`;
+    }
   }
 
   const ext = isWin ? 'bat' : 'sh';

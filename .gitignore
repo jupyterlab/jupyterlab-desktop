@@ -23,4 +23,5 @@ __pycache__
 .idea/
 *.log
 
-env_installer/*.tar.gz
+env_installer/
+!env_installer/jlab_server.yaml
