@@ -37,7 +37,7 @@ jobs:
         # pin Pillow version to prevent Windows build errors
         run: |
           npm install --global yarn --prefer-offline
-          conda install -c conda-forge conda-pack Pillow=9.3.0
+          conda install -c conda-forge conda-lock conda-pack Pillow=9.3.0
           yarn install
 
       - name: Check JupyterLab version match
@@ -71,7 +71,7 @@ jobs:
 
       - name: Create Application Server Installer
         run: |
-          yarn create_env_installer
+          yarn create_env_installer:${{ matrix.cfg.platform }}
 
       - name: Create Application Installer for Test
         env:
