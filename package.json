@@ -22,6 +22,7 @@
     "dist:linux": "yarn build && electron-builder --linux --publish never",
     "dist:mac": "yarn build && electron-builder --macos --publish never",
     "dist:win": "yarn build && electron-builder --win --publish never",
+    "update_workflow_conda_lock": "cd workflow_env && rimraf *.lock && conda-lock --kind explicit -f publish_env.yaml && cd -",
     "update_conda_lock": "cd env_installer && rimraf *.lock && conda-lock --kind explicit -f jlab_server.yaml && cd -",
     "clean_env_installer": "rimraf ./env_installer/jlab_server.tar.gz && conda env remove -p ./env_installer/jlab_server -y",
     "create_env_installer:linux": "yarn clean_env_installer && conda-lock install --prefix ./env_installer/jlab_server ./env_installer/conda-linux-64.lock && conda pack -p ./env_installer/jlab_server -o ./env_installer/jlab_server.tar.gz",
