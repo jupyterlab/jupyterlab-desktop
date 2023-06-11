@@ -2,6 +2,7 @@ name: jlab_server
 channels:
   - conda-forge
 dependencies:
+  - conda
   - conda-lock
   - conda-pack
 platforms:
