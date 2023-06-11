@@ -44,24 +44,15 @@ if (cli.flags.checkVersionMatch) {
   const appVersion = pkgjsonFileData['version'];
   console.log(`JupyterLab Desktop version: ${appVersion}`);
 
-  // check JupyterLab version bundled to Application Server
-  const constructorData = yaml.load(
+  // check JupyterLab version bundled
+  const bundledEnvData = yaml.load(
     fs.readFileSync(
-      path.resolve(__dirname, '../env_installer/construct.yaml'),
+      path.resolve(__dirname, '../env_installer/jlab_server.yaml'),
       'utf8'
     )
   );
-  const appServerVersion = constructorData['version'];
-  console.log(`Application Server version: ${appServerVersion}`);
 
-  if (appServerVersion !== appVersion) {
-    console.error(
-      `Application Server version ${appServerVersion} doesn't match Application version ${appVersion}`
-    );
-    process.exit(1);
-  }
-
-  const jlabCondaPkg = constructorData['specs'].find(pkg =>
+  const jlabCondaPkg = bundledEnvData['dependencies'].find(pkg =>
     pkg.startsWith('jupyterlab')
   );
   if (!jlabCondaPkg) {
