@@ -15,16 +15,14 @@ import fetch from 'node-fetch';
 import * as yaml from 'js-yaml';
 import * as semver from 'semver';
 import * as fs from 'fs';
-import * as tar from 'tar';
 import {
   clearSession,
-  getAppDir,
   getBundledPythonEnvPath,
   getBundledPythonPath,
+  installBundledEnvironment,
   isDarkTheme,
   waitForDuration
 } from './utils';
-import { exec } from 'child_process';
 import { IServerFactory, JupyterServerFactory } from './server';
 import { connectAndGetServerInfo, IJupyterServerInfo } from './connect';
 import { UpdateDialog } from './updatedialog/updatedialog';
@@ -668,83 +666,36 @@ export class JupyterApplication implements IApplication, IDisposable {
     this._evm.registerEventHandler(
       EventTypeMain.InstallBundledPythonEnv,
       async event => {
-        event.sender.send(
-          EventTypeRenderer.InstallBundledPythonEnvStatus,
-          'STARTED'
-        );
-        const platform = process.platform;
-        const isWin = platform === 'win32';
-        const appDir = getAppDir();
-        const installerPath = `${appDir}/env_installer/jlab_server.tar.gz`;
         const installPath = getBundledPythonEnvPath();
-
-        if (fs.existsSync(installPath)) {
-          const choice = dialog.showMessageBoxSync({
-            type: 'warning',
-            message: 'Do you want to overwrite?',
-            detail: `Install path (${installPath}) is not empty. Would you like to overwrite it?`,
-            buttons: ['Overwrite', 'Cancel'],
-            defaultId: 1,
-            cancelId: 1
-          });
-
-          if (choice === 0) {
-            // allow dialog to close
-            await waitForDuration(200);
-            fs.rmdirSync(installPath, { recursive: true });
-          } else {
+        await installBundledEnvironment(installPath, {
+          onInstallStatus: (status, message) => {
             event.sender.send(
               EventTypeRenderer.InstallBundledPythonEnvStatus,
-              'CANCELLED'
-            );
-            return;
-          }
-        }
-
-        try {
-          fs.mkdirSync(installPath, { recursive: true });
-          await tar.x({ C: installPath, file: installerPath });
-        } catch (error) {
-          event.sender.send(
-            EventTypeRenderer.InstallBundledPythonEnvStatus,
-            'FAILURE',
-            'Failed to install the environment'
-          );
-          log.error(new Error(`Installer Exit: ${error}`));
-        }
-
-        const unpackCommand = isWin
-          ? `${installPath}\\Scripts\\activate.bat && conda-unpack`
-          : `source "${installPath}/bin/activate" && conda-unpack`;
-
-        const installerProc = exec(unpackCommand, {
-          shell: isWin ? 'cmd.exe' : '/bin/bash'
-        });
-
-        installerProc.on('exit', (exitCode: number) => {
-          if (exitCode === 0) {
-            event.sender.send(
-              EventTypeRenderer.InstallBundledPythonEnvStatus,
-              'SUCCESS'
-            );
-          } else {
-            const message = `Installer Exit: ${exitCode}`;
-            event.sender.send(
-              EventTypeRenderer.InstallBundledPythonEnvStatus,
-              'FAILURE',
+              status,
               message
             );
-            log.error(new Error(message));
-          }
-        });
+          },
+          confirmOverwrite: () => {
+            return new Promise<boolean>(resolve => {
+              const choice = dialog.showMessageBoxSync({
+                type: 'warning',
+                message: 'Do you want to overwrite?',
+                detail: `Install path (${installPath}) is not empty. Would you like to overwrite it?`,
+                buttons: ['Overwrite', 'Cancel'],
+                defaultId: 1,
+                cancelId: 1
+              });
 
-        installerProc.on('error', (err: Error) => {
-          event.sender.send(
-            EventTypeRenderer.InstallBundledPythonEnvStatus,
-            'FAILURE',
-            err.message
-          );
-          log.error(err);
+              // allow dialog to close
+              if (choice === 0) {
+                waitForDuration(200).then(() => {
+                  resolve(true);
+                });
+              } else {
+                resolve(false);
+              }
+            });
+          }
         });
       }
     );

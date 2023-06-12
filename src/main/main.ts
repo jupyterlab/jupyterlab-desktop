@@ -2,12 +2,22 @@ import { app, Menu, MenuItem } from 'electron';
 import log, { LevelOption } from 'electron-log';
 import yargs from 'yargs/yargs';
 import * as fs from 'fs';
-import { getAppDir, isDevMode, waitForFunction } from './utils';
+import * as path from 'path';
+import * as readline from 'node:readline';
+import {
+  EnvironmentInstallStatus,
+  getAppDir,
+  getBundledPythonEnvPath,
+  installBundledEnvironment,
+  isDevMode,
+  waitForFunction
+} from './utils';
 import { execSync } from 'child_process';
 import { JupyterApplication } from './app';
-import { ICLIArguments } from './tokens';
+import { ICLIArguments, IEnvironmentType } from './tokens';
 import { SessionConfig } from './config/sessionconfig';
 import { SettingType, userSettings } from './config/settings';
+import { appData } from './config/appdata';
 
 let jupyterApp: JupyterApplication;
 let fileToOpenInMainInstance = '';
@@ -30,6 +40,20 @@ async function appReady(): Promise<boolean> {
  */
 require('fix-path')();
 
+async function showCLIPrompt(question: string): Promise<string> {
+  const line = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout
+  });
+
+  return new Promise(resolve => {
+    line.question(question, response => {
+      line.close();
+      resolve(response);
+    });
+  });
+}
+
 function parseArgs(argv: string[]) {
   return yargs(argv)
     .usage('jlab [options] folder/file paths')
@@ -44,6 +68,8 @@ function parseArgs(argv: string[]) {
       'jlab --working-dir /data/nb test.ipynb sub/test2.ipynb',
       'Launch in /data/nb and open /data/nb/test.ipynb and /data/nb/sub/test2.ipynb'
     )
+    .example('jlab install-env', 'Install bundled Python environment to the default path')
+    .example('jlab install-env --path /opt/jlab_server', 'Install bundled Python environment to /opt/jlab_server')
     .option('python-path', {
       describe: 'Python path',
       type: 'string'
@@ -61,7 +87,65 @@ function parseArgs(argv: string[]) {
     .alias({
       h: 'help'
     })
-    .parseSync();
+    .command(
+      'install-env',
+      'Install bundled Python environment',
+      yargs => {
+        yargs.positional('path', {
+          type: 'string',
+          default: '',
+          describe: 'Destination path'
+        });
+      },
+      async argv => {
+        const installPath = (argv.path as string) || getBundledPythonEnvPath();
+        console.log(`Installing environment to "${installPath}"`);
+
+        await installBundledEnvironment(installPath, {
+          onInstallStatus: (status, message) => {
+            switch (status) {
+              case EnvironmentInstallStatus.Started:
+                console.log('Installing now...');
+                break;
+              case EnvironmentInstallStatus.Cancelled:
+                console.log('Installation cancelled.');
+                break;
+              case EnvironmentInstallStatus.Failure:
+                console.error(`Failed to install.`, message);
+                break;
+              case EnvironmentInstallStatus.Success:
+                if (argv.path) {
+                  const pythonPath =
+                    process.platform === 'win32'
+                      ? path.join(installPath, 'python.exe')
+                      : path.join(installPath, 'bin', 'python');
+                  appData.userSetPythonEnvs.push({
+                    path: pythonPath,
+                    name: 'installed-env',
+                    type: IEnvironmentType.Path,
+                    versions: {},
+                    defaultKernel: 'python3'
+                  });
+                }
+                console.log('Installation succeeded.');
+                process.exit(0);
+                break;
+            }
+          },
+          confirmOverwrite: () => {
+            return new Promise<boolean>(resolve => {
+              showCLIPrompt(
+                'Install path is not empty. Would you like to overwrite it? [Y/n] '
+              ).then(answer => {
+                resolve(answer === 'Y');
+              });
+            });
+          }
+        });
+        process.exit(0);
+      }
+    )
+    .parseAsync();
 }
 
 function getLogLevel(): LevelOption {
@@ -77,7 +161,7 @@ function getLogLevel(): LevelOption {
   return userSettings.getValue(SettingType.logLevel);
 }
 
-const argv = parseArgs(process.argv.slice(isDevMode() ? 2 : 1));
+let argv: ICLIArguments;
 const logLevel = getLogLevel();
 
 if (isDevMode()) {
@@ -200,12 +284,8 @@ function setApplicationMenu() {
   Menu.setApplicationMenu(menu);
 }
 
-/**
- * Load all services when the electron app is
- * ready.
- */
 app.on('ready', () => {
-  handleMultipleAppInstances()
+  Promise.all([processArgs(), handleMultipleAppInstances()])
     .then(() => {
       setApplicationMenu();
       setupJLabCommand();
@@ -218,6 +298,23 @@ app.on('ready', () => {
       app.quit();
     });
 });
+
+function processArgs(): Promise<void> {
+  return new Promise<void>(resolve => {
+    parseArgs(process.argv.slice(isDevMode() ? 2 : 1)).then(value => {
+      argv = value;
+      if (process.argv.includes('install-env')) {
+        appData.save();
+        app.quit();
+        return;
+      } else if (process.argv?.includes('--help')) {
+        app.quit();
+        return;
+      }
+      resolve();
+    });
+  });
+}
 
 /**
  * When a second instance of the application is executed, this passes the arguments

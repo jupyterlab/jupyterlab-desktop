@@ -4,10 +4,12 @@
 import * as path from 'path';
 import * as fs from 'fs';
 import * as semver from 'semver';
+import * as tar from 'tar';
 import log from 'electron-log';
 import { AddressInfo, createServer, Socket } from 'net';
 import { app, nativeTheme } from 'electron';
 import { IPythonEnvironment } from './tokens';
+import { exec } from 'child_process';
 
 export const DarkThemeBGColor = '#212121';
 export const LightThemeBGColor = '#ffffff';
@@ -237,4 +239,89 @@ export function versionWithoutSuffix(version: string) {
   return `${semver.major(version, { loose: true })}.${semver.minor(version, {
     loose: true
   })}.${semver.patch(version, { loose: true })}`;
+}
+
+export enum EnvironmentInstallStatus {
+  Started = 'STARTED',
+  Failure = 'FAILURE',
+  Cancelled = 'CANCELLED',
+  Success = 'SUCCESS'
+}
+
+export interface IBundledEnvironmentInstallListener {
+  onInstallStatus: (status: EnvironmentInstallStatus, message?: string) => void;
+  confirmOverwrite: () => Promise<boolean>;
+}
+
+export async function installBundledEnvironment(
+  installPath: string,
+  listener?: IBundledEnvironmentInstallListener
+): Promise<boolean> {
+  // eslint-disable-next-line no-async-promise-executor
+  return new Promise<boolean>(async (resolve, reject) => {
+    const platform = process.platform;
+    const isWin = platform === 'win32';
+    const appDir = getAppDir();
+    const installerPath = `${appDir}/env_installer/jlab_server.tar.gz`;
+    installPath = installPath || getBundledPythonEnvPath();
+
+    if (fs.existsSync(installPath)) {
+      if (listener) {
+        const confirmed = await listener.confirmOverwrite();
+        if (confirmed) {
+          fs.rmdirSync(installPath, { recursive: true });
+        } else {
+          listener?.onInstallStatus(EnvironmentInstallStatus.Cancelled);
+          reject();
+          return;
+        }
+      } else {
+        reject();
+        return;
+      }
+    }
+
+    listener?.onInstallStatus(EnvironmentInstallStatus.Started);
+
+    try {
+      fs.mkdirSync(installPath, { recursive: true });
+      await tar.x({ C: installPath, file: installerPath });
+    } catch (error) {
+      listener?.onInstallStatus(
+        EnvironmentInstallStatus.Failure,
+        'Failed to install the environment'
+      );
+      log.error(new Error(`Installer Exit: ${error}`));
+      reject();
+      return;
+    }
+
+    const unpackCommand = isWin
+      ? `${installPath}\\Scripts\\activate.bat && conda-unpack`
+      : `source "${installPath}/bin/activate" && conda-unpack`;
+
+    const installerProc = exec(unpackCommand, {
+      shell: isWin ? 'cmd.exe' : '/bin/bash'
+    });
+
+    installerProc.on('exit', (exitCode: number) => {
+      if (exitCode === 0) {
+        listener?.onInstallStatus(EnvironmentInstallStatus.Success);
+        resolve(true);
+      } else {
+        const message = `Installer Exit: ${exitCode}`;
+        listener?.onInstallStatus(EnvironmentInstallStatus.Failure, message);
+        log.error(new Error(message));
+        reject();
+        return;
+      }
+    });
+
+    installerProc.on('error', (err: Error) => {
+      listener?.onInstallStatus(EnvironmentInstallStatus.Failure, err.message);
+      log.error(err);
+      reject();
+      return;
+    });
+  });
 }
