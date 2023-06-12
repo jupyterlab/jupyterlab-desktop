@@ -68,8 +68,14 @@ function parseArgs(argv: string[]) {
       'jlab --working-dir /data/nb test.ipynb sub/test2.ipynb',
       'Launch in /data/nb and open /data/nb/test.ipynb and /data/nb/sub/test2.ipynb'
     )
-    .example('jlab install-env', 'Install bundled Python environment to the default path')
-    .example('jlab install-env --path /opt/jlab_server', 'Install bundled Python environment to /opt/jlab_server')
+    .example(
+      'jlab install-env',
+      'Install bundled Python environment to the default path'
+    )
+    .example(
+      'jlab install-env --path /opt/jlab_server',
+      'Install bundled Python environment to /opt/jlab_server'
+    )
     .option('python-path', {
       describe: 'Python path',
       type: 'string'
