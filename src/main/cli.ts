@@ -96,6 +96,15 @@ export async function showCLIPrompt(question: string): Promise<string> {
     output: process.stdout
   });
 
+  // on Windows, this change is needed to fix input prompt
+  if (process.platform === 'win32') {
+    const close = readline.Interface.prototype.close;
+    readline.Interface.prototype.close = function () {
+      this.terminal = false;
+      close.call(this);
+    };
+  }
+
   return new Promise(resolve => {
     line.question(question, response => {
       line.close();
