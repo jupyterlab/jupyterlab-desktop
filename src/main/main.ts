@@ -5,6 +5,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as readline from 'node:readline';
 import {
+  activateEnvironment,
   EnvironmentInstallStatus,
   getAppDir,
   getBundledPythonEnvPath,
@@ -70,12 +71,16 @@ function parseArgs(argv: string[]) {
       'Launch in /data/nb and open /data/nb/test.ipynb and /data/nb/sub/test2.ipynb'
     )
     .example(
-      'jlab install-env',
+      'jlab env install',
       'Install bundled Python environment to the default path'
     )
     .example(
-      'jlab install-env --path /opt/jlab_server',
+      'jlab env install --path /opt/jlab_server',
       'Install bundled Python environment to /opt/jlab_server'
+    )
+    .example(
+      'jlab env activate',
+      'Activate bundled Python environment at the default path'
     )
     .option('python-path', {
       describe: 'Python path',
@@ -95,68 +100,98 @@ function parseArgs(argv: string[]) {
       h: 'help'
     })
     .command(
-      'install-env',
-      'Install bundled Python environment',
+      'env <action> [path]',
+      'Manage Python environments',
       yargs => {
-        yargs.positional('path', {
-          type: 'string',
-          default: '',
-          describe: 'Destination path'
-        });
+        yargs
+          .positional('action', {
+            describe: 'Python environment action',
+            type: 'string',
+            default: ''
+          })
+          .positional('path', {
+            type: 'string',
+            default: '',
+            describe: 'Destination path'
+          });
       },
       async argv => {
-        const installPath = (argv.path as string) || getBundledPythonEnvPath();
-        console.log(`Installing Python environment to "${installPath}"`);
+        console.log('Note: This is an experimental feature.');
 
-        await installBundledEnvironment(installPath, {
-          onInstallStatus: (status, message) => {
-            switch (status) {
-              case EnvironmentInstallStatus.RemovingExistingInstallation:
-                console.log('Removing the existing installation...');
-                break;
-              case EnvironmentInstallStatus.Started:
-                console.log('Installing now...');
-                break;
-              case EnvironmentInstallStatus.Cancelled:
-                console.log('Installation cancelled.');
-                break;
-              case EnvironmentInstallStatus.Failure:
-                console.error(`Failed to install.`, message);
-                break;
-              case EnvironmentInstallStatus.Success:
-                if (argv.path) {
-                  const pythonPath =
-                    process.platform === 'win32'
-                      ? path.join(installPath, 'python.exe')
-                      : path.join(installPath, 'bin', 'python');
-                  appData.userSetPythonEnvs.push({
-                    path: pythonPath,
-                    name: 'installed-env',
-                    type: IEnvironmentType.Path,
-                    versions: {},
-                    defaultKernel: 'python3'
-                  });
-                  appData.save();
-                }
-                console.log('Installation succeeded.');
-                break;
-            }
-          },
-          confirmOverwrite: () => {
-            return new Promise<boolean>(resolve => {
-              showCLIPrompt(
-                'Install path is not empty. Would you like to overwrite it? [Y/n] '
-              ).then(answer => {
-                resolve(answer === 'Y');
-              });
-            });
-          }
-        }).catch(reason => {
-          //
-        });
+        const action = argv.action;
+        switch (action) {
+          case 'install':
+            await handleCLIEnvInstall(argv);
+            break;
+          case 'activate':
+            await handleCLIEnvActivate(argv);
+            break;
+          default:
+            console.log('Invalide input for "env" command.');
+            break;
+        }
       }
     )
     .parseAsync();
+}
+
+async function handleCLIEnvInstall(argv: any) {
+  const installPath = (argv.path as string) || getBundledPythonEnvPath();
+  console.log(`Installing Python environment to "${installPath}"`);
+
+  await installBundledEnvironment(installPath, {
+    onInstallStatus: (status, message) => {
+      switch (status) {
+        case EnvironmentInstallStatus.RemovingExistingInstallation:
+          console.log('Removing the existing installation...');
+          break;
+        case EnvironmentInstallStatus.Started:
+          console.log('Installing now...');
+          break;
+        case EnvironmentInstallStatus.Cancelled:
+          console.log('Installation cancelled.');
+          break;
+        case EnvironmentInstallStatus.Failure:
+          console.error(`Failed to install.`, message);
+          break;
+        case EnvironmentInstallStatus.Success:
+          if (argv.path) {
+            const pythonPath =
+              process.platform === 'win32'
+                ? path.join(installPath, 'python.exe')
+                : path.join(installPath, 'bin', 'python');
+            appData.userSetPythonEnvs.push({
+              path: pythonPath,
+              name: 'installed-env',
+              type: IEnvironmentType.Path,
+              versions: {},
+              defaultKernel: 'python3'
+            });
+            appData.save();
+          }
+          console.log('Installation succeeded.');
+          break;
+      }
+    },
+    confirmOverwrite: () => {
+      return new Promise<boolean>(resolve => {
+        showCLIPrompt(
+          'Install path is not empty. Would you like to overwrite it? [Y/n] '
+        ).then(answer => {
+          resolve(answer === 'Y');
+        });
+      });
+    }
+  }).catch(reason => {
+    //
+  });
+}
+
+async function handleCLIEnvActivate(argv: any) {
+  const envPath = (argv.path as string) || getBundledPythonEnvPath();
+  console.log(`Activating Python environment "${envPath}"`);
+
+  await activateEnvironment(envPath);
 }
 
 function getLogLevel(): LevelOption {
@@ -317,9 +352,13 @@ function processArgs(): Promise<void> {
     parseArgs(process.argv.slice(isDevMode() ? 2 : 1)).then(value => {
       argv = value;
       if (
-        ['--help', '--version', 'install-env'].find(arg =>
-          process.argv?.includes(arg)
-        )
+        [
+          '--help',
+          '--version',
+          'install-env',
+          'activate-env',
+          'env'
+        ].find(arg => process.argv?.includes(arg))
       ) {
         app.quit();
         return;
