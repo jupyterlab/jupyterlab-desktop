@@ -56,6 +56,7 @@ async function showCLIPrompt(question: string): Promise<string> {
 
 function parseArgs(argv: string[]) {
   return yargs(argv)
+    .scriptName('jlab')
     .usage('jlab [options] folder/file paths')
     .example('jlab', 'Launch in default working directory')
     .example('jlab .', 'Launch in current directory')
@@ -105,11 +106,14 @@ function parseArgs(argv: string[]) {
       },
       async argv => {
         const installPath = (argv.path as string) || getBundledPythonEnvPath();
-        console.log(`Installing environment to "${installPath}"`);
+        console.log(`Installing Python environment to "${installPath}"`);
 
         await installBundledEnvironment(installPath, {
           onInstallStatus: (status, message) => {
             switch (status) {
+              case EnvironmentInstallStatus.RemovingExistingInstallation:
+                console.log('Removing the existing installation...');
+                break;
               case EnvironmentInstallStatus.Started:
                 console.log('Installing now...');
                 break;
@@ -132,9 +136,9 @@ function parseArgs(argv: string[]) {
                     versions: {},
                     defaultKernel: 'python3'
                   });
+                  appData.save();
                 }
                 console.log('Installation succeeded.');
-                process.exit(0);
                 break;
             }
           },
@@ -147,8 +151,9 @@ function parseArgs(argv: string[]) {
               });
             });
           }
+        }).catch(reason => {
+          //
         });
-        process.exit(0);
       }
     )
     .parseAsync();
@@ -165,6 +170,14 @@ function getLogLevel(): LevelOption {
   }
 
   return userSettings.getValue(SettingType.logLevel);
+}
+
+function redirectConsoleToLog() {
+  console.log = log.log;
+  console.error = log.error;
+  console.warn = log.warn;
+  console.info = log.info;
+  console.debug = log.debug;
 }
 
 let argv: ICLIArguments;
@@ -187,12 +200,6 @@ if (isDevMode()) {
     }' level`
   );
 }
-
-console.log = log.log;
-console.error = log.error;
-console.warn = log.warn;
-console.info = log.info;
-console.debug = log.debug;
 
 const thisYear = new Date().getFullYear();
 
@@ -222,7 +229,7 @@ app.on('open-file', (event: Electron.Event, filePath: string) => {
         fileOrFolders = [filePath];
       }
     } catch (error) {
-      console.error('Failed to open files', error);
+      log.error('Failed to open files', error);
     }
 
     if (fileOrFolders.length > 0) {
@@ -293,9 +300,9 @@ function setApplicationMenu() {
 app.on('ready', () => {
   Promise.all([processArgs(), handleMultipleAppInstances()])
     .then(() => {
+      redirectConsoleToLog();
       setApplicationMenu();
       setupJLabCommand();
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       argv.cwd = process.cwd();
       jupyterApp = new JupyterApplication((argv as unknown) as ICLIArguments);
     })
@@ -309,11 +316,11 @@ function processArgs(): Promise<void> {
   return new Promise<void>(resolve => {
     parseArgs(process.argv.slice(isDevMode() ? 2 : 1)).then(value => {
       argv = value;
-      if (process.argv.includes('install-env')) {
-        appData.save();
-        app.quit();
-        return;
-      } else if (process.argv?.includes('--help')) {
+      if (
+        ['--help', '--version', 'install-env'].find(arg =>
+          process.argv?.includes(arg)
+        )
+      ) {
         app.quit();
         return;
       }

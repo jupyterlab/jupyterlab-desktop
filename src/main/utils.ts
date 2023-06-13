@@ -245,7 +245,8 @@ export enum EnvironmentInstallStatus {
   Started = 'STARTED',
   Failure = 'FAILURE',
   Cancelled = 'CANCELLED',
-  Success = 'SUCCESS'
+  Success = 'SUCCESS',
+  RemovingExistingInstallation = 'REMOVING_EXISTING_INSTALLATION'
 }
 
 export interface IBundledEnvironmentInstallListener {
@@ -269,7 +270,10 @@ export async function installBundledEnvironment(
       if (listener) {
         const confirmed = await listener.confirmOverwrite();
         if (confirmed) {
-          fs.rmdirSync(installPath, { recursive: true });
+          listener?.onInstallStatus(
+            EnvironmentInstallStatus.RemovingExistingInstallation
+          );
+          fs.rmSync(installPath, { recursive: true });
         } else {
           listener?.onInstallStatus(EnvironmentInstallStatus.Cancelled);
           reject();
