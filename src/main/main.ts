@@ -1,24 +1,13 @@
 import { app, Menu, MenuItem } from 'electron';
 import log, { LevelOption } from 'electron-log';
-import yargs from 'yargs/yargs';
 import * as fs from 'fs';
-import * as path from 'path';
-import * as readline from 'node:readline';
-import {
-  activateEnvironment,
-  EnvironmentInstallStatus,
-  getAppDir,
-  getBundledPythonEnvPath,
-  installBundledEnvironment,
-  isDevMode,
-  waitForFunction
-} from './utils';
+import { getAppDir, isDevMode, waitForFunction } from './utils';
 import { execSync } from 'child_process';
 import { JupyterApplication } from './app';
-import { ICLIArguments, IEnvironmentType } from './tokens';
+import { ICLIArguments } from './tokens';
 import { SessionConfig } from './config/sessionconfig';
 import { SettingType, userSettings } from './config/settings';
-import { appData } from './config/appdata';
+import { parseCLIArgs } from './cli';
 
 let jupyterApp: JupyterApplication;
 let fileToOpenInMainInstance = '';
@@ -40,159 +29,6 @@ async function appReady(): Promise<boolean> {
  * This package fixes the PATH variable
  */
 require('fix-path')();
-
-async function showCLIPrompt(question: string): Promise<string> {
-  const line = readline.createInterface({
-    input: process.stdin,
-    output: process.stdout
-  });
-
-  return new Promise(resolve => {
-    line.question(question, response => {
-      line.close();
-      resolve(response);
-    });
-  });
-}
-
-function parseArgs(argv: string[]) {
-  return yargs(argv)
-    .scriptName('jlab')
-    .usage('jlab [options] folder/file paths')
-    .example('jlab', 'Launch in default working directory')
-    .example('jlab .', 'Launch in current directory')
-    .example(
-      'jlab /data/nb/test.ipynb',
-      'Launch in /data/nb and open test.ipynb'
-    )
-    .example('jlab /data/nb', 'Launch in /data/nb')
-    .example(
-      'jlab --working-dir /data/nb test.ipynb sub/test2.ipynb',
-      'Launch in /data/nb and open /data/nb/test.ipynb and /data/nb/sub/test2.ipynb'
-    )
-    .example(
-      'jlab env install',
-      'Install bundled Python environment to the default path'
-    )
-    .example(
-      'jlab env install --path /opt/jlab_server',
-      'Install bundled Python environment to /opt/jlab_server'
-    )
-    .example(
-      'jlab env activate',
-      'Activate bundled Python environment at the default path'
-    )
-    .option('python-path', {
-      describe: 'Python path',
-      type: 'string'
-    })
-    .option('working-dir', {
-      describe: 'Working directory',
-      type: 'string'
-    })
-    .option('log-level', {
-      describe: 'Log level',
-      choices: ['error', 'warn', 'info', 'verbose', 'debug'],
-      default: 'warn'
-    })
-    .help('h')
-    .alias({
-      h: 'help'
-    })
-    .command(
-      'env <action> [path]',
-      'Manage Python environments',
-      yargs => {
-        yargs
-          .positional('action', {
-            describe: 'Python environment action',
-            type: 'string',
-            default: ''
-          })
-          .positional('path', {
-            type: 'string',
-            default: '',
-            describe: 'Destination path'
-          });
-      },
-      async argv => {
-        console.log('Note: This is an experimental feature.');
-
-        const action = argv.action;
-        switch (action) {
-          case 'install':
-            await handleCLIEnvInstall(argv);
-            break;
-          case 'activate':
-            await handleCLIEnvActivate(argv);
-            break;
-          default:
-            console.log('Invalide input for "env" command.');
-            break;
-        }
-      }
-    )
-    .parseAsync();
-}
-
-async function handleCLIEnvInstall(argv: any) {
-  const installPath = (argv.path as string) || getBundledPythonEnvPath();
-  console.log(`Installing Python environment to "${installPath}"`);
-
-  await installBundledEnvironment(installPath, {
-    onInstallStatus: (status, message) => {
-      switch (status) {
-        case EnvironmentInstallStatus.RemovingExistingInstallation:
-          console.log('Removing the existing installation...');
-          break;
-        case EnvironmentInstallStatus.Started:
-          console.log('Installing now...');
-          break;
-        case EnvironmentInstallStatus.Cancelled:
-          console.log('Installation cancelled.');
-          break;
-        case EnvironmentInstallStatus.Failure:
-          console.error(`Failed to install.`, message);
-          break;
-        case EnvironmentInstallStatus.Success:
-          if (argv.path) {
-            const pythonPath =
-              process.platform === 'win32'
-                ? path.join(installPath, 'python.exe')
-                : path.join(installPath, 'bin', 'python');
-            appData.userSetPythonEnvs.push({
-              path: pythonPath,
-              name: 'installed-env',
-              type: IEnvironmentType.Path,
-              versions: {},
-              defaultKernel: 'python3'
-            });
-            appData.save();
-          }
-          console.log('Installation succeeded.');
-          break;
-      }
-    },
-    confirmOverwrite: () => {
-      return new Promise<boolean>(resolve => {
-        showCLIPrompt(
-          'Install path is not empty. Would you like to overwrite it? [Y/n] '
-        ).then(answer => {
-          resolve(answer === 'Y');
-        });
-      });
-    }
-  }).catch(reason => {
-    //
-  });
-}
-
-async function handleCLIEnvActivate(argv: any) {
-  const envPath = (argv.path as string) || getBundledPythonEnvPath();
-  console.log(`Activating Python environment "${envPath}"`);
-
-  await activateEnvironment(envPath);
-}
 
 function getLogLevel(): LevelOption {
   if (isDevMode()) {
@@ -349,7 +185,7 @@ app.on('ready', () => {
 
 function processArgs(): Promise<void> {
   return new Promise<void>(resolve => {
-    parseArgs(process.argv.slice(isDevMode() ? 2 : 1)).then(value => {
+    parseCLIArgs(process.argv.slice(isDevMode() ? 2 : 1)).then(value => {
       argv = value;
       if (
         [

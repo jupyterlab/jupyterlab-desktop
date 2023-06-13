@@ -9,7 +9,7 @@ import log from 'electron-log';
 import { AddressInfo, createServer, Socket } from 'net';
 import { app, nativeTheme } from 'electron';
 import { IPythonEnvironment } from './tokens';
-import { exec, spawn } from 'child_process';
+import { exec } from 'child_process';
 
 export const DarkThemeBGColor = '#212121';
 export const LightThemeBGColor = '#ffffff';
@@ -326,38 +326,6 @@ export async function installBundledEnvironment(
       log.error(err);
       reject();
       return;
-    });
-  });
-}
-
-export async function activateEnvironment(envPath: string): Promise<boolean> {
-  return new Promise<boolean>((resolve, reject) => {
-    const platform = process.platform;
-    const isWin = platform === 'win32';
-    envPath = envPath || getBundledPythonEnvPath();
-
-    const activateCommand = isWin
-      ? `${envPath}\\Scripts\\activate.bat`
-      : `source "${envPath}/bin/activate"`;
-
-    const shell = isWin
-      ? spawn('cmd.exe', ['-cmd', '/K', activateCommand], {
-          stdio: 'inherit',
-          env: process.env
-        })
-      : spawn('bash', ['-c', `${activateCommand};exec bash`], {
-          stdio: 'inherit',
-          env: {
-            ...process.env,
-            BASH_SILENCE_DEPRECATION_WARNING: '1'
-          }
-        });
-
-    shell.on('close', code => {
-      if (code !== 0) {
-        console.log('[shell] exit with code:', code);
-      }
-      resolve(true);
     });
   });
 }
