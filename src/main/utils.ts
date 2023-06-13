@@ -341,11 +341,16 @@ export async function activateEnvironment(envPath: string): Promise<boolean> {
       : `source "${envPath}/bin/activate"`;
 
     const shell = isWin
-      ? spawn('cmd.exe', ['-cmd', '/K', `"${activateCommand}"`], {
-          stdio: 'inherit'
+      ? spawn('cmd.exe', ['-cmd', '/K', activateCommand], {
+          stdio: 'inherit',
+          env: process.env
         })
-      : spawn('sh', ['-c', `${activateCommand};exec sh`], {
-          stdio: 'inherit'
+      : spawn('bash', ['-c', `${activateCommand};exec bash`], {
+          stdio: 'inherit',
+          env: {
+            ...process.env,
+            BASH_SILENCE_DEPRECATION_WARNING: '1'
+          }
         });
 
     shell.on('close', code => {
