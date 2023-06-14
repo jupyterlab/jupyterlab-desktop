@@ -5,7 +5,6 @@ import {
   installBundledEnvironment
 } from './utils';
 import yargs from 'yargs/yargs';
-import * as readline from 'node:readline';
 import * as path from 'path';
 import { appData } from './config/appdata';
 import { IEnvironmentType } from './tokens';
@@ -68,6 +67,10 @@ export function parseCLIArgs(argv: string[]) {
             type: 'string',
             default: '',
             describe: 'Destination path'
+          })
+          .option('force', {
+            describe: 'Force the action',
+            type: 'boolean'
           });
       },
       async argv => {
@@ -90,29 +93,6 @@ export function parseCLIArgs(argv: string[]) {
     .parseAsync();
 }
 
-export async function showCLIPrompt(question: string): Promise<string> {
-  const line = readline.createInterface({
-    input: process.stdin,
-    output: process.stdout
-  });
-
-  // on Windows, this change is needed to fix input prompt
-  if (process.platform === 'win32') {
-    const close = readline.Interface.prototype.close;
-    readline.Interface.prototype.close = function () {
-      this.terminal = false;
-      close.call(this);
-    };
-  }
-
-  return new Promise(resolve => {
-    line.question(question, response => {
-      line.close();
-      resolve(response);
-    });
-  });
-}
-
 export async function handleEnvInstallCommand(argv: any) {
   const installPath = (argv.path as string) || getBundledPythonEnvPath();
   console.log(`Installing Python environment to "${installPath}"`);
@@ -124,10 +104,12 @@ export async function handleEnvInstallCommand(argv: any) {
           console.log('Removing the existing installation...');
           break;
         case EnvironmentInstallStatus.Started:
-          console.log('Installing now...');
+          console.log('Installing Python environment...');
           break;
         case EnvironmentInstallStatus.Cancelled:
-          console.log('Installation cancelled.');
+          console.log(
+            'Installation cancelled since install path is not empty. Retry with --force to overwrite.'
+          );
           break;
         case EnvironmentInstallStatus.Failure:
           console.error(`Failed to install.`, message);
@@ -151,14 +133,8 @@ export async function handleEnvInstallCommand(argv: any) {
           break;
       }
     },
-    confirmOverwrite: () => {
-      return new Promise<boolean>(resolve => {
-        showCLIPrompt(
-          'Install path is not empty. Would you like to overwrite it? [Y/n] '
-        ).then(answer => {
-          resolve(answer === 'Y');
-        });
-      });
+    get forceOverwrite() {
+      return argv.force;
     }
   }).catch(reason => {
     //

@@ -675,6 +675,9 @@ export class JupyterApplication implements IApplication, IDisposable {
               message
             );
           },
+          get forceOverwrite() {
+            return false;
+          },
           confirmOverwrite: () => {
             return new Promise<boolean>(resolve => {
               const choice = dialog.showMessageBoxSync({

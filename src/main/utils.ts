@@ -251,7 +251,8 @@ export enum EnvironmentInstallStatus {
 
 export interface IBundledEnvironmentInstallListener {
   onInstallStatus: (status: EnvironmentInstallStatus, message?: string) => void;
-  confirmOverwrite: () => Promise<boolean>;
+  forceOverwrite?: boolean;
+  confirmOverwrite?: () => Promise<boolean>;
 }
 
 export async function installBundledEnvironment(
@@ -268,7 +269,10 @@ export async function installBundledEnvironment(
 
     if (fs.existsSync(installPath)) {
       if (listener) {
-        const confirmed = await listener.confirmOverwrite();
+        const confirmed =
+          listener.forceOverwrite ||
+          (listener.confirmOverwrite !== undefined &&
+            (await listener.confirmOverwrite()));
         if (confirmed) {
           listener?.onInstallStatus(
             EnvironmentInstallStatus.RemovingExistingInstallation
