@@ -159,7 +159,7 @@ export async function activateEnvironment(envPath: string): Promise<boolean> {
       : `source "${envPath}/bin/activate"`;
 
     const shell = isWin
-      ? spawn('cmd.exe', ['-cmd', '/K', activateCommand], {
+      ? spawn('cmd', ['/C', `start cmd.exe /k ${activateCommand}`], {
           stdio: 'inherit',
           env: process.env
         })
