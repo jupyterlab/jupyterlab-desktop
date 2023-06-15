@@ -15,11 +15,14 @@ import {
   IVersionContainer
 } from './tokens';
 import {
+  envPathForPythonPath,
   getBundledPythonEnvPath,
   getBundledPythonPath,
   getEnvironmentPath,
   getUserHomeDir,
+  isBaseCondaEnv,
   isPortInUse,
+  pythonPathForEnvPath,
   versionWithoutSuffix
 } from './utils';
 import { SettingType, userSettings } from './config/settings';
@@ -95,10 +98,7 @@ export class Registry implements IRegistry, IDisposable {
 
         // set default env from appData.condaRootPath
         if (!this._defaultEnv) {
-          const pythonPath =
-            process.platform === 'win32'
-              ? join(appData.condaRootPath, 'python.exe')
-              : join(appData.condaRootPath, 'bin', 'python');
+          const pythonPath = pythonPathForEnvPath(appData.condaRootPath);
           const defaultEnv = this._resolveEnvironmentSync(pythonPath);
           if (defaultEnv) {
             this._defaultEnv = defaultEnv;
@@ -336,13 +336,7 @@ export class Registry implements IRegistry, IDisposable {
   }
 
   validateCondaBaseEnvironmentAtPath(envPath: string): boolean {
-    const isWin = process.platform === 'win32';
-    const condaBinPath = path.join(
-      envPath,
-      'condabin',
-      isWin ? 'conda.bat' : 'conda'
-    );
-    return fs.existsSync(condaBinPath) && fs.lstatSync(condaBinPath).isFile();
+    return isBaseCondaEnv(envPath);
   }
 
   async getEnvironmentInfo(pythonPath: string): Promise<IPythonEnvironment> {
@@ -419,10 +413,7 @@ export class Registry implements IRegistry, IDisposable {
   getAdditionalPathIncludesForPythonPath(pythonPath: string): string {
     const platform = process.platform;
 
-    let envPath = path.dirname(pythonPath);
-    if (platform !== 'win32') {
-      envPath = path.normalize(path.join(envPath, '../'));
-    }
+    let envPath = envPathForPythonPath(pythonPath);
 
     let pathEnv = '';
     if (platform === 'win32') {
@@ -599,9 +590,9 @@ export class Registry implements IRegistry, IDisposable {
         } else {
           let subEnvsWithPython = files
             .map(subEnvPath => {
-              return process.platform === 'win32'
-                ? join(subEnvironmentsFolder, subEnvPath, 'python.exe')
-                : join(subEnvironmentsFolder, subEnvPath, 'bin', 'python');
+              return pythonPathForEnvPath(
+                path.join(subEnvironmentsFolder, subEnvPath)
+              );
             })
             .filter(pythonPath => this._pathExists(pythonPath));
 
@@ -633,14 +624,9 @@ export class Registry implements IRegistry, IDisposable {
     const uniqueCondaRoots = this._getUniqueObjects(flattenedCondaRoots);
 
     return uniqueCondaRoots.map(condaRootPath => {
-      let path: string;
-      if (process.platform === 'win32') {
-        path = join(condaRootPath, 'python.exe');
-      } else {
-        path = join(condaRootPath, 'bin', 'python');
-      }
+      const path = pythonPathForEnvPath(condaRootPath);
 
-      let newRootEnvironment: IPythonEnvironment = {
+      const newRootEnvironment: IPythonEnvironment = {
         name: basename(condaRootPath),
         path: path,
         type: IEnvironmentType.CondaRoot,

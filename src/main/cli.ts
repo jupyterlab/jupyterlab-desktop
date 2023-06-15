@@ -1,13 +1,21 @@
 import { spawn } from 'child_process';
 import {
+  createCommandScriptInEnv,
+  createTempFile,
   EnvironmentInstallStatus,
+  envPathForPythonPath,
   getBundledPythonEnvPath,
-  installBundledEnvironment
+  getBundledPythonPath,
+  installBundledEnvironment,
+  isBaseCondaEnv,
+  pythonPathForEnvPath
 } from './utils';
 import yargs from 'yargs/yargs';
+import * as fs from 'fs';
 import * as path from 'path';
 import { appData } from './config/appdata';
-import { IEnvironmentType } from './tokens';
+import { IEnvironmentType, IPythonEnvironment } from './tokens';
+import { SettingType, userSettings } from './config/settings';
 
 export function parseCLIArgs(argv: string[]) {
   return yargs(argv)
@@ -70,7 +78,19 @@ export function parseCLIArgs(argv: string[]) {
           })
           .option('force', {
             describe: 'Force the action',
-            type: 'boolean'
+            type: 'boolean',
+            default: false
+          })
+          .option('exclude-jlab', {
+            describe: 'Exclude jupyterlab Python package in env create',
+            type: 'boolean',
+            default: false
+          })
+          .option('env-type', {
+            describe:
+              'Python environment type jupyterlab Python package in installation',
+            choices: ['conda', 'venv'],
+            default: 'conda'
           });
       },
       async argv => {
@@ -78,11 +98,23 @@ export function parseCLIArgs(argv: string[]) {
 
         const action = argv.action;
         switch (action) {
+          case 'info':
+            await handleEnvInfoCommand(argv);
+            break;
+          case 'list':
+            await handleEnvListCommand(argv);
+            break;
           case 'install':
             await handleEnvInstallCommand(argv);
             break;
           case 'activate':
             await handleEnvActivateCommand(argv);
+            break;
+          case 'create':
+            await handleEnvCreateCommand(argv);
+            break;
+          case 'set-base-conda-env-path':
+            await handleEnvSetBaseCondaCommand(argv);
             break;
           default:
             console.log('Invalide input for "env" command.');
@@ -91,6 +123,82 @@ export function parseCLIArgs(argv: string[]) {
       }
     )
     .parseAsync();
+}
+
+export async function handleEnvInfoCommand(argv: any) {
+  const bundledEnvPath = getBundledPythonEnvPath();
+  const bundledEnvPathExists =
+    fs.existsSync(bundledEnvPath) && fs.statSync(bundledEnvPath).isDirectory();
+  let defaultPythonPath = userSettings.getValue(SettingType.pythonPath);
+  if (defaultPythonPath === '') {
+    defaultPythonPath = getBundledPythonPath();
+  }
+  const defaultEnvPath = envPathForPythonPath(defaultPythonPath);
+  const defaultEnvPathExists =
+    fs.existsSync(defaultEnvPath) && fs.statSync(defaultEnvPath).isDirectory();
+  const condaRootPath = appData.condaRootPath;
+  const condaRootPathExists =
+    condaRootPath &&
+    fs.existsSync(condaRootPath) &&
+    fs.statSync(condaRootPath).isDirectory();
+
+  const infoLines: string[] = [];
+  infoLines.push(
+    `Default Python environment path:\n  "${defaultEnvPath}" [${
+      defaultEnvPathExists ? 'exists' : 'not found'
+    }]`
+  );
+  infoLines.push(
+    `Bundled Python environment installation path:\n  "${bundledEnvPath}" [${
+      bundledEnvPathExists ? 'exists' : 'not found'
+    }]`
+  );
+  infoLines.push(
+    `Base conda environment path:\n  "${condaRootPath}" [${
+      condaRootPathExists ? 'exists' : 'not found'
+    }]`
+  );
+
+  console.log(infoLines.join('\n'));
+}
+
+export async function handleEnvListCommand(argv: any) {
+  const listLines: string[] = [];
+
+  const listEnvironments = (envs: IPythonEnvironment[]) => {
+    envs.forEach(env => {
+      const versions = Object.keys(env.versions).map(
+        name => `${name}: ${env.versions[name]}`
+      );
+      listLines.push(
+        `  [${env.name}], path: ${envPathForPythonPath(
+          env.path
+        )}\n    packages: ${versions.join(', ')}`
+      );
+    });
+  };
+
+  listLines.push('Discovered Python environments:');
+  listEnvironments(appData.discoveredPythonEnvs);
+
+  listLines.push('\nUser set Python environments:');
+  listEnvironments(appData.userSetPythonEnvs);
+
+  console.log(listLines.join('\n'));
+}
+
+function addUserSetEnvironment(envPath: string, isConda: boolean) {
+  const pythonPath = pythonPathForEnvPath(envPath);
+
+  // this record will get updated with the correct data once app launches
+  appData.userSetPythonEnvs.push({
+    path: pythonPath,
+    name: `${isConda ? 'conda' : 'venv'}: ${path.basename(envPath)}`,
+    type: IEnvironmentType.Path,
+    versions: {},
+    defaultKernel: 'python3'
+  });
+  appData.save();
 }
 
 export async function handleEnvInstallCommand(argv: any) {
@@ -116,18 +224,7 @@ export async function handleEnvInstallCommand(argv: any) {
           break;
         case EnvironmentInstallStatus.Success:
           if (argv.path) {
-            const pythonPath =
-              process.platform === 'win32'
-                ? path.join(installPath, 'python.exe')
-                : path.join(installPath, 'bin', 'python');
-            appData.userSetPythonEnvs.push({
-              path: pythonPath,
-              name: 'installed-env',
-              type: IEnvironmentType.Path,
-              versions: {},
-              defaultKernel: 'python3'
-            });
-            appData.save();
+            addUserSetEnvironment(installPath, true);
           }
           console.log('Installation succeeded.');
           break;
@@ -145,25 +242,125 @@ export async function handleEnvActivateCommand(argv: any) {
   const envPath = (argv.path as string) || getBundledPythonEnvPath();
   console.log(`Activating Python environment "${envPath}"`);
 
-  await activateEnvironment(envPath);
+  await launchCLIinEnvironment(envPath);
 }
 
-export async function activateEnvironment(envPath: string): Promise<boolean> {
+export async function handleEnvCreateCommand(argv: any) {
+  const envPath = argv.path as string;
+
+  if (!envPath) {
+    console.error('Environment path not set.');
+    return;
+  }
+
+  if (fs.existsSync(envPath)) {
+    if (argv.force) {
+      console.log('Removing the existing environment...');
+      try {
+        fs.rmSync(envPath, { recursive: true });
+      } catch (error) {
+        console.error(`Failed to delete ${envPath}`);
+        return;
+      }
+    } else {
+      console.error(
+        'Environment path not empty. Use --force flag to overwrite.'
+      );
+      return;
+    }
+  }
+
+  const excludeJlab = argv.excludeJlab === true;
+  const envType = argv.envType;
+  const isConda = envType === 'conda';
+  const packageList = argv._.slice(1);
+  if (!excludeJlab) {
+    packageList.push('jupyterlab');
+  }
+
+  const createCommand = isConda
+    ? `conda create -y -c conda-forge -p ${envPath} ${packageList.join(' ')}`
+    : `python -m venv create ${envPath}`;
+
+  await runCommandInEnvironment(appData.condaRootPath, createCommand);
+
+  if (!isConda && packageList.length > 0) {
+    const installCommand = `python -m pip install ${packageList.join(' ')}`;
+    await runCommandInEnvironment(envPath, installCommand);
+  }
+
+  addUserSetEnvironment(envPath, isConda);
+}
+
+export async function handleEnvSetBaseCondaCommand(argv: any) {
+  const envPath = argv.path as string;
+  if (!fs.existsSync(envPath)) {
+    console.error(`Environment path "${envPath}" does not exist`);
+    return;
+  } else if (!isBaseCondaEnv(envPath)) {
+    console.error(`"${envPath}" is not a base conda environemnt`);
+    return;
+  }
+
+  console.log(`Setting "${envPath}" as the base conda environment`);
+  appData.condaRootPath = envPath;
+  appData.save();
+}
+
+export async function launchCLIinEnvironment(
+  envPath: string
+): Promise<boolean> {
   return new Promise<boolean>((resolve, reject) => {
-    const platform = process.platform;
-    const isWin = platform === 'win32';
+    const isWin = process.platform === 'win32';
     envPath = envPath || getBundledPythonEnvPath();
 
-    const activateCommand = isWin
-      ? `${envPath}\\Scripts\\activate.bat`
-      : `source "${envPath}/bin/activate"`;
+    const activateCommand = createCommandScriptInEnv(
+      envPath,
+      appData.condaRootPath
+    );
+    const activateFilePath = createTempFile('activate', activateCommand);
 
     const shell = isWin
-      ? spawn('cmd', ['/C', `start cmd.exe /k ${activateCommand}`], {
+      ? spawn('cmd', ['/C', `start cmd.exe /k "${activateFilePath}"`], {
           stdio: 'inherit',
           env: process.env
         })
-      : spawn('bash', ['-c', `${activateCommand};exec bash`], {
+      : spawn('bash', ['--init-file', activateFilePath], {
+          stdio: 'inherit',
+          env: {
+            ...process.env,
+            BASH_SILENCE_DEPRECATION_WARNING: '1'
+          }
+        });
+
+    shell.on('close', code => {
+      fs.unlinkSync(activateFilePath);
+      if (code !== 0) {
+        console.log('[shell] exit with code:', code);
+      }
+      resolve(true);
+    });
+  });
+}
+
+export async function runCommandInEnvironment(
+  envPath: string,
+  command: string
+) {
+  const isWin = process.platform === 'win32';
+  const createScript = createCommandScriptInEnv(
+    envPath,
+    appData.condaRootPath,
+    command
+  );
+
+  return new Promise<boolean>((resolve, reject) => {
+    const shell = isWin
+      ? spawn('cmd', ['/C', createScript], {
+          stdio: 'inherit',
+          env: process.env
+        })
+      : spawn('bash', ['-c', createScript], {
           stdio: 'inherit',
           env: {
             ...process.env,

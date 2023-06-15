@@ -5,6 +5,7 @@ import * as path from 'path';
 import * as fs from 'fs';
 import * as semver from 'semver';
 import * as tar from 'tar';
+import * as os from 'os';
 import log from 'electron-log';
 import { AddressInfo, createServer, Socket } from 'net';
 import { app, nativeTheme } from 'electron';
@@ -55,14 +56,7 @@ export function getSchemasDir(): string {
 }
 
 export function getEnvironmentPath(environment: IPythonEnvironment): string {
-  const isWin = process.platform === 'win32';
-  const pythonPath = environment.path;
-  let envPath = path.dirname(pythonPath);
-  if (!isWin) {
-    envPath = path.normalize(path.join(envPath, '../'));
-  }
-
-  return envPath;
+  return envPathForPythonPath(environment.path);
 }
 
 export function getBundledPythonInstallDir(): string {
@@ -91,24 +85,12 @@ export function getOldUserConfigPath() {
 
 export function getBundledPythonEnvPath(): string {
   const userDataDir = getBundledPythonInstallDir();
-  let envPath = path.join(userDataDir, 'jlab_server');
 
-  return envPath;
+  return path.join(userDataDir, 'jlab_server');
 }
 
 export function getBundledPythonPath(): string {
-  const platform = process.platform;
-  let envPath = getBundledPythonEnvPath();
-  if (platform !== 'win32') {
-    envPath = path.join(envPath, 'bin');
-  }
-
-  const bundledPythonPath = path.join(
-    envPath,
-    `python${platform === 'win32' ? '.exe' : ''}`
-  );
-
-  return bundledPythonPath;
+  return pythonPathForEnvPath(getBundledPythonEnvPath());
 }
 
 export function isDarkTheme(themeType: string) {
@@ -332,4 +314,120 @@ export async function installBundledEnvironment(
       return;
     });
   });
+}
+
+export function createTempFile(
+  fileName = 'temp',
+  data = '',
+  encoding: BufferEncoding = 'utf8'
+) {
+  const tempDirPath = path.join(os.tmpdir(), 'jlab_desktop');
+  const tmpDir = fs.mkdtempSync(tempDirPath);
+  const tmpFilePath = path.join(tmpDir, fileName);
+
+  fs.writeFileSync(tmpFilePath, data, { encoding });
+
+  return tmpFilePath;
+}
+
+export function pythonPathForEnvPath(envPath: string) {
+  return process.platform === 'win32'
+    ? path.join(envPath, 'python.exe')
+    : path.join(envPath, 'bin', 'python');
+}
+
+export function envPathForPythonPath(pythonPath: string): string {
+  const isWin = process.platform === 'win32';
+  let envPath = path.dirname(pythonPath);
+  if (!isWin) {
+    envPath = path.normalize(path.join(envPath, '../'));
+  }
+
+  return envPath;
+}
+
+export function activatePathForEnvPath(envPath: string) {
+  return process.platform === 'win32'
+    ? path.join(envPath, 'Scripts', 'activate.bat')
+    : path.join(envPath, 'bin', 'activate');
+}
+
+export function isCondaEnv(envPath: string): boolean {
+  return fs.existsSync(path.join(envPath, 'conda-meta'));
+}
+
+export function isBaseCondaEnv(envPath: string): boolean {
+  const isWin = process.platform === 'win32';
+  const condaBinPath = path.join(
+    envPath,
+    'condabin',
+    isWin ? 'conda.bat' : 'conda'
+  );
+  return fs.existsSync(condaBinPath) && fs.lstatSync(condaBinPath).isFile();
+}
+
+export function createCommandScriptInEnv(
+  envPath: string,
+  baseCondaPath: string,
+  command?: string
+): string {
+  try {
+    const stat = fs.lstatSync(envPath);
+    if (!stat.isDirectory()) {
+      return '';
+    }
+  } catch (error) {
+    //
+  }
+
+  const isWin = process.platform === 'win32';
+
+  let activatePath = activatePathForEnvPath(envPath);
+
+  let hasActivate = fs.existsSync(activatePath);
+  const isConda = isCondaEnv(envPath);
+
+  // conda activate is only available in base conda environments or
+  // conda-packed environments
+
+  let isBaseCondaActivate = false;
+  if (!hasActivate && isConda) {
+    if (fs.existsSync(baseCondaPath)) {
+      activatePath = activatePathForEnvPath(baseCondaPath);
+      hasActivate = fs.existsSync(activatePath);
+      isBaseCondaActivate = true;
+    }
+  }
+
+  if (!hasActivate) {
+    return '';
+  }
+
+  let script: string;
+
+  if (isWin) {
+    if (isConda) {
+      script = `
+        CALL ${activatePath}
+        ${isBaseCondaActivate ? `CALL conda activate ${envPath}` : ''}
+        ${command ? `CALL ${command}` : ''}`;
+    } else {
+      script = `
+        CALL ${envPath}\\activate.bat
+        CALL ${command}`;
+    }
+  } else {
+    if (isConda) {
+      script = `
+        source "${activatePath}"
+        ${isBaseCondaActivate ? `conda activate "${envPath}"` : ''}
+        ${command || ''}`;
+    } else {
+      script = `
+        source "${envPath}/bin/activate"
+        ${command || ''}`;
+    }
+  }
+
+  return script;
 }

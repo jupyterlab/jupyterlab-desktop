@@ -188,13 +188,7 @@ function processArgs(): Promise<void> {
     parseCLIArgs(process.argv.slice(isDevMode() ? 2 : 1)).then(value => {
       argv = value;
       if (
-        [
-          '--help',
-          '--version',
-          'install-env',
-          'activate-env',
-          'env'
-        ].find(arg => process.argv?.includes(arg))
+        ['--help', '--version', 'env'].find(arg => process.argv?.includes(arg))
       ) {
         app.quit();
         return;

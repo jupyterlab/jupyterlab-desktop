@@ -4,12 +4,12 @@ import { dialog } from 'electron';
 import { ArrayExt } from '@lumino/algorithm';
 import log from 'electron-log';
 import * as fs from 'fs';
-import * as os from 'os';
 import * as path from 'path';
 import { request as httpRequest } from 'http';
 import { request as httpsRequest } from 'https';
 import { IDisposable, IEnvironmentType, IPythonEnvironment } from './tokens';
 import {
+  createTempFile,
   getEnvironmentPath,
   getFreePort,
   getSchemasDir,
@@ -28,20 +28,6 @@ import { randomBytes } from 'crypto';
 
 const SERVER_LAUNCH_TIMEOUT = 30000; // milliseconds
 const SERVER_RESTART_LIMIT = 3; // max server restarts
-
-function createTempFile(
-  fileName = 'temp',
-  data = '',
-  encoding: BufferEncoding = 'utf8'
-) {
-  const tempDirPath = path.join(os.tmpdir(), 'jlab_desktop');
-  const tmpDir = fs.mkdtempSync(tempDirPath);
-  const tmpFilePath = path.join(tmpDir, fileName);
-
-  fs.writeFileSync(tmpFilePath, data, { encoding });
-
-  return tmpFilePath;
-}
 
 function createLaunchScript(
   serverInfo: JupyterServer.IInfo,
