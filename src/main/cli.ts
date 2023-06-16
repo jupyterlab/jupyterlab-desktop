@@ -117,7 +117,7 @@ export function parseCLIArgs(argv: string[]) {
             await handleEnvSetBaseCondaCommand(argv);
             break;
           default:
-            console.log('Invalide input for "env" command.');
+            console.log('Invalid input for "env" command.');
             break;
         }
       }
@@ -179,16 +179,24 @@ export async function handleEnvListCommand(argv: any) {
   };
 
   listLines.push('Discovered Python environments:');
-  listEnvironments(appData.discoveredPythonEnvs);
+  if (appData.discoveredPythonEnvs.length > 0) {
+    listEnvironments(appData.discoveredPythonEnvs);
+  } else {
+    listLines.push('  None');
+  }
 
   listLines.push('\nUser set Python environments:');
-  listEnvironments(appData.userSetPythonEnvs);
+  if (appData.userSetPythonEnvs.length > 0) {
+    listEnvironments(appData.userSetPythonEnvs);
+  } else {
+    listLines.push('  None');
+  }
 
   console.log(listLines.join('\n'));
 }
 
 function addUserSetEnvironment(envPath: string, isConda: boolean) {
-  const pythonPath = pythonPathForEnvPath(envPath);
+  const pythonPath = pythonPathForEnvPath(envPath, isConda);
 
   // this record will get updated with the correct data once app launches
   appData.userSetPythonEnvs.push({
@@ -203,7 +211,7 @@ function addUserSetEnvironment(envPath: string, isConda: boolean) {
 
 export async function handleEnvInstallCommand(argv: any) {
   const installPath = (argv.path as string) || getBundledPythonEnvPath();
-  console.log(`Installing Python environment to "${installPath}"`);
+  console.log(`Installing to "${installPath}"`);
 
   await installBundledEnvironment(installPath, {
     onInstallStatus: (status, message) => {
@@ -282,10 +290,12 @@ export async function handleEnvCreateCommand(argv: any) {
     ? `conda create -y -c conda-forge -p ${envPath} ${packageList.join(' ')}`
     : `python -m venv create ${envPath}`;
 
+  console.log(`Creating Python environment at "${envPath}"...`);
   await runCommandInEnvironment(appData.condaRootPath, createCommand);
 
   if (!isConda && packageList.length > 0) {
     const installCommand = `python -m pip install ${packageList.join(' ')}`;
+    console.log('Installing packages...');
     await runCommandInEnvironment(envPath, installCommand);
   }
 
@@ -318,10 +328,11 @@ export async function launchCLIinEnvironment(
       envPath,
       appData.condaRootPath
     );
-    const activateFilePath = createTempFile('activate', activateCommand);
+    const ext = isWin ? 'bat' : 'sh';
+    const activateFilePath = createTempFile(`activate.${ext}`, activateCommand);
 
     const shell = isWin
-      ? spawn('cmd', ['/C', `start cmd.exe /k "${activateFilePath}"`], {
+      ? spawn('cmd', ['/C', `start cmd.exe /k ${activateFilePath}`], {
           stdio: 'inherit',
           env: process.env
         })
@@ -334,11 +345,19 @@ export async function launchCLIinEnvironment(
         });
 
     shell.on('close', code => {
-      fs.unlinkSync(activateFilePath);
       if (code !== 0) {
         console.log('[shell] exit with code:', code);
       }
-      resolve(true);
+
+      if (isWin) {
+        setTimeout(() => {
+          fs.unlinkSync(activateFilePath);
+          resolve(true);
+        }, 5000);
+      } else {
+        fs.unlinkSync(activateFilePath);
+        resolve(true);
+      }
     });
   });
 }
@@ -348,19 +367,19 @@ export async function runCommandInEnvironment(
   command: string
 ) {
   const isWin = process.platform === 'win32';
-  const createScript = createCommandScriptInEnv(
+  const commandScript = createCommandScriptInEnv(
     envPath,
     appData.condaRootPath,
-    command
+    command,
+    ' && '
   );
 
   return new Promise<boolean>((resolve, reject) => {
     const shell = isWin
-      ? spawn('cmd', ['/C', createScript], {
-          stdio: 'inherit',
+      ? spawn('cmd', ['/c', commandScript], {
           env: process.env
         })
-      : spawn('bash', ['-c', createScript], {
+      : spawn('bash', ['-c', commandScript], {
           stdio: 'inherit',
           env: {
             ...process.env,

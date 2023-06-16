@@ -90,7 +90,7 @@ export function getBundledPythonEnvPath(): string {
 }
 
 export function getBundledPythonPath(): string {
-  return pythonPathForEnvPath(getBundledPythonEnvPath());
+  return pythonPathForEnvPath(getBundledPythonEnvPath(), true);
 }
 
 export function isDarkTheme(themeType: string) {
@@ -330,16 +330,23 @@ export function createTempFile(
   return tmpFilePath;
 }
 
-export function pythonPathForEnvPath(envPath: string) {
-  return process.platform === 'win32'
-    ? path.join(envPath, 'python.exe')
-    : path.join(envPath, 'bin', 'python');
+export function pythonPathForEnvPath(envPath: string, isConda?: boolean) {
+  if (process.platform === 'win32') {
+    if (isConda === undefined) {
+      isConda = isCondaEnv(envPath);
+    }
+    return isConda
+      ? path.join(envPath, 'python.exe')
+      : path.join(envPath, 'Scripts', 'python.exe');
+  } else {
+    return path.join(envPath, 'bin', 'python');
+  }
 }
 
 export function envPathForPythonPath(pythonPath: string): string {
   const isWin = process.platform === 'win32';
   let envPath = path.dirname(pythonPath);
-  if (!isWin) {
+  if (!isWin || path.basename(envPath) === 'Scripts') {
     envPath = path.normalize(path.join(envPath, '../'));
   }
 
@@ -369,7 +376,8 @@ export function isBaseCondaEnv(envPath: string): boolean {
 export function createCommandScriptInEnv(
   envPath: string,
   baseCondaPath: string,
-  command?: string
+  command?: string,
+  joinStr?: string
 ): string {
   try {
     const stat = fs.lstatSync(envPath);
@@ -380,6 +388,9 @@ export function createCommandScriptInEnv(
     //
   }
 
+  if (joinStr === undefined) {
+    joinStr = '\n';
+  }
   const isWin = process.platform === 'win32';
 
   let activatePath = activatePathForEnvPath(envPath);
@@ -389,7 +400,6 @@ export function createCommandScriptInEnv(
 
   // conda activate is only available in base conda environments or
   // conda-packed environments
-
   let isBaseCondaActivate = false;
   if (!hasActivate && isConda) {
     if (fs.existsSync(baseCondaPath)) {
@@ -403,31 +413,25 @@ export function createCommandScriptInEnv(
     return '';
   }
 
-  let script: string;
+  const scriptLines: string[] = [];
 
   if (isWin) {
-    if (isConda) {
-      script = `
-        CALL ${activatePath}
-        ${isBaseCondaActivate ? `CALL conda activate ${envPath}` : ''}
-        ${command ? `CALL ${command}` : ''}`;
-    } else {
-      script = `
-        CALL ${envPath}\\activate.bat
-        CALL ${command}`;
+    scriptLines.push(`CALL ${activatePath}`);
+    if (isConda && isBaseCondaActivate) {
+      scriptLines.push(`CALL conda activate ${envPath}`);
+    }
+    if (command) {
+      scriptLines.push(`CALL ${command}`);
     }
   } else {
-    if (isConda) {
-      script = `
-        source "${activatePath}"
-        ${isBaseCondaActivate ? `conda activate "${envPath}"` : ''}
-        ${command || ''}`;
-    } else {
-      script = `
-        source "${envPath}/bin/activate"
-        ${command || ''}`;
+    scriptLines.push(`source "${activatePath}"`);
+    if (isConda && isBaseCondaActivate) {
+      scriptLines.push(`conda activate "${envPath}"`);
+    }
+    if (command) {
+      scriptLines.push(command);
     }
   }
 
-  return script;
+  return scriptLines.join(joinStr);
 }

@@ -98,7 +98,7 @@ export class Registry implements IRegistry, IDisposable {
 
         // set default env from appData.condaRootPath
         if (!this._defaultEnv) {
-          const pythonPath = pythonPathForEnvPath(appData.condaRootPath);
+          const pythonPath = pythonPathForEnvPath(appData.condaRootPath, true);
           const defaultEnv = this._resolveEnvironmentSync(pythonPath);
           if (defaultEnv) {
             this._defaultEnv = defaultEnv;
@@ -591,7 +591,8 @@ export class Registry implements IRegistry, IDisposable {
           let subEnvsWithPython = files
             .map(subEnvPath => {
               return pythonPathForEnvPath(
-                path.join(subEnvironmentsFolder, subEnvPath)
+                path.join(subEnvironmentsFolder, subEnvPath),
+                true
               );
             })
             .filter(pythonPath => this._pathExists(pythonPath));
@@ -624,7 +625,7 @@ export class Registry implements IRegistry, IDisposable {
     const uniqueCondaRoots = this._getUniqueObjects(flattenedCondaRoots);
 
     return uniqueCondaRoots.map(condaRootPath => {
-      const path = pythonPathForEnvPath(condaRootPath);
+      const path = pythonPathForEnvPath(condaRootPath, true);
 
       const newRootEnvironment: IPythonEnvironment = {
         name: basename(condaRootPath),
