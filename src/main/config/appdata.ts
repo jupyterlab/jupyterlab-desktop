@@ -68,6 +68,10 @@ export class ApplicationData {
       this.condaRootPath = jsonData.condaRootPath;
     }
 
+    if ('systemPythonPath' in jsonData) {
+      this.systemPythonPath = jsonData.systemPythonPath;
+    }
+
     this.sessions = [];
     if ('sessions' in jsonData && Array.isArray(jsonData.sessions)) {
       for (const session of jsonData.sessions) {
@@ -183,6 +187,10 @@ export class ApplicationData {
 
     if (this.condaRootPath !== '') {
       appDataJSON.condaRootPath = this.condaRootPath;
+    }
+
+    if (this.systemPythonPath !== '') {
+      appDataJSON.systemPythonPath = this.systemPythonPath;
     }
 
     appDataJSON.sessions = [];
@@ -376,6 +384,7 @@ export class ApplicationData {
 
   newsList: INewsItem[] = [];
   condaRootPath: string = '';
+  systemPythonPath: string = '';
   sessions: SessionConfig[] = [];
   recentRemoteURLs: IRecentRemoteURL[] = [];
   recentSessions: IRecentSession[] = [];

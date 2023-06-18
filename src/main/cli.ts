@@ -1,4 +1,4 @@
-import { spawn } from 'child_process';
+import { execFileSync, spawn } from 'child_process';
 import {
   createCommandScriptInEnv,
   createTempFile,
@@ -89,8 +89,8 @@ export function parseCLIArgs(argv: string[]) {
           .option('env-type', {
             describe:
               'Python environment type jupyterlab Python package in installation',
-            choices: ['conda', 'venv'],
-            default: 'conda'
+            choices: ['auto', 'conda', 'venv'],
+            default: 'auto'
           });
       },
       async argv => {
@@ -199,6 +199,9 @@ function addUserSetEnvironment(envPath: string, isConda: boolean) {
   const pythonPath = pythonPathForEnvPath(envPath, isConda);
 
   // this record will get updated with the correct data once app launches
+  console.log(
+    `Saving the environment at "${envPath}" to application environments list`
+  );
   appData.userSetPythonEnvs.push({
     path: pythonPath,
     name: `${isConda ? 'conda' : 'venv'}: ${path.basename(envPath)}`,
@@ -207,6 +210,23 @@ function addUserSetEnvironment(envPath: string, isConda: boolean) {
     defaultKernel: 'python3'
   });
   appData.save();
+
+  // use as the default Python if not exists
+  let defaultPythonPath = userSettings.getValue(SettingType.pythonPath);
+  if (defaultPythonPath === '') {
+    defaultPythonPath = getBundledPythonPath();
+
+    if (!fs.existsSync(defaultPythonPath)) {
+      defaultPythonPath = pythonPathForEnvPath(envPath, isConda);
+      if (fs.existsSync(defaultPythonPath)) {
+        console.log(
+          `Setting "${defaultPythonPath}" as the default Python path`
+        );
+        userSettings.setValue(SettingType.pythonPath, defaultPythonPath);
+        userSettings.save();
+      }
+    }
+  }
 }
 
 export async function handleEnvInstallCommand(argv: any) {
@@ -281,22 +301,45 @@ export async function handleEnvCreateCommand(argv: any) {
   const excludeJlab = argv.excludeJlab === true;
   const envType = argv.envType;
   const isConda = envType === 'conda';
+  const condaRootExists = isBaseCondaEnv(appData.condaRootPath);
+
   const packageList = argv._.slice(1);
   if (!excludeJlab) {
     packageList.push('jupyterlab');
   }
 
-  const createCommand = isConda
-    ? `conda create -y -c conda-forge -p ${envPath} ${packageList.join(' ')}`
-    : `python -m venv create ${envPath}`;
-
   console.log(`Creating Python environment at "${envPath}"...`);
-  await runCommandInEnvironment(appData.condaRootPath, createCommand);
 
-  if (!isConda && packageList.length > 0) {
-    const installCommand = `python -m pip install ${packageList.join(' ')}`;
-    console.log('Installing packages...');
-    await runCommandInEnvironment(envPath, installCommand);
+  if (isConda && !condaRootExists) {
+    console.error(
+      'conda base environment not found. You can set using jlab --set-base-conda-env-path command.'
+    );
+    return;
+  }
+
+  if (isConda || (envType === 'auto' && condaRootExists)) {
+    const createCommand = `conda create -y -c conda-forge -p ${envPath} ${packageList.join(
+      ' '
+    )}`;
+    await runCommandInEnvironment(appData.condaRootPath, createCommand);
+  } else {
+    if (condaRootExists) {
+      const createCommand = `python -m venv create ${envPath}`;
+      await runCommandInEnvironment(appData.condaRootPath, createCommand);
+    } else if (fs.existsSync(appData.systemPythonPath)) {
+      execFileSync(appData.systemPythonPath, ['-m', 'venv', 'create', envPath]);
+    } else {
+      console.error(
+        'Failed to create Python environment. Python executable not found.'
+      );
+      return;
+    }
+
+    if (packageList.length > 0) {
+      const installCommand = `python -m pip install ${packageList.join(' ')}`;
+      console.log('Installing packages...');
+      await runCommandInEnvironment(envPath, installCommand);
+    }
   }
 
   addUserSetEnvironment(envPath, isConda);

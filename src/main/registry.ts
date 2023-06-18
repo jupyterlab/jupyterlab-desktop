@@ -107,6 +107,14 @@ export class Registry implements IRegistry, IDisposable {
       }
     }
 
+    if (
+      !this._systemPythonPath &&
+      appData.systemPythonPath &&
+      fs.existsSync(appData.systemPythonPath)
+    ) {
+      this.setSystemPythonPath(appData.systemPythonPath);
+    }
+
     const pathEnvironments = this._loadPathEnvironments();
     const condaEnvironments = this._loadCondaEnvironments();
     const allEnvironments = [pathEnvironments, condaEnvironments];
@@ -291,6 +299,15 @@ export class Registry implements IRegistry, IDisposable {
   setCondaRootPath(rootPath: string) {
     this._condaRootPath = rootPath;
     appData.condaRootPath = rootPath;
+  }
+
+  get systemPythonPath(): Promise<string> {
+    return Promise.resolve(this._condaRootPath);
+  }
+
+  setSystemPythonPath(pythonPath: string) {
+    this._systemPythonPath = pythonPath;
+    appData.systemPythonPath = pythonPath;
   }
 
   /**
@@ -501,7 +518,7 @@ export class Registry implements IRegistry, IDisposable {
     ];
 
     if (process.platform === 'darwin') {
-      pythonInstances.push(
+      pythonInstances.unshift(
         this._getExecutableInstances('python3', process.env.PATH)
       );
     }
@@ -513,6 +530,10 @@ export class Registry implements IRegistry, IDisposable {
     });
 
     const pythonPaths = await flattenedPythonPaths;
+
+    if (!this._systemPythonPath && pythonPaths.length > 0) {
+      this.setSystemPythonPath(pythonPaths[0]);
+    }
 
     return pythonPaths.map((pythonPath, index) => {
       let newPythonEnvironment: IPythonEnvironment = {
@@ -1062,6 +1083,7 @@ export class Registry implements IRegistry, IDisposable {
   private _userSetEnvironments: IPythonEnvironment[] = [];
   private _defaultEnv: IPythonEnvironment;
   private _condaRootPath: string;
+  private _systemPythonPath: string;
   private _registryBuilt: Promise<void>;
   private _requirements: Registry.IRequirement[];
   private _disposing: boolean = false;
