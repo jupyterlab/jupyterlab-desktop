@@ -16,6 +16,7 @@ import * as path from 'path';
 import { appData } from './config/appdata';
 import { IEnvironmentType, IPythonEnvironment } from './tokens';
 import { SettingType, userSettings } from './config/settings';
+import { Registry } from './registry';
 
 export function parseCLIArgs(argv: string[]) {
   return yargs(argv)
@@ -115,6 +116,9 @@ export function parseCLIArgs(argv: string[]) {
             break;
           case 'set-base-conda-env-path':
             await handleEnvSetBaseCondaCommand(argv);
+            break;
+          case 'update-registry':
+            await handleEnvUpdateRegistryCommand(argv);
             break;
           default:
             console.log('Invalid input for "env" command.');
@@ -220,23 +224,6 @@ function addUserSetEnvironment(envPath: string, isConda: boolean) {
     defaultKernel: 'python3'
   });
   appData.save();
-
-  // use as the default Python if not exists
-  let defaultPythonPath = userSettings.getValue(SettingType.pythonPath);
-  if (defaultPythonPath === '') {
-    defaultPythonPath = getBundledPythonPath();
-
-    if (!fs.existsSync(defaultPythonPath)) {
-      defaultPythonPath = pythonPathForEnvPath(envPath, isConda);
-      if (fs.existsSync(defaultPythonPath)) {
-        console.log(
-          `Setting "${defaultPythonPath}" as the default Python path`
-        );
-        userSettings.setValue(SettingType.pythonPath, defaultPythonPath);
-        userSettings.save();
-      }
-    }
-  }
 }
 
 export async function handleEnvInstallCommand(argv: any) {
@@ -281,6 +268,13 @@ export async function handleEnvActivateCommand(argv: any) {
   console.log(`Activating Python environment "${envPath}"`);
 
   await launchCLIinEnvironment(envPath);
+}
+
+export async function handleEnvUpdateRegistryCommand(argv: any) {
+  console.log(`Updating JupyterLab Desktop's Python environment registry...`);
+  const registry = new Registry();
+  await registry.ready;
+  appData.save();
 }
 
 export async function handleEnvCreateCommand(argv: any) {

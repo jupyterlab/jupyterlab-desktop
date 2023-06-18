@@ -602,7 +602,6 @@ export class Registry implements IRegistry, IDisposable {
 
     return new Promise((resolve, reject) => {
       if (!fs.existsSync(subEnvironmentsFolder)) {
-        console.warn('No sub-environments in root: ' + rootPath);
         return resolve([]);
       }
       fs.readdir(subEnvironmentsFolder, (err, files) => {
@@ -1065,6 +1064,10 @@ export class Registry implements IRegistry, IDisposable {
         return self.indexOf(value) === index;
       });
     }
+  }
+
+  get ready(): Promise<void> {
+    return this._registryBuilt;
   }
 
   dispose(): Promise<void> {

@@ -359,6 +359,12 @@ export function activatePathForEnvPath(envPath: string) {
     : path.join(envPath, 'bin', 'activate');
 }
 
+export function condaSourcePathForEnvPath(envPath: string) {
+  if (process.platform !== 'win32') {
+    return path.join(envPath, 'etc', 'profile.d', 'conda.sh');
+  }
+}
+
 export function isCondaEnv(envPath: string): boolean {
   return fs.existsSync(path.join(envPath, 'conda-meta'));
 }
@@ -426,6 +432,8 @@ export function createCommandScriptInEnv(
   } else {
     scriptLines.push(`source "${activatePath}"`);
     if (isConda && isBaseCondaActivate) {
+      const condaSourcePath = condaSourcePathForEnvPath(envPath);
+      scriptLines.push(`source "${condaSourcePath}"`);
       scriptLines.push(`conda activate "${envPath}"`);
     }
     if (command) {
