@@ -141,6 +141,11 @@ export async function handleEnvInfoCommand(argv: any) {
     condaRootPath &&
     fs.existsSync(condaRootPath) &&
     fs.statSync(condaRootPath).isDirectory();
+  const systemPythonPath = appData.systemPythonPath;
+  const systemPythonPathExists =
+    systemPythonPath &&
+    fs.existsSync(systemPythonPath) &&
+    fs.statSync(systemPythonPath).isFile();
 
   const infoLines: string[] = [];
   infoLines.push(
@@ -156,6 +161,11 @@ export async function handleEnvInfoCommand(argv: any) {
   infoLines.push(
     `Base conda environment path:\n  "${condaRootPath}" [${
       condaRootPathExists ? 'exists' : 'not found'
+    }]`
+  );
+  infoLines.push(
+    `System Python path:\n  "${systemPythonPath}" [${
+      systemPythonPathExists ? 'exists' : 'not found'
     }]`
   );
 
