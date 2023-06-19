@@ -58,6 +58,7 @@
     "extraResources": [
       "env_installer/jlab_server.tar.gz"
     ],
+    "afterSign": "scripts/notarize.js",
     "linux": {
       "target": [
         "deb",
