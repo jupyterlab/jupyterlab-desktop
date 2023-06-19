@@ -286,6 +286,8 @@ export async function installBundledEnvironment(
       return;
     }
 
+    markEnvironmentAsJupyterInstalled(installPath);
+
     const unpackCommand = isWin
       ? `${installPath}\\Scripts\\activate.bat && conda-unpack`
       : `source "${installPath}/bin/activate" && conda-unpack`;
@@ -314,6 +316,29 @@ export async function installBundledEnvironment(
       return;
     });
   });
+}
+
+export function markEnvironmentAsJupyterInstalled(
+  envPath: string,
+  extraData?: { [key: string]: any }
+) {
+  const envInstallInfoPath = jupyterEnvInstallInfoPathForEnvPath(envPath);
+
+  const data = {
+    installer: 'jupyterlab-desktop',
+    ...(extraData || {})
+  };
+
+  try {
+    const dirPath = path.dirname(envInstallInfoPath);
+    if (!fs.existsSync(dirPath)) {
+      fs.mkdirSync(dirPath, { recursive: true });
+    }
+
+    fs.writeFileSync(envInstallInfoPath, JSON.stringify(data, null, 2));
+  } catch (error) {
+    console.error('Failed to create file', envInstallInfoPath, error);
+  }
 }
 
 export function createTempFile(
@@ -363,6 +388,10 @@ export function condaSourcePathForEnvPath(envPath: string) {
   if (process.platform !== 'win32') {
     return path.join(envPath, 'etc', 'profile.d', 'conda.sh');
   }
+}
+
+export function jupyterEnvInstallInfoPathForEnvPath(envPath: string) {
+  return path.join(envPath, '.jupyter', 'env.json');
 }
 
 export function isCondaEnv(envPath: string): boolean {

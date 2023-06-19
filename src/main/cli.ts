@@ -8,6 +8,7 @@ import {
   getBundledPythonPath,
   installBundledEnvironment,
   isBaseCondaEnv,
+  markEnvironmentAsJupyterInstalled,
   pythonPathForEnvPath
 } from './utils';
 import yargs from 'yargs/yargs';
@@ -184,10 +185,14 @@ export async function handleEnvListCommand(argv: any) {
       const versions = Object.keys(env.versions).map(
         name => `${name}: ${env.versions[name]}`
       );
+      const envPath = envPathForPythonPath(env.path);
+      const installedByApp = fs.existsSync(
+        path.join(envPath, '.jupyter', 'env.json')
+      );
       listLines.push(
-        `  [${env.name}], path: ${envPathForPythonPath(
-          env.path
-        )}\n    packages: ${versions.join(', ')}`
+        `  [${env.name}], path: ${envPath}${
+          installedByApp ? ', installed by JupyterLab Desktop' : ''
+        }\n    packages: ${versions.join(', ')}`
       );
     });
   };
@@ -338,7 +343,9 @@ export async function handleEnvCreateCommand(argv: any) {
     return;
   }
 
-  if (isConda || (envType === 'auto' && condaRootExists)) {
+  const createCondaEnv = isConda || (envType === 'auto' && condaRootExists);
+
+  if (createCondaEnv) {
     const createCommand = `conda create -y -c conda-forge -p ${envPath} ${packageList.join(
       ' '
     )}`;
@@ -363,7 +370,8 @@ export async function handleEnvCreateCommand(argv: any) {
     }
   }
 
-  addUserSetEnvironment(envPath, isConda);
+  markEnvironmentAsJupyterInstalled(envPath);
+  addUserSetEnvironment(envPath, createCondaEnv);
 }
 
 export async function handleEnvSetBaseCondaCommand(argv: any) {
