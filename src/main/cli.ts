@@ -224,6 +224,23 @@ function addUserSetEnvironment(envPath: string, isConda: boolean) {
     defaultKernel: 'python3'
   });
   appData.save();
+
+  // use as the default Python if not exists
+  let defaultPythonPath = userSettings.getValue(SettingType.pythonPath);
+  if (defaultPythonPath === '') {
+    defaultPythonPath = getBundledPythonPath();
+
+    if (!fs.existsSync(defaultPythonPath)) {
+      defaultPythonPath = pythonPathForEnvPath(envPath, isConda);
+      if (fs.existsSync(defaultPythonPath)) {
+        console.log(
+          `Setting "${defaultPythonPath}" as the default Python path`
+        );
+        userSettings.setValue(SettingType.pythonPath, defaultPythonPath);
+        userSettings.save();
+      }
+    }
+  }
 }
 
 export async function handleEnvInstallCommand(argv: any) {

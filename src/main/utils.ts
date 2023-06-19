@@ -400,6 +400,7 @@ export function createCommandScriptInEnv(
   const isWin = process.platform === 'win32';
 
   let activatePath = activatePathForEnvPath(envPath);
+  let condaSourcePath;
 
   let hasActivate = fs.existsSync(activatePath);
   const isConda = isCondaEnv(envPath);
@@ -410,6 +411,7 @@ export function createCommandScriptInEnv(
   if (!hasActivate && isConda) {
     if (fs.existsSync(baseCondaPath)) {
       activatePath = activatePathForEnvPath(baseCondaPath);
+      condaSourcePath = condaSourcePathForEnvPath(baseCondaPath);
       hasActivate = fs.existsSync(activatePath);
       isBaseCondaActivate = true;
     }
@@ -432,7 +434,6 @@ export function createCommandScriptInEnv(
   } else {
     scriptLines.push(`source "${activatePath}"`);
     if (isConda && isBaseCondaActivate) {
-      const condaSourcePath = condaSourcePathForEnvPath(envPath);
       scriptLines.push(`source "${condaSourcePath}"`);
       scriptLines.push(`conda activate "${envPath}"`);
     }
