@@ -418,7 +418,7 @@ export async function launchCLIinEnvironment(
 
     shell.on('close', code => {
       if (code !== 0) {
-        console.log('[shell] exit with code:', code);
+        console.error('Shell exit with code:', code);
       }
 
       if (isWin) {
@@ -461,7 +461,7 @@ export async function runCommandInEnvironment(
 
     shell.on('close', code => {
       if (code !== 0) {
-        console.log('[shell] exit with code:', code);
+        console.error('Shell exit with code:', code);
       }
       resolve(true);
     });
