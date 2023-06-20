@@ -138,6 +138,9 @@
         }
       ]
     },
+    "binaries": [
+      "./env_installer/jlab_server.tar.gz"
+    ],
     "dmg": {
       "sign": false
     }
