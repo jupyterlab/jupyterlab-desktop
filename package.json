@@ -24,10 +24,10 @@
     "dist:win": "yarn build && electron-builder --win --publish never",
     "update_workflow_conda_lock": "cd workflow_env && rimraf *.lock && conda-lock --kind explicit -f publish_env.yaml && cd -",
     "update_conda_lock": "cd env_installer && rimraf *.lock && conda-lock --kind explicit -f jlab_server.yaml && cd -",
-    "clean_env_installer": "rimraf ./env_installer/jlab_server.tar.gz && conda env remove -p ./env_installer/jlab_server -y",
-    "create_env_installer:linux": "yarn clean_env_installer && conda-lock install --prefix ./env_installer/jlab_server ./env_installer/conda-linux-64.lock && conda pack -p ./env_installer/jlab_server -o ./env_installer/jlab_server.tar.gz",
-    "create_env_installer:mac": "yarn clean_env_installer && conda-lock install --prefix ./env_installer/jlab_server ./env_installer/conda-osx-64.lock && conda pack -p ./env_installer/jlab_server -o ./env_installer/jlab_server.tar.gz",
-    "create_env_installer:win": "yarn clean_env_installer && conda-lock install --prefix ./env_installer/jlab_server ./env_installer/conda-win-64.lock && conda pack -p ./env_installer/jlab_server -o ./env_installer/jlab_server.tar.gz",
+    "clean_env_installer": "rimraf ./env_installer/jlab_server.env && conda env remove -p ./env_installer/jlab_server -y",
+    "create_env_installer:linux": "yarn clean_env_installer && conda-lock install --prefix ./env_installer/jlab_server ./env_installer/conda-linux-64.lock && conda pack -p ./env_installer/jlab_server --format tar.gz -o ./env_installer/jlab_server.env",
+    "create_env_installer:mac": "yarn clean_env_installer && conda-lock install --prefix ./env_installer/jlab_server ./env_installer/conda-osx-64.lock && conda pack -p ./env_installer/jlab_server --format tar.gz --zip-symlinks -o ./env_installer/jlab_server.env",
+    "create_env_installer:win": "yarn clean_env_installer && conda-lock install --prefix ./env_installer/jlab_server ./env_installer/conda-win-64.lock && conda pack -p ./env_installer/jlab_server --format tar.gz -o ./env_installer/jlab_server.env",
     "check_version_match": "node scripts/buildutil.js --check-version-match",
     "eslint": "eslint --ext .js,.jsx,.ts,.tsx --cache --fix .",
     "eslint:check": "eslint --ext .js,.jsx,.ts,.tsx --cache .",
@@ -56,7 +56,7 @@
       "!workflow_env"
     ],
     "extraResources": [
-      "env_installer/jlab_server.tar.gz"
+      "env_installer/jlab_server.env"
     ],
     "afterSign": "scripts/notarize.js",
     "linux": {
@@ -136,9 +136,6 @@
           "from": "dist-resources/darwin/jlab.sh",
           "to": "app/jlab"
         }
-      ],
-      "binaries": [
-        "./env_installer/jlab_server.tar.gz"
       ]
     },
     "dmg": {

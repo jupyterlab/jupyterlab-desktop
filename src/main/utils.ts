@@ -61,7 +61,7 @@ export function getEnvironmentPath(environment: IPythonEnvironment): string {
 
 export function getBundledPythonInstallDir(): string {
   // this directory path cannot have any spaces since
-  // conda constructor cannot install to such paths
+  // conda environments cannot be installed to such paths
   const installDir =
     process.platform === 'darwin'
       ? path.normalize(path.join(app.getPath('home'), 'Library', app.getName()))
@@ -246,7 +246,7 @@ export async function installBundledEnvironment(
     const platform = process.platform;
     const isWin = platform === 'win32';
     const appDir = getAppDir();
-    const installerPath = `${appDir}/env_installer/jlab_server.tar.gz`;
+    const installerPath = `${appDir}/env_installer/jlab_server.env`;
     installPath = installPath || getBundledPythonEnvPath();
 
     if (fs.existsSync(installPath)) {
