@@ -136,11 +136,11 @@
           "from": "dist-resources/darwin/jlab.sh",
           "to": "app/jlab"
         }
-      ]
+      ],
+      "binaries": [
+        "./env_installer/jlab_server.tar.gz"
+      ],
     },
-    "binaries": [
-      "./env_installer/jlab_server.tar.gz"
-    ],
     "dmg": {
       "sign": false
     }
