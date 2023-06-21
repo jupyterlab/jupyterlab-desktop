@@ -67,6 +67,13 @@ jobs:
           result-encoding: string
 
       - name: Create Application Server Installer
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: true
+          CSC_FOR_PULL_REQUEST: true
+          APPLEID: ${{ secrets.APPLEID }}
+          APPLEIDPASS: ${{ secrets.APPLEIDPASS }}
+          CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
+          CSC_LINK: ${{ secrets.CSC_LINK }}
         run: |
           yarn create_env_installer:${{ matrix.cfg.platform }}
           yarn sign_env_installer:${{ matrix.cfg.platform }}
