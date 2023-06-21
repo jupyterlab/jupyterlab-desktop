@@ -79,7 +79,7 @@ jobs:
           APPLEID: ${{ secrets.APPLEID }}
           APPLEIDPASS: ${{ secrets.APPLEIDPASS }}
         run: |
-          echo $CSC_LINK | base64 -—decode -o certificate.p12
+          echo $CSC_LINK | base64 -d -o certificate.p12
           security create-keychain -p $APPLEIDPASS build.keychain
           security default-keychain -s build.keychain
           security unlock-keychain -p $APPLEIDPASS build.keychain
