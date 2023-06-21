@@ -246,7 +246,7 @@ export async function installBundledEnvironment(
     const platform = process.platform;
     const isWin = platform === 'win32';
     const appDir = getAppDir();
-    const installerPath = `${appDir}/env_installer/jlab_server.env`;
+    const installerPath = `${appDir}/env_installer/jlab_server.tar.gz`;
     installPath = installPath || getBundledPythonEnvPath();
 
     if (fs.existsSync(installPath)) {

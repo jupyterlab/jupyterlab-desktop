@@ -69,6 +69,8 @@ jobs:
       - name: Create Application Server Installer
         run: |
           yarn create_env_installer:${{ matrix.cfg.platform }}
+          yarn sign_env_installer:${{ matrix.cfg.platform }}
+          yarn compress_env_installer:${{ matrix.cfg.platform }}
 
       - name: Create Application Installer for Test
         env:
