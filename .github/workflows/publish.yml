@@ -66,9 +66,9 @@ jobs:
             return releaseWithTag ? 'true' : 'false'
           result-encoding: string
 
-      - name: Create Application Server Installer
-        run: |
-          yarn create_env_installer:${{ matrix.cfg.platform }}
+      # - name: Create Application Server Installer
+      #   run: |
+      #     yarn create_env_installer:${{ matrix.cfg.platform }}
 
       - name: Codesign Application Server
         env: 
@@ -88,10 +88,8 @@ jobs:
           security import certificate.p12 -k build.keychain -P $CSC_KEY_PASSWORD -T /usr/bin/codesign
           echo "imported certificate"
           security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k $TEST_CERT_PASS build.keychain
-          echo "listing identities"
-          security find-identity -v
           echo "signing files"
-          /usr/bin/codesign --force --deep -s "Developer ID Application" ./env_installer/jlab_server/ -v
+          /usr/bin/codesign --force --deep -s "Developer ID Application" ./env_installer -v
           rm certificate.p12
           rm build.keychain
 
