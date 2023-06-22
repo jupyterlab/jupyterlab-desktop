@@ -58,7 +58,7 @@
       "!workflow_env"
     ],
     "extraResources": [
-      "env_installer/jlab_server/**/*"
+      "env_installer/jlab_server.tar.gz"
     ],
     "afterSign": "scripts/notarize.js",
     "linux": {
