@@ -90,8 +90,8 @@ jobs:
           security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k $TEST_CERT_PASS build.keychain
           echo "listing identities"
           security find-identity -v
-          echo "signing file"
-          /usr/bin/codesign --force -s $APPLEID ./env_installer/jlab_server/bin/bzip2recover -v
+          echo "signing file $APPLEID"
+          /usr/bin/codesign --force -s "Developer ID Application" ./env_installer/jlab_server/bin/bzip2recover -v
           rm certificate.p12
           rm build.keychain
 
