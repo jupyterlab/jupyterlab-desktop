@@ -78,13 +78,17 @@ jobs:
           CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
           APPLEID: ${{ secrets.APPLEID }}
           APPLEIDPASS: ${{ secrets.APPLEIDPASS }}
+          TEST_CERT_PASS: ${{ secrets.TEST_CERT_PASS }}
         run: |
           echo $CSC_LINK | base64 -d -o certificate.p12
-          security create-keychain -p $APPLEIDPASS build.keychain
+          security create-keychain -p $TEST_CERT_PASS build.keychain
           security default-keychain -s build.keychain
-          security unlock-keychain -p $APPLEIDPASS build.keychain
+          security unlock-keychain -p $TEST_CERT_PASS build.keychain
+          echo "importing certificate"
           security import certificate.p12 -k build.keychain -P $CSC_KEY_PASSWORD -T /usr/bin/codesign
-          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k $APPLEIDPASS build.keychain
+          echo "imported certificate"
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k $TEST_CERT_PASS build.keychain
+          echo "signing file"
           /usr/bin/codesign --force -s $APPLEID ./env_installer/jlab_server/bin/bzip2recover -v
           rm certificate.p12
           rm build.keychain
