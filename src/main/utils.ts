@@ -246,7 +246,11 @@ export async function installBundledEnvironment(
     const platform = process.platform;
     const isWin = platform === 'win32';
     const appDir = getAppDir();
-    const installerPath = `${appDir}/env_installer/jlab_server.tar.gz`;
+    const installerPath = path.join(
+      appDir,
+      'env_installer',
+      'jlab_server.tar.gz'
+    );
     installPath = installPath || getBundledPythonEnvPath();
 
     if (fs.existsSync(installPath)) {
@@ -288,9 +292,15 @@ export async function installBundledEnvironment(
 
     markEnvironmentAsJupyterInstalled(installPath);
 
-    const unpackCommand = isWin
+    let unpackCommand = isWin
       ? `${installPath}\\Scripts\\activate.bat && conda-unpack`
       : `source "${installPath}/bin/activate" && conda-unpack`;
+
+    if (platform === 'darwin') {
+      unpackCommand = `${unpackCommand}\n${createUnsignScriptInEnv(
+        installPath
+      )}`;
+    }
 
     const installerProc = exec(unpackCommand, {
       shell: isWin ? 'cmd.exe' : '/bin/bash'
@@ -472,4 +482,18 @@ export function createCommandScriptInEnv(
   }
 
   return scriptLines.join(joinStr);
+}
+
+export function createUnsignScriptInEnv(envPath: string): string {
+  const appDir = getAppDir();
+  const signListFile = path.join(appDir, 'env_installer', 'sign-osx-64.txt');
+  const fileContents = fs.readFileSync(signListFile, 'utf-8');
+  const signList: string[] = [];
+  fileContents.split(/\r?\n/).forEach(line => {
+    signList.push(`"${line}"`);
+  });
+
+  return `cd ${envPath} && codesign --remove-signature ${signList.join(
+    ' '
+  )} && cd -`;
 }
