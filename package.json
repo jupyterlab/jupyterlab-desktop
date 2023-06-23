@@ -139,7 +139,8 @@
           "from": "dist-resources/darwin/jlab.sh",
           "to": "app/jlab"
         }
-      ]
+      ],
+      "signIgnore": "env_installer/jlab_server.tar.gz"
     },
     "dmg": {
       "sign": false
