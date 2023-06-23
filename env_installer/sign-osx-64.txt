@@ -25,6 +25,7 @@ bin/tset
 bin/tiff2pdf
 bin/bzcat
 bin/tclsh8.6
+bin/python3.8
 bin/djpeg
 bin/tiffcrop
 bin/xz

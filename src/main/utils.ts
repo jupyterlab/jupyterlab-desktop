@@ -489,8 +489,11 @@ export function createUnsignScriptInEnv(envPath: string): string {
   const signListFile = path.join(appDir, 'env_installer', 'sign-osx-64.txt');
   const fileContents = fs.readFileSync(signListFile, 'utf-8');
   const signList: string[] = [];
+  const skipList = new Set(['bin/python3.8']);
   fileContents.split(/\r?\n/).forEach(line => {
-    signList.push(`"${line}"`);
+    if (!skipList.has(line)) {
+      signList.push(`"${line}"`);
+    }
   });
 
   return `cd ${envPath} && codesign --remove-signature ${signList.join(
