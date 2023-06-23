@@ -17,8 +17,6 @@ exports.default = async function notarizing(context) {
     appBundleId: 'org.jupyter.jupyterlab-desktop',
     appPath: `${appOutDir}/${appName}.app`,
     appleId: process.env.APPLEID,
-    appleIdPassword: process.env.APPLEIDPASS,
-    teamId: process.env.APPLE_TEAM_ID,
-    tool: 'notarytool'
+    appleIdPassword: process.env.APPLEIDPASS
   });
 };
