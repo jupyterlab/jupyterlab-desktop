@@ -69,7 +69,7 @@ jobs:
       - name: Create Application Server Installer
         run: |
           yarn create_env_installer:${{ matrix.cfg.platform }}
-          yarn extract_env_installer:mac:${{ matrix.cfg.platform }}
+          yarn extract_env_installer:${{ matrix.cfg.platform }}
 
       - name: Codesign Application Server
         env: 
