@@ -485,18 +485,21 @@ export function createCommandScriptInEnv(
 }
 
 export function createUnsignScriptInEnv(envPath: string): string {
+  const pythonBin = 'bin/python3.8';
   const appDir = getAppDir();
   const signListFile = path.join(appDir, 'env_installer', 'sign-osx-64.txt');
   const fileContents = fs.readFileSync(signListFile, 'utf-8');
   const signList: string[] = [];
-  const skipList = new Set(['bin/python3.8']);
+
   fileContents.split(/\r?\n/).forEach(line => {
-    if (!skipList.has(line)) {
+    if (line && line !== pythonBin) {
       signList.push(`"${line}"`);
     }
   });
 
+  const removeRuntimeFlagCommand = `codesign -s - -o 0x2 -f ${pythonBin}`;
+
   return `cd ${envPath} && codesign --remove-signature ${signList.join(
     ' '
-  )} && cd -`;
+  )} && ${removeRuntimeFlagCommand} && cd -`;
 }
