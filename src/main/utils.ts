@@ -297,9 +297,9 @@ export async function installBundledEnvironment(
       : `source "${installPath}/bin/activate" && conda-unpack`;
 
     if (platform === 'darwin') {
-      unpackCommand = `${unpackCommand}\n${createUnsignScriptInEnv(
+      unpackCommand = `${createUnsignScriptInEnv(
         installPath
-      )}`;
+      )}\n${unpackCommand}`;
     }
 
     const installerProc = exec(unpackCommand, {
