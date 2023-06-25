@@ -6,10 +6,10 @@
 
   You can install `conda` as part of a [Miniforge](https://github.com/conda-forge/miniforge) installer.
 
-- [(conda) Constructor](https://github.com/conda/constructor) to bundle JupyterLab Desktop Server into the stand-alone application. You can install Constructor using:
+- [conda pack](https://github.com/conda/conda-pack) and [conda lock](https://github.com/conda/conda-lock) to bundle JupyterLab Desktop Server into the standalone application and to create lock files. You can install them using:
 
   ```bash
-  conda install -c conda-forge constructor
+  conda install -c conda-forge conda-pack conda-lock
   ```
 
 - nodejs
