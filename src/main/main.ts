@@ -43,33 +43,34 @@ function getLogLevel(): LevelOption {
   return userSettings.getValue(SettingType.logLevel);
 }
 
+let argv: ICLIArguments;
+
 function redirectConsoleToLog() {
   console.log = log.log;
   console.error = log.error;
   console.warn = log.warn;
   console.info = log.info;
   console.debug = log.debug;
-}
 
-let argv: ICLIArguments;
-const logLevel = getLogLevel();
+  const logLevel = getLogLevel();
 
-if (isDevMode()) {
-  log.transports.console.level = logLevel;
-  log.transports.file.level = false;
+  if (isDevMode()) {
+    log.transports.console.level = logLevel;
+    log.transports.file.level = false;
 
-  log.info('In development mode');
-  log.info(`Logging to console at '${log.transports.console.level}' level`);
-} else {
-  log.transports.file.level = logLevel;
-  log.transports.console.level = false;
+    log.info('In development mode');
+    log.info(`Logging to console at '${log.transports.console.level}' level`);
+  } else {
+    log.transports.file.level = logLevel;
+    log.transports.console.level = false;
 
-  log.info('In production mode');
-  log.info(
-    `Logging to file (${log.transports.file.getFile().path}) at '${
-      log.transports.file.level
-    }' level`
-  );
+    log.info('In production mode');
+    log.info(
+      `Logging to file (${log.transports.file.getFile().path}) at '${
+        log.transports.file.level
+      }' level`
+    );
+  }
 }
 
 const thisYear = new Date().getFullYear();

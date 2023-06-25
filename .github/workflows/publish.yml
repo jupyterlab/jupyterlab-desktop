@@ -71,7 +71,7 @@ jobs:
           yarn create_env_installer:${{ matrix.cfg.platform }}
 
       - name: Codesign Application Server
-        if: matrix.cfg.platform == 'mac'
+        if: matrix.cfg.platform == 'mac' && steps.release-exists.outputs.result == 'true'
         env: 
           CSC_IDENTITY_AUTO_DISCOVERY: true
           CSC_FOR_PULL_REQUEST: true
@@ -95,9 +95,10 @@ jobs:
           security delete-keychain build.keychain
 
       - name: Re-archive Application Server Installer
-        if: matrix.cfg.platform == 'mac'
+        if: matrix.cfg.platform == 'mac' && steps.release-exists.outputs.result == 'true'
         run: |
           yarn compress_env_installer:${{ matrix.cfg.platform }}
+          rm -rf ./env_installer/jlab_server_extracted
 
       - name: Create Application Installer for Test
         env:
