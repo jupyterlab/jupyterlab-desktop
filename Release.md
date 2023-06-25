@@ -42,7 +42,7 @@ In order to change the JupyterLab version bundled with the application:
 
 4. Update `@jupyter-widgets/jupyterlab-manager` version in [package.json](package.json) for ipywidgets if a compatible newer version is available.
 
-5. Update `ipywidgets` python package version in [`env_installer/construct.yaml`](env_installer/construct.yaml) if there is a compatible newer version available.
+5. Update `ipywidgets` python package version in [`env_installer/jlab_server.yaml`](env_installer/jlab_server.yaml) if there is a compatible newer version available.
 
 Note that after updating the bundled JupyterLab version, it is necessary to bump JupyterLab Desktop version using `tbump` as described in the section below. Run `check_version_match` script before committing the changes to ensure version integrity.
 
