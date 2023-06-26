@@ -70,6 +70,7 @@ jobs:
         run: |
           yarn create_env_installer:${{ matrix.cfg.platform }}
 
+      # contents of tarball needs to be signed for notarization
       - name: Codesign Application Server
         if: matrix.cfg.platform == 'mac' && steps.release-exists.outputs.result == 'true'
         env: 
@@ -94,6 +95,7 @@ jobs:
           rm certificate.p12
           security delete-keychain build.keychain
 
+      # recreate tarball after signing contents
       - name: Re-archive Application Server Installer
         if: matrix.cfg.platform == 'mac' && steps.release-exists.outputs.result == 'true'
         run: |

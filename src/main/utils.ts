@@ -484,6 +484,12 @@ export function createCommandScriptInEnv(
   return scriptLines.join(joinStr);
 }
 
+/*
+  signed tarball contents need to be unsigned except for python binary,
+  otherwise server runs into issues at runtime. python binary comes originally
+  ad-hoc signed. after installation it needs be converted from hardened runtime,
+  back to ad-hoc signed.
+*/
 export function createUnsignScriptInEnv(envPath: string): string {
   const pythonBin = 'bin/python3.8';
   const appDir = getAppDir();
@@ -497,6 +503,7 @@ export function createUnsignScriptInEnv(envPath: string): string {
     }
   });
 
+  // remove hardened runtime flag, convert to ad-hoc
   const removeRuntimeFlagCommand = `codesign -s - -o 0x2 -f ${pythonBin}`;
 
   return `cd ${envPath} && codesign --remove-signature ${signList.join(

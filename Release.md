@@ -20,29 +20,21 @@ If the JupyterLab version is not changing with the new JupyterLab Desktop releas
 
 In order to change the JupyterLab version bundled with the application:
 
-1. Update all `@jupyterlab` package dependencies in [package.json](package.json) using
-
-   ```bash
-   yarn set_jupyterlab_version <new-jlab-version>
-   ```
-
-   `<new-jlab-version>` must match a released JupyterLab version such as `3.1.13`. This command will update dependencies with `@jupyterlab` scope.
-
-2. Bump the application version using `tbump` to `new-jlab-version-1`
+1. Bump the application version using `tbump` to `new-jlab-version-1`
 
    ```bash
    tbump --only-patch <new-jlab-version>-1
    ```
 
-3. Update conda lock files using
+2. Update conda lock files using
 
    ```bash
    yarn update_conda_lock
    ```
 
-4. Update `@jupyter-widgets/jupyterlab-manager` version in [package.json](package.json) for ipywidgets if a compatible newer version is available.
+3. If python version is updated in [`env_installer/jlab_server.yaml`](env_installer/jlab_server.yaml), also update `pythonBin` variables in [`util.ts`](src/main/utils.ts) that are used in code signing related methods.
 
-5. Update `ipywidgets` python package version in [`env_installer/jlab_server.yaml`](env_installer/jlab_server.yaml) if there is a compatible newer version available.
+4. Update `ipywidgets` python package version in [`env_installer/jlab_server.yaml`](env_installer/jlab_server.yaml) if there is a compatible newer version available.
 
 Note that after updating the bundled JupyterLab version, it is necessary to bump JupyterLab Desktop version using `tbump` as described in the section below. Run `check_version_match` script before committing the changes to ensure version integrity.
 
