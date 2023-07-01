@@ -301,8 +301,8 @@ export class Registry implements IRegistry, IDisposable {
     appData.condaRootPath = rootPath;
   }
 
-  get systemPythonPath(): Promise<string> {
-    return Promise.resolve(this._condaRootPath);
+  get systemPythonPath(): string {
+    return this._systemPythonPath;
   }
 
   setSystemPythonPath(pythonPath: string) {
