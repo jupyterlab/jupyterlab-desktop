@@ -169,19 +169,25 @@ function setApplicationMenu() {
   Menu.setApplicationMenu(menu);
 }
 
-app.on('ready', () => {
-  Promise.all([processArgs(), handleMultipleAppInstances()])
-    .then(() => {
-      redirectConsoleToLog();
-      setApplicationMenu();
-      setupJLabCommand();
-      argv.cwd = process.cwd();
-      jupyterApp = new JupyterApplication((argv as unknown) as ICLIArguments);
-    })
-    .catch(e => {
-      log.error(e);
-      app.quit();
-    });
+app.on('ready', async () => {
+  try {
+    await processArgs();
+  } catch (error) {
+    log.error(error);
+    app.quit();
+  }
+
+  try {
+    await handleMultipleAppInstances();
+    redirectConsoleToLog();
+    setApplicationMenu();
+    setupJLabCommand();
+    argv.cwd = process.cwd();
+    jupyterApp = new JupyterApplication((argv as unknown) as ICLIArguments);
+  } catch (error) {
+    log.error(error);
+    app.quit();
+  }
 });
 
 function processArgs(): Promise<void> {
@@ -207,7 +213,7 @@ function processArgs(): Promise<void> {
  * application.
  */
 function handleMultipleAppInstances(): Promise<void> {
-  let promise = new Promise<void>((resolve, reject) => {
+  return new Promise<void>((resolve, reject) => {
     // only the first instance will get the lock
     // pass cliArgs to main instance since argv provided by second-instance
     // event is out of order
@@ -235,9 +241,7 @@ function handleMultipleAppInstances(): Promise<void> {
       resolve();
     } else {
       // is second instance
-      app.quit();
-      reject();
+      reject('Handling request in the main instance.');
     }
   });
-  return promise;
 }
