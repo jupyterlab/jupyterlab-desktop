@@ -69,7 +69,7 @@ export interface IDisposable {
 }
 
 export interface ICLIArguments {
-  cwd: string;
+  cwd?: string;
   _: (string | number)[];
   // eslint-disable-next-line id-match
   $0: string;

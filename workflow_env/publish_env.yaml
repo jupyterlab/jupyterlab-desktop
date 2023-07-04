@@ -1,0 +1,11 @@
+name: jlab_server
+channels:
+  - conda-forge
+dependencies:
+  - conda
+  - conda-lock
+  - conda-pack
+platforms:
+  - linux-64
+  - osx-64
+  - win-64

@@ -1,6 +1,6 @@
 {
   "name": "jupyterlab-desktop",
-  "version": "4.0.1-1",
+  "version": "4.0.1-2",
   "description": "JupyterLab Desktop",
   "main": "./build/out/main/main.js",
   "scripts": {
@@ -22,11 +22,14 @@
     "dist:linux": "yarn build && electron-builder --linux --publish never",
     "dist:mac": "yarn build && electron-builder --macos --publish never",
     "dist:win": "yarn build && electron-builder --win --publish never",
-    "dockerdist:linux": "docker run --rm -ti -v ${PWD}:/project -v ${PWD##*/}-node-modules:/project/node_modules -v ~/.electron:/root/.electron electronuserland/builder:wine /bin/bash -c \"yarn && yarn dist:linux\"",
-    "dockerdist:win": "docker run --rm -ti -v ${PWD}:/project -v ${PWD##*/}-node-modules:/project/node_modules -v ~/.electron:/root/.electron electronuserland/builder:wine /bin/bash -c \"yarn && yarn dist:win\"",
-    "create_env_installer:linux": "rimraf ./env_installer/JupyterLab*.sh && constructor ./env_installer --platform=linux-64 --output-dir ./env_installer",
-    "create_env_installer:mac": "rimraf ./env_installer/JupyterLab*.sh && constructor ./env_installer --platform=osx-64 --output-dir ./env_installer",
-    "create_env_installer:win": "rimraf ./env_installer/JupyterLab*.exe && constructor ./env_installer --platform=win-64 --output-dir ./env_installer",
+    "update_workflow_conda_lock": "cd workflow_env && rimraf *.lock && conda-lock --kind explicit -f publish_env.yaml && cd -",
+    "update_conda_lock": "cd env_installer && rimraf *.lock && conda-lock --kind explicit -f jlab_server.yaml && cd -",
+    "clean_env_installer": "rimraf ./env_installer/jlab_server.tar.gz && conda env remove -p ./env_installer/jlab_server -y",
+    "create_env_installer:linux": "yarn clean_env_installer && conda-lock install --prefix ./env_installer/jlab_server ./env_installer/conda-linux-64.lock && conda pack -p ./env_installer/jlab_server -o ./env_installer/jlab_server.tar.gz",
+    "create_env_installer:mac": "yarn clean_env_installer && conda-lock install --prefix ./env_installer/jlab_server ./env_installer/conda-osx-64.lock && conda pack -p ./env_installer/jlab_server -o ./env_installer/jlab_server.tar.gz",
+    "create_env_installer:win": "yarn clean_env_installer && conda-lock install --prefix ./env_installer/jlab_server ./env_installer/conda-win-64.lock && conda pack -p ./env_installer/jlab_server -o ./env_installer/jlab_server.tar.gz",
+    "extract_env_installer:mac": "cd ./env_installer && rimraf jlab_server_extracted && mkdir jlab_server_extracted && tar -xzf jlab_server.tar.gz -C jlab_server_extracted && cd -",
+    "compress_env_installer:mac": "rimraf ./env_installer/jlab_server.tar.gz && cd ./env_installer/jlab_server_extracted && tar -czf ../jlab_server.tar.gz . && cd -",
     "check_version_match": "node scripts/buildutil.js --check-version-match",
     "eslint": "eslint --ext .js,.jsx,.ts,.tsx --cache --fix .",
     "eslint:check": "eslint --ext .js,.jsx,.ts,.tsx --cache .",
@@ -51,11 +54,12 @@
     },
     "files": [
       "!**/*.d.ts",
-      "!env_installer/JupyterLab*.*"
+      "!env_installer",
+      "!workflow_env"
     ],
     "extraResources": [
-      "env_installer/JupyterLabDesktopAppServer-*[.sh,.exe]",
-      "build/schemas"
+      "env_installer/jlab_server.tar.gz",
+      "env_installer/sign*.txt"
     ],
     "afterSign": "scripts/notarize.js",
     "linux": {
@@ -135,7 +139,8 @@
           "from": "dist-resources/darwin/jlab.sh",
           "to": "app/jlab"
         }
-      ]
+      ],
+      "signIgnore": "env_installer/jlab_server.tar.gz"
     },
     "dmg": {
       "sign": false
@@ -161,6 +166,7 @@
     "@types/react": "~17.0.2",
     "@types/react-dom": "^17.0.1",
     "@types/semver": "^7.3.4",
+    "@types/tar": "^6.1.5",
     "@types/yargs": "^17.0.18",
     "@typescript-eslint/eslint-plugin": "~5.28.0",
     "@typescript-eslint/parser": "~5.28.0",
@@ -202,6 +208,7 @@
     "js-yaml": "^4.1.0",
     "node-fetch": "^2.6.7",
     "semver": "^7.5.0",
+    "tar": "^6.1.15",
     "update-electron-app": "^2.0.1",
     "which": "^2.0.2",
     "winreg": "^1.2.4",

@@ -418,7 +418,9 @@ export class SettingsDialog {
               });
 
               window.electronAPI.onInstallBundledPythonEnvStatus((status) => {
-                const message = status === 'STARTED' ?
+                const message = status === 'REMOVING_EXISTING_INSTALLATION' ?
+                  'Removing the existing installation' :
+                  status === 'STARTED' ?
                   'Installing Python environment' :
                   status === 'CANCELLED' ?
                   'Installation cancelled!' :
@@ -426,7 +428,8 @@ export class SettingsDialog {
                     'Failed to install the environment!' :
                   status === 'SUCCESS' ? 'Installation succeeded' : '';
                 
-                const animate = status === 'STARTED';
+                const animate = status === 'REMOVING_EXISTING_INSTALLATION'
+                  || status === 'STARTED';
 
                 showProgress(message, animate);
 

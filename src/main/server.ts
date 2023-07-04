@@ -4,12 +4,12 @@ import { dialog } from 'electron';
 import { ArrayExt } from '@lumino/algorithm';
 import log from 'electron-log';
 import * as fs from 'fs';
-import * as os from 'os';
 import * as path from 'path';
 import { request as httpRequest } from 'http';
 import { request as httpsRequest } from 'https';
 import { IDisposable, IEnvironmentType, IPythonEnvironment } from './tokens';
 import {
+  createTempFile,
   getEnvironmentPath,
   getFreePort,
   getSchemasDir,
@@ -28,20 +28,6 @@ import { randomBytes } from 'crypto';
 
 const SERVER_LAUNCH_TIMEOUT = 30000; // milliseconds
 const SERVER_RESTART_LIMIT = 3; // max server restarts
-
-function createTempFile(
-  fileName = 'temp',
-  data = '',
-  encoding: BufferEncoding = 'utf8'
-) {
-  const tempDirPath = path.join(os.tmpdir(), 'jlab_desktop');
-  const tmpDir = fs.mkdtempSync(tempDirPath);
-  const tmpFilePath = path.join(tmpDir, fileName);
-
-  fs.writeFileSync(tmpFilePath, data, { encoding });
-
-  return tmpFilePath;
-}
 
 function createLaunchScript(
   serverInfo: JupyterServer.IInfo,
@@ -81,11 +67,42 @@ function createLaunchScript(
     serverInfo.environment.type === IEnvironmentType.CondaRoot ||
     serverInfo.environment.type === IEnvironmentType.CondaEnv;
 
+  // conda activate is only available in base conda environments or
+  // conda-packed environments
+
+  let condaActivatePath = '';
+  let isBaseCondaActivate = true;
+
+  // use activate from the environment instead of base when possible
+  if (isConda) {
+    if (isWin) {
+      const envActivatePath = path.join(envPath, 'condabin', 'activate.bat');
+      if (fs.existsSync(envActivatePath)) {
+        condaActivatePath = envActivatePath;
+        isBaseCondaActivate = false;
+      } else {
+        condaActivatePath = path.join(
+          baseCondaPath,
+          'condabin',
+          'activate.bat'
+        );
+      }
+    } else {
+      const envActivatePath = path.join(envPath, 'bin', 'activate');
+      if (fs.existsSync(envActivatePath)) {
+        condaActivatePath = envActivatePath;
+        isBaseCondaActivate = false;
+      } else {
+        condaActivatePath = path.join(baseCondaPath, 'bin', 'activate');
+      }
+    }
+  }
+
   if (isWin) {
     if (isConda) {
       script = `
-        CALL ${baseCondaPath}\\condabin\\activate.bat
-        CALL conda activate ${envPath}
+        CALL ${condaActivatePath}
+        ${isBaseCondaActivate ? `CALL conda activate ${envPath}` : ''}
         CALL ${launchCmd}`;
     } else {
       script = `
@@ -95,8 +112,8 @@ function createLaunchScript(
   } else {
     if (isConda) {
       script = `
-        source "${baseCondaPath}/bin/activate"
-        conda activate "${envPath}"
+        source "${condaActivatePath}"
+        ${isBaseCondaActivate ? `conda activate "${envPath}"` : ''}
         ${launchCmd}`;
     } else {
       script = `

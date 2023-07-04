@@ -1,6 +1,5 @@
 import { app, Menu, MenuItem } from 'electron';
 import log, { LevelOption } from 'electron-log';
-import yargs from 'yargs/yargs';
 import * as fs from 'fs';
 import { getAppDir, isDevMode, waitForFunction } from './utils';
 import { execSync } from 'child_process';
@@ -8,6 +7,7 @@ import { JupyterApplication } from './app';
 import { ICLIArguments } from './tokens';
 import { SessionConfig } from './config/sessionconfig';
 import { SettingType, userSettings } from './config/settings';
+import { parseCLIArgs } from './cli';
 
 let jupyterApp: JupyterApplication;
 let fileToOpenInMainInstance = '';
@@ -30,40 +30,6 @@ async function appReady(): Promise<boolean> {
  */
 require('fix-path')();
 
-function parseArgs(argv: string[]) {
-  return yargs(argv)
-    .usage('jlab [options] folder/file paths')
-    .example('jlab', 'Launch in default working directory')
-    .example('jlab .', 'Launch in current directory')
-    .example(
-      'jlab /data/nb/test.ipynb',
-      'Launch in /data/nb and open test.ipynb'
-    )
-    .example('jlab /data/nb', 'Launch in /data/nb')
-    .example(
-      'jlab --working-dir /data/nb test.ipynb sub/test2.ipynb',
-      'Launch in /data/nb and open /data/nb/test.ipynb and /data/nb/sub/test2.ipynb'
-    )
-    .option('python-path', {
-      describe: 'Python path',
-      type: 'string'
-    })
-    .option('working-dir', {
-      describe: 'Working directory',
-      type: 'string'
-    })
-    .option('log-level', {
-      describe: 'Log level',
-      choices: ['error', 'warn', 'info', 'verbose', 'debug'],
-      default: 'warn'
-    })
-    .help('h')
-    .alias({
-      h: 'help'
-    })
-    .parseSync();
-}
-
 function getLogLevel(): LevelOption {
   if (isDevMode()) {
     return 'debug';
@@ -77,32 +43,35 @@ function getLogLevel(): LevelOption {
   return userSettings.getValue(SettingType.logLevel);
 }
 
-const argv = parseArgs(process.argv.slice(isDevMode() ? 2 : 1));
-const logLevel = getLogLevel();
+let argv: ICLIArguments;
 
-if (isDevMode()) {
-  log.transports.console.level = logLevel;
-  log.transports.file.level = false;
+function redirectConsoleToLog() {
+  console.log = log.log;
+  console.error = log.error;
+  console.warn = log.warn;
+  console.info = log.info;
+  console.debug = log.debug;
 
-  log.info('In development mode');
-  log.info(`Logging to console at '${log.transports.console.level}' level`);
-} else {
-  log.transports.file.level = logLevel;
-  log.transports.console.level = false;
+  const logLevel = getLogLevel();
 
-  log.info('In production mode');
-  log.info(
-    `Logging to file (${log.transports.file.getFile().path}) at '${
-      log.transports.file.level
-    }' level`
-  );
+  if (isDevMode()) {
+    log.transports.console.level = logLevel;
+    log.transports.file.level = false;
+
+    log.info('In development mode');
+    log.info(`Logging to console at '${log.transports.console.level}' level`);
+  } else {
+    log.transports.file.level = logLevel;
+    log.transports.console.level = false;
+
+    log.info('In production mode');
+    log.info(
+      `Logging to file (${log.transports.file.getFile().path}) at '${
+        log.transports.file.level
+      }' level`
+    );
+  }
 }
-
-console.log = log.log;
-console.error = log.error;
-console.warn = log.warn;
-console.info = log.info;
-console.debug = log.debug;
 
 const thisYear = new Date().getFullYear();
 
@@ -132,7 +101,7 @@ app.on('open-file', (event: Electron.Event, filePath: string) => {
         fileOrFolders = [filePath];
       }
     } catch (error) {
-      console.error('Failed to open files', error);
+      log.error('Failed to open files', error);
     }
 
     if (fileOrFolders.length > 0) {
@@ -200,24 +169,41 @@ function setApplicationMenu() {
   Menu.setApplicationMenu(menu);
 }
 
-/**
- * Load all services when the electron app is
- * ready.
- */
-app.on('ready', () => {
-  handleMultipleAppInstances()
-    .then(() => {
-      setApplicationMenu();
-      setupJLabCommand();
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      argv.cwd = process.cwd();
-      jupyterApp = new JupyterApplication((argv as unknown) as ICLIArguments);
-    })
-    .catch(e => {
-      log.error(e);
-      app.quit();
-    });
+app.on('ready', async () => {
+  try {
+    await processArgs();
+  } catch (error) {
+    log.error(error);
+    app.quit();
+  }
+
+  try {
+    await handleMultipleAppInstances();
+    redirectConsoleToLog();
+    setApplicationMenu();
+    setupJLabCommand();
+    argv.cwd = process.cwd();
+    jupyterApp = new JupyterApplication((argv as unknown) as ICLIArguments);
+  } catch (error) {
+    log.error(error);
+    app.quit();
+  }
 });
+
+function processArgs(): Promise<void> {
+  return new Promise<void>(resolve => {
+    parseCLIArgs(process.argv.slice(isDevMode() ? 2 : 1)).then(value => {
+      argv = value;
+      if (
+        ['--help', '--version', 'env'].find(arg => process.argv?.includes(arg))
+      ) {
+        app.quit();
+        return;
+      }
+      resolve();
+    });
+  });
+}
 
 /**
  * When a second instance of the application is executed, this passes the arguments
@@ -227,7 +213,7 @@ app.on('ready', () => {
  * application.
  */
 function handleMultipleAppInstances(): Promise<void> {
-  let promise = new Promise<void>((resolve, reject) => {
+  return new Promise<void>((resolve, reject) => {
     // only the first instance will get the lock
     // pass cliArgs to main instance since argv provided by second-instance
     // event is out of order
@@ -255,9 +241,7 @@ function handleMultipleAppInstances(): Promise<void> {
       resolve();
     } else {
       // is second instance
-      app.quit();
-      reject();
+      reject('Handling request in the main instance.');
     }
   });
-  return promise;
 }

@@ -1,7 +1,7 @@
 # github_url = "https://github.com/jupyterlab/jupyterlab-desktop/"
 
 [version]
-current = "4.0.1-1"
+current = "4.0.1-2"
 
 regex = '''
   (?P<major>\d+)
@@ -21,10 +21,7 @@ tag_template = "v{new_version}"
 src = "package.json"
 search = '"version": "{current_version}"'
 [[file]]
-src = "env_installer/construct.yaml"
-search = 'version: {current_version}'
-[[file]]
-src = "env_installer/construct.yaml"
+src = "env_installer/jlab_server.yaml"
 version_template = "{major}.{minor}.{patch}"
 search = '- jupyterlab {current_version}'
 

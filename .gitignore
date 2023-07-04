@@ -23,6 +23,4 @@ __pycache__
 .idea/
 *.log
 
-env_installer/
-!env_installer/construct.yaml
-
+env_installer/jlab_server/

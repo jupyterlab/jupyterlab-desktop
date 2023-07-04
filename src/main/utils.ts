@@ -4,10 +4,13 @@
 import * as path from 'path';
 import * as fs from 'fs';
 import * as semver from 'semver';
+import * as tar from 'tar';
+import * as os from 'os';
 import log from 'electron-log';
 import { AddressInfo, createServer, Socket } from 'net';
 import { app, nativeTheme } from 'electron';
 import { IPythonEnvironment } from './tokens';
+import { exec } from 'child_process';
 
 export const DarkThemeBGColor = '#212121';
 export const LightThemeBGColor = '#ffffff';
@@ -53,19 +56,12 @@ export function getSchemasDir(): string {
 }
 
 export function getEnvironmentPath(environment: IPythonEnvironment): string {
-  const isWin = process.platform === 'win32';
-  const pythonPath = environment.path;
-  let envPath = path.dirname(pythonPath);
-  if (!isWin) {
-    envPath = path.normalize(path.join(envPath, '../'));
-  }
-
-  return envPath;
+  return envPathForPythonPath(environment.path);
 }
 
 export function getBundledPythonInstallDir(): string {
   // this directory path cannot have any spaces since
-  // conda constructor cannot install to such paths
+  // conda environments cannot be installed to such paths
   const installDir =
     process.platform === 'darwin'
       ? path.normalize(path.join(app.getPath('home'), 'Library', app.getName()))
@@ -89,24 +85,12 @@ export function getOldUserConfigPath() {
 
 export function getBundledPythonEnvPath(): string {
   const userDataDir = getBundledPythonInstallDir();
-  let envPath = path.join(userDataDir, 'jlab_server');
 
-  return envPath;
+  return path.join(userDataDir, 'jlab_server');
 }
 
 export function getBundledPythonPath(): string {
-  const platform = process.platform;
-  let envPath = getBundledPythonEnvPath();
-  if (platform !== 'win32') {
-    envPath = path.join(envPath, 'bin');
-  }
-
-  const bundledPythonPath = path.join(
-    envPath,
-    `python${platform === 'win32' ? '.exe' : ''}`
-  );
-
-  return bundledPythonPath;
+  return pythonPathForEnvPath(getBundledPythonEnvPath(), true);
 }
 
 export function isDarkTheme(themeType: string) {
@@ -237,4 +221,292 @@ export function versionWithoutSuffix(version: string) {
   return `${semver.major(version, { loose: true })}.${semver.minor(version, {
     loose: true
   })}.${semver.patch(version, { loose: true })}`;
+}
+
+export enum EnvironmentInstallStatus {
+  Started = 'STARTED',
+  Failure = 'FAILURE',
+  Cancelled = 'CANCELLED',
+  Success = 'SUCCESS',
+  RemovingExistingInstallation = 'REMOVING_EXISTING_INSTALLATION'
+}
+
+export interface IBundledEnvironmentInstallListener {
+  onInstallStatus: (status: EnvironmentInstallStatus, message?: string) => void;
+  forceOverwrite?: boolean;
+  confirmOverwrite?: () => Promise<boolean>;
+}
+
+export async function installBundledEnvironment(
+  installPath: string,
+  listener?: IBundledEnvironmentInstallListener
+): Promise<boolean> {
+  // eslint-disable-next-line no-async-promise-executor
+  return new Promise<boolean>(async (resolve, reject) => {
+    const platform = process.platform;
+    const isWin = platform === 'win32';
+    const appDir = getAppDir();
+    const installerPath = path.join(
+      appDir,
+      'env_installer',
+      'jlab_server.tar.gz'
+    );
+    installPath = installPath || getBundledPythonEnvPath();
+
+    if (fs.existsSync(installPath)) {
+      if (listener) {
+        const confirmed =
+          listener.forceOverwrite ||
+          (listener.confirmOverwrite !== undefined &&
+            (await listener.confirmOverwrite()));
+        if (confirmed) {
+          listener?.onInstallStatus(
+            EnvironmentInstallStatus.RemovingExistingInstallation
+          );
+          fs.rmSync(installPath, { recursive: true });
+        } else {
+          listener?.onInstallStatus(EnvironmentInstallStatus.Cancelled);
+          reject();
+          return;
+        }
+      } else {
+        reject();
+        return;
+      }
+    }
+
+    listener?.onInstallStatus(EnvironmentInstallStatus.Started);
+
+    try {
+      fs.mkdirSync(installPath, { recursive: true });
+      await tar.x({ C: installPath, file: installerPath });
+    } catch (error) {
+      listener?.onInstallStatus(
+        EnvironmentInstallStatus.Failure,
+        'Failed to install the environment'
+      );
+      log.error(new Error(`Installer Exit: ${error}`));
+      reject();
+      return;
+    }
+
+    markEnvironmentAsJupyterInstalled(installPath);
+
+    let unpackCommand = isWin
+      ? `${installPath}\\Scripts\\activate.bat && conda-unpack`
+      : `source "${installPath}/bin/activate" && conda-unpack`;
+
+    if (platform === 'darwin') {
+      unpackCommand = `${createUnsignScriptInEnv(
+        installPath
+      )}\n${unpackCommand}`;
+    }
+
+    const installerProc = exec(unpackCommand, {
+      shell: isWin ? 'cmd.exe' : '/bin/bash'
+    });
+
+    installerProc.on('exit', (exitCode: number) => {
+      if (exitCode === 0) {
+        listener?.onInstallStatus(EnvironmentInstallStatus.Success);
+        resolve(true);
+      } else {
+        const message = `Installer Exit: ${exitCode}`;
+        listener?.onInstallStatus(EnvironmentInstallStatus.Failure, message);
+        log.error(new Error(message));
+        reject();
+        return;
+      }
+    });
+
+    installerProc.on('error', (err: Error) => {
+      listener?.onInstallStatus(EnvironmentInstallStatus.Failure, err.message);
+      log.error(err);
+      reject();
+      return;
+    });
+  });
+}
+
+export function markEnvironmentAsJupyterInstalled(
+  envPath: string,
+  extraData?: { [key: string]: any }
+) {
+  const envInstallInfoPath = jupyterEnvInstallInfoPathForEnvPath(envPath);
+
+  const data = {
+    installer: 'jupyterlab-desktop',
+    ...(extraData || {})
+  };
+
+  try {
+    const dirPath = path.dirname(envInstallInfoPath);
+    if (!fs.existsSync(dirPath)) {
+      fs.mkdirSync(dirPath, { recursive: true });
+    }
+
+    fs.writeFileSync(envInstallInfoPath, JSON.stringify(data, null, 2));
+  } catch (error) {
+    console.error('Failed to create file', envInstallInfoPath, error);
+  }
+}
+
+export function createTempFile(
+  fileName = 'temp',
+  data = '',
+  encoding: BufferEncoding = 'utf8'
+) {
+  const tempDirPath = path.join(os.tmpdir(), 'jlab_desktop');
+  const tmpDir = fs.mkdtempSync(tempDirPath);
+  const tmpFilePath = path.join(tmpDir, fileName);
+
+  fs.writeFileSync(tmpFilePath, data, { encoding });
+
+  return tmpFilePath;
+}
+
+export function pythonPathForEnvPath(envPath: string, isConda?: boolean) {
+  if (process.platform === 'win32') {
+    if (isConda === undefined) {
+      isConda = isCondaEnv(envPath);
+    }
+    return isConda
+      ? path.join(envPath, 'python.exe')
+      : path.join(envPath, 'Scripts', 'python.exe');
+  } else {
+    return path.join(envPath, 'bin', 'python');
+  }
+}
+
+export function envPathForPythonPath(pythonPath: string): string {
+  const isWin = process.platform === 'win32';
+  let envPath = path.dirname(pythonPath);
+  if (!isWin || path.basename(envPath) === 'Scripts') {
+    envPath = path.normalize(path.join(envPath, '../'));
+  }
+
+  return envPath;
+}
+
+export function activatePathForEnvPath(envPath: string) {
+  return process.platform === 'win32'
+    ? path.join(envPath, 'Scripts', 'activate.bat')
+    : path.join(envPath, 'bin', 'activate');
+}
+
+export function condaSourcePathForEnvPath(envPath: string) {
+  if (process.platform !== 'win32') {
+    return path.join(envPath, 'etc', 'profile.d', 'conda.sh');
+  }
+}
+
+export function jupyterEnvInstallInfoPathForEnvPath(envPath: string) {
+  return path.join(envPath, '.jupyter', 'env.json');
+}
+
+export function isCondaEnv(envPath: string): boolean {
+  return fs.existsSync(path.join(envPath, 'conda-meta'));
+}
+
+export function isBaseCondaEnv(envPath: string): boolean {
+  const isWin = process.platform === 'win32';
+  const condaBinPath = path.join(
+    envPath,
+    'condabin',
+    isWin ? 'conda.bat' : 'conda'
+  );
+  return fs.existsSync(condaBinPath) && fs.lstatSync(condaBinPath).isFile();
+}
+
+export function createCommandScriptInEnv(
+  envPath: string,
+  baseCondaPath: string,
+  command?: string,
+  joinStr?: string
+): string {
+  try {
+    const stat = fs.lstatSync(envPath);
+    if (!stat.isDirectory()) {
+      return '';
+    }
+  } catch (error) {
+    //
+  }
+
+  if (joinStr === undefined) {
+    joinStr = '\n';
+  }
+  const isWin = process.platform === 'win32';
+
+  let activatePath = activatePathForEnvPath(envPath);
+  let condaSourcePath;
+
+  let hasActivate = fs.existsSync(activatePath);
+  const isConda = isCondaEnv(envPath);
+
+  // conda activate is only available in base conda environments or
+  // conda-packed environments
+  let isBaseCondaActivate = false;
+  if (!hasActivate && isConda) {
+    if (fs.existsSync(baseCondaPath)) {
+      activatePath = activatePathForEnvPath(baseCondaPath);
+      condaSourcePath = condaSourcePathForEnvPath(baseCondaPath);
+      hasActivate = fs.existsSync(activatePath);
+      isBaseCondaActivate = true;
+    }
+  }
+
+  if (!hasActivate) {
+    return '';
+  }
+
+  const scriptLines: string[] = [];
+
+  if (isWin) {
+    scriptLines.push(`CALL ${activatePath}`);
+    if (isConda && isBaseCondaActivate) {
+      scriptLines.push(`CALL conda activate ${envPath}`);
+    }
+    if (command) {
+      scriptLines.push(`CALL ${command}`);
+    }
+  } else {
+    scriptLines.push(`source "${activatePath}"`);
+    if (isConda && isBaseCondaActivate) {
+      scriptLines.push(`source "${condaSourcePath}"`);
+      scriptLines.push(`conda activate "${envPath}"`);
+    }
+    if (command) {
+      scriptLines.push(command);
+    }
+  }
+
+  return scriptLines.join(joinStr);
+}
+
+/*
+  signed tarball contents need to be unsigned except for python binary,
+  otherwise server runs into issues at runtime. python binary comes originally
+  ad-hoc signed. after installation it needs be converted from hardened runtime,
+  back to ad-hoc signed.
+*/
+export function createUnsignScriptInEnv(envPath: string): string {
+  const pythonBin = 'bin/python3.8';
+  const appDir = getAppDir();
+  const signListFile = path.join(appDir, 'env_installer', 'sign-osx-64.txt');
+  const fileContents = fs.readFileSync(signListFile, 'utf-8');
+  const signList: string[] = [];
+
+  fileContents.split(/\r?\n/).forEach(line => {
+    if (line && line !== pythonBin) {
+      signList.push(`"${line}"`);
+    }
+  });
+
+  // remove hardened runtime flag, convert to ad-hoc
+  const removeRuntimeFlagCommand = `codesign -s - -o 0x2 -f ${pythonBin}`;
+
+  return `cd ${envPath} && codesign --remove-signature ${signList.join(
+    ' '
+  )} && ${removeRuntimeFlagCommand} && cd -`;
 }

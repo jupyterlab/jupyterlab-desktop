@@ -14,9 +14,9 @@ jobs:
     strategy:
       matrix:
         cfg:
-        - { platform: linux, platform_name: Linux,  os: ubuntu-latest }
-        - { platform: mac, platform_name: macOS, os: macos-latest }
-        - { platform: win, platform_name: Windows, os: windows-latest }
+        - { platform: linux, platform_name: Linux,  os: ubuntu-latest, conda_platform: linux-64 }
+        - { platform: mac, platform_name: macOS, os: macos-latest, conda_platform: osx-64 }
+        - { platform: win, platform_name: Windows, os: windows-latest, conda_platform: win-64 }
 
     name: '${{ matrix.cfg.platform_name }} installer'
     runs-on: ${{ matrix.cfg.os }}
@@ -24,8 +24,7 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - uses: s-weigand/setup-conda@v1
-      # downgrade conda since v23.1.0 is causing issues in "Create Application Server Installer" step
-      - run: conda install -c conda-forge conda=22.11.1 -y
+      - run: conda install --file ./workflow_env/conda-${{ matrix.cfg.conda_platform }}.lock -y
 
       - name: Install node
         uses: actions/setup-node@v3
@@ -34,10 +33,8 @@ jobs:
           cache: 'yarn'
 
       - name: Install dependencies
-        # pin Pillow version to prevent Windows build errors
         run: |
           npm install --global yarn --prefer-offline
-          conda install -c conda-forge constructor Pillow=9.3.0
           yarn install
 
       - name: Check JupyterLab version match
@@ -72,6 +69,38 @@ jobs:
       - name: Create Application Server Installer
         run: |
           yarn create_env_installer:${{ matrix.cfg.platform }}
+
+      # contents of tarball needs to be signed for notarization
+      - name: Codesign Application Server
+        if: matrix.cfg.platform == 'mac' && steps.release-exists.outputs.result == 'true'
+        env: 
+          CSC_IDENTITY_AUTO_DISCOVERY: true
+          CSC_FOR_PULL_REQUEST: true
+          CSC_LINK: ${{ secrets.CSC_LINK }}
+          CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
+          APPLEID: ${{ secrets.APPLEID }}
+          APPLEIDPASS: ${{ secrets.APPLEIDPASS }}
+          ENV_INSTALLER_KEYCHAIN_PASS: ${{ secrets.ENV_INSTALLER_KEYCHAIN_PASS }}
+        run: |
+          echo "Extracting env installer"
+          yarn extract_env_installer:${{ matrix.cfg.platform }}
+          echo $CSC_LINK | base64 -d -o certificate.p12
+          security create-keychain -p $ENV_INSTALLER_KEYCHAIN_PASS build.keychain
+          security default-keychain -s build.keychain
+          security unlock-keychain -p $ENV_INSTALLER_KEYCHAIN_PASS build.keychain
+          security import certificate.p12 -k build.keychain -P $CSC_KEY_PASSWORD -T /usr/bin/codesign
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k $ENV_INSTALLER_KEYCHAIN_PASS build.keychain
+          echo "Signing env binaries"
+          while read line; do /usr/bin/codesign --force --options=runtime --deep -s "Developer ID Application" ./env_installer/jlab_server_extracted/"$line" -v; done < ./env_installer/sign-osx-64.txt
+          rm certificate.p12
+          security delete-keychain build.keychain
+
+      # recreate tarball after signing contents
+      - name: Re-archive Application Server Installer
+        if: matrix.cfg.platform == 'mac' && steps.release-exists.outputs.result == 'true'
+        run: |
+          yarn compress_env_installer:${{ matrix.cfg.platform }}
+          rm -rf ./env_installer/jlab_server_extracted
 
       - name: Create Application Installer for Test
         env:
