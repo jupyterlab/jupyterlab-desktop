@@ -43,6 +43,10 @@ export function parseCLIArgs(argv: string[]) {
       'Install bundled Python environment to /opt/jlab_server'
     )
     .example(
+      'jlab env create --path /opt/jlab_server',
+      'Create new Python environment at /opt/jlab_server'
+    )
+    .example(
       'jlab env activate',
       'Activate bundled Python environment at the default path'
     )
@@ -89,8 +93,7 @@ export function parseCLIArgs(argv: string[]) {
             default: false
           })
           .option('env-type', {
-            describe:
-              'Python environment type jupyterlab Python package in installation',
+            describe: 'Python environment type',
             choices: ['auto', 'conda', 'venv'],
             default: 'auto'
           });
