@@ -24,3 +24,4 @@ __pycache__
 *.log
 
 env_installer/jlab_server/
+env_installer/jlab_server.tar.gz
