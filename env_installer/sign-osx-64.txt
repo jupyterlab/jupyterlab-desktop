@@ -211,6 +211,7 @@ lib/python3.8/lib-dynload/_heapq.cpython-38-darwin.so
 lib/python3.8/lib-dynload/_codecs_jp.cpython-38-darwin.so
 lib/python3.8/site-packages/pycosat.cpython-38-darwin.so
 lib/python3.8/site-packages/unicodedata2.cpython-38-darwin.so
+lib/python3.8/site-packages/_brotli.cpython-38-darwin.so
 lib/python3.8/site-packages/_cffi_backend.cpython-38-darwin.so
 lib/python3.8/site-packages/_ruamel_yaml.cpython-38-darwin.so
 lib/python3.8/site-packages/pvectorc.cpython-38-darwin.so
