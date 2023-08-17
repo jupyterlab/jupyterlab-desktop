@@ -12,7 +12,6 @@ import {
   createTempFile,
   getEnvironmentPath,
   getFreePort,
-  getSchemasDir,
   getUserDataDir,
   waitForDuration
 } from './utils';
@@ -32,7 +31,6 @@ const SERVER_RESTART_LIMIT = 3; // max server restarts
 function createLaunchScript(
   serverInfo: JupyterServer.IInfo,
   baseCondaPath: string,
-  schemasDir: string,
   port: number,
   token: string
 ): string {
@@ -71,6 +69,7 @@ function createLaunchScript(
   // conda-packed environments
 
   let condaActivatePath = '';
+  let condaShellScriptPath = '';
   let isBaseCondaActivate = true;
 
   // use activate from the environment instead of base when possible
@@ -94,6 +93,12 @@ function createLaunchScript(
         isBaseCondaActivate = false;
       } else {
         condaActivatePath = path.join(baseCondaPath, 'bin', 'activate');
+        condaShellScriptPath = path.join(
+          baseCondaPath,
+          'etc',
+          'profile.d',
+          'conda.sh'
+        );
       }
     }
   }
@@ -113,7 +118,11 @@ function createLaunchScript(
     if (isConda) {
       script = `
         source "${condaActivatePath}"
-        ${isBaseCondaActivate ? `conda activate "${envPath}"` : ''}
+        ${
+          isBaseCondaActivate
+            ? `source ${condaShellScriptPath} && conda activate "${envPath}"`
+            : ''
+        }
         ${launchCmd}`;
     } else {
       script = `
@@ -264,7 +273,6 @@ export class JupyterServer {
         const launchScriptPath = createLaunchScript(
           this._info,
           baseCondaPath,
-          getSchemasDir(),
           this._info.port,
           this._info.token
         );
