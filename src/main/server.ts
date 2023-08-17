@@ -9,6 +9,7 @@ import { request as httpRequest } from 'http';
 import { request as httpsRequest } from 'https';
 import { IDisposable, IEnvironmentType, IPythonEnvironment } from './tokens';
 import {
+  activatePathForEnvPath,
   createTempFile,
   getEnvironmentPath,
   getFreePort,
@@ -103,6 +104,8 @@ function createLaunchScript(
     }
   }
 
+  const envActivatePath = activatePathForEnvPath(envPath);
+
   if (isWin) {
     if (isConda) {
       script = `
@@ -111,7 +114,7 @@ function createLaunchScript(
         CALL ${launchCmd}`;
     } else {
       script = `
-        CALL ${envPath}\\activate.bat
+        CALL ${envActivatePath}
         CALL ${launchCmd}`;
     }
   } else {
@@ -126,7 +129,7 @@ function createLaunchScript(
         ${launchCmd}`;
     } else {
       script = `
-        source "${envPath}/bin/activate"
+        source "${envActivatePath}"
         ${launchCmd}`;
     }
   }
