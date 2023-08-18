@@ -56,7 +56,11 @@ jobs:
         if: env.update_available == 'true'
         run: conda install -c conda-forge conda conda-lock -y
 
-      - name: Create a PR if needed
+      - name: Update conda lock files
+        if: env.update_available == 'true'
+        run: yarn update_conda_lock
+
+      - name: Create a PR for the new version
         if: env.update_available == 'true'
         shell: bash
         env:
@@ -64,7 +68,6 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -eux
-          yarn update_conda_lock
           export LATEST=${{ env.latest }}
           export BRANCH_NAME=update-to-v${LATEST}
           # this will fail if the branch already exists which means we won't have duplicate PRs
