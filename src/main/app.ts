@@ -461,7 +461,7 @@ export class JupyterApplication implements IApplication, IDisposable {
 
   private _setupAutoUpdater() {
     autoUpdater.on('update-downloaded', (event, releaseNotes, releaseName) => {
-      const dialogOpts = {
+      const dialogOpts: Electron.MessageBoxOptions = {
         type: 'info',
         buttons: ['Restart', 'Later'],
         title: 'Application Update',
