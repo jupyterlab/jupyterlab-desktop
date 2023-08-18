@@ -51,7 +51,7 @@ jobs:
       - name: Install conda
         if: env.update_available == 'true'
         uses: s-weigand/setup-conda@v1
-        - run: conda install -c conda-forge conda conda-lock -y
+        run: conda install -c conda-forge conda conda-lock -y
 
       - name: Create a PR if needed
         if: env.update_available == 'true'
