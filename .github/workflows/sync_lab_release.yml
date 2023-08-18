@@ -41,10 +41,7 @@ jobs:
           set -eux
           export LATEST=$(python scripts/get_latest_lab_version.py)
           echo "latest=${LATEST}" >> $GITHUB_ENV
-          if [[ ! -z "$(git status --porcelain package.json)" ]]; then
-            tbump --only-patch ${LATEST}-1 --non-interactive
-            yarn install
-          fi
+          tbump --only-patch ${LATEST}-1 --non-interactive
       - name: Create a PR if needed
         shell: bash
         env:
