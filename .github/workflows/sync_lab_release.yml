@@ -65,7 +65,7 @@ jobs:
         shell: bash
         env:
           GITHUB_USER: ${{ secrets.GITHUB_USER }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.JLAB_APP_TOKEN }}
         run: |
           set -eux
           export LATEST=${{ env.latest }}
