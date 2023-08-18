@@ -33,7 +33,7 @@ jobs:
           echo "latest=${LATEST}" >> $GITHUB_ENV
           tbump --only-patch ${LATEST}-1 --non-interactive
           if [[ ! -z "$(git status --porcelain package.json)" ]]; then
-            echo "update_available='true'" >> $GITHUB_ENV
+            echo "update_available=true" >> $GITHUB_ENV
           fi
 
       - name: Install Node
