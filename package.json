@@ -128,7 +128,6 @@
           ]
         }
       ],
-      "icon": "dist-resources/icon.icns",
       "entitlements": "build/entitlements.plist",
       "entitlementsInherit": "build/entitlements.plist",
       "darkModeSupport": true,
