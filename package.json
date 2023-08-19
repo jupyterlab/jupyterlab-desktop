@@ -21,6 +21,7 @@
     "dist": "yarn build && electron-builder",
     "dist:linux": "yarn build && electron-builder --linux --publish never",
     "dist:mac": "yarn build && electron-builder --macos --publish never",
+    "dist:mac-dev": "yarn build && CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --macos --publish never",
     "dist:win": "yarn build && electron-builder --win --publish never",
     "update_workflow_conda_lock": "cd workflow_env && rimraf *.lock && conda-lock --kind explicit -f publish_env.yaml && cd -",
     "update_conda_lock": "cd env_installer && rimraf *.lock && conda-lock --kind explicit -f jlab_server.yaml && cd -",
@@ -127,7 +128,6 @@
           ]
         }
       ],
-      "icon": "dist-resources/icon.icns",
       "entitlements": "build/entitlements.plist",
       "entitlementsInherit": "build/entitlements.plist",
       "darkModeSupport": true,
