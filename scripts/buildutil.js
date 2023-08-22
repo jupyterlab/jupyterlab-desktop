@@ -90,12 +90,15 @@ if (cli.flags.updateBinarySignList) {
   const envInstallerDir = path.resolve('env_installer', 'jlab_server');
   const envBinDir = path.join(envInstallerDir, 'bin');
 
-  const needsSigning = (filePath) => {
+  const needsSigning = filePath => {
     // conly consider bin directory, and .so, .dylib files in other directories
-    if (filePath.startsWith(envBinDir) ||
-      (filePath.endsWith('.so') || filePath.endsWith('.dylib'))) {
-        // check for binary content
-        return isBinary(null, fs.readFileSync(filePath));
+    if (
+      filePath.startsWith(envBinDir) ||
+      filePath.endsWith('.so') ||
+      filePath.endsWith('.dylib')
+    ) {
+      // check for binary content
+      return isBinary(null, fs.readFileSync(filePath));
     }
 
     return false;
@@ -117,7 +120,7 @@ if (cli.flags.updateBinarySignList) {
     });
 
     return results;
-  }
+  };
 
   const binaries = findBinariesInDirectory(envInstallerDir);
   const fileContent = binaries.join('\n');
