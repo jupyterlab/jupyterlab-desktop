@@ -13,6 +13,7 @@ const cli = meow(
 
     Options
       --check-version-match      check for JupyterLab version match
+      --update-binary-sign-list  update binary list to sign for macOS
 
     Other options:
       --help                     show usage information
@@ -24,6 +25,10 @@ const cli = meow(
   {
     flags: {
       checkVersionMatch: {
+        type: 'boolean',
+        default: false
+      },
+      updateBinarySignList: {
         type: 'boolean',
         default: false
       }
@@ -77,5 +82,53 @@ if (cli.flags.checkVersionMatch) {
   }
 
   console.log('JupyterLab version match satisfied!');
+  process.exit(0);
+}
+
+if (cli.flags.updateBinarySignList) {
+  const { isBinary } = require('istextorbinary');
+  const envInstallerDir = path.resolve('env_installer', 'jlab_server');
+  const envBinDir = path.join(envInstallerDir, 'bin');
+
+  const needsSigning = filePath => {
+    // conly consider bin directory, and .so, .dylib files in other directories
+    if (
+      filePath.startsWith(envBinDir) ||
+      filePath.endsWith('.so') ||
+      filePath.endsWith('.dylib')
+    ) {
+      // check for binary content
+      return isBinary(null, fs.readFileSync(filePath));
+    }
+
+    return false;
+  };
+
+  const findBinariesInDirectory = dirPath => {
+    let results = [];
+    const list = fs.readdirSync(dirPath);
+    list.forEach(filePath => {
+      filePath = dirPath + '/' + filePath;
+      const stat = fs.lstatSync(filePath);
+      if (stat && stat.isDirectory()) {
+        results = results.concat(findBinariesInDirectory(filePath));
+      } else {
+        if (!stat.isSymbolicLink() && needsSigning(filePath)) {
+          results.push(path.relative(envInstallerDir, filePath));
+        }
+      }
+    });
+
+    return results;
+  };
+
+  const binaries = findBinariesInDirectory(envInstallerDir);
+  const fileContent = binaries.join('\n');
+  const signListFile = path.join('env_installer', 'sign-osx-64.txt');
+
+  fs.writeFileSync(signListFile, `${fileContent}\n`);
+
+  console.log(`Saved binary sign list to ${signListFile}`);
+
   process.exit(0);
 }

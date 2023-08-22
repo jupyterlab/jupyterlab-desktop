@@ -11,7 +11,7 @@ permissions:
 
 jobs:
   check_for_lab_updates:
-    runs-on: ubuntu-latest
+    runs-on: macos-latest
 
     steps:
       - uses: actions/checkout@v3
@@ -59,6 +59,12 @@ jobs:
       - name: Update conda lock files
         if: env.update_available == 'true'
         run: yarn update_conda_lock
+      
+      - name: Update binary sign list
+        if: env.update_available == 'true'
+        run: |
+          yarn clean_env_installer && conda-lock install --prefix ./env_installer/jlab_server ./env_installer/conda-osx-64.lock
+          yarn update_binary_sign_list
 
       - name: Create a PR for the new version
         if: env.update_available == 'true'
