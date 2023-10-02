@@ -22,7 +22,9 @@ import { TitleBarView } from '../titlebarview/titlebarview';
 import {
   clearSession,
   DarkThemeBGColor,
+  envPathForPythonPath,
   getBundledPythonPath,
+  getLogFilePath,
   isDarkTheme,
   LightThemeBGColor
 } from '../utils';
@@ -31,7 +33,8 @@ import {
   IDisposable,
   IPythonEnvironment,
   IRect,
-  IVersionContainer
+  IVersionContainer,
+  PythonEnvResolveErrorType
 } from '../tokens';
 import { IRegistry } from '../registry';
 import { IApplication } from '../app';
@@ -44,6 +47,7 @@ import { SessionConfig } from '../config/sessionconfig';
 import { ISignal, Signal } from '@lumino/signaling';
 import { EventTypeMain } from '../eventtypes';
 import { EventManager } from '../eventmanager';
+import { runCommandInEnvironment } from '../cli';
 
 export enum ContentViewType {
   Welcome = 'welcome',
@@ -668,6 +672,37 @@ export class SessionWindow implements IDisposable {
     );
 
     this._evm.registerEventHandler(
+      EventTypeMain.InstallPythonEnvRequirements,
+      (event, pythonPath: string, installCommand: string) => {
+        if (event.sender !== this._progressView?.view?.view?.webContents) {
+          return;
+        }
+
+        const envPath = envPathForPythonPath(decodeURIComponent(pythonPath));
+
+        this._showProgressView('Installing required packages');
+
+        const command = `python -m ${decodeURIComponent(installCommand)}`;
+        runCommandInEnvironment(envPath, command).then(result => {
+          if (result) {
+            this._hideProgressView();
+          } else {
+            this._showProgressView(
+              'Failed to install required packages',
+              `<div class="message-row"></div>
+            <div class="message-row"><a href="javascript:void(0);" onclick="sendMessageToMain('${EventTypeMain.ShowLogs}')">Show logs</a></div>
+            <div class="message-row"><a href="javascript:void(0);" onclick="sendMessageToMain('${EventTypeMain.HideProgressView}')">Close</a></div>`
+            );
+          }
+        });
+      }
+    );
+
+    this._evm.registerEventHandler(EventTypeMain.ShowLogs, event => {
+      shell.openPath(getLogFilePath());
+    });
+
+    this._evm.registerEventHandler(
       EventTypeMain.OpenDroppedFiles,
       (event, fileOrFolders: string[]) => {
         if (event.sender !== this._welcomeView?.view?.webContents) {
@@ -712,14 +747,42 @@ export class SessionWindow implements IDisposable {
           'Restarting server using the selected Python enviroment'
         );
 
-        const env = this._registry.addEnvironment(path);
-
-        if (!env) {
+        try {
+          this._registry.addEnvironment(path);
+        } catch (error) {
+          let message = `Error! Python environment at '${path}' is not compatible.`;
+          let requirementInstallCmd = '';
+          if (
+            error?.type === PythonEnvResolveErrorType.RequirementsNotSatisfied
+          ) {
+            requirementInstallCmd = this._registry.getRequirementsPipInstallCommand();
+            message = `Error! Required Python packages not found in the selected environment. You can install using '${requirementInstallCmd}' command.`;
+          } else if (error?.type === PythonEnvResolveErrorType.PathNotFound) {
+            message = `Error! File not found at '${path}'.`;
+          } else if (error?.type === PythonEnvResolveErrorType.ResolveError) {
+            message = `Error! Failed to get environment information at '${path}'.`;
+          }
           this._showProgressView(
             'Invalid Environment',
-            `<div class="message-row">Error! Python environment at '${path}' is not compatible.</div>
-          <div class="message-row"><a href="javascript:void(0);" onclick="sendMessageToMain('${EventTypeMain.ShowEnvSelectPopup}')">Select another environment</a></div>
-          <div class="message-row"><a href="javascript:void(0);" onclick="sendMessageToMain('${EventTypeMain.HideProgressView}')">Cancel</a></div>`,
+            `<div class="message-row">${message}</div>
+          ${
+            error?.type === PythonEnvResolveErrorType.RequirementsNotSatisfied
+              ? `<div class="message-row"><a href="javascript:void(0);" onclick="sendMessageToMain('${
+                  EventTypeMain.InstallPythonEnvRequirements
+                }', '${encodeURIComponent(path)}', '${encodeURIComponent(
+                  requirementInstallCmd
+                )}')">Install the requirements for me</a></div>`
+              : ''
+          }
+          <div class="message-row"><a href="javascript:void(0);" onclick="sendMessageToMain('${
+            EventTypeMain.ShowEnvSelectPopup
+          }')">Select another environment</a></div>
+          <div class="message-row"><a href="javascript:void(0);" onclick="sendMessageToMain('${
+            EventTypeMain.ShowLogs
+          }')">Show logs</a></div>
+          <div class="message-row"><a href="javascript:void(0);" onclick="sendMessageToMain('${
+            EventTypeMain.HideProgressView
+          }')">Cancel</a></div>`,
             false
           );
 
@@ -1172,23 +1235,23 @@ export class SessionWindow implements IDisposable {
     pythonPath = this._wsSettings.getValue(SettingType.pythonPath);
 
     if (pythonPath) {
-      const env = this._registry.addEnvironment(pythonPath);
-
-      if (!env) {
+      try {
+        this._registry.addEnvironment(pythonPath);
+      } catch (error) {
         // reset python path to default
         this._wsSettings.setValue(SettingType.pythonPath, '');
 
         this._showProgressView(
           'Invalid Environment configured for project',
           `<div class="message-row">Error! Python environment at '${pythonPath}' is not compatible.</div>
-          ${
-            recentSessionIndex !== undefined
-              ? `<div class="message-row"><a href="javascript:void(0);" onclick="sendMessageToMain('${EventTypeMain.OpenRecentSessionWithDefaultEnv}', ${recentSessionIndex})">Reset to default Python environment</a></div>`
-              : ''
-          }
-          <div class="message-row"><a href="javascript:void(0);" onclick="sendMessageToMain('${
-            EventTypeMain.HideProgressView
-          }')">Cancel</a></div>`,
+         ${
+           recentSessionIndex !== undefined
+             ? `<div class="message-row"><a href="javascript:void(0);" onclick="sendMessageToMain('${EventTypeMain.OpenRecentSessionWithDefaultEnv}', ${recentSessionIndex})">Reset to default Python environment</a></div>`
+             : ''
+         }
+         <div class="message-row"><a href="javascript:void(0);" onclick="sendMessageToMain('${
+           EventTypeMain.HideProgressView
+         }')">Cancel</a></div>`,
           false
         );
 

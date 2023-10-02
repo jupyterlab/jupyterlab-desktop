@@ -510,3 +510,23 @@ export function createUnsignScriptInEnv(envPath: string): string {
     ' '
   )} && ${removeRuntimeFlagCommand} && cd -`;
 }
+
+export function getLogFilePath(processType: 'main' | 'renderer' = 'main') {
+  switch (process.platform) {
+    case 'win32':
+      return path.join(
+        getUserDataDir(),
+        `\\jupyterlab-desktop\\logs\\${processType}.log`
+      );
+    case 'darwin':
+      return path.join(
+        getUserHomeDir(),
+        `/Library/Logs/jupyterlab-desktop/${processType}.log`
+      );
+    default:
+      return path.join(
+        getUserHomeDir(),
+        `/.config/jupyterlab-desktop/logs/${processType}.log`
+      );
+  }
+}

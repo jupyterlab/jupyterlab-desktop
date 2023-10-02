@@ -12,7 +12,9 @@ import {
   IDisposable,
   IEnvironmentType,
   IPythonEnvironment,
-  IVersionContainer
+  IPythonEnvResolveError,
+  IVersionContainer,
+  PythonEnvResolveErrorType
 } from './tokens';
 import {
   envPathForPythonPath,
@@ -45,6 +47,7 @@ export interface IRegistry {
   getCurrentPythonEnvironment: () => IPythonEnvironment;
   getAdditionalPathIncludesForPythonPath: (pythonPath: string) => string;
   getRequirements: () => Registry.IRequirement[];
+  getRequirementsPipInstallCommand: () => string;
   getEnvironmentInfo(pythonPath: string): Promise<IPythonEnvironment>;
   getRunningServerList(): Promise<string[]>;
   dispose(): Promise<void>;
@@ -53,17 +56,17 @@ export interface IRegistry {
 }
 
 export const SERVER_TOKEN_PREFIX = 'jlab:srvr:';
+const MIN_JLAB_VERSION_REQUIRED = '3.0.0';
 
 export class Registry implements IRegistry, IDisposable {
   constructor() {
-    const minJLabVersionRequired = '3.0.0';
-
     this._requirements = [
       {
         name: 'jupyterlab',
         moduleName: 'jupyterlab',
         commands: ['--version'],
-        versionRange: new semver.Range(`>=${minJLabVersionRequired}`)
+        versionRange: new semver.Range(`>=${MIN_JLAB_VERSION_REQUIRED}`),
+        pipCommand: `"jupyterlab>=${MIN_JLAB_VERSION_REQUIRED}"`
       }
     ];
 
@@ -78,18 +81,22 @@ export class Registry implements IRegistry, IDisposable {
       pythonPath = getBundledPythonPath();
     }
 
-    const defaultEnv = this._resolveEnvironmentSync(pythonPath);
+    try {
+      const defaultEnv = this._resolveEnvironmentSync(pythonPath);
 
-    if (defaultEnv) {
-      this._defaultEnv = defaultEnv;
-      if (
-        defaultEnv.type === IEnvironmentType.CondaRoot &&
-        !this._condaRootPath
-      ) {
-        // this call overrides user set appData.condaRootPath
-        // which is probably better for compatibility
-        this.setCondaRootPath(getEnvironmentPath(defaultEnv));
+      if (defaultEnv) {
+        this._defaultEnv = defaultEnv;
+        if (
+          defaultEnv.type === IEnvironmentType.CondaRoot &&
+          !this._condaRootPath
+        ) {
+          // this call overrides user set appData.condaRootPath
+          // which is probably better for compatibility
+          this.setCondaRootPath(getEnvironmentPath(defaultEnv));
+        }
       }
+    } catch (error) {
+      //
     }
 
     if (!this._condaRootPath && appData.condaRootPath) {
@@ -99,9 +106,13 @@ export class Registry implements IRegistry, IDisposable {
         // set default env from appData.condaRootPath
         if (!this._defaultEnv) {
           const pythonPath = pythonPathForEnvPath(appData.condaRootPath, true);
-          const defaultEnv = this._resolveEnvironmentSync(pythonPath);
-          if (defaultEnv) {
-            this._defaultEnv = defaultEnv;
+          try {
+            const defaultEnv = this._resolveEnvironmentSync(pythonPath);
+            if (defaultEnv) {
+              this._defaultEnv = defaultEnv;
+            }
+          } catch (error) {
+            //
           }
         }
       }
@@ -222,17 +233,32 @@ export class Registry implements IRegistry, IDisposable {
 
   private _resolveEnvironmentSync(pythonPath: string): IPythonEnvironment {
     if (!this._pathExistsSync(pythonPath)) {
-      return;
+      throw {
+        type: PythonEnvResolveErrorType.PathNotFound
+      } as IPythonEnvResolveError;
     }
 
-    const env = this.getEnvironmentInfoSync(pythonPath);
+    let env: IPythonEnvironment;
 
-    if (
-      env &&
-      this._environmentSatisfiesRequirements(env, this._requirements)
-    ) {
-      return env;
+    try {
+      env = this.getEnvironmentInfoSync(pythonPath);
+    } catch (error) {
+      log.error(
+        `Failed to get environment info at path '${pythonPath}'.`,
+        error
+      );
+      throw {
+        type: PythonEnvResolveErrorType.ResolveError
+      } as IPythonEnvResolveError;
     }
+
+    if (!this._environmentSatisfiesRequirements(env, this._requirements)) {
+      throw {
+        type: PythonEnvResolveErrorType.RequirementsNotSatisfied
+      } as IPythonEnvResolveError;
+    }
+
+    return env;
   }
 
   /**
@@ -330,22 +356,14 @@ export class Registry implements IRegistry, IDisposable {
       return inUserSetEnvList;
     }
 
-    try {
-      const env = this._resolveEnvironmentSync(pythonPath);
-      if (env) {
-        this._userSetEnvironments.push(env);
-        this._updateEnvironments();
-        this._environmentListUpdated.emit();
-      }
-
-      return env;
-    } catch (error) {
-      console.error(
-        `Failed to add the Python environment at: ${pythonPath}`,
-        error
-      );
-      return;
+    const env = this._resolveEnvironmentSync(pythonPath);
+    if (env) {
+      this._userSetEnvironments.push(env);
+      this._updateEnvironments();
+      this._environmentListUpdated.emit();
     }
+
+    return env;
   }
 
   validatePythonEnvironmentAtPath(pythonPath: string): boolean {
@@ -386,7 +404,7 @@ export class Registry implements IRegistry, IDisposable {
         defaultKernel: envInfo.defaultKernel
       };
     } catch (error) {
-      console.error(
+      log.error(
         `Failed to get environment info at path '${pythonPath}'.`,
         error
       );
@@ -444,6 +462,16 @@ export class Registry implements IRegistry, IDisposable {
 
   getRequirements(): Registry.IRequirement[] {
     return this._requirements;
+  }
+
+  getRequirementsPipInstallCommand(): string {
+    const cmdList = ['pip install'];
+
+    this._requirements.forEach(req => {
+      cmdList.push(req.pipCommand);
+    });
+
+    return cmdList.join(' ');
   }
 
   getRunningServerList(): Promise<string[]> {
@@ -886,21 +914,6 @@ export class Registry implements IRegistry, IDisposable {
     });
   }
 
-  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-  // @ts-ignore
-  private _runPythonModuleCommandSync(
-    pythonPath: string,
-    moduleName: string,
-    commands: string[]
-  ): string {
-    const totalCommands = ['-m', moduleName].concat(commands);
-    const runOptions = {
-      env: { PATH: this.getAdditionalPathIncludesForPythonPath(pythonPath) }
-    };
-
-    return this._runCommandSync(pythonPath, totalCommands, runOptions);
-  }
-
   private async _runCommand(
     executablePath: string,
     commands: string[],
@@ -971,11 +984,7 @@ export class Registry implements IRegistry, IDisposable {
     commands: string[],
     options?: ExecFileOptions
   ): string {
-    try {
-      return execFileSync(executablePath, commands, options).toString();
-    } catch (error) {
-      return 'EXEC:ERROR';
-    }
+    return execFileSync(executablePath, commands, options).toString();
   }
 
   private _sortEnvironments(
@@ -1116,6 +1125,11 @@ export namespace Registry {
      * The Range of acceptable version produced by the previous commands field
      */
     versionRange: semver.Range;
+
+    /**
+     * pip install command
+     */
+    pipCommand: string;
   }
 
   export const COMMON_CONDA_LOCATIONS = [

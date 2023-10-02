@@ -449,6 +449,8 @@ export async function runCommandInEnvironment(
     ' && '
   );
 
+  // TODO: implement timeout. in case there is network issues
+
   return new Promise<boolean>((resolve, reject) => {
     const shell = isWin
       ? spawn('cmd', ['/c', commandScript], {
@@ -465,6 +467,7 @@ export async function runCommandInEnvironment(
     shell.on('close', code => {
       if (code !== 0) {
         console.error('Shell exit with code:', code);
+        resolve(false);
       }
       resolve(true);
     });
