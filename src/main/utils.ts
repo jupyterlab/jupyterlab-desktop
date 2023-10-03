@@ -514,10 +514,7 @@ export function createUnsignScriptInEnv(envPath: string): string {
 export function getLogFilePath(processType: 'main' | 'renderer' = 'main') {
   switch (process.platform) {
     case 'win32':
-      return path.join(
-        getUserDataDir(),
-        `\\jupyterlab-desktop\\logs\\${processType}.log`
-      );
+      return path.join(getUserDataDir(), `\\logs\\${processType}.log`);
     case 'darwin':
       return path.join(
         getUserHomeDir(),

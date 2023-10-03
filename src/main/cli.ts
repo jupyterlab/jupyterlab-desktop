@@ -457,12 +457,17 @@ export async function runCommandInEnvironment(
           env: process.env
         })
       : spawn('bash', ['-c', commandScript], {
-          stdio: 'inherit',
           env: {
             ...process.env,
             BASH_SILENCE_DEPRECATION_WARNING: '1'
           }
         });
+
+    if (shell.stdout) {
+      shell.stdout.on('data', chunk => {
+        console.debug('>', Buffer.from(chunk).toString());
+      });
+    }
 
     shell.on('close', code => {
       if (code !== 0) {
