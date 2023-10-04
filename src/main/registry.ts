@@ -66,7 +66,7 @@ export class Registry implements IRegistry, IDisposable {
         moduleName: 'jupyterlab',
         commands: ['--version'],
         versionRange: new semver.Range(`>=${MIN_JLAB_VERSION_REQUIRED}`),
-        pipCommand: `"jupyterlab>=${MIN_JLAB_VERSION_REQUIRED}"`
+        pipCommand: 'jupyterlab'
       }
     ];
 

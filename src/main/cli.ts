@@ -468,6 +468,11 @@ export async function runCommandInEnvironment(
         console.debug('>', Buffer.from(chunk).toString());
       });
     }
+    if (shell.stderr) {
+      shell.stderr.on('data', chunk => {
+        console.error('>', Buffer.from(chunk).toString());
+      });
+    }
 
     shell.on('close', code => {
       if (code !== 0) {

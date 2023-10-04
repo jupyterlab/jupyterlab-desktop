@@ -57,7 +57,8 @@ export enum EventTypeMain {
   SetCtrlWBehavior = 'set-ctrl-w-behavior',
   SetAuthDialogResponse = 'set-auth-dialog-response',
   InstallPythonEnvRequirements = 'install-python-env-requirements',
-  ShowLogs = 'show-logs'
+  ShowLogs = 'show-logs',
+  CopyToClipboard = 'copy-to-clipboard'
 }
 
 // events sent to Renderer process
