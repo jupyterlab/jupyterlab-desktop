@@ -172,7 +172,7 @@
     "@typescript-eslint/eslint-plugin": "~5.28.0",
     "@typescript-eslint/parser": "~5.28.0",
     "css-loader": "~5.1.1",
-    "electron": "^26.2.1",
+    "electron": "^26.2.4",
     "electron-builder": "^24.6.3",
     "electron-notarize": "^1.2.2",
     "eslint": "~8.17.0",
