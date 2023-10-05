@@ -674,7 +674,11 @@ export class SessionWindow implements IDisposable {
 
     this._evm.registerEventHandler(
       EventTypeMain.InstallPythonEnvRequirements,
-      (event, pythonPath: string) => {
+      (
+        event,
+        pythonPath: string,
+        postInstallAction: 'none' | 'restart-server' = 'none'
+      ) => {
         if (event.sender !== this._progressView?.view?.view?.webContents) {
           return;
         }
@@ -699,11 +703,20 @@ export class SessionWindow implements IDisposable {
           if (result) {
             this._showProgressView(
               'Finished installing packages',
-              '<div class="message-row">Restarting the server now...</div>'
+              postInstallAction === 'restart-server'
+                ? '<div class="message-row">Restarting the server now...</div>'
+                : ''
             );
             try {
               this._registry.addEnvironment(pythonPath);
-              this._restarServerInPythonEnvironment(pythonPath);
+              if (postInstallAction === 'restart-server') {
+                this._restartServerInPythonEnvironment(pythonPath);
+              } else {
+                this._showProgressView(
+                  'Finished installing required packages',
+                  `<div class="message-row"><a href="javascript:void(0);" onclick="sendMessageToMain('${EventTypeMain.ShowWelcomeView}')">Go to Welcome Page</a></div>`
+                );
+              }
             } catch (error) {
               this._showProgressView(
                 'Failed to update the environment',
@@ -782,16 +795,13 @@ export class SessionWindow implements IDisposable {
           this._registry.addEnvironment(path);
         } catch (error) {
           let message = `Error! Python environment at '${path}' is not compatible.`;
-          let requirementInstallCmd = '';
           if (
             error?.type === PythonEnvResolveErrorType.RequirementsNotSatisfied
           ) {
-            requirementInstallCmd = this._registry.getRequirementsPipInstallCommand();
-            message = `Error! Required Python packages not found in the selected environment. You can install using <copyable-span label="${encodeURIComponent(
-              requirementInstallCmd
-            )}" copied="${encodeURIComponent(
-              requirementInstallCmd
-            )}"></copyable-span> command in the selected environment.`;
+            const requirementInstallCmd = encodeURIComponent(
+              this._registry.getRequirementsPipInstallCommand()
+            );
+            message = `Error! Required Python packages not found in the selected environment. You can install using <copyable-span label="${requirementInstallCmd}" copied="${requirementInstallCmd}"></copyable-span> command in the selected environment.`;
           } else if (error?.type === PythonEnvResolveErrorType.PathNotFound) {
             message = `Error! File not found at '${path}'.`;
           } else if (error?.type === PythonEnvResolveErrorType.ResolveError) {
@@ -806,7 +816,7 @@ export class SessionWindow implements IDisposable {
                   EventTypeMain.InstallPythonEnvRequirements
                 }', '${encodeURIComponent(
                   path
-                )}')">Install the requirements for me and restart the server</a></div>`
+                )}', 'restart-server')">Install the requirements for me and restart the server</a></div>`
               : ''
           }
           <div class="message-row"><a href="javascript:void(0);" onclick="sendMessageToMain('${
@@ -824,7 +834,7 @@ export class SessionWindow implements IDisposable {
           return;
         }
 
-        this._restarServerInPythonEnvironment(path);
+        this._restartServerInPythonEnvironment(path);
       }
     );
 
@@ -938,7 +948,7 @@ export class SessionWindow implements IDisposable {
     );
   }
 
-  private _restarServerInPythonEnvironment(pythonPath: string) {
+  private _restartServerInPythonEnvironment(pythonPath: string) {
     this._wsSettings.setValue(SettingType.pythonPath, pythonPath);
     this._sessionConfig.pythonPath = pythonPath;
 
@@ -1277,17 +1287,33 @@ export class SessionWindow implements IDisposable {
       try {
         this._registry.addEnvironment(pythonPath);
       } catch (error) {
-        // reset python path to default
-        this._wsSettings.setValue(SettingType.pythonPath, '');
+        let message = `Error! Python environment at '${pythonPath}' is not compatible.`;
+        if (
+          error?.type === PythonEnvResolveErrorType.RequirementsNotSatisfied
+        ) {
+          const requirementInstallCmd = encodeURIComponent(
+            this._registry.getRequirementsPipInstallCommand()
+          );
+          message = `Error! Required packages not found in the Python environment. You can install using <copyable-span label="${requirementInstallCmd}" copied="${requirementInstallCmd}"></copyable-span> command in the selected environment.`;
+        }
 
         this._showProgressView(
           'Invalid Environment configured for project',
-          `<div class="message-row">Error! Python environment at '${pythonPath}' is not compatible.</div>
-         ${
-           recentSessionIndex !== undefined
-             ? `<div class="message-row"><a href="javascript:void(0);" onclick="sendMessageToMain('${EventTypeMain.OpenRecentSessionWithDefaultEnv}', ${recentSessionIndex})">Reset to default Python environment</a></div>`
-             : ''
-         }
+          `<div class="message-row">${message}</div>
+          ${
+            error?.type === PythonEnvResolveErrorType.RequirementsNotSatisfied
+              ? `<div class="message-row"><a href="javascript:void(0);" onclick="sendMessageToMain('${
+                  EventTypeMain.InstallPythonEnvRequirements
+                }', '${encodeURIComponent(
+                  pythonPath
+                )}')">Install the requirements for me</a></div>`
+              : ''
+          } 
+        ${
+          recentSessionIndex !== undefined
+            ? `<div class="message-row"><a href="javascript:void(0);" onclick="sendMessageToMain('${EventTypeMain.OpenRecentSessionWithDefaultEnv}', ${recentSessionIndex})">Reset to default Python environment</a></div>`
+            : ''
+        }
          <div class="message-row"><a href="javascript:void(0);" onclick="sendMessageToMain('${
            EventTypeMain.HideProgressView
          }')">Cancel</a></div>`,

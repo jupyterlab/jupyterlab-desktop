@@ -233,6 +233,7 @@ export class Registry implements IRegistry, IDisposable {
 
   private _resolveEnvironmentSync(pythonPath: string): IPythonEnvironment {
     if (!this._pathExistsSync(pythonPath)) {
+      log.error(`Python path "${pythonPath}" does not exist.`);
       throw {
         type: PythonEnvResolveErrorType.PathNotFound
       } as IPythonEnvResolveError;
@@ -253,6 +254,9 @@ export class Registry implements IRegistry, IDisposable {
     }
 
     if (!this._environmentSatisfiesRequirements(env, this._requirements)) {
+      log.error(
+        `Required Python packages not found in the selected environment. You can install using '${this.getRequirementsPipInstallCommand()}'.`
+      );
       throw {
         type: PythonEnvResolveErrorType.RequirementsNotSatisfied
       } as IPythonEnvResolveError;
