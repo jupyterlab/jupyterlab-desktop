@@ -6,16 +6,21 @@ template.innerHTML = `
       gap: 5px;
       width: fit-content;
       padding: 2px;
-      background: var(--fill-color);
+      background: var(--neutral-layer-2);
       cursor: pointer;
     }
-    .copy-icon svg {
-        fill: var(--neutral-foreground-rest);
-        width: 16px;
-        height: 16px;
+    .container:hover, .container:hover svg {
+      color: var(--neutral-foreground-hint);
+      fill: var(--neutral-foreground-hint);
     }
-    .copy-icon svg:hover {
-        fill: var(--neutral-foreground-hint);
+    .container:active, .container:active svg {
+      color: var(--accent-foreground-active);
+      fill: var(--accent-foreground-active);
+    }
+    .copy-icon svg {
+      fill: var(--neutral-foreground-rest);
+      width: 16px;
+      height: 16px;
     }
   </style>
   <div style="display: inline-block;">
