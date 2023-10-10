@@ -453,7 +453,7 @@ export async function runCommandInEnvironment(
 
   return new Promise<boolean>((resolve, reject) => {
     const shell = isWin
-      ? spawn('cmd', ['/c', commandScript], {
+      ? spawn('cmd', ['/c', ...commandScript.split(' ')], {
           env: process.env
         })
       : spawn('bash', ['-c', commandScript], {
