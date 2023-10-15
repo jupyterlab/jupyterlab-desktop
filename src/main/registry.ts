@@ -257,8 +257,15 @@ export class Registry implements IRegistry, IDisposable {
 
     if (!this._environmentSatisfiesRequirements(env, this._requirements)) {
       const envPath = envPathForPythonPath(pythonPath);
+      const versionsFound: string[] = [];
+      this._requirements.forEach(req => {
+        versionsFound.push(`${req.name}: ${env.versions[req.name]}`);
+      });
+
       log.error(
-        `Required Python packages not found in the selected environment. You can install using '${this.getRequirementsInstallCommand(
+        `Required Python packages not found in the environment path "${envPath}". Versions found are: ${versionsFound.join(
+          ','
+        )}. You can install missing packages using '${this.getRequirementsInstallCommand(
           envPath
         )}'.`
       );
