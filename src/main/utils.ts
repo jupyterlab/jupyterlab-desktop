@@ -443,6 +443,12 @@ export function createCommandScriptInEnv(
 
   let hasActivate = fs.existsSync(activatePath);
   const isConda = isCondaEnv(envPath);
+  // conda commands don't work properly when called from the sub environment.
+  // instead call using conda from the base environment with -p parameter
+  const isCondaCommand = isConda && command?.startsWith('conda ');
+  if (isCondaCommand) {
+    command = `${command} -p ${envPath}`;
+  }
 
   // conda activate is only available in base conda environments or
   // conda-packed environments
@@ -474,7 +480,9 @@ export function createCommandScriptInEnv(
     scriptLines.push(`source "${activatePath}"`);
     if (isConda && isBaseCondaActivate) {
       scriptLines.push(`source "${condaSourcePath}"`);
-      scriptLines.push(`conda activate "${envPath}"`);
+      if (!isCondaCommand) {
+        scriptLines.push(`conda activate "${envPath}"`);
+      }
     }
     if (command) {
       scriptLines.push(command);

@@ -23,6 +23,7 @@ import {
   getEnvironmentPath,
   getUserHomeDir,
   isBaseCondaEnv,
+  isCondaEnv,
   isPortInUse,
   pythonPathForEnvPath,
   versionWithoutSuffix
@@ -47,7 +48,7 @@ export interface IRegistry {
   getCurrentPythonEnvironment: () => IPythonEnvironment;
   getAdditionalPathIncludesForPythonPath: (pythonPath: string) => string;
   getRequirements: () => Registry.IRequirement[];
-  getRequirementsPipInstallCommand: () => string;
+  getRequirementsInstallCommand: (envPath: string) => string;
   getEnvironmentInfo(pythonPath: string): Promise<IPythonEnvironment>;
   getRunningServerList(): Promise<string[]>;
   dispose(): Promise<void>;
@@ -66,7 +67,8 @@ export class Registry implements IRegistry, IDisposable {
         moduleName: 'jupyterlab',
         commands: ['--version'],
         versionRange: new semver.Range(`>=${MIN_JLAB_VERSION_REQUIRED}`),
-        pipCommand: `"jupyterlab>=${MIN_JLAB_VERSION_REQUIRED}"`
+        pipCommand: `"jupyterlab>=${MIN_JLAB_VERSION_REQUIRED}"`,
+        condaCommand: `"jupyterlab>=${MIN_JLAB_VERSION_REQUIRED}"`
       }
     ];
 
@@ -254,8 +256,11 @@ export class Registry implements IRegistry, IDisposable {
     }
 
     if (!this._environmentSatisfiesRequirements(env, this._requirements)) {
+      const envPath = envPathForPythonPath(pythonPath);
       log.error(
-        `Required Python packages not found in the selected environment. You can install using '${this.getRequirementsPipInstallCommand()}'.`
+        `Required Python packages not found in the selected environment. You can install using '${this.getRequirementsInstallCommand(
+          envPath
+        )}'.`
       );
       throw {
         type: PythonEnvResolveErrorType.RequirementsNotSatisfied
@@ -468,11 +473,14 @@ export class Registry implements IRegistry, IDisposable {
     return this._requirements;
   }
 
-  getRequirementsPipInstallCommand(): string {
-    const cmdList = ['pip install'];
+  getRequirementsInstallCommand(envPath: string): string {
+    const isConda = isCondaEnv(envPath);
+    const cmdList = [
+      isConda ? 'conda install -c conda-forge -y' : 'pip install'
+    ];
 
     this._requirements.forEach(req => {
-      cmdList.push(req.pipCommand);
+      cmdList.push(isConda ? req.condaCommand : req.pipCommand);
     });
 
     return cmdList.join(' ');
@@ -1134,6 +1142,10 @@ export namespace Registry {
      * pip install command
      */
     pipCommand: string;
+    /**
+     * conda install command
+     */
+    condaCommand: string;
   }
 
   export const COMMON_CONDA_LOCATIONS = [

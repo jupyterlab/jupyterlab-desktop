@@ -694,12 +694,13 @@ export class SessionWindow implements IDisposable {
         }
 
         const envPath = envPathForPythonPath(pythonPath);
-        const installCommand = this._registry.getRequirementsPipInstallCommand();
+        const installCommand = this._registry.getRequirementsInstallCommand(
+          envPath
+        );
 
         this._showProgressView('Installing required packages');
 
-        const command = `python -m ${installCommand}`;
-        runCommandInEnvironment(envPath, command).then(result => {
+        runCommandInEnvironment(envPath, installCommand).then(result => {
           if (result) {
             this._showProgressView(
               'Finished installing packages',
@@ -798,8 +799,9 @@ export class SessionWindow implements IDisposable {
           if (
             error?.type === PythonEnvResolveErrorType.RequirementsNotSatisfied
           ) {
+            const envPath = envPathForPythonPath(path);
             const requirementInstallCmd = encodeURIComponent(
-              this._registry.getRequirementsPipInstallCommand()
+              this._registry.getRequirementsInstallCommand(envPath)
             );
             message = `Error! Required Python packages not found in the selected environment. You can install using <copyable-span label="${requirementInstallCmd}" copied="${requirementInstallCmd}"></copyable-span> command in the selected environment.`;
           } else if (error?.type === PythonEnvResolveErrorType.PathNotFound) {
@@ -1291,8 +1293,9 @@ export class SessionWindow implements IDisposable {
         if (
           error?.type === PythonEnvResolveErrorType.RequirementsNotSatisfied
         ) {
+          const envPath = envPathForPythonPath(pythonPath);
           const requirementInstallCmd = encodeURIComponent(
-            this._registry.getRequirementsPipInstallCommand()
+            this._registry.getRequirementsInstallCommand(envPath)
           );
           message = `Error! Required packages not found in the Python environment. You can install using <copyable-span label="${requirementInstallCmd}" copied="${requirementInstallCmd}"></copyable-span> command in the selected environment.`;
         }
