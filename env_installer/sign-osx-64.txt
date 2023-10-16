@@ -43,7 +43,7 @@ bin/wrjpgcom
 bin/xz
 bin/xzdec
 bin/zstd
-lib/itcl4.2.2/libitcl4.2.2.dylib
+lib/itcl4.2.3/libitcl4.2.3.dylib
 lib/libLerc.4.dylib
 lib/libXau.6.0.0.dylib
 lib/libXdmcp.6.dylib
@@ -62,7 +62,7 @@ lib/libgcc_s.1.1.dylib
 lib/libgcc_s.1.dylib
 lib/libgfortran.5.dylib
 lib/libhistory.8.2.dylib
-lib/libjpeg.8.2.2.dylib
+lib/libjpeg.8.3.2.dylib
 lib/liblcms2.2.dylib
 lib/liblzma.5.dylib
 lib/libmenu.6.dylib
@@ -88,7 +88,7 @@ lib/libtiffxx.6.dylib
 lib/libtinfo.6.dylib
 lib/libtinfow.6.dylib
 lib/libtk8.6.dylib
-lib/libturbojpeg.0.2.0.dylib
+lib/libturbojpeg.0.3.0.dylib
 lib/libwebp.7.dylib
 lib/libwebpdecoder.3.dylib
 lib/libwebpdemux.2.dylib
@@ -427,9 +427,9 @@ lib/python3.8/site-packages/zmq/backend/cython/utils.cpython-38-darwin.so
 lib/python3.8/site-packages/zmq/devices/monitoredqueue.cpython-38-darwin.so
 lib/python3.8/site-packages/zstandard/_cffi.cpython-38-darwin.so
 lib/python3.8/site-packages/zstandard/backend_c.cpython-38-darwin.so
-lib/sqlite3.36.0/libsqlite3.36.0.dylib
-lib/tdbc1.1.3/libtdbc1.1.3.dylib
-lib/tdbcmysql1.1.3/libtdbcmysql1.1.3.dylib
-lib/tdbcodbc1.1.3/libtdbcodbc1.1.3.dylib
-lib/tdbcpostgres1.1.3/libtdbcpostgres1.1.3.dylib
-lib/thread2.8.7/libthread2.8.7.dylib
+lib/sqlite3.40.0/libsqlite3.40.0.dylib
+lib/tdbc1.1.5/libtdbc1.1.5.dylib
+lib/tdbcmysql1.1.5/libtdbcmysql1.1.5.dylib
+lib/tdbcodbc1.1.5/libtdbcodbc1.1.5.dylib
+lib/tdbcpostgres1.1.5/libtdbcpostgres1.1.5.dylib
+lib/thread2.8.8/libthread2.8.8.dylib
