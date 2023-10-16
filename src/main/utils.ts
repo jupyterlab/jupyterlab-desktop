@@ -446,7 +446,7 @@ export function createCommandScriptInEnv(
   // conda commands don't work properly when called from the sub environment.
   // instead call using conda from the base environment with -p parameter
   const isCondaCommand = isConda && command?.startsWith('conda ');
-  if (isCondaCommand) {
+  if (isCondaCommand && !isBaseCondaEnv(envPath)) {
     command = `${command} -p ${envPath}`;
   }
 
