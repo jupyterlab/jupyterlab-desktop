@@ -15,7 +15,8 @@ jobs:
       matrix:
         cfg:
         - { platform: linux, platform_name: Linux,  os: ubuntu-latest, conda_platform: linux-64 }
-        - { platform: mac, platform_name: macOS, os: macos-latest, conda_platform: osx-64 }
+        - { platform: osx-64, platform_name: macOS x64, os: macos-latest, conda_platform: osx-64 }
+        - { platform: osx-arm64, platform_name: macOS arm64, os: macos-latest-large, conda_platform: osx-arm64 }
         - { platform: win, platform_name: Windows, os: windows-latest, conda_platform: win-64 }
 
     name: '${{ matrix.cfg.platform_name }} installer'
@@ -72,7 +73,7 @@ jobs:
 
       # contents of tarball needs to be signed for notarization
       - name: Codesign Application Server
-        if: matrix.cfg.platform == 'mac' && steps.release-exists.outputs.result == 'true'
+        if: (matrix.cfg.platform == 'osx-64' || matrix.cfg.platform == 'osx-arm64') && steps.release-exists.outputs.result == 'true'
         env: 
           CSC_IDENTITY_AUTO_DISCOVERY: true
           CSC_FOR_PULL_REQUEST: true
@@ -97,7 +98,7 @@ jobs:
 
       # recreate tarball after signing contents
       - name: Re-archive Application Server Installer
-        if: matrix.cfg.platform == 'mac' && steps.release-exists.outputs.result == 'true'
+        if: (matrix.cfg.platform == 'osx-64' || matrix.cfg.platform == 'osx-arm64') && steps.release-exists.outputs.result == 'true'
         run: |
           yarn compress_env_installer:${{ matrix.cfg.platform }}
           rm -rf ./env_installer/jlab_server_extracted
@@ -138,7 +139,7 @@ jobs:
             dist/JupyterLab.rpm
 
       - name: Upload macOS x64 Installer
-        if: matrix.cfg.platform == 'mac'
+        if: matrix.cfg.platform == 'osx-64'
         uses: actions/upload-artifact@v3
         with:
           name: mac-installer-x64
@@ -146,7 +147,7 @@ jobs:
             dist/JupyterLab-x64.dmg
 
       - name: Upload macOS arm64 Installer
-        if: matrix.cfg.platform == 'mac'
+        if: matrix.cfg.platform == 'osx-arm64'
         uses: actions/upload-artifact@v3
         with:
           name: mac-installer-arm64
@@ -182,7 +183,7 @@ jobs:
           overwrite: true
 
       - name: Upload macOS x64 Installer as Release asset
-        if: matrix.cfg.platform == 'mac' && steps.release-exists.outputs.result == 'true'
+        if: matrix.cfg.platform == 'osx-64' && steps.release-exists.outputs.result == 'true'
         uses: svenstaro/upload-release-action@v2
         with:
           repo_token: ${{ secrets.JLAB_APP_TOKEN }}
@@ -192,7 +193,7 @@ jobs:
           overwrite: true
 
       - name: Upload macOS arm64 Installer as Release asset
-        if: matrix.cfg.platform == 'mac' && steps.release-exists.outputs.result == 'true'
+        if: matrix.cfg.platform == 'osx-arm64' && steps.release-exists.outputs.result == 'true'
         uses: svenstaro/upload-release-action@v2
         with:
           repo_token: ${{ secrets.JLAB_APP_TOKEN }}
@@ -202,7 +203,7 @@ jobs:
           overwrite: true
 
       - name: Upload macOS x64 App as Release asset
-        if: matrix.cfg.platform == 'mac' && steps.release-exists.outputs.result == 'true'
+        if: matrix.cfg.platform == 'osx-64' && steps.release-exists.outputs.result == 'true'
         uses: svenstaro/upload-release-action@v2
         with:
           repo_token: ${{ secrets.JLAB_APP_TOKEN }}
@@ -212,7 +213,7 @@ jobs:
           overwrite: true
       
       - name: Upload macOS arm64 App as Release asset
-        if: matrix.cfg.platform == 'mac' && steps.release-exists.outputs.result == 'true'
+        if: matrix.cfg.platform == 'osx-arm64' && steps.release-exists.outputs.result == 'true'
         uses: svenstaro/upload-release-action@v2
         with:
           repo_token: ${{ secrets.JLAB_APP_TOKEN }}
