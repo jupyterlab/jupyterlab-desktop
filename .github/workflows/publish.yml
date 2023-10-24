@@ -14,10 +14,10 @@ jobs:
     strategy:
       matrix:
         cfg:
-        # - { platform: linux, platform_name: Linux,  os: ubuntu-latest, conda_platform: linux-64 }
-        # - { platform: osx-64, platform_name: macOS x64, os: macos-latest, conda_platform: osx-64 }
-        - { platform: osx-arm64, platform_name: macOS arm64, os: macos-latest, conda_platform: osx-arm64 }
-        # - { platform: win, platform_name: Windows, os: windows-latest, conda_platform: win-64 }
+        - { platform: linux, platform_name: Linux,  os: ubuntu-latest, build_platform: linux-64, conda_platform: linux-64 }
+        - { platform: osx-64, platform_name: macOS x64, os: macos-latest, build_platform: osx-64, conda_platform: osx-64 }
+        - { platform: osx-arm64, platform_name: macOS arm64, os: macos-latest, build_platform: osx-64, conda_platform: osx-arm64 }
+        - { platform: win, platform_name: Windows, os: windows-latest, build_platform: win-64, conda_platform: win-64 }
 
     name: '${{ matrix.cfg.platform_name }} installer'
     runs-on: ${{ matrix.cfg.os }}
@@ -25,7 +25,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: s-weigand/setup-conda@v1
-      - run: conda install --file ./workflow_env/conda-${{ matrix.cfg.conda_platform }}.lock -y
+      - run: conda install --file ./workflow_env/conda-${{ matrix.cfg.build_platform }}.lock -y
 
       - name: Install node
         uses: actions/setup-node@v3
