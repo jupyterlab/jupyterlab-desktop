@@ -27,7 +27,7 @@
     "clean_env_installer": "rimraf ./env_installer/jlab_server.tar.gz && conda env remove -p ./env_installer/jlab_server -y",
     "create_env_installer:linux": "yarn clean_env_installer && conda-lock install --prefix ./env_installer/jlab_server ./env_installer/conda-linux-64.lock && conda pack -p ./env_installer/jlab_server -o ./env_installer/jlab_server.tar.gz",
     "create_env_installer:osx-64": "yarn clean_env_installer && conda-lock install --prefix ./env_installer/jlab_server ./env_installer/conda-osx-64.lock && conda pack -p ./env_installer/jlab_server -o ./env_installer/jlab_server.tar.gz",
-    "create_env_installer:osx-arm64": "yarn clean_env_installer && conda-lock install --prefix ./env_installer/jlab_server ./env_installer/conda-osx-arm64.lock && conda pack -p ./env_installer/jlab_server -o ./env_installer/jlab_server.tar.gz",
+    "create_env_installer:osx-arm64": "yarn clean_env_installer && conda-lock install --no-validate-platform --prefix ./env_installer/jlab_server ./env_installer/conda-osx-arm64.lock && conda pack -p ./env_installer/jlab_server -o ./env_installer/jlab_server.tar.gz",
     "create_env_installer:win": "yarn clean_env_installer && conda-lock install --prefix ./env_installer/jlab_server ./env_installer/conda-win-64.lock && conda pack -p ./env_installer/jlab_server -o ./env_installer/jlab_server.tar.gz",
     "extract_env_installer:osx": "cd ./env_installer && rimraf jlab_server_extracted && mkdir jlab_server_extracted && tar -xzf jlab_server.tar.gz -C jlab_server_extracted && cd -",
     "extract_env_installer:osx-64": "yarn extract_env_installer:osx",
