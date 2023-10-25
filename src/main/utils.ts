@@ -493,7 +493,11 @@ export function createCommandScriptInEnv(
 export function createUnsignScriptInEnv(envPath: string): string {
   const pythonBin = 'bin/python3.8';
   const appDir = getAppDir();
-  const signListFile = path.join(appDir, 'env_installer', 'sign-osx-64.txt');
+  const signListFile = path.join(
+    appDir,
+    'env_installer',
+    `sign-osx-${process.arch === 'arm64' ? 'arm64' : '64'}.txt`
+  );
   const fileContents = fs.readFileSync(signListFile, 'utf-8');
   const signList: string[] = [];
 
