@@ -17,6 +17,9 @@ export class ProgressView {
     const progressLogo = fs.readFileSync(
       path.join(__dirname, '../../../app-assets/progress-logo.svg')
     );
+    const copyableSpanSrc = fs.readFileSync(
+      path.join(__dirname, '../../../app-assets/copyable-span.js')
+    );
 
     const template = `
       <style>
@@ -79,6 +82,7 @@ export class ProgressView {
         </div>
       </div>
 
+      <script>${copyableSpanSrc}</script>
       <script>
       const progressSvg = document.querySelector('#progress-logo svg');
       const progressTitle = document.getElementById('progress-title');

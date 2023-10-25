@@ -34,6 +34,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
     callback: InstallBundledPythonEnvStatusListener
   ) => {
     onInstallBundledPythonEnvStatusListener = callback;
+  },
+  copyToClipboard: (content: string) => {
+    ipcRenderer.send(EventTypeMain.CopyToClipboard, content);
   }
 });
 

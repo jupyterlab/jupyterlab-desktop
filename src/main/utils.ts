@@ -443,6 +443,12 @@ export function createCommandScriptInEnv(
 
   let hasActivate = fs.existsSync(activatePath);
   const isConda = isCondaEnv(envPath);
+  // conda commands don't work properly when called from the sub environment.
+  // instead call using conda from the base environment with -p parameter
+  const isCondaCommand = isConda && command?.startsWith('conda ');
+  if (isCondaCommand && !isBaseCondaEnv(envPath)) {
+    command = `${command} -p ${envPath}`;
+  }
 
   // conda activate is only available in base conda environments or
   // conda-packed environments
@@ -474,7 +480,9 @@ export function createCommandScriptInEnv(
     scriptLines.push(`source "${activatePath}"`);
     if (isConda && isBaseCondaActivate) {
       scriptLines.push(`source "${condaSourcePath}"`);
-      scriptLines.push(`conda activate "${envPath}"`);
+      if (!isCondaCommand) {
+        scriptLines.push(`conda activate "${envPath}"`);
+      }
     }
     if (command) {
       scriptLines.push(command);
@@ -513,4 +521,21 @@ export function createUnsignScriptInEnv(envPath: string): string {
   return `cd ${envPath} && codesign --remove-signature ${signList.join(
     ' '
   )} && ${removeRuntimeFlagCommand} && cd -`;
+}
+
+export function getLogFilePath(processType: 'main' | 'renderer' = 'main') {
+  switch (process.platform) {
+    case 'win32':
+      return path.join(getUserDataDir(), `\\logs\\${processType}.log`);
+    case 'darwin':
+      return path.join(
+        getUserHomeDir(),
+        `/Library/Logs/jupyterlab-desktop/${processType}.log`
+      );
+    default:
+      return path.join(
+        getUserHomeDir(),
+        `/.config/jupyterlab-desktop/logs/${processType}.log`
+      );
+  }
 }

@@ -31,6 +31,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   checkForUpdates: () => {
     ipcRenderer.send(EventTypeMain.CheckForUpdates);
   },
+  showLogs: () => {
+    ipcRenderer.send(EventTypeMain.ShowLogs);
+  },
   launchInstallerDownloadPage: () => {
     ipcRenderer.send(EventTypeMain.LaunchInstallerDownloadPage);
   },

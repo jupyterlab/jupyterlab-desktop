@@ -4,6 +4,7 @@
 import {
   BrowserView,
   BrowserWindow,
+  clipboard,
   dialog,
   Menu,
   MenuItemConstructorOptions,
@@ -22,7 +23,9 @@ import { TitleBarView } from '../titlebarview/titlebarview';
 import {
   clearSession,
   DarkThemeBGColor,
+  envPathForPythonPath,
   getBundledPythonPath,
+  getLogFilePath,
   isDarkTheme,
   LightThemeBGColor
 } from '../utils';
@@ -31,7 +34,8 @@ import {
   IDisposable,
   IPythonEnvironment,
   IRect,
-  IVersionContainer
+  IVersionContainer,
+  PythonEnvResolveErrorType
 } from '../tokens';
 import { IRegistry } from '../registry';
 import { IApplication } from '../app';
@@ -44,6 +48,7 @@ import { SessionConfig } from '../config/sessionconfig';
 import { ISignal, Signal } from '@lumino/signaling';
 import { EventTypeMain } from '../eventtypes';
 import { EventManager } from '../eventmanager';
+import { runCommandInEnvironment } from '../cli';
 
 export enum ContentViewType {
   Welcome = 'welcome',
@@ -668,6 +673,81 @@ export class SessionWindow implements IDisposable {
     );
 
     this._evm.registerEventHandler(
+      EventTypeMain.InstallPythonEnvRequirements,
+      (
+        event,
+        pythonPath: string,
+        postInstallAction: 'none' | 'restart-server' = 'none'
+      ) => {
+        if (event.sender !== this._progressView?.view?.view?.webContents) {
+          return;
+        }
+
+        pythonPath = decodeURIComponent(pythonPath);
+        // prevent injections by checking if the path is really file
+        const stat = fs.lstatSync(pythonPath);
+        if (!(stat && (stat.isFile() || stat.isSymbolicLink()))) {
+          console.error(
+            'InstallPythonEnvRequirements called with invalid Python path.'
+          );
+          return;
+        }
+
+        const envPath = envPathForPythonPath(pythonPath);
+        const installCommand = this._registry.getRequirementsInstallCommand(
+          envPath
+        );
+
+        this._showProgressView('Installing required packages');
+
+        runCommandInEnvironment(envPath, installCommand).then(result => {
+          if (result) {
+            this._showProgressView(
+              'Finished installing packages',
+              postInstallAction === 'restart-server'
+                ? '<div class="message-row">Restarting the server now...</div>'
+                : ''
+            );
+            try {
+              this._registry.addEnvironment(pythonPath);
+              if (postInstallAction === 'restart-server') {
+                this._restartServerInPythonEnvironment(pythonPath);
+              } else {
+                this._showProgressView(
+                  'Finished installing required packages',
+                  `<div class="message-row"><a href="javascript:void(0);" onclick="sendMessageToMain('${EventTypeMain.ShowWelcomeView}')">Go to Welcome Page</a></div>`
+                );
+              }
+            } catch (error) {
+              this._showProgressView(
+                'Failed to update the environment',
+                `<div class="message-row"><a href="javascript:void(0);" onclick="sendMessageToMain('${EventTypeMain.ShowLogs}')">Show logs</a></div>
+                <div class="message-row"><a href="javascript:void(0);" onclick="sendMessageToMain('${EventTypeMain.HideProgressView}')">Close</a></div>`
+              );
+            }
+          } else {
+            this._showProgressView(
+              'Failed to install required packages',
+              `<div class="message-row"><a href="javascript:void(0);" onclick="sendMessageToMain('${EventTypeMain.ShowLogs}')">Show logs</a></div>
+              <div class="message-row"><a href="javascript:void(0);" onclick="sendMessageToMain('${EventTypeMain.HideProgressView}')">Close</a></div>`
+            );
+          }
+        });
+      }
+    );
+
+    this._evm.registerEventHandler(EventTypeMain.ShowLogs, event => {
+      shell.openPath(getLogFilePath());
+    });
+
+    this._evm.registerEventHandler(
+      EventTypeMain.CopyToClipboard,
+      (event, content) => {
+        clipboard.writeText(content);
+      }
+    );
+
+    this._evm.registerEventHandler(
       EventTypeMain.OpenDroppedFiles,
       (event, fileOrFolders: string[]) => {
         if (event.sender !== this._welcomeView?.view?.webContents) {
@@ -712,40 +792,51 @@ export class SessionWindow implements IDisposable {
           'Restarting server using the selected Python enviroment'
         );
 
-        const env = this._registry.addEnvironment(path);
-
-        if (!env) {
+        try {
+          this._registry.addEnvironment(path);
+        } catch (error) {
+          let message = `Error! Python environment at '${path}' is not compatible.`;
+          if (
+            error?.type === PythonEnvResolveErrorType.RequirementsNotSatisfied
+          ) {
+            const envPath = envPathForPythonPath(path);
+            const requirementInstallCmd = encodeURIComponent(
+              this._registry.getRequirementsInstallCommand(envPath)
+            );
+            message = `Error! Required Python packages not found in the selected environment. You can install using <copyable-span label="${requirementInstallCmd}" copied="${requirementInstallCmd}"></copyable-span> command in the selected environment.`;
+          } else if (error?.type === PythonEnvResolveErrorType.PathNotFound) {
+            message = `Error! File not found at '${path}'.`;
+          } else if (error?.type === PythonEnvResolveErrorType.ResolveError) {
+            message = `Error! Failed to get environment information at '${path}'.`;
+          }
           this._showProgressView(
             'Invalid Environment',
-            `<div class="message-row">Error! Python environment at '${path}' is not compatible.</div>
-          <div class="message-row"><a href="javascript:void(0);" onclick="sendMessageToMain('${EventTypeMain.ShowEnvSelectPopup}')">Select another environment</a></div>
-          <div class="message-row"><a href="javascript:void(0);" onclick="sendMessageToMain('${EventTypeMain.HideProgressView}')">Cancel</a></div>`,
+            `<div class="message-row">${message}</div>
+          ${
+            error?.type === PythonEnvResolveErrorType.RequirementsNotSatisfied
+              ? `<div class="message-row"><a href="javascript:void(0);" onclick="sendMessageToMain('${
+                  EventTypeMain.InstallPythonEnvRequirements
+                }', '${encodeURIComponent(
+                  path
+                )}', 'restart-server')">Install the requirements for me and restart the server</a></div>`
+              : ''
+          }
+          <div class="message-row"><a href="javascript:void(0);" onclick="sendMessageToMain('${
+            EventTypeMain.ShowEnvSelectPopup
+          }')">Select another environment</a></div>
+          <div class="message-row"><a href="javascript:void(0);" onclick="sendMessageToMain('${
+            EventTypeMain.ShowLogs
+          }')">Show logs</a></div>
+          <div class="message-row"><a href="javascript:void(0);" onclick="sendMessageToMain('${
+            EventTypeMain.HideProgressView
+          }')">Cancel</a></div>`,
             false
           );
 
           return;
         }
 
-        this._wsSettings.setValue(SettingType.pythonPath, path);
-        this._sessionConfig.pythonPath = path;
-
-        this._disposeSession().then(async () => {
-          try {
-            await this._createServerForSession();
-            this._contentViewType = ContentViewType.Lab;
-            this._updateContentView();
-            this._hideProgressView();
-          } catch (error) {
-            this._setProgress(
-              'Failed to create session',
-              `<div class="message-row">${error}</div>
-            <div class="message-row">
-              <a href="javascript:void(0);" onclick="sendMessageToMain('${EventTypeMain.ShowWelcomeView}')">Go to Welcome Page</a>
-            </div>`,
-              false
-            );
-          }
-        });
+        this._restartServerInPythonEnvironment(path);
       }
     );
 
@@ -857,6 +948,29 @@ export class SessionWindow implements IDisposable {
         }
       }
     );
+  }
+
+  private _restartServerInPythonEnvironment(pythonPath: string) {
+    this._wsSettings.setValue(SettingType.pythonPath, pythonPath);
+    this._sessionConfig.pythonPath = pythonPath;
+
+    this._disposeSession().then(async () => {
+      try {
+        await this._createServerForSession();
+        this._contentViewType = ContentViewType.Lab;
+        this._updateContentView();
+        this._hideProgressView();
+      } catch (error) {
+        this._setProgress(
+          'Failed to create session',
+          `<div class="message-row">${error}</div>
+        <div class="message-row">
+          <a href="javascript:void(0);" onclick="sendMessageToMain('${EventTypeMain.ShowWelcomeView}')">Go to Welcome Page</a>
+        </div>`,
+          false
+        );
+      }
+    });
   }
 
   getPythonEnvironment(): IPythonEnvironment {
@@ -1172,23 +1286,40 @@ export class SessionWindow implements IDisposable {
     pythonPath = this._wsSettings.getValue(SettingType.pythonPath);
 
     if (pythonPath) {
-      const env = this._registry.addEnvironment(pythonPath);
-
-      if (!env) {
-        // reset python path to default
-        this._wsSettings.setValue(SettingType.pythonPath, '');
+      try {
+        this._registry.addEnvironment(pythonPath);
+      } catch (error) {
+        let message = `Error! Python environment at '${pythonPath}' is not compatible.`;
+        if (
+          error?.type === PythonEnvResolveErrorType.RequirementsNotSatisfied
+        ) {
+          const envPath = envPathForPythonPath(pythonPath);
+          const requirementInstallCmd = encodeURIComponent(
+            this._registry.getRequirementsInstallCommand(envPath)
+          );
+          message = `Error! Required packages not found in the Python environment. You can install using <copyable-span label="${requirementInstallCmd}" copied="${requirementInstallCmd}"></copyable-span> command in the selected environment.`;
+        }
 
         this._showProgressView(
           'Invalid Environment configured for project',
-          `<div class="message-row">Error! Python environment at '${pythonPath}' is not compatible.</div>
+          `<div class="message-row">${message}</div>
           ${
-            recentSessionIndex !== undefined
-              ? `<div class="message-row"><a href="javascript:void(0);" onclick="sendMessageToMain('${EventTypeMain.OpenRecentSessionWithDefaultEnv}', ${recentSessionIndex})">Reset to default Python environment</a></div>`
+            error?.type === PythonEnvResolveErrorType.RequirementsNotSatisfied
+              ? `<div class="message-row"><a href="javascript:void(0);" onclick="sendMessageToMain('${
+                  EventTypeMain.InstallPythonEnvRequirements
+                }', '${encodeURIComponent(
+                  pythonPath
+                )}')">Install the requirements for me</a></div>`
               : ''
-          }
-          <div class="message-row"><a href="javascript:void(0);" onclick="sendMessageToMain('${
-            EventTypeMain.HideProgressView
-          }')">Cancel</a></div>`,
+          } 
+        ${
+          recentSessionIndex !== undefined
+            ? `<div class="message-row"><a href="javascript:void(0);" onclick="sendMessageToMain('${EventTypeMain.OpenRecentSessionWithDefaultEnv}', ${recentSessionIndex})">Reset to default Python environment</a></div>`
+            : ''
+        }
+         <div class="message-row"><a href="javascript:void(0);" onclick="sendMessageToMain('${
+           EventTypeMain.HideProgressView
+         }')">Cancel</a></div>`,
           false
         );
 

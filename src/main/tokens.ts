@@ -64,6 +64,17 @@ export interface IPythonEnvironment {
   defaultKernel: string;
 }
 
+export enum PythonEnvResolveErrorType {
+  PathNotFound = 'path-not-found',
+  ResolveError = 'resolve-error',
+  RequirementsNotSatisfied = 'requirements-not-satisfied'
+}
+
+export interface IPythonEnvResolveError {
+  type: PythonEnvResolveErrorType;
+  message?: string;
+}
+
 export interface IDisposable {
   dispose(): Promise<void>;
 }
