@@ -129,7 +129,10 @@ if (cli.flags.updateBinarySignList) {
 
   const binaries = findBinariesInDirectory(envInstallerDir);
   const fileContent = binaries.join('\n');
-  const signListFile = path.join('env_installer', `sign-${cli.flags.platform}.txt`);
+  const signListFile = path.join(
+    'env_installer',
+    `sign-${cli.flags.platform}.txt`
+  );
 
   fs.writeFileSync(signListFile, `${fileContent}\n`);
 
