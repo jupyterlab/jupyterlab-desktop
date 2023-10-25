@@ -92,7 +92,7 @@ jobs:
           security import certificate.p12 -k build.keychain -P $CSC_KEY_PASSWORD -T /usr/bin/codesign
           security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k $ENV_INSTALLER_KEYCHAIN_PASS build.keychain
           echo "Signing env binaries"
-          while read line; do /usr/bin/codesign --force --options=runtime --deep -s "Developer ID Application" ./env_installer/jlab_server_extracted/"$line" -v; done < ./env_installer/sign-osx-64.txt
+          while read line; do /usr/bin/codesign --force --options=runtime --deep -s "Developer ID Application" ./env_installer/jlab_server_extracted/"$line" -v; done < ./env_installer/sign-${{ matrix.cfg.platform }}.txt
           rm certificate.p12
           security delete-keychain build.keychain
 
