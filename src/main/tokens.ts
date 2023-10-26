@@ -87,6 +87,7 @@ export interface ICLIArguments {
   [x: string]: unknown;
   pythonPath: string | unknown;
   workingDir: string | unknown;
+  persistSessionData: boolean | unknown;
 }
 
 export interface IRect {

@@ -89,6 +89,11 @@ export class SessionConfig {
   ): SessionConfig {
     const sessionConfig = new SessionConfig();
     sessionConfig.remoteURL = remoteURL;
+    const url = new URL(remoteURL);
+    const token = url.searchParams.get('token');
+    sessionConfig.url = url;
+    sessionConfig.token = token;
+
     sessionConfig.persistSessionData = persistSessionData !== false;
     if (partition) {
       sessionConfig.partition = partition;
@@ -109,6 +114,18 @@ export class SessionConfig {
     let pythonPath = '';
 
     try {
+      for (const arg of cliArgs._) {
+        const strArg = arg.toString();
+        if (/^https?:\/\//.test(strArg)) {
+          const remoteURL = strArg;
+          return SessionConfig.createRemote(
+            remoteURL,
+            cliArgs.persistSessionData === true,
+            undefined
+          );
+        }
+      }
+
       let skipFilePaths = false;
       if (workingDir) {
         workingDir = path.resolve(workingDir as string);
