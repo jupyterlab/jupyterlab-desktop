@@ -1359,17 +1359,12 @@ export class SessionWindow implements IDisposable {
     this._showProgressView('Connecting to JupyterLab Server');
 
     try {
-      const url = new URL(remoteURL);
-      const token = url.searchParams.get('token');
-
       this._sessionConfig = SessionConfig.createRemote(
         remoteURL,
         persistSessionData,
         partition
       );
       const sessionConfig = this._sessionConfig;
-      sessionConfig.url = url;
-      sessionConfig.token = token;
 
       appData.addRemoteURLToRecents(remoteURL);
       appData.addSessionToRecents({

@@ -54,6 +54,11 @@ export function parseCLIArgs(argv: string[]) {
       describe: 'Python path',
       type: 'string'
     })
+    .option('persist-session-data', {
+      describe: 'Persist session data for remote server connections',
+      type: 'boolean',
+      default: true
+    })
     .option('working-dir', {
       describe: 'Working directory',
       type: 'string'
