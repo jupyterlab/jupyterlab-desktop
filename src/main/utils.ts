@@ -499,7 +499,6 @@ export function createCommandScriptInEnv(
   back to ad-hoc signed.
 */
 export function createUnsignScriptInEnv(envPath: string): string {
-  const pythonBin = 'bin/python3.8';
   const appDir = getAppDir();
   const signListFile = path.join(
     appDir,
@@ -510,17 +509,15 @@ export function createUnsignScriptInEnv(envPath: string): string {
   const signList: string[] = [];
 
   fileContents.split(/\r?\n/).forEach(line => {
-    if (line && line !== pythonBin) {
+    if (line) {
       signList.push(`"${line}"`);
     }
   });
 
-  // remove hardened runtime flag, convert to ad-hoc
-  const removeRuntimeFlagCommand = `codesign -s - -o 0x2 -f ${pythonBin}`;
-
-  return `cd ${envPath} && codesign --remove-signature ${signList.join(
+  // sign all binaries with ad-hoc signature
+  return `cd ${envPath} && codesign -s - -o 0x2 -f ${signList.join(
     ' '
-  )} && ${removeRuntimeFlagCommand} && cd -`;
+  )} && cd -`;
 }
 
 export function getLogFilePath(processType: 'main' | 'renderer' = 'main') {

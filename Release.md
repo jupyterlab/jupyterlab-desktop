@@ -42,9 +42,7 @@ In order to change the JupyterLab version bundled with the application:
    yarn create_env_installer:osx-arm64 && yarn update_binary_sign_list --platform osx-arm64
    ```
 
-4. If python version is updated in [`env_installer/jlab_server.yaml`](env_installer/jlab_server.yaml), also update `pythonBin` variables in [`util.ts`](src/main/utils.ts) that are used in code signing related methods.
-
-5. Update `ipywidgets` python package version in [`env_installer/jlab_server.yaml`](env_installer/jlab_server.yaml) if there is a compatible newer version available.
+4. Update `ipywidgets` python package version in [`env_installer/jlab_server.yaml`](env_installer/jlab_server.yaml) if there is a compatible newer version available.
 
 Note that after updating the bundled JupyterLab version, it is necessary to bump JupyterLab Desktop version using `tbump` as described in the section below. Run `check_version_match` script before committing the changes to ensure version integrity.
 
