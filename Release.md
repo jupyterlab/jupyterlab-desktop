@@ -37,6 +37,7 @@ In order to change the JupyterLab version bundled with the application:
    ```bash
    yarn create_env_installer:osx-64 && yarn update_binary_sign_list --platform osx-64
    ```
+
    ```bash
    yarn create_env_installer:osx-arm64 && yarn update_binary_sign_list --platform osx-arm64
    ```
