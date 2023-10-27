@@ -62,6 +62,8 @@ Previously opened sessions are stored as part of application data and they are l
   - `jlab ../test.py` launch python file with relative path
 - Open with a custom Python environment
   - `jlab --python-path /Users/username/custom_env/bin/python ../notebooks/test.ipynb` launch notebook with custom Python environment
+- Connect to existing JupyterLab server
+  - `jlab https://example.org/lab?token=abcde`
 
 For additional CLI options run `jlab --help` in command line.
 
