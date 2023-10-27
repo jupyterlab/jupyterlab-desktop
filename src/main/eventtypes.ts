@@ -55,7 +55,10 @@ export enum EventTypeMain {
   SetServerLaunchArgs = 'set-server-launch-args',
   SetServerEnvVars = 'set-server-env-vars',
   SetCtrlWBehavior = 'set-ctrl-w-behavior',
-  SetAuthDialogResponse = 'set-auth-dialog-response'
+  SetAuthDialogResponse = 'set-auth-dialog-response',
+  InstallPythonEnvRequirements = 'install-python-env-requirements',
+  ShowLogs = 'show-logs',
+  CopyToClipboard = 'copy-to-clipboard'
 }
 
 // events sent to Renderer process

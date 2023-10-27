@@ -32,7 +32,7 @@
 
 JupyterLab Desktop bundles JupyterLab front-end and a conda environment as JupyterLab Desktop Server as its backend into an Electron application.
 
-`<platform>`: mac, linux or win
+`<platform>`: osx-64, osx-arm64, linux or win
 
 - Get the project source code
 
@@ -53,7 +53,7 @@ JupyterLab Desktop bundles JupyterLab front-end and a conda environment as Jupyt
   yarn create_env_installer:<platform>
   ```
 
-  Installer will be created in one of `env_installer/JupyterLabDesktopAppServer<version>-MacOSX-x86_64.sh`, `env_installer/JupyterLabDesktopAppServer-<version>-Linux-x86_64.sh`, `env_installer/JupyterLabDesktopAppServer-<version>-Windows-x86_64.exe` based on your platform
+  Installer will be created in `env_installer/jlab_server.tar.gz` and will be available for use in `env_installer/jlab_server`.
 
 - Now you can launch the JupyterLab Desktop locally using:
 

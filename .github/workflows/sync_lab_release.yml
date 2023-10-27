@@ -60,11 +60,17 @@ jobs:
         if: env.update_available == 'true'
         run: yarn update_conda_lock
       
-      - name: Update binary sign list
+      - name: Update binary sign list osx-64
         if: env.update_available == 'true'
         run: |
           yarn clean_env_installer && conda-lock install --prefix ./env_installer/jlab_server ./env_installer/conda-osx-64.lock
-          yarn update_binary_sign_list
+          yarn update_binary_sign_list --platform osx-64
+
+      - name: Update binary sign list osx-arm64
+        if: env.update_available == 'true'
+        run: |
+          yarn clean_env_installer && conda-lock install --no-validate-platform --prefix ./env_installer/jlab_server ./env_installer/conda-osx-arm64.lock
+          yarn update_binary_sign_list --platform osx-arm64
 
       - name: Create a PR for the new version
         if: env.update_available == 'true'

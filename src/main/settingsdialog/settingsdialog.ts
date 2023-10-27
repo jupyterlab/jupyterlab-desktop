@@ -515,6 +515,7 @@ export class SettingsDialog {
                     <jp-option value="verbose">Verbose</jp-option>
                     <jp-option value="debug">Debug</jp-option>
                   </jp-select>
+                  <jp-button onclick='handleShowLogs(this);'>Show logs</jp-button>
                 </div>
               </div>
 
@@ -549,6 +550,10 @@ export class SettingsDialog {
 
                 function handleCheckForUpdates(el) {
                   window.electronAPI.checkForUpdates();
+                }
+
+                function handleShowLogs(el) {
+                  window.electronAPI.showLogs();
                 }
 
                 function onLogLevelChanged(el) {

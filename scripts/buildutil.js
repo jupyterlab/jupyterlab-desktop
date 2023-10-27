@@ -14,6 +14,7 @@ const cli = meow(
     Options
       --check-version-match      check for JupyterLab version match
       --update-binary-sign-list  update binary list to sign for macOS
+      --platform                 platform for --update-binary-sign-list. osx-64 or osx-arm64
 
     Other options:
       --help                     show usage information
@@ -31,6 +32,10 @@ const cli = meow(
       updateBinarySignList: {
         type: 'boolean',
         default: false
+      },
+      platform: {
+        type: 'string',
+        default: 'osx-64'
       }
     }
   }
@@ -124,7 +129,10 @@ if (cli.flags.updateBinarySignList) {
 
   const binaries = findBinariesInDirectory(envInstallerDir);
   const fileContent = binaries.join('\n');
-  const signListFile = path.join('env_installer', 'sign-osx-64.txt');
+  const signListFile = path.join(
+    'env_installer',
+    `sign-${cli.flags.platform}.txt`
+  );
 
   fs.writeFileSync(signListFile, `${fileContent}\n`);
 

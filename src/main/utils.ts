@@ -443,6 +443,12 @@ export function createCommandScriptInEnv(
 
   let hasActivate = fs.existsSync(activatePath);
   const isConda = isCondaEnv(envPath);
+  // conda commands don't work properly when called from the sub environment.
+  // instead call using conda from the base environment with -p parameter
+  const isCondaCommand = isConda && command?.startsWith('conda ');
+  if (isCondaCommand && !isBaseCondaEnv(envPath)) {
+    command = `${command} -p ${envPath}`;
+  }
 
   // conda activate is only available in base conda environments or
   // conda-packed environments
@@ -474,7 +480,9 @@ export function createCommandScriptInEnv(
     scriptLines.push(`source "${activatePath}"`);
     if (isConda && isBaseCondaActivate) {
       scriptLines.push(`source "${condaSourcePath}"`);
-      scriptLines.push(`conda activate "${envPath}"`);
+      if (!isCondaCommand) {
+        scriptLines.push(`conda activate "${envPath}"`);
+      }
     }
     if (command) {
       scriptLines.push(command);
@@ -491,22 +499,40 @@ export function createCommandScriptInEnv(
   back to ad-hoc signed.
 */
 export function createUnsignScriptInEnv(envPath: string): string {
-  const pythonBin = 'bin/python3.8';
   const appDir = getAppDir();
-  const signListFile = path.join(appDir, 'env_installer', 'sign-osx-64.txt');
+  const signListFile = path.join(
+    appDir,
+    'env_installer',
+    `sign-osx-${process.arch === 'arm64' ? 'arm64' : '64'}.txt`
+  );
   const fileContents = fs.readFileSync(signListFile, 'utf-8');
   const signList: string[] = [];
 
   fileContents.split(/\r?\n/).forEach(line => {
-    if (line && line !== pythonBin) {
+    if (line) {
       signList.push(`"${line}"`);
     }
   });
 
-  // remove hardened runtime flag, convert to ad-hoc
-  const removeRuntimeFlagCommand = `codesign -s - -o 0x2 -f ${pythonBin}`;
-
-  return `cd ${envPath} && codesign --remove-signature ${signList.join(
+  // sign all binaries with ad-hoc signature
+  return `cd ${envPath} && codesign -s - -o 0x2 -f ${signList.join(
     ' '
-  )} && ${removeRuntimeFlagCommand} && cd -`;
+  )} && cd -`;
+}
+
+export function getLogFilePath(processType: 'main' | 'renderer' = 'main') {
+  switch (process.platform) {
+    case 'win32':
+      return path.join(getUserDataDir(), `\\logs\\${processType}.log`);
+    case 'darwin':
+      return path.join(
+        getUserHomeDir(),
+        `/Library/Logs/jupyterlab-desktop/${processType}.log`
+      );
+    default:
+      return path.join(
+        getUserHomeDir(),
+        `/.config/jupyterlab-desktop/logs/${processType}.log`
+      );
+  }
 }

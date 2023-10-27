@@ -54,6 +54,11 @@ export function parseCLIArgs(argv: string[]) {
       describe: 'Python path',
       type: 'string'
     })
+    .option('persist-session-data', {
+      describe: 'Persist session data for remote server connections',
+      type: 'boolean',
+      default: true
+    })
     .option('working-dir', {
       describe: 'Working directory',
       type: 'string'
@@ -449,22 +454,36 @@ export async function runCommandInEnvironment(
     ' && '
   );
 
+  // TODO: implement timeout. in case there is network issues
+
   return new Promise<boolean>((resolve, reject) => {
     const shell = isWin
       ? spawn('cmd', ['/c', commandScript], {
-          env: process.env
+          env: process.env,
+          windowsVerbatimArguments: true
         })
       : spawn('bash', ['-c', commandScript], {
-          stdio: 'inherit',
           env: {
             ...process.env,
             BASH_SILENCE_DEPRECATION_WARNING: '1'
           }
         });
 
+    if (shell.stdout) {
+      shell.stdout.on('data', chunk => {
+        console.debug('>', Buffer.from(chunk).toString());
+      });
+    }
+    if (shell.stderr) {
+      shell.stderr.on('data', chunk => {
+        console.error('>', Buffer.from(chunk).toString());
+      });
+    }
+
     shell.on('close', code => {
       if (code !== 0) {
         console.error('Shell exit with code:', code);
+        resolve(false);
       }
       resolve(true);
     });

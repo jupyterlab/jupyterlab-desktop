@@ -32,7 +32,15 @@ In order to change the JupyterLab version bundled with the application:
    yarn update_conda_lock
    ```
 
-3. If python version is updated in [`env_installer/jlab_server.yaml`](env_installer/jlab_server.yaml), also update `pythonBin` variables in [`util.ts`](src/main/utils.ts) that are used in code signing related methods.
+3. If the command above updates lock files then run the commands below to update binary sign lists as well.
+
+   ```bash
+   yarn create_env_installer:osx-64 && yarn update_binary_sign_list --platform osx-64
+   ```
+
+   ```bash
+   yarn create_env_installer:osx-arm64 && yarn update_binary_sign_list --platform osx-arm64
+   ```
 
 4. Update `ipywidgets` python package version in [`env_installer/jlab_server.yaml`](env_installer/jlab_server.yaml) if there is a compatible newer version available.
 
