@@ -11,6 +11,7 @@ import {
   userSettings
 } from './settings';
 import { ICLIArguments } from '../tokens';
+import { appData } from './appdata';
 
 export class SessionConfig {
   x: number = 0;
@@ -118,10 +119,26 @@ export class SessionConfig {
         const strArg = arg.toString();
         if (/^https?:\/\//.test(strArg)) {
           const remoteURL = strArg;
+          const persistSessionData = cliArgs.persistSessionData === true;
+          let partition: string = undefined;
+
+          if (persistSessionData) {
+            const existing = appData.recentSessions.find(recentSession => {
+              return recentSession.remoteURL === remoteURL;
+            });
+            if (
+              existing &&
+              existing.persistSessionData &&
+              existing?.partition?.startsWith('persist:')
+            ) {
+              partition = existing.partition;
+            }
+          }
+
           return SessionConfig.createRemote(
             remoteURL,
-            cliArgs.persistSessionData === true,
-            undefined
+            persistSessionData,
+            partition
           );
         }
       }
