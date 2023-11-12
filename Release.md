@@ -70,7 +70,7 @@ yarn check_version_match
 
    tbump will list changes to be applied, confirm the changes to proceed with apply.
 
-3. Make sure that application is building, installing and running properly by following the [distribution build instructions](README.md##building-for-distribution) locally
+3. Make sure that application is building, installing and running properly by following the [distribution build instructions](dev.md#building-for-distribution) locally
 
 4. Create a branch preferably with the name `release-v<new-version>`. Add a commit with the version changes and create a PR. The PR must be created from main repo and not from a fork. This is necessary for GitHub Actions to be able to attach installers to the release.
 
