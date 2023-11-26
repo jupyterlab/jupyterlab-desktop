@@ -71,6 +71,7 @@
     "afterSign": "scripts/notarize.js",
     "linux": {
       "target": [
+        "snap",
         "deb",
         "rpm"
       ],
@@ -86,6 +87,14 @@
       "fpm": [
         "--after-install=build/linux_after_install.sh"
       ]
+    },
+    "snap": {
+      "confinement": "strict",
+      "base": "core22",
+      "environment": {
+        "SHELL": "/bin/bash"
+      },
+      "plugs": ["default",{"personal-files":{"interface":"personal-files","write":["$HOME/.jupyter","$HOME/.ipynb_checkpoints","$HOME/.ipython"]}}]
     },
     "win": {
       "target": [
