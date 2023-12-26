@@ -8,6 +8,7 @@ import {
   getBundledPythonPath,
   installBundledEnvironment,
   isBaseCondaEnv,
+  isEnvInstalledByDesktopApp,
   markEnvironmentAsJupyterInstalled,
   pythonPathForEnvPath
 } from './utils';
@@ -194,9 +195,7 @@ export async function handleEnvListCommand(argv: any) {
         name => `${name}: ${env.versions[name]}`
       );
       const envPath = envPathForPythonPath(env.path);
-      const installedByApp = fs.existsSync(
-        path.join(envPath, '.jupyter', 'env.json')
-      );
+      const installedByApp = isEnvInstalledByDesktopApp(envPath);
       listLines.push(
         `  [${env.name}], path: ${envPath}${
           installedByApp ? ', installed by JupyterLab Desktop' : ''
@@ -222,7 +221,7 @@ export async function handleEnvListCommand(argv: any) {
   console.log(listLines.join('\n'));
 }
 
-function addUserSetEnvironment(envPath: string, isConda: boolean) {
+export function addUserSetEnvironment(envPath: string, isConda: boolean) {
   const pythonPath = pythonPathForEnvPath(envPath, isConda);
 
   // this record will get updated with the correct data once app launches
@@ -307,6 +306,50 @@ export async function handleEnvUpdateRegistryCommand(argv: any) {
   appData.save();
 }
 
+export async function createPythonEnvironment(
+  envPath: string,
+  envType: string,
+  packages: string,
+  callbacks?: ICommandRunCallbacks
+) {
+  const isConda = envType === 'conda';
+  const condaRootExists = isBaseCondaEnv(appData.condaRootPath);
+
+  if (isConda) {
+    const createCommand = `conda create -y -c conda-forge -p ${envPath} ${packages}`;
+    await runCommandInEnvironment(
+      appData.condaRootPath,
+      createCommand,
+      callbacks
+    );
+  } else {
+    if (condaRootExists) {
+      const createCommand = `python -m venv create ${envPath}`;
+      await runCommandInEnvironment(
+        appData.condaRootPath,
+        createCommand,
+        callbacks
+      );
+    } else if (fs.existsSync(appData.systemPythonPath)) {
+      execFileSync(appData.systemPythonPath, ['-m', 'venv', 'create', envPath]);
+    } else {
+      throw {
+        message:
+          'Failed to create Python environment. Python executable not found.'
+      };
+    }
+
+    if (packages.trim() !== '') {
+      const installCommand = `python -m pip install ${packages}`;
+      console.log('Installing packages...');
+      await runCommandInEnvironment(envPath, installCommand, callbacks);
+    }
+  }
+
+  markEnvironmentAsJupyterInstalled(envPath);
+  addUserSetEnvironment(envPath, isConda);
+}
+
 export async function handleEnvCreateCommand(argv: any) {
   const envPath = argv.path as string;
 
@@ -353,33 +396,15 @@ export async function handleEnvCreateCommand(argv: any) {
 
   const createCondaEnv = isConda || (envType === 'auto' && condaRootExists);
 
-  if (createCondaEnv) {
-    const createCommand = `conda create -y -c conda-forge -p ${envPath} ${packageList.join(
-      ' '
-    )}`;
-    await runCommandInEnvironment(appData.condaRootPath, createCommand);
-  } else {
-    if (condaRootExists) {
-      const createCommand = `python -m venv create ${envPath}`;
-      await runCommandInEnvironment(appData.condaRootPath, createCommand);
-    } else if (fs.existsSync(appData.systemPythonPath)) {
-      execFileSync(appData.systemPythonPath, ['-m', 'venv', 'create', envPath]);
-    } else {
-      console.error(
-        'Failed to create Python environment. Python executable not found.'
-      );
-      return;
-    }
-
-    if (packageList.length > 0) {
-      const installCommand = `python -m pip install ${packageList.join(' ')}`;
-      console.log('Installing packages...');
-      await runCommandInEnvironment(envPath, installCommand);
-    }
+  try {
+    await createPythonEnvironment(
+      envPath,
+      createCondaEnv ? 'conda' : 'venv',
+      packageList.join(' ')
+    );
+  } catch (error) {
+    console.error(error);
   }
-
-  markEnvironmentAsJupyterInstalled(envPath);
-  addUserSetEnvironment(envPath, createCondaEnv);
 }
 
 export async function handleEnvSetBaseCondaCommand(argv: any) {
@@ -442,9 +467,19 @@ export async function launchCLIinEnvironment(
   });
 }
 
+export interface ICommandRunCallback {
+  (msg: string): void;
+}
+
+export interface ICommandRunCallbacks {
+  stdout?: ICommandRunCallback;
+  stderr?: ICommandRunCallback;
+}
+
 export async function runCommandInEnvironment(
   envPath: string,
-  command: string
+  command: string,
+  callbacks?: ICommandRunCallbacks
 ) {
   const isWin = process.platform === 'win32';
   const commandScript = createCommandScriptInEnv(
@@ -471,12 +506,20 @@ export async function runCommandInEnvironment(
 
     if (shell.stdout) {
       shell.stdout.on('data', chunk => {
-        console.debug('>', Buffer.from(chunk).toString());
+        const msg = Buffer.from(chunk).toString();
+        console.debug('>', msg);
+        if (callbacks?.stdout) {
+          callbacks.stdout(msg);
+        }
       });
     }
     if (shell.stderr) {
       shell.stderr.on('data', chunk => {
-        console.error('>', Buffer.from(chunk).toString());
+        const msg = Buffer.from(chunk).toString();
+        console.error('>', msg);
+        if (callbacks?.stdout) {
+          callbacks.stdout(msg);
+        }
       });
     }
 

@@ -1,7 +1,12 @@
 import { app, Menu, MenuItem } from 'electron';
 import log, { LevelOption } from 'electron-log';
 import * as fs from 'fs';
-import { getAppDir, isDevMode, waitForFunction } from './utils';
+import {
+  getAppDir,
+  getPythonEnvsDirectory,
+  isDevMode,
+  waitForFunction
+} from './utils';
 import { execSync } from 'child_process';
 import { JupyterApplication } from './app';
 import { ICLIArguments } from './tokens';
@@ -136,6 +141,18 @@ function setupJLabCommand() {
   }
 }
 
+function createPythonEnvsDirectory() {
+  const envsDir = getPythonEnvsDirectory();
+
+  try {
+    if (!fs.existsSync(envsDir)) {
+      fs.mkdirSync(envsDir, { recursive: true });
+    }
+  } catch (error) {
+    log.error(error);
+  }
+}
+
 function setApplicationMenu() {
   if (process.platform !== 'darwin') {
     return;
@@ -182,6 +199,7 @@ app.on('ready', async () => {
     redirectConsoleToLog();
     setApplicationMenu();
     setupJLabCommand();
+    createPythonEnvsDirectory();
     argv.cwd = process.cwd();
     jupyterApp = new JupyterApplication((argv as unknown) as ICLIArguments);
   } catch (error) {

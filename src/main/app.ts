@@ -17,8 +17,11 @@ import * as semver from 'semver';
 import * as fs from 'fs';
 import {
   clearSession,
+  EnvironmentInstallStatus,
   getBundledPythonEnvPath,
   getBundledPythonPath,
+  getNextPythonEnvName,
+  getPythonEnvsDirectory,
   installBundledEnvironment,
   isDarkTheme,
   waitForDuration
@@ -49,12 +52,15 @@ import { EventTypeMain, EventTypeRenderer } from './eventtypes';
 import { SettingsDialog } from './settingsdialog/settingsdialog';
 import { AboutDialog } from './aboutdialog/aboutdialog';
 import { AuthDialog } from './authdialog/authdialog';
+import { ManagePythonEnvironmentDialog } from './pythonenvdialog/pythonenvdialog';
+import { addUserSetEnvironment, createPythonEnvironment } from './cli';
 
 export interface IApplication {
   createNewEmptySession(): void;
   createFreeServersIfNeeded(): void;
   checkForUpdates(showDialog: 'on-new-version' | 'always'): void;
   showSettingsDialog(activateTab?: SettingsDialog.Tab): void;
+  showManagePythonEnvsDialog(): void;
   showAboutDialog(): void;
   cliArgs: ICLIArguments;
 }
@@ -399,6 +405,18 @@ export class JupyterApplication implements IApplication, IDisposable {
     dialog.load();
   }
 
+  async showManagePythonEnvsDialog() {
+    const dialog = new ManagePythonEnvironmentDialog(
+      {
+        envs: await this._registry.getEnvironmentList(false),
+        isDarkTheme: this._isDarkTheme,
+        defaultPythonPath: userSettings.getValue(SettingType.pythonPath)
+      },
+      this._registry
+    );
+    dialog.load();
+  }
+
   closeSettingsDialog() {
     if (this._settingsDialog) {
       this._settingsDialog.window.close();
@@ -665,15 +683,18 @@ export class JupyterApplication implements IApplication, IDisposable {
 
     this._evm.registerEventHandler(
       EventTypeMain.InstallBundledPythonEnv,
-      async event => {
-        const installPath = getBundledPythonEnvPath();
+      async (event, envPath: string) => {
+        const installPath = envPath || getBundledPythonEnvPath();
         await installBundledEnvironment(installPath, {
           onInstallStatus: (status, message) => {
             event.sender.send(
-              EventTypeRenderer.InstallBundledPythonEnvStatus,
+              EventTypeRenderer.InstallPythonEnvStatus,
               status,
               message
             );
+            if (status === EnvironmentInstallStatus.Success) {
+              addUserSetEnvironment(installPath, true);
+            }
           },
           get forceOverwrite() {
             return false;
@@ -699,6 +720,46 @@ export class JupyterApplication implements IApplication, IDisposable {
               }
             });
           }
+        });
+      }
+    );
+
+    this._evm.registerEventHandler(
+      EventTypeMain.ShowManagePythonEnvironmentsDialog,
+      async event => {
+        this.showManagePythonEnvsDialog();
+      }
+    );
+
+    this._evm.registerSyncEventHandler(
+      EventTypeMain.GetNextPythonEnvironmentName,
+      (event, path) => {
+        return getNextPythonEnvName();
+      }
+    );
+
+    this._evm.registerSyncEventHandler(
+      EventTypeMain.SelectPythonEnvInstallDirectory,
+      event => {
+        const currentPath = getPythonEnvsDirectory();
+
+        return new Promise<string>((resolve, reject) => {
+          dialog
+            .showOpenDialog({
+              properties: [
+                'openDirectory',
+                'showHiddenFiles',
+                'noResolveAliases',
+                'createDirectory'
+              ],
+              buttonLabel: 'Use Directory',
+              defaultPath: currentPath
+            })
+            .then(({ filePaths }) => {
+              if (filePaths.length > 0) {
+                resolve(filePaths[0]);
+              }
+            });
         });
       }
     );
@@ -808,6 +869,36 @@ export class JupyterApplication implements IApplication, IDisposable {
       EventTypeMain.SetCtrlWBehavior,
       (_event, behavior: CtrlWBehavior) => {
         userSettings.setValue(SettingType.ctrlWBehavior, behavior);
+      }
+    );
+
+    this._evm.registerEventHandler(
+      EventTypeMain.CreateNewPythonEnvironment,
+      async (event, envPath: string, envType: string, packages: string) => {
+        event.sender.send(
+          EventTypeRenderer.InstallPythonEnvStatus,
+          EnvironmentInstallStatus.Started
+        );
+        try {
+          await createPythonEnvironment(envPath, envType, packages, {
+            stdout: (msg: string) => {
+              event.sender.send(
+                EventTypeRenderer.InstallPythonEnvStatus,
+                EnvironmentInstallStatus.Running,
+                msg
+              );
+            }
+          });
+          event.sender.send(
+            EventTypeRenderer.InstallPythonEnvStatus,
+            EnvironmentInstallStatus.Success
+          );
+        } catch (error) {
+          event.sender.send(
+            EventTypeRenderer.InstallPythonEnvStatus,
+            EnvironmentInstallStatus.Failure
+          );
+        }
       }
     );
 

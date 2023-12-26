@@ -869,6 +869,12 @@ export class SessionWindow implements IDisposable {
           }
         },
         {
+          label: 'Manage Python environments',
+          click: () => {
+            this._app.showManagePythonEnvsDialog();
+          }
+        },
+        {
           label: 'Check for updates…',
           click: () => {
             this._app.checkForUpdates('always');
@@ -1143,7 +1149,9 @@ export class SessionWindow implements IDisposable {
       }
     }
 
+    // TODO: bug. this._envSelectPopup might still be loading
     this._envSelectPopup.setCurrentPythonPath(currentPythonPath);
+    this._envSelectPopup.resetView();
 
     this._window.addBrowserView(this._envSelectPopup.view.view);
     this._envSelectPopupVisible = true;

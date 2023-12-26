@@ -93,6 +93,40 @@ export function getBundledPythonPath(): string {
   return pythonPathForEnvPath(getBundledPythonEnvPath(), true);
 }
 
+export function getPythonEnvsDirectory(): string {
+  // TODO: user settings
+  const userDataDir = getBundledPythonInstallDir();
+
+  return path.join(userDataDir, 'envs');
+}
+
+export function getNextPythonEnvName(): string {
+  const envsDir = getPythonEnvsDirectory();
+  const prefix = 'env_';
+  const maxTries = 10000;
+
+  let index = 1;
+  const getNextName = () => {
+    return `${prefix}${index++}`;
+  };
+
+  let name = getNextName();
+
+  while (fs.existsSync(path.join(envsDir, name))) {
+    if (index > maxTries) {
+      return 'invalid_env';
+    }
+    name = getNextName();
+  }
+
+  return name;
+}
+
+export function getCondaPath() {
+  // user settings
+  return process.env['CONDA_EXE'];
+}
+
 export function isDarkTheme(themeType: string) {
   if (themeType === 'light') {
     return false;
@@ -225,6 +259,7 @@ export function versionWithoutSuffix(version: string) {
 
 export enum EnvironmentInstallStatus {
   Started = 'STARTED',
+  Running = 'RUNNING',
   Failure = 'FAILURE',
   Cancelled = 'CANCELLED',
   Success = 'SUCCESS',
@@ -402,6 +437,10 @@ export function condaSourcePathForEnvPath(envPath: string) {
 
 export function jupyterEnvInstallInfoPathForEnvPath(envPath: string) {
   return path.join(envPath, '.jupyter', 'env.json');
+}
+
+export function isEnvInstalledByDesktopApp(envPath: string) {
+  return fs.existsSync(jupyterEnvInstallInfoPathForEnvPath(envPath));
 }
 
 export function isCondaEnv(envPath: string): boolean {

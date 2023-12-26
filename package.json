@@ -47,7 +47,8 @@
     "prettier": "prettier --write \"**/*{.ts,.tsx,.js,.jsx,.css,.json,.md}\"",
     "prettier:check": "prettier --check \"**/*{.ts,.tsx,.js,.jsx,.css,.json,.md}\"",
     "stylelint": "yarn stylelint:check --fix",
-    "stylelint:check": "stylelint \"**/*.css\""
+    "stylelint:check": "stylelint \"**/*.css\"",
+    "update-ufuzzy": "shx cp node_modules/@leeoniya/ufuzzy/dist/uFuzzy.iife.min.js src/assets/"
   },
   "build": {
     "appId": "org.jupyter.jupyterlab-desktop",
@@ -176,6 +177,7 @@
     "@types/yargs": "^17.0.18",
     "@typescript-eslint/eslint-plugin": "~5.28.0",
     "@typescript-eslint/parser": "~5.28.0",
+    "@leeoniya/ufuzzy": "1.0.14",
     "electron": "^27.0.2",
     "electron-builder": "^24.6.4",
     "electron-notarize": "^1.2.2",
@@ -191,6 +193,7 @@
     "prettier": "~2.1.1",
     "read-package-tree": "^5.1.6",
     "rimraf": "~3.0.0",
+    "shx": "^0.3.4",
     "stylelint": "^15.10.1",
     "stylelint-config-prettier": "^9.0.3",
     "stylelint-config-recommended": "^6.0.0",

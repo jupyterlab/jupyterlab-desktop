@@ -1,0 +1,891 @@
+// Copyright (c) Jupyter Development Team.
+// Distributed under the terms of the Modified BSD License.
+
+import * as ejs from 'ejs';
+import {
+  app,
+  BrowserWindow,
+  clipboard,
+  Menu,
+  MenuItemConstructorOptions
+} from 'electron';
+import * as path from 'path';
+import * as fs from 'fs';
+import { ThemedWindow } from '../dialog/themedwindow';
+import { IRegistry } from '../registry';
+import { IEnvironmentType, IPythonEnvironment } from '../tokens';
+import {
+  envPathForPythonPath,
+  getBundledPythonPath,
+  getCondaPath,
+  getNextPythonEnvName,
+  getPythonEnvsDirectory,
+  isEnvInstalledByDesktopApp,
+  versionWithoutSuffix
+} from '../utils';
+import { EventManager } from '../eventmanager';
+import { EventTypeMain } from '../eventtypes';
+
+export class ManagePythonEnvironmentDialog {
+  constructor(
+    options: ManagePythonEnvironmentDialog.IOptions,
+    registry: IRegistry
+  ) {
+    this._registry = registry;
+    this._window = new ThemedWindow({
+      isDarkTheme: options.isDarkTheme,
+      title: 'Manage Python environments',
+      width: 800,
+      height: 500,
+      preload: path.join(__dirname, './preload.js')
+    });
+
+    let defaultPythonPath = options.defaultPythonPath;
+    const bundledPythonPath = getBundledPythonPath();
+
+    if (defaultPythonPath === '') {
+      defaultPythonPath = bundledPythonPath;
+    }
+    let bundledEnvInstallationExists = false;
+    try {
+      bundledEnvInstallationExists = fs.existsSync(bundledPythonPath);
+    } catch (error) {
+      console.error('Failed to check for bundled Python path', error);
+    }
+
+    const selectBundledPythonPath =
+      (defaultPythonPath === '' || defaultPythonPath === bundledPythonPath) &&
+      bundledEnvInstallationExists;
+
+    let bundledEnvInstallationLatest = true;
+
+    if (bundledEnvInstallationExists) {
+      try {
+        const bundledEnv = registry.getEnvironmentByPath(bundledPythonPath);
+        const jlabVersion = bundledEnv.versions['jupyterlab'];
+        const appVersion = app.getVersion();
+
+        if (
+          versionWithoutSuffix(jlabVersion) !== versionWithoutSuffix(appVersion)
+        ) {
+          bundledEnvInstallationLatest = false;
+        }
+      } catch (error) {
+        console.error('Failed to check bundled environment update', error);
+      }
+    }
+
+    const condaEnvs: IPythonEnvironment[] = options.envs.filter(
+      env =>
+        env.type === IEnvironmentType.CondaEnv ||
+        env.type === IEnvironmentType.CondaRoot
+    );
+    const venvEnvs: IPythonEnvironment[] = options.envs.filter(
+      env => env.type === IEnvironmentType.VirtualEnv
+    );
+    const globalEnvs: IPythonEnvironment[] = options.envs.filter(
+      env => env.type === IEnvironmentType.Path
+    );
+
+    const infoIconSrc = fs.readFileSync(
+      path.join(__dirname, '../../../app-assets/info-icon.svg')
+    );
+    const menuIconSrc = fs.readFileSync(
+      path.join(__dirname, '../../../app-assets/ellipsis-vertical.svg')
+    );
+
+    const pythonEnvName = getNextPythonEnvName();
+    const pythonEnvInstallPath = getPythonEnvsDirectory();
+    const condaPath = getCondaPath();
+
+    this._evm.registerEventHandler(
+      EventTypeMain.ShowPythonEnvironmentContextMenu,
+      async (event, pythonPath) => {
+        const envPath = envPathForPythonPath(pythonPath);
+        const installedByApp = isEnvInstalledByDesktopApp(envPath);
+        const template: MenuItemConstructorOptions[] = [
+          {
+            label: 'Copy Python path',
+            click: () => {
+              clipboard.writeText(pythonPath);
+            }
+          },
+          {
+            label: 'Copy environment info',
+            click: () => {
+              const env = this._registry.getEnvironmentByPath(pythonPath);
+              if (env) {
+                clipboard.writeText(
+                  JSON.stringify({
+                    pythonPath: env.path,
+                    name: env.name,
+                    type: env.type,
+                    versions: env.versions,
+                    defaultKernel: env.defaultKernel
+                  })
+                );
+              } else {
+                clipboard.writeText('Failed to get environment info!');
+              }
+            }
+          },
+          { type: 'separator', visible: installedByApp },
+          {
+            label: 'Delete',
+            visible: installedByApp
+            // click: () => {
+            //   this._app.showSettingsDialog();
+            // }
+          }
+        ];
+
+        const menu = Menu.buildFromTemplate(template);
+        menu.popup({
+          window: BrowserWindow.fromWebContents(event.sender)
+        });
+      }
+    );
+
+    const envTypeTemplate = `
+      <%
+        function getEnvTooltip(env) {
+          const packages = [];
+          for (const name in env.versions) {
+            packages.push(name + ': ' + env.versions[name]);
+          }
+          return env.name + '\\n' + env.path + '\\n' + packages.join(', ');
+        }
+      %>
+      <jp-menu-item class="menu-category"><div slot="start"><%- envType %> (<%- envs.length %>)</div></jp-menu-item>
+      <% envs.forEach(env => { %>
+        <jp-menu-item data-python-path="<%- env.path %>" onclick="onTreeItemClicked(this);" title="<%- getEnvTooltip(env) %>">
+          <div slot="start"><%- env.path %></div>
+          <div slot="end"><div class="env-right-content"><%- env.name %><div class="env-menu-icon" title="Show menu" onclick="handleEnvMenuClick(this);">${menuIconSrc}</div></div></div>
+        </jp-menu-item>
+      <% }); %>
+    `;
+
+    const template = `
+      <style>
+      body {
+        background-image: url(../../../app-assets/info-icon.svg);
+      }
+      #container {
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+      }
+      #content-area {
+        display: flex;
+        flex-direction: row;
+        column-gap: 20px;
+        flex-grow: 1;
+        overflow-y: auto;
+        margin: 5px;
+      }
+      jp-tree-item::part(start) {
+        flex-grow: 1;
+      }
+      jp-tree-item::part(end) {
+        text-decoration: underline;
+        float: right;
+      }
+      #categories {
+        width: 200px;
+      }
+      #category-content-container {
+        flex-grow: 1;
+      }
+      .category-content {
+        display: flex;
+        flex-direction: column;
+      }
+      #category-jupyterlab jp-divider {
+        margin: 15px 0;
+      }
+      #server-config-section {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+      }
+      jp-tab-panel #tab-updates {
+        display: flex;
+        align-items: flex-start;
+      }
+      #category-tabs {
+        width: 100%;
+        height: 100%;
+      }
+      #bundled-env-warning {
+        display: none;
+        align-items: center;
+      }
+      #bundled-env-warning.warning {
+        color: orange;
+      }
+      #install-bundled-env {
+        display: none;
+      }
+      #update-bundled-env {
+        display: none;
+      }
+      .row {
+        display: flex;
+        align-items: center;
+        width: 100%;
+      }
+      .header-row {
+        height: 50px;
+        min-height: 50px;
+        overflow-y: hidden;
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        margin-bottom: 5px;
+      }
+      .progress-message {
+        margin-right: 5px; line-height: 24px; visibility: hidden;
+      }
+      .progress-animation {
+        margin-right: 5px; visibility: hidden;
+      }
+      #clear-create-form {
+        display: none;
+      }
+      #toggle-install-output {
+        display: none;
+      }
+      #news-feed-settings {
+        display: flex;
+        flex-direction: column;
+        margin: 10px 0;
+      }
+      #clear-history {
+        display: flex;
+        flex-direction: column;
+      }
+      #clear-history-progress {
+        visibility: hidden;
+      }
+      .setting-section {
+        display: flex;
+        flex-direction: column;
+        align-items: baseline;
+        padding-bottom: 10px;
+      }
+      .setting-section .header {
+        line-height: 30px;
+        font-size: 14px;
+        font-weight: bold;
+      }
+      .setting-section jp-text-field {
+        width: 100%;
+      }
+      jp-tab-panel .setting-section:last-child {
+        border-bottom: none;
+      }
+      #additional-server-args,
+      #server-launch-command-preview,
+      #package-list {
+        width: 100%;
+      }
+      #package-list::part(control) {
+        height: 40px;
+      }
+      #create-command-preview::part(control) {
+        height: 40px;
+      }
+      #tab-panel-server {
+        padding-bottom: 20px;
+      }
+      #package-list.invalid::part(control) {
+        border-color: red;
+      }
+      .info-icon {
+        display: inline-block;
+        margin-left: 5px;
+      }
+      .info-icon svg path {
+        fill: var(--neutral-stroke-hover);
+      }
+      .create-env-action-row {
+        height: 40px;
+      }
+      #create-env-output-row {
+        display: none;
+      }
+      #env-install-path-label {
+        margin-top: 5px;
+        color: var(--neutral-stroke-hover);
+      }
+      .tab-panel-content {
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+      }
+      #create-env-output::part(control) {
+        height: 100%;
+        font-size: 12px;
+      }
+      jp-text-input[readonly]::part(control), jp-text-area[readonly]::part(control) {
+        color: var(--neutral-stroke-hover);
+      }
+      #new-env-name {
+        max-width: 200px;
+      }
+      #env-list {
+        max-width: 100%;
+        width: 100%;
+        box-shadow: none;
+      }
+      jp-menu {
+        background: none;
+      }
+      jp-menu-item {
+        padding-left: 5px;
+      }
+      jp-menu-item.menu-category {
+        background: var(--neutral-layer-2);
+      }
+      jp-menu-item.active {
+        background: var(--neutral-layer-3);
+      }
+      jp-menu-item::part(content) {
+        width: 100%;
+        text-overflow: ellipsis;
+        overflow: hidden;
+        white-space: nowrap;
+      }
+      jp-menu-item::part(end) {
+        margin-left: 10px;
+      }
+      .env-right-content {
+        display: flex;
+        align-items: center;
+        margin-right: -10px;
+      }
+      .env-menu-icon {
+        margin-left: 5px;
+        width: 24px;
+        height: 24px;
+      }
+      .env-menu-icon svg {
+        width: 24px;
+        margin-top: 4px;
+      }
+      .env-menu-icon:hover {
+        background-color: var(--neutral-layer-1);
+      }
+      </style>
+      <div id="container">
+      <jp-tabs id="category-tabs" false="" orientation="vertical">
+        <jp-tab id="tab-envs">Environments</jp-tab>
+        <jp-tab id="tab-create">Create new</jp-tab>
+        <jp-tab id="tab-settings">Settings</jp-tab>
+
+        <jp-tab-panel id="tab-panel-envs">
+          <span slot="heading">Available Python environments</span>
+          <div class="setting-section">
+            <div class="row">
+              <jp-button appearance="accent" onclick='handleAddExistingEnv(this);'>Add existing</jp-button>
+              <jp-button appearance="accent" onclick='handleCreateNewEnvLink(this);'>Create new</jp-button>
+            </div>
+          </div>
+
+          <div id="content-area">
+            <jp-menu id="env-list">
+              <%- condaEnvs %>
+              <%- venvEnvs %>
+              <%- globalEnvs %>
+            </jp-menu>
+          </div>
+        </jp-tab-panel>
+
+        <jp-tab-panel id="tab-panel-create">
+          <div class="tab-panel-content">
+            <div class="setting-section">
+              <div class="header">
+              Create
+              </div>
+              <div class="row">
+                <jp-radio-group orientation="horizontal">
+                  <jp-radio id="create-copy-of-bundled-env" name="new-env-creteate-method" value="create-copy-of-bundled-env" checked onchange="handleNewEnvCreateMethodChange(this);">Copy of the bundled environment</jp-radio>
+                  <jp-radio id="create-new-env" name="new-env-creteate-method" value="create-new-env" onchange="handleNewEnvCreateMethodChange(this);">New environment</jp-radio>
+                </jp-radio-group>
+              </div>
+            </div>
+
+            <div class="setting-section">
+              <div class="header">
+              Name<div class="info-icon" title="Name of the environment and the installation directory">${infoIconSrc}</div>
+              </div>
+              <div class="row">
+                <jp-text-field type="text" id="new-env-name" value="<%= pythonEnvName %>" spellcheck="false" placeholder="environment name" oninput="handleNewEnvNameChange(this);"></jp-text-field>
+              </div>
+              <div class="row">
+                <label id="env-install-path-label"></label>
+              </div>
+            </div>
+
+            <div class="setting-section" id="env-type-section">
+              <div class="header">
+              Environment type
+              </div>
+              <div class="row">
+              <jp-radio-group orientation="horizontal">
+                <jp-radio id="env-type-conda" name="new-env-type" value="light" checked onchange="handleEnvTypeChange(this);">conda</jp-radio>
+                <jp-radio id="env-type-venv" name="new-env-type" value="dark" onchange="handleEnvTypeChange(this);">venv</jp-radio>
+              </jp-radio-group>
+              </div>
+            </div>
+
+            <div class="setting-section" id="packages-section">
+              <div class="header">
+              Python packages to install
+              </div>
+              <div class="row">
+                <jp-checkbox id='include-jupyterlab' type='checkbox' checked onchange='handleIncludeJupyterLabChange(this);'>Include jupyterlab (required for use in JupyterLab Desktop)</jp-checkbox>
+              </div>
+              <div class="header">
+              Additional Python packages
+              </div>
+              <div class="row">
+                <jp-text-area id='package-list' appearance="outline" resize="vertical" rows="1" value="" oninput='handleAdditionalServerEnvsInput(this);' spellcheck="false" placeholder='Enter additional packages'>
+                </jp-text-area>
+              </div>
+            </div>
+
+            <div class="setting-section" id="create-command-preview-section">
+              <div class="header">
+              Environment create command preview
+              </div>
+              <div class="row">
+              <jp-text-area id='create-command-preview' appearance="outline" resize="vertical" rows="1" readonly="" style="width: 100%;" spellcheck="false"></jp-text-area>
+              </div>
+            </div>
+
+            <div class="setting-section">
+              <div class="row create-env-action-row">
+                <jp-button id="create" appearance="accent" onclick='handleCreate(this);'>Create</jp-button>
+                <div id="progress-animation" class="progress-animation"><jp-progress-ring></jp-progress-ring></div>
+                <div id="progress-message" class="progress-message"></div>
+                <jp-button id="toggle-install-output" onclick='toggleInstallOutput(this);'>Show output</jp-button>
+                <jp-button id="clear-create-form" onclick='clearCreateForm(this);'>Clear form</jp-button>
+              </div>
+            </div>
+
+            <div class="setting-section" style="flex-grow: 1;">
+              <div class="row" id="create-env-output-row" style="height: 100%;">
+                <jp-text-area id='create-env-output' appearance="outline" resize="vertical" rows="3" readonly="" style="width: 100%; font-family: monospace;" spellcheck="false" placeholder='install output will appear here'></jp-text-area>
+              </div>
+            </div>
+          </div>
+        </jp-tab-panel>
+
+        <jp-tab-panel id="tab-panel-settings">
+          <span slot="heading">Python environment settings</span>
+
+          <div class="setting-section">
+            <div class="header">
+              Default Python path for JupyterLab Server<div class="info-icon" title="Python executable to use when launching a new JupyterLab server">${infoIconSrc}</div>
+            </div>
+            <div id="content-local-server" style="width: 100%;">
+              <div style="display: flex; flex-direction: column; row-gap: 5px;">
+                <div id="bundled-env-warning"><span id="bundled-env-warning-message"></span><jp-button id='install-bundled-env' onclick='handleInstallBundledEv(this);'>Install</jp-button><jp-button id='update-bundled-env' onclick='handleUpdateBundledEv(this);'>Update</jp-button></div>
+                <jp-radio-group orientation="vertical">
+                  <jp-radio type="radio" id="bundled-env" name="env_type" value="bundled-env" <%= selectBundledPythonPath ? 'checked' : '' %> <%= !bundledEnvInstallationExists ? 'disabled' : '' %> onchange="handleDefaultPythonEnvTypeChange(this);">Use bundled Python environment installation</jp-radio>
+                  <jp-radio type="radio" id="custom-env" name="env_type" value="custom-env" <%= !selectBundledPythonPath ? 'checked' : '' %> onchange="handleDefaultPythonEnvTypeChange(this);">Use custom Python environment</jp-radio>
+                </jp-radio-group>
+
+                <div class="row">
+                  <div style="flex-grow: 1;">
+                    <jp-text-field type="text" id="python-path" value="<%= defaultPythonPath %>" style="width: 100%;" spellcheck="false"></jp-text-field>
+                  </div>
+                  <div>
+                    <jp-button id='select-python-path' onclick='handleSelectPythonPath(this);'>Select path</jp-button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="setting-section">
+            <div class="header">
+              New Python environment install path<div class="info-icon" title="Parent directory where new Python environments will be created">${infoIconSrc}</div>
+            </div>
+            <div class="row">
+              <div style="flex-grow: 1;">
+                <jp-text-field type="text" id='python-env-install-directory' value="<%= pythonEnvInstallPath %>" style="width: 100%;" spellcheck="false"></jp-text-field>
+              </div>
+              <div>
+                <jp-button onclick='handleSelectPythonEnvInstallDirectory(this);'>Select path</jp-button>
+              </div>
+            </div>
+          </div>
+
+          <div class="setting-section">
+            <div class="header">
+              conda path<div class="info-icon" title="conda executable to use when creating new conda environments, or running conda commands">${infoIconSrc}</div>
+            </div>
+            <div class="row">
+              <div style="flex-grow: 1;">
+                <jp-text-field type="text" id="conda-path" value="<%= condaPath %>" style="width: 100%;" spellcheck="false"></jp-text-field>
+              </div>
+              <div>
+                <jp-button onclick='handleSelectCondaPath(this);'>Select path</jp-button>
+              </div>
+            </div>
+          </div>
+
+          <div class="setting-section">
+            <div class="header">
+              Python path<div class="info-icon" title="Python executable to use when creating new venv environments">${infoIconSrc}</div>
+            </div>
+            <div class="row">
+              <div style="flex-grow: 1;">
+                <jp-text-field type="text" id="python-path" value="<%- defaultPythonPath %>" style="width: 100%;" spellcheck="false"></jp-text-field>
+              </div>
+              <div>
+                <jp-button id='select-python-path' onclick='handleSelectPythonPath(this);'>Select path</jp-button>
+              </div>
+            </div>
+          </div>
+        </jp-tab-panel>
+      </jp-tabs>
+
+      </div>
+      <script>
+        const bundledEnvRadio = document.getElementById('bundled-env');
+        const customEnvRadio = document.getElementById('custom-env');
+        const pythonPathInput = document.getElementById('python-path');
+        const selectPythonPathButton = document.getElementById('select-python-path');
+        const bundledEnvWarningContainer = document.getElementById('bundled-env-warning');
+        const bundledEnvWarningMessage = document.getElementById('bundled-env-warning-message');
+        const installBundledEnvButton = document.getElementById('install-bundled-env');
+        const updateBundledEnvButton = document.getElementById('update-bundled-env');
+        
+        const createCopyOfBundledEnvRadio = document.getElementById('create-copy-of-bundled-env');
+        const createNewEnvRadioRadio = document.getElementById('create-new-env');
+        const envTypeSection = document.getElementById('env-type-section');
+        const envTypeCondaRadio = document.getElementById('env-type-conda');
+        const packagesSection = document.getElementById('packages-section');
+        const createCommandPreviewSection = document.getElementById('create-command-preview-section');
+
+        const includeJupyterLabCheckbox = document.getElementById('include-jupyterlab');
+        const packageListInput = document.getElementById('package-list');
+        const newEnvNameInput = document.getElementById('new-env-name');
+        const envInstallPathLabel = document.getElementById('env-install-path-label');
+        const createCommandPreview = document.getElementById('create-command-preview');
+        const createButton = document.getElementById('create');
+        const progressMessage = document.getElementById('progress-message');
+        const progressAnimation = document.getElementById('progress-animation');
+        const createEnvOutputRow = document.getElementById('create-env-output-row');
+        const createEnvOutput = document.getElementById('create-env-output');
+        const toggleInstallOutputButton = document.getElementById('toggle-install-output');
+        const clearCreateFormButton = document.getElementById('clear-create-form');
+
+        const pythonEnvInstallDirectoryInput = document.getElementById('python-env-install-directory');
+
+        let defaultPythonEnvChanged = false;
+
+        const pythonEnvInstallPath = "<%- pythonEnvInstallPath %>";
+        const pathSeparator = '${path.sep}';
+
+        function handleEnvMenuClick(el) {
+          const menuItem = el.closest('jp-menu-item');
+          const pythonPath = menuItem.dataset.pythonPath;
+          window.electronAPI.showPythonEnvironmentContextMenu(pythonPath);
+        }
+
+        function handleDefaultPythonEnvTypeChange() {
+          defaultPythonEnvChanged = true;
+          const useBundledEnv = bundledEnvRadio.checked;
+          if (useBundledEnv) {
+            pythonPathInput.setAttribute('disabled', 'disabled');
+            selectPythonPathButton.setAttribute('disabled', 'disabled');
+          } else {
+            pythonPathInput.removeAttribute('disabled');
+            selectPythonPathButton.removeAttribute('disabled');
+          }
+        }
+
+        function handleSelectPythonPath(el) {
+          window.electronAPI.selectPythonPath();
+        }
+
+        function handleSelectPythonEnvInstallDirectory() {
+          window.electronAPI.selectPythonEnvInstallDirectory().then(selected => {
+            pythonEnvInstallDirectoryInput.value = selected;
+          })
+        }
+
+        function showBundledEnvWarning(type) {
+          if (type === 'does-not-exist') {
+            bundledEnvWarningMessage.innerText = 'Bundled environment not found';
+            installBundledEnvButton.style.display = 'block';
+            bundledEnvWarningContainer.classList.add('warning');
+          } else {
+            bundledEnvWarningMessage.innerText = 'Updates available for the bundled environment';
+            updateBundledEnvButton.style.display = 'block';
+            bundledEnvWarningContainer.classList.add('warning');
+          }
+          bundledEnvWarningContainer.style.display = 'flex';
+        }
+
+        function hideBundledEnvWarning() {
+          bundledEnvWarningContainer.style.display = 'none';
+        }
+
+        function handleInstallBundledEv() {
+          applyButton.setAttribute('disabled', 'disabled');
+          installBundledEnvButton.setAttribute('disabled', 'disabled');
+          window.electronAPI.installBundledPythonEnv();
+        }
+
+        function handleUpdateBundledEv() {
+          showProgress('Updating environment', true);
+          applyButton.setAttribute('disabled', 'disabled');
+          window.electronAPI.updateBundledPythonEnv();
+        }
+
+        function showProgress(message, animate) {
+          progressMessage.innerText = message;
+          progressMessage.style.visibility = message !== '' ? 'visible' : 'hidden';
+          progressAnimation.style.visibility = animate ? 'visible' : 'hidden';
+        }
+
+        function handleCreateNewEnvLink() {
+          document.getElementById('category-tabs').setAttribute('activeid', 'tab-create');
+        }
+
+        function handleEnvTypeChange() {
+          updateCreateCommandPreview();
+        }
+
+        async function clearCreateForm() {
+          newEnvNameInput.value = await window.electronAPI.getNextPythonEnvironmentName();
+          createCopyOfBundledEnvRadio.checked = true;
+          envTypeCondaRadio.checked = true;
+          includeJupyterLabCheckbox.checked = true;
+          packageListInput.value = '';
+          createEnvOutput.value = '';
+          createEnvOutputRow.style.display = "none";
+          toggleInstallOutputButton.style.display = 'none';
+          clearCreateFormButton.style.display = 'none';
+          handleNewEnvNameChange();
+          showProgress('');
+          createButton.disabled = false;
+        }
+
+        function toggleInstallOutput() {
+          if (createEnvOutputRow.style.display === 'none') {
+            createEnvOutputRow.style.display = 'flex';
+            toggleInstallOutputButton.innerText = 'Hide output';
+          } else {
+            createEnvOutputRow.style.display = 'none';
+            toggleInstallOutputButton.innerText = 'Show output';
+          }
+        }
+
+        function handleCreate() {
+          createButton.disabled = true;
+          const createCopyOfBundledEnv = createCopyOfBundledEnvRadio.checked;
+          const envPath = getEnvInstallPath();
+          const isConda = envTypeCondaRadio.checked;
+          const envType = isConda ? 'conda' : 'venv';
+          if (createCopyOfBundledEnv) {
+            window.electronAPI.installBundledPythonEnv(envPath);
+          } else {
+            window.electronAPI.createNewPythonEnvironment(envPath, envType, getPackageList());
+            toggleInstallOutputButton.style.display = 'block';
+          }
+        }
+
+        function getPackageList() {
+          const includeJupyterLab = includeJupyterLabCheckbox.checked;
+          let packages = includeJupyterLab ? 'jupyterlab ' : '';
+          const packageListValue = packageListInput.value.trim();
+          if (packageListValue) {
+            packages += packageListValue;
+          }
+
+          return packages;
+        }
+
+        function handleIncludeJupyterLabChange() {
+          updateCreateCommandPreview();
+        }
+
+        function handleAdditionalServerEnvsInput() {
+          updateCreateCommandPreview();
+        }
+
+        function updateCreateCommandPreview() {
+          const isConda = envTypeCondaRadio.checked;
+          if (isConda) {
+            createCommandPreview.value = \`conda create -p \$\{getEnvInstallPath()\} -c conda-forge \$\{getPackageList()\}\`;
+          } else {
+            createCommandPreview.value = \`python -m venv create \$\{getEnvInstallPath()\}\npython -m pip install \$\{getPackageList()\}\`;
+          }
+        }
+
+        let scrollTimeout = -1;
+
+        window.electronAPI.onInstallBundledPythonEnvStatus((status, msg) => {
+          if (status === 'RUNNING') {
+            createEnvOutput.value = createEnvOutput.value + msg;
+            const textarea = createEnvOutput.shadowRoot.getElementById('control');
+            clearTimeout(scrollTimeout);
+            scrollTimeout = setTimeout(() => {
+              textarea.scrollTop = textarea.scrollHeight;
+            }, 100);
+            return;
+          }
+
+          const message = status === 'REMOVING_EXISTING_INSTALLATION' ?
+            'Removing the existing installation' :
+            status === 'STARTED' ?
+            'Installing Python environment' :
+            status === 'CANCELLED' ?
+            'Installation cancelled!' :
+            status === 'FAILURE' ?
+              'Failed to install the environment!' :
+            status === 'SUCCESS' ? 'Installation succeeded' : '';
+          
+          const animate = status === 'REMOVING_EXISTING_INSTALLATION'
+            || status === 'STARTED';
+
+          showProgress(message, animate);
+
+          if (status === 'SUCCESS') {
+            bundledEnvRadio.removeAttribute('disabled');
+            hideBundledEnvWarning();
+          }
+
+          if (!(status === 'REMOVING_EXISTING_INSTALLATION' || status === 'STARTED')) {
+            clearCreateFormButton.style.display = 'block';
+          }
+
+          installBundledEnvButton.removeAttribute('disabled');
+          applyButton.removeAttribute('disabled');
+        });
+
+        function handleApply() {
+          const startupMode = document.querySelector('jp-radio[name="startup-mode"].checked').value;
+          window.electronAPI.setStartupMode(startupMode);
+          const theme = document.querySelector('jp-radio[name="theme"].checked').value;
+          window.electronAPI.setTheme(theme);
+          window.electronAPI.setSyncJupyterLabTheme(syncJupyterLabThemeCheckbox.checked);
+          const showNewsFeedCheckbox = document.getElementById('checkbox-show-news-feed');
+          window.electronAPI.setShowNewsFeed(showNewsFeedCheckbox.checked);
+          window.electronAPI.setCheckForUpdatesAutomatically(autoUpdateCheckCheckbox.checked);
+          window.electronAPI.setInstallUpdatesAutomatically(autoInstallCheckbox.checked);
+
+          window.electronAPI.setDefaultWorkingDirectory(workingDirectoryInput.value);
+
+          window.electronAPI.setServerLaunchArgs(additionalServerArgs.value, overrideDefaultServerArgs.checked);
+          window.electronAPI.setServerEnvVars(parseServerEnvVars().envVars);
+
+          const ctrlWBehavior = document.querySelector('jp-radio[name="ctrl-w-behavior"].checked').value;
+          window.electronAPI.setCtrlWBehavior(ctrlWBehavior);
+
+          if (defaultPythonEnvChanged) {
+            if (bundledEnvRadio.checked) {
+              window.electronAPI.setDefaultPythonPath('');
+            } else {
+              window.electronAPI.validatePythonPath(pythonPathInput.value).then((valid) => {
+                if (valid) {
+                  window.electronAPI.setDefaultPythonPath(pythonPathInput.value);
+                } else {
+                  window.electronAPI.showInvalidPythonPathMessage(pythonPathInput.value);
+                }
+              });
+            }
+          }
+
+          window.electronAPI.restartApp();
+        }
+
+        window.electronAPI.onCustomPythonPathSelected((path) => {
+          pythonPathInput.value = path;
+        });
+
+        function handleNewEnvCreateMethodChange() {
+          defaultPythonEnvChanged = true;
+          const createCopyOfBundledEnv = createCopyOfBundledEnvRadio.checked;
+          if (createCopyOfBundledEnv) {
+            envTypeSection.style.display = 'none';
+            packagesSection.style.display = 'none';
+            createCommandPreviewSection.style.display = 'none';
+          } else {
+            envTypeSection.style.display = 'flex';
+            packagesSection.style.display = 'flex';
+            createCommandPreviewSection.style.display = 'flex';
+          }
+        }
+
+        function getEnvInstallPath() {
+          return \`\$\{pythonEnvInstallPath + pathSeparator + newEnvNameInput.value\}\`;
+        }
+
+        function handleNewEnvNameChange() {
+          envInstallPathLabel.innerText = \`Installation path: "\$\{getEnvInstallPath()\}"\`;
+          updateCreateCommandPreview();
+        }
+
+        document.addEventListener("DOMContentLoaded", () => {
+          handleDefaultPythonEnvTypeChange();
+          handleNewEnvCreateMethodChange();
+          handleNewEnvNameChange();
+          <%- !bundledEnvInstallationExists ? 'showBundledEnvWarning("does-not-exist");' : '' %> 
+          <%- (bundledEnvInstallationExists && !bundledEnvInstallationLatest) ? 'showBundledEnvWarning("not-latest");' : '' %>
+        });
+      </script>
+    `;
+    this._pageBody = ejs.render(template, {
+      condaEnvs: ejs.render(envTypeTemplate, {
+        envType: 'conda',
+        envs: condaEnvs
+      }),
+      venvEnvs: ejs.render(envTypeTemplate, {
+        envType: 'venv',
+        envs: venvEnvs
+      }),
+      globalEnvs: ejs.render(envTypeTemplate, {
+        envType: 'global',
+        envs: globalEnvs
+      }),
+      defaultPythonPath,
+      selectBundledPythonPath,
+      bundledEnvInstallationExists,
+      bundledEnvInstallationLatest,
+      pythonEnvName,
+      pythonEnvInstallPath,
+      condaPath
+    });
+  }
+
+  get window(): BrowserWindow {
+    return this._window.window;
+  }
+
+  load() {
+    this._window.loadDialogContent(this._pageBody);
+    this._window.window.on('close', () => {
+      this._evm.dispose();
+    });
+  }
+
+  private _window: ThemedWindow;
+  private _pageBody: string;
+  private _evm = new EventManager();
+  private _registry: IRegistry;
+}
+
+export namespace ManagePythonEnvironmentDialog {
+  export interface IOptions {
+    isDarkTheme: boolean;
+    envs: IPythonEnvironment[];
+    defaultPythonPath: string;
+  }
+}

@@ -114,7 +114,7 @@ ipcRenderer.on(EventTypeRenderer.DisableLocalServerActions, event => {
 });
 
 ipcRenderer.on(
-  EventTypeRenderer.InstallBundledPythonEnvStatus,
+  EventTypeRenderer.InstallPythonEnvStatus,
   (event, result, message) => {
     if (onInstallBundledPythonEnvStatusListener) {
       onInstallBundledPythonEnvStatusListener(result, message);

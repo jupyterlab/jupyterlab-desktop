@@ -58,13 +58,18 @@ export enum EventTypeMain {
   SetAuthDialogResponse = 'set-auth-dialog-response',
   InstallPythonEnvRequirements = 'install-python-env-requirements',
   ShowLogs = 'show-logs',
-  CopyToClipboard = 'copy-to-clipboard'
+  CopyToClipboard = 'copy-to-clipboard',
+  GetNextPythonEnvironmentName = 'get-next-python-environment-name',
+  CreateNewPythonEnvironment = 'create-new-python-environment',
+  ShowManagePythonEnvironmentsDialog = 'show-manage-python-environments-dialog',
+  SelectPythonEnvInstallDirectory = 'select-python-environment-install-directory',
+  ShowPythonEnvironmentContextMenu = 'show-python-environment-context-menu'
 }
 
 // events sent to Renderer process
 export enum EventTypeRenderer {
   WorkingDirectorySelected = 'working-directory-selected',
-  InstallBundledPythonEnvStatus = 'install-bundled-python-env-status',
+  InstallPythonEnvStatus = 'install-python-env-status',
   CustomPythonPathSelected = 'custom-python-path-selected',
   ShowProgress = 'show-progress',
   SetCurrentPythonPath = 'set-current-python-path',
@@ -77,5 +82,6 @@ export enum EventTypeRenderer {
   SetNewsList = 'set-news-list',
   SetNotificationMessage = 'set-notification-message',
   DisableLocalServerActions = 'disable-local-server-actions',
-  SetDefaultWorkingDirectoryResult = 'set-default-working-directory-result'
+  SetDefaultWorkingDirectoryResult = 'set-default-working-directory-result',
+  ResetPythonEnvSelectPopup = 'reset-python-env-select-popup'
 }

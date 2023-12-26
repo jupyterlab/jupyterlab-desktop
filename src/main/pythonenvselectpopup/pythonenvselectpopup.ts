@@ -3,6 +3,7 @@
 
 import * as ejs from 'ejs';
 import * as path from 'path';
+import * as fs from 'fs';
 import { ThemedView } from '../dialog/themedview';
 import { EventTypeRenderer } from '../eventtypes';
 import { IPythonEnvironment } from '../tokens';
@@ -17,6 +18,10 @@ export class PythonEnvironmentSelectPopup {
     const { envs, defaultPythonPath, bundledPythonPath } = options;
     this._envs = options.envs;
     const currentPythonPath = options.currentPythonPath || '';
+
+    const uFuzzyScriptSrc = fs.readFileSync(
+      path.join(__dirname, '../../../app-assets/uFuzzy.iife.min.js')
+    );
 
     const template = `
       <style>
@@ -33,6 +38,12 @@ export class PythonEnvironmentSelectPopup {
         .row {display: flex; align-items: center;}
         .row.error {color: rgb(231, 92, 88);}
         .radio-row {align-items: center;}
+        #restart-title {
+          margin-left: 5px;
+          height: 30px;
+          line-height: 30px;
+          font-weight: bold;
+        }
         #python-path {
           outline: none;
         }
@@ -79,63 +90,99 @@ export class PythonEnvironmentSelectPopup {
           margin-left: 10px;
         }
       </style>
+      <script>${uFuzzyScriptSrc}</script>
       <div style="height: 100%; display: flex; flex-direction: column; row-gap: 5px;">
+        <div id="restart-title">
+          Restart session using a different Python environment
+        </div>
         <div>
           <div style="display: flex; flex-direction: row; align-items: center; flex-grow: 1;">
-            <jp-text-field type="text" id="python-path" value="<%= currentPythonPath %>" style="width: 100%;" spellcheck="false" required title="Enter the Python path in the conda or virtualenv environment you would like to use for JupyterLab Desktop. Hit 'Return' key to apply and restart JupyterLab.">
+            <jp-text-field type="text" id="python-path" style="width: 100%;" spellcheck="false" required placeholder="type to filter Python paths">
             </jp-text-field>
-            <jp-button id="browse-button" appearance="accent" onclick='handleBrowsePythonPath(this);' title="Browse for Python path on your computer"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Pro 6.2.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license (Commercial License) Copyright 2022 Fonticons, Inc. --><path d="M88.7 223.8L0 375.8V96C0 60.7 28.7 32 64 32H181.5c17 0 33.3 6.7 45.3 18.7l26.5 26.5c12 12 28.3 18.7 45.3 18.7H416c35.3 0 64 28.7 64 64v32H144c-22.8 0-43.8 12.1-55.3 31.8zm27.6 16.1C122.1 230 132.6 224 144 224H544c11.5 0 22 6.1 27.7 16.1s5.7 22.2-.1 32.1l-112 192C453.9 474 443.4 480 432 480H32c-11.5 0-22-6.1-27.7-16.1s-5.7-22.2 .1-32.1l112-192z"/></svg></jp-button>
+            <jp-button id="browse-button" appearance="accent" onclick='handleManagePythonEnvs(this);' title="Manage Python environments"><svg xmlns="http://www.w3.org/2000/svg" height="16" width="16" viewBox="0 0 512 512"><!--!Font Awesome Free 6.5.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free Copyright 2023 Fonticons, Inc.--><path d="M495.9 166.6c3.2 8.7 .5 18.4-6.4 24.6l-43.3 39.4c1.1 8.3 1.7 16.8 1.7 25.4s-.6 17.1-1.7 25.4l43.3 39.4c6.9 6.2 9.6 15.9 6.4 24.6c-4.4 11.9-9.7 23.3-15.8 34.3l-4.7 8.1c-6.6 11-14 21.4-22.1 31.2c-5.9 7.2-15.7 9.6-24.5 6.8l-55.7-17.7c-13.4 10.3-28.2 18.9-44 25.4l-12.5 57.1c-2 9.1-9 16.3-18.2 17.8c-13.8 2.3-28 3.5-42.5 3.5s-28.7-1.2-42.5-3.5c-9.2-1.5-16.2-8.7-18.2-17.8l-12.5-57.1c-15.8-6.5-30.6-15.1-44-25.4L83.1 425.9c-8.8 2.8-18.6 .3-24.5-6.8c-8.1-9.8-15.5-20.2-22.1-31.2l-4.7-8.1c-6.1-11-11.4-22.4-15.8-34.3c-3.2-8.7-.5-18.4 6.4-24.6l43.3-39.4C64.6 273.1 64 264.6 64 256s.6-17.1 1.7-25.4L22.4 191.2c-6.9-6.2-9.6-15.9-6.4-24.6c4.4-11.9 9.7-23.3 15.8-34.3l4.7-8.1c6.6-11 14-21.4 22.1-31.2c5.9-7.2 15.7-9.6 24.5-6.8l55.7 17.7c13.4-10.3 28.2-18.9 44-25.4l12.5-57.1c2-9.1 9-16.3 18.2-17.8C227.3 1.2 241.5 0 256 0s28.7 1.2 42.5 3.5c9.2 1.5 16.2 8.7 18.2 17.8l12.5 57.1c15.8 6.5 30.6 15.1 44 25.4l55.7-17.7c8.8-2.8 18.6-.3 24.5 6.8c8.1 9.8 15.5 20.2 22.1 31.2l4.7 8.1c6.1 11 11.4 22.4 15.8 34.3zM256 336a80 80 0 1 0 0-160 80 80 0 1 0 0 160z"/></svg></jp-button>
           </div>
         </div>
-        <% if (envs.length > 0) { %>
-        <%
-          function getEnvTooltip(env) {
-            const packages = [];
-            for (const name in env.versions) {
-              packages.push(name + ': ' + env.versions[name]);
-            }
-            return env.name + '\\n' + env.path + '\\n' + packages.join(', ');
-          }
-        %>
         <div style="flex-grow: 1; overflow-x: hidden; overflow-y: auto;">
-          <jp-menu id="env-list">
-            <% envs.forEach(env => { %>
-              <jp-menu-item data-python-path="<%- env.path %>" onclick="onMenuItemClicked(this);" title="<%- getEnvTooltip(env) %>"><%- env.path %>
-                <div slot="end"><%- env.name %><%- env.path === ${JSON.stringify(
-                  defaultPythonPath
-                )} ? ' (default)' : env.path === ${JSON.stringify(
-      bundledPythonPath
-    )} ? ' (bundled)' : '' %></div>
-              </jp-menu-item>
-            <% }); %>
-          </jp-menu>
+          <jp-menu id="env-list"></jp-menu>
         </div>
-        <% } %>
       </div>
 
       <script>
+        let currentPythonPath = "<%- currentPythonPath %>;";
         const pythonPathInput = document.getElementById('python-path');
         const envListMenu = document.getElementById('env-list');
         const envs = <%- JSON.stringify(envs) %>;
         const numEnvs = envs.length;
         let activeIndex = -1;
+        const envPaths = envs.map(env => env.path);
+        let filteredEnvIndixes = [];
+        const uf = new uFuzzy({
+          intraChars: "[A-Za-z0-9_]",
+          intraIns: 10,
+          intraMode: 0,
+        });
+
+        function getEnvTooltip(env) {
+          const packages = [];
+          for (const name in env.versions) {
+            packages.push(name + ': ' + env.versions[name]);
+          }
+          return env.name + '\\n' + env.path + '\\n' + packages.join(', ');
+        }
+
+        function generateMenuItem(env, higlightRanges) {
+          const envPath = env.path;
+          const hilitedEnvPath = higlightRanges ? uFuzzy.highlight(envPath, higlightRanges) : envPath;
+          const envName = env.name;
+          const flag = envPath === currentPythonPath ? ' (current)' : envPath === "${defaultPythonPath}" ? ' (default)' : envPath === "${bundledPythonPath}" ? ' (bundled)' : '';
+          return \`<jp-menu-item data-python-path="\$\{envPath\}" onclick="onMenuItemClicked(this);" title="\$\{getEnvTooltip(env)\}">\$\{hilitedEnvPath\}
+                <div slot="end">\$\{envName\}\$\{flag\}
+                </div>
+              </jp-menu-item>\`;
+        }
+
+        function updateMenu(filterOrder, filterInfo) {
+          let html = '';
+
+          if (filterOrder && filterInfo) {
+            for (let i = 0; i < filterOrder.length; i++) {
+              const infoIdx = filterOrder[i];
+              html += generateMenuItem(envs[filterInfo.idx[infoIdx]], filterInfo.ranges[infoIdx]);
+            }
+          } else {
+            for (const env of envs) {
+              html += generateMenuItem(env);
+            }
+          }
+
+          envListMenu.innerHTML = html;
+        }
+
+        window.electronAPI.onResetPythonEnvSelectPopup((path) => {
+          pythonPathInput.value = '';
+          activeIndex = 0;
+          filterEnvironmentList();
+          updateActiveItem();
+          pythonPathInput.focus();
+        });
 
         window.electronAPI.onCurrentPythonPathSet((path) => {
-          pythonPathInput.value = path;
+          currentPythonPath = path;
         });
 
-        window.electronAPI.onCustomPythonPathSelected((path) => {
-          pythonPathInput.value = path;
-          window.electronAPI.setPythonPath(path);
-        });
+        // window.electronAPI.onCustomPythonPathSelected((path) => {
+        //   pythonPathInput.value = path;
+        //   window.electronAPI.setPythonPath(path);
+        // });
 
         function onMenuItemClicked(el) {
           const pythonPath = el.dataset.pythonPath;
           window.electronAPI.setPythonPath(pythonPath);
         }
 
-        function handleBrowsePythonPath(el) {
-          window.electronAPI.browsePythonPath(pythonPathInput.value);
+        function handleManagePythonEnvs(el) {
+          window.electronAPI.hideEnvSelectPopup();
+          window.electronAPI.showManagePythonEnvsDialog();
         }
 
         function updateActiveItem() {
@@ -146,36 +193,66 @@ export class PythonEnvironmentSelectPopup {
           const activeItem = envListMenu.children[activeIndex];
           activeItem.scrollIntoView();
           activeItem.classList.add('active');
-          pythonPathInput.value = activeItem.dataset.pythonPath;
+        }
+
+        function filterResults() {
+          const input = pythonPathInput.value;
+          return input.trim() !== '';
+        }
+
+        function filterEnvironmentList() {
+          if (!filterResults()) {
+            updateMenu();
+            return;
+          }
+
+          const input = pythonPathInput.value;
+          filteredEnvIndixes = uf.filter(envPaths, input);
+          const info = uf.info(filteredEnvIndixes, envPaths, input);
+          const order = uf.sort(info, envPaths, input);
+
+          updateMenu(order, info);
         }
 
         document.addEventListener("DOMContentLoaded", () => {
+          updateMenu();
+
           pythonPathInput.control.onkeydown = (event) => {
+            const numFilteredEnvs = filterResults() ? filteredEnvIndixes.length : numEnvs;
             if (event.key === "Enter") {
-              window.electronAPI.setPythonPath(pythonPathInput.value);
+              if (numFilteredEnvs > 0) {
+                const menuItems = document.querySelectorAll('jp-menu-item');
+                const activeMenuItem = menuItems[activeIndex];
+                window.electronAPI.setPythonPath(activeMenuItem.dataset.pythonPath);
+              }
             } else if (event.key === "Escape") {
               window.electronAPI.hideEnvSelectPopup();
             } else if (event.key === "ArrowDown") {
-              if (numEnvs == 0) {
+              if (numFilteredEnvs == 0) {
                 return;
               }
               if (activeIndex === -1) {
                 activeIndex = 0;
               } else {
-                activeIndex = (activeIndex + 1) % numEnvs;
+                activeIndex = (activeIndex + 1) % numFilteredEnvs;
               }
               updateActiveItem();
             } else if (event.key === "ArrowUp") {
-              if (numEnvs == 0) {
+              if (numFilteredEnvs == 0) {
                 return;
               }
               if (activeIndex === -1) {
-                activeIndex = numEnvs - 1;
+                activeIndex = numFilteredEnvs - 1;
               } else {
-                activeIndex = (activeIndex - 1 + numEnvs) % numEnvs;
+                activeIndex = (activeIndex - 1 + numFilteredEnvs) % numFilteredEnvs;
               }
               updateActiveItem();
             }
+          };
+
+          pythonPathInput.control.oninput = (event) => {
+            activeIndex = 0;
+            filterEnvironmentList();
           };
 
           window.onkeydown = (event) => {
@@ -184,7 +261,9 @@ export class PythonEnvironmentSelectPopup {
             }
           };
 
-          pythonPathInput.control.focus();
+          setTimeout(() => {
+            pythonPathInput.focus();
+          }, 500);
         });
       </script>
         `;
@@ -206,6 +285,12 @@ export class PythonEnvironmentSelectPopup {
     this._view.view.webContents.send(
       EventTypeRenderer.SetCurrentPythonPath,
       currentPythonPath
+    );
+  }
+
+  resetView() {
+    this._view.view.webContents.send(
+      EventTypeRenderer.ResetPythonEnvSelectPopup
     );
   }
 

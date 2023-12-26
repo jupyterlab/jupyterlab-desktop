@@ -3,10 +3,12 @@ import { EventTypeMain, EventTypeRenderer } from '../eventtypes';
 const { contextBridge, ipcRenderer } = require('electron');
 
 type CurrentPythonPathSetListener = (path: string) => void;
+type ResetPythonEnvSelectPopupListener = () => void;
 type CustomPythonPathSelectedListener = (path: string) => void;
 
 let onCustomPythonPathSelectedListener: CustomPythonPathSelectedListener;
 let onCurrentPythonPathSetListener: CurrentPythonPathSetListener;
+let onResetPythonEnvSelectPopupListener: ResetPythonEnvSelectPopupListener;
 
 contextBridge.exposeInMainWorld('electronAPI', {
   getAppConfig: () => {
@@ -17,6 +19,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   isDarkTheme: () => {
     return ipcRenderer.invoke(EventTypeMain.IsDarkTheme);
   },
+  showManagePythonEnvsDialog: () => {
+    ipcRenderer.send(EventTypeMain.ShowManagePythonEnvironmentsDialog);
+  },
   browsePythonPath: (currentPath: string) => {
     ipcRenderer.send(EventTypeMain.SelectPythonPath, currentPath);
   },
@@ -25,6 +30,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
   },
   onCurrentPythonPathSet: (callback: CurrentPythonPathSetListener) => {
     onCurrentPythonPathSetListener = callback;
+  },
+  onResetPythonEnvSelectPopup: (
+    callback: ResetPythonEnvSelectPopupListener
+  ) => {
+    onResetPythonEnvSelectPopupListener = callback;
   },
   onCustomPythonPathSelected: (callback: CustomPythonPathSelectedListener) => {
     onCustomPythonPathSelectedListener = callback;
@@ -37,6 +47,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
 ipcRenderer.on(EventTypeRenderer.SetCurrentPythonPath, (event, path) => {
   if (onCurrentPythonPathSetListener) {
     onCurrentPythonPathSetListener(path);
+  }
+});
+
+ipcRenderer.on(EventTypeRenderer.ResetPythonEnvSelectPopup, event => {
+  if (onResetPythonEnvSelectPopupListener) {
+    onResetPythonEnvSelectPopupListener();
   }
 });
 

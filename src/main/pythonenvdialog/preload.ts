@@ -2,7 +2,10 @@ import { EventTypeMain, EventTypeRenderer } from '../eventtypes';
 
 const { contextBridge, ipcRenderer } = require('electron');
 
-type InstallBundledPythonEnvStatusListener = (status: string) => void;
+type InstallBundledPythonEnvStatusListener = (
+  status: string,
+  msg: string
+) => void;
 type CustomPythonPathSelectedListener = (path: string) => void;
 type WorkingDirectorySelectedListener = (path: string) => void;
 
@@ -22,6 +25,31 @@ contextBridge.exposeInMainWorld('electronAPI', {
   restartApp: () => {
     ipcRenderer.send(EventTypeMain.RestartApp);
   },
+  getNextPythonEnvironmentName: () => {
+    return ipcRenderer.invoke(EventTypeMain.GetNextPythonEnvironmentName);
+  },
+  createNewPythonEnvironment: (
+    envPath: string,
+    envType: string,
+    packages: string
+  ) => {
+    ipcRenderer.send(
+      EventTypeMain.CreateNewPythonEnvironment,
+      envPath,
+      envType,
+      packages
+    );
+  },
+  selectPythonEnvInstallDirectory: () => {
+    return ipcRenderer.invoke(EventTypeMain.SelectPythonEnvInstallDirectory);
+  },
+  showPythonEnvironmentContextMenu: (pythonPath: string) => {
+    ipcRenderer.send(
+      EventTypeMain.ShowPythonEnvironmentContextMenu,
+      pythonPath
+    );
+  },
+
   setCheckForUpdatesAutomatically: (check: boolean) => {
     ipcRenderer.send(EventTypeMain.SetCheckForUpdatesAutomatically, check);
   },
@@ -58,8 +86,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   setDefaultWorkingDirectory: (path: string) => {
     ipcRenderer.send(EventTypeMain.SetDefaultWorkingDirectory, path);
   },
-  installBundledPythonEnv: () => {
-    ipcRenderer.send(EventTypeMain.InstallBundledPythonEnv);
+  installBundledPythonEnv: (envPath: string) => {
+    ipcRenderer.send(EventTypeMain.InstallBundledPythonEnv, envPath);
   },
   updateBundledPythonEnv: () => {
     ipcRenderer.send(EventTypeMain.InstallBundledPythonEnv);
@@ -114,11 +142,14 @@ ipcRenderer.on(EventTypeRenderer.WorkingDirectorySelected, (event, path) => {
   }
 });
 
-ipcRenderer.on(EventTypeRenderer.InstallPythonEnvStatus, (event, result) => {
-  if (onInstallBundledPythonEnvStatusListener) {
-    onInstallBundledPythonEnvStatusListener(result);
+ipcRenderer.on(
+  EventTypeRenderer.InstallPythonEnvStatus,
+  (event, result, msg) => {
+    if (onInstallBundledPythonEnvStatusListener) {
+      onInstallBundledPythonEnvStatusListener(result, msg);
+    }
   }
-});
+);
 
 ipcRenderer.on(EventTypeRenderer.CustomPythonPathSelected, (event, path) => {
   if (onCustomPythonPathSelectedListener) {
