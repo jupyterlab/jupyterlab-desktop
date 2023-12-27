@@ -325,7 +325,11 @@ export async function installBundledEnvironment(
       return;
     }
 
-    markEnvironmentAsJupyterInstalled(installPath);
+    markEnvironmentAsJupyterInstalled(installPath, {
+      type: 'conda',
+      source: 'bundled-installer',
+      appVersion: app.getVersion()
+    });
 
     let unpackCommand = isWin
       ? `${installPath}\\Scripts\\activate.bat && conda-unpack`

@@ -19,6 +19,7 @@ import { appData } from './config/appdata';
 import { IEnvironmentType, IPythonEnvironment } from './tokens';
 import { SettingType, userSettings } from './config/settings';
 import { Registry } from './registry';
+import { app } from 'electron';
 
 export function parseCLIArgs(argv: string[]) {
   return yargs(argv)
@@ -346,7 +347,11 @@ export async function createPythonEnvironment(
     }
   }
 
-  markEnvironmentAsJupyterInstalled(envPath);
+  markEnvironmentAsJupyterInstalled(envPath, {
+    type: isConda ? 'conda' : 'venv',
+    source: 'registry',
+    appVersion: app.getVersion()
+  });
   addUserSetEnvironment(envPath, isConda);
 }
 
