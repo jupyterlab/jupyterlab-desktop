@@ -85,7 +85,8 @@ export class LabView implements IDisposable {
       this._view.webContents.on('before-input-event', async (event, input) => {
         if (
           input.code === 'KeyW' &&
-          ((input.meta && process.platform === 'darwin') || input.control)
+          ((input.meta && process.platform === 'darwin') ||
+            (input.control && process.platform !== 'darwin'))
         ) {
           let skipClose = false;
 
@@ -112,6 +113,7 @@ export class LabView implements IDisposable {
 
             skipClose = choice === 1;
           } else {
+            // CtrlWBehavior.DoNotClose
             skipClose = true;
           }
 
