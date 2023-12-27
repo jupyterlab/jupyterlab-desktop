@@ -297,10 +297,11 @@ export class PythonEnvironmentSelectPopup {
   getScrollHeight(): number {
     const envCount = this._envs.length;
     return (
+      30 + // title
       40 + // path input
       (envCount > 0 ? envCount * 40 + 14 : 0) + // env list
-      12
-    ); // padding
+      17 // padding
+    );
   }
 
   private _view: ThemedView;
