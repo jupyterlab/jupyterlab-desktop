@@ -66,7 +66,9 @@ export enum EventTypeMain {
   ShowPythonEnvironmentContextMenu = 'show-python-environment-context-menu',
   DeletePythonEnvironment = 'delete-python-environment',
   GetPythonEnvironmentList = 'get-python-environment-list',
-  UpdateRegistry = 'update-registry'
+  UpdateRegistry = 'update-registry',
+  GetEnvironmentByPythonPath = 'get-environment-by-python-path',
+  AddEnvironmentByPythonPath = 'add-environment-by-python-path'
 }
 
 // events sent to Renderer process

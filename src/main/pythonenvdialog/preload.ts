@@ -58,6 +58,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
       pythonPath
     );
   },
+  browsePythonPath: (currentPath: string) => {
+    ipcRenderer.send(EventTypeMain.SelectPythonPath, currentPath);
+  },
 
   setCheckForUpdatesAutomatically: (check: boolean) => {
     ipcRenderer.send(EventTypeMain.SetCheckForUpdatesAutomatically, check);
@@ -120,6 +123,18 @@ contextBridge.exposeInMainWorld('electronAPI', {
   },
   validatePythonPath: (path: string) => {
     return ipcRenderer.invoke(EventTypeMain.ValidatePythonPath, path);
+  },
+  getEnvironmentByPythonPath: (pythonPath: string) => {
+    return ipcRenderer.invoke(
+      EventTypeMain.GetEnvironmentByPythonPath,
+      pythonPath
+    );
+  },
+  addEnvironmentByPythonPath: (pythonPath: string) => {
+    return ipcRenderer.invoke(
+      EventTypeMain.AddEnvironmentByPythonPath,
+      pythonPath
+    );
   },
   showInvalidPythonPathMessage: (path: string) => {
     ipcRenderer.send(EventTypeMain.ShowInvalidPythonPathMessage, path);

@@ -628,6 +628,10 @@ export class ManagePythonEnvironmentDialog {
           progressAnimation.style.visibility = animate ? 'visible' : 'hidden';
         }
 
+        function handleAddExistingEnv(el) {
+          window.electronAPI.browsePythonPath();
+        }
+
         function handleCreateNewEnvLink() {
           document.getElementById('category-tabs').setAttribute('activeid', 'tab-create');
         }
@@ -746,7 +750,7 @@ export class ManagePythonEnvironmentDialog {
         function getPackageList() {
           const includeJupyterLab = includeJupyterLabCheckbox.checked;
           let packages = includeJupyterLab ? 'jupyterlab ' : '';
-          const packageListValue = packageListInput?.value.trim();
+          const packageListValue = packageListInput.value?.trim();
           if (packageListValue) {
             packages += packageListValue;
           }
@@ -854,8 +858,19 @@ export class ManagePythonEnvironmentDialog {
           window.electronAPI.restartApp();
         }
 
-        window.electronAPI.onCustomPythonPathSelected((path) => {
-          pythonPathInput.value = path;
+        window.electronAPI.onCustomPythonPathSelected(async (path) => {
+          const inRegistry = await window.electronAPI.getEnvironmentByPythonPath(path);
+          if (!inRegistry) {
+            if (await window.electronAPI.validatePythonPath(path)) {
+              await window.electronAPI.addEnvironmentByPythonPath(path);
+              try {
+                envs = await fetchPythonEnvironmentList();
+                updatePythonEnvironmentList();
+              } catch(error) {
+  
+              }
+            }
+          }
         });
 
         window.electronAPI.onSetPythonEnvironmentList((newEnvs) => {

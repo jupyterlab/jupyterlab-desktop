@@ -42,7 +42,7 @@ export interface IRegistry {
   condaRootPath: Promise<string>;
   setCondaRootPath(rootPath: string): void;
   addEnvironment: (pythonPath: string) => IPythonEnvironment;
-  validatePythonEnvironmentAtPath: (pythonPath: string) => boolean;
+  validatePythonEnvironmentAtPath: (pythonPath: string) => Promise<boolean>;
   validateCondaBaseEnvironmentAtPath: (envPath: string) => boolean;
   setDefaultPythonPath: (pythonPath: string) => void;
   getCurrentPythonEnvironment: () => IPythonEnvironment;
@@ -382,8 +382,8 @@ export class Registry implements IRegistry, IDisposable {
     return env;
   }
 
-  validatePythonEnvironmentAtPath(pythonPath: string): boolean {
-    return this._resolveEnvironment(pythonPath) !== undefined;
+  async validatePythonEnvironmentAtPath(pythonPath: string): Promise<boolean> {
+    return (await this._resolveEnvironment(pythonPath)) !== undefined;
   }
 
   validateCondaBaseEnvironmentAtPath(envPath: string): boolean {

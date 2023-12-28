@@ -788,6 +788,20 @@ export class JupyterApplication implements IApplication, IDisposable {
     );
 
     this._evm.registerSyncEventHandler(
+      EventTypeMain.GetEnvironmentByPythonPath,
+      (event, pythonPath) => {
+        return this._registry.getEnvironmentByPath(pythonPath);
+      }
+    );
+
+    this._evm.registerSyncEventHandler(
+      EventTypeMain.AddEnvironmentByPythonPath,
+      (event, pythonPath) => {
+        return this._registry.addEnvironment(pythonPath);
+      }
+    );
+
+    this._evm.registerSyncEventHandler(
       EventTypeMain.GetPythonEnvironmentList,
       (event, cacheOK) => {
         return this._registry.getEnvironmentList(cacheOK);
