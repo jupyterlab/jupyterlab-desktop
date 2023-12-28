@@ -406,14 +406,12 @@ export class JupyterApplication implements IApplication, IDisposable {
   }
 
   async showManagePythonEnvsDialog() {
-    const dialog = new ManagePythonEnvironmentDialog(
-      {
-        envs: await this._registry.getEnvironmentList(false),
-        isDarkTheme: this._isDarkTheme,
-        defaultPythonPath: userSettings.getValue(SettingType.pythonPath)
-      },
-      this._registry
-    );
+    const dialog = new ManagePythonEnvironmentDialog({
+      envs: await this._registry.getEnvironmentList(false),
+      isDarkTheme: this._isDarkTheme,
+      defaultPythonPath: userSettings.getValue(SettingType.pythonPath),
+      app: this
+    });
     dialog.load();
   }
 
@@ -446,6 +444,17 @@ export class JupyterApplication implements IApplication, IDisposable {
       this._aboutDialog.window.window.close();
       this._aboutDialog = null;
     }
+  }
+
+  get registry(): IRegistry {
+    return this._registry;
+  }
+
+  async updateRegistry() {
+    const registry = new Registry();
+    await registry.ready;
+    this._registry = registry;
+    appData.save();
   }
 
   dispose(): Promise<void> {
@@ -768,6 +777,20 @@ export class JupyterApplication implements IApplication, IDisposable {
       EventTypeMain.ValidatePythonPath,
       (event, path) => {
         return this._registry.validatePythonEnvironmentAtPath(path);
+      }
+    );
+
+    this._evm.registerSyncEventHandler(
+      EventTypeMain.UpdateRegistry,
+      (event, cacheOK) => {
+        return this.updateRegistry();
+      }
+    );
+
+    this._evm.registerSyncEventHandler(
+      EventTypeMain.GetPythonEnvironmentList,
+      (event, cacheOK) => {
+        return this._registry.getEnvironmentList(cacheOK);
       }
     );
 

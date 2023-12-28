@@ -63,7 +63,10 @@ export enum EventTypeMain {
   CreateNewPythonEnvironment = 'create-new-python-environment',
   ShowManagePythonEnvironmentsDialog = 'show-manage-python-environments-dialog',
   SelectPythonEnvInstallDirectory = 'select-python-environment-install-directory',
-  ShowPythonEnvironmentContextMenu = 'show-python-environment-context-menu'
+  ShowPythonEnvironmentContextMenu = 'show-python-environment-context-menu',
+  DeletePythonEnvironment = 'delete-python-environment',
+  GetPythonEnvironmentList = 'get-python-environment-list',
+  UpdateRegistry = 'update-registry'
 }
 
 // events sent to Renderer process
@@ -83,5 +86,6 @@ export enum EventTypeRenderer {
   SetNotificationMessage = 'set-notification-message',
   DisableLocalServerActions = 'disable-local-server-actions',
   SetDefaultWorkingDirectoryResult = 'set-default-working-directory-result',
-  ResetPythonEnvSelectPopup = 'reset-python-env-select-popup'
+  ResetPythonEnvSelectPopup = 'reset-python-env-select-popup',
+  SetPythonEnvironmentList = 'set-python-environment-list'
 }

@@ -266,6 +266,14 @@ export enum EnvironmentInstallStatus {
   RemovingExistingInstallation = 'REMOVING_EXISTING_INSTALLATION'
 }
 
+export enum EnvironmentDeleteStatus {
+  Started = 'STARTED',
+  Running = 'RUNNING',
+  Failure = 'FAILURE',
+  Cancelled = 'CANCELLED',
+  Success = 'SUCCESS'
+}
+
 export interface IBundledEnvironmentInstallListener {
   onInstallStatus: (status: EnvironmentInstallStatus, message?: string) => void;
   forceOverwrite?: boolean;
@@ -388,6 +396,38 @@ export function markEnvironmentAsJupyterInstalled(
   } catch (error) {
     console.error('Failed to create file', envInstallInfoPath, error);
   }
+}
+
+export interface IEnvironmentDeleteListener {
+  onDeleteStatus: (status: EnvironmentDeleteStatus, message?: string) => void;
+}
+
+export async function deletePythonEnvironment(
+  envPath: string,
+  listener?: IEnvironmentDeleteListener
+): Promise<boolean> {
+  return new Promise<boolean>((resolve, reject) => {
+    if (!isEnvInstalledByDesktopApp(envPath)) {
+      listener?.onDeleteStatus(
+        EnvironmentDeleteStatus.Failure,
+        'Environment cannot be deleted since it was not installed by JupyterLab Desktop.'
+      );
+      reject();
+    }
+
+    try {
+      listener?.onDeleteStatus(
+        EnvironmentDeleteStatus.Running,
+        'Deleting environment files...'
+      );
+      fs.rmSync(envPath, { recursive: true, force: true });
+      listener?.onDeleteStatus(EnvironmentDeleteStatus.Success);
+      resolve(true);
+    } catch (error) {
+      listener?.onDeleteStatus(EnvironmentDeleteStatus.Failure, error.message);
+      reject();
+    }
+  });
 }
 
 export function createTempFile(

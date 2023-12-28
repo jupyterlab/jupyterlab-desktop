@@ -12,9 +12,9 @@ import {
 import * as path from 'path';
 import * as fs from 'fs';
 import { ThemedWindow } from '../dialog/themedwindow';
-import { IRegistry } from '../registry';
-import { IEnvironmentType, IPythonEnvironment } from '../tokens';
+import { IPythonEnvironment } from '../tokens';
 import {
+  deletePythonEnvironment,
   envPathForPythonPath,
   getBundledPythonPath,
   getCondaPath,
@@ -24,14 +24,12 @@ import {
   versionWithoutSuffix
 } from '../utils';
 import { EventManager } from '../eventmanager';
-import { EventTypeMain } from '../eventtypes';
+import { EventTypeMain, EventTypeRenderer } from '../eventtypes';
+import { JupyterApplication } from '../app';
 
 export class ManagePythonEnvironmentDialog {
-  constructor(
-    options: ManagePythonEnvironmentDialog.IOptions,
-    registry: IRegistry
-  ) {
-    this._registry = registry;
+  constructor(options: ManagePythonEnvironmentDialog.IOptions) {
+    this._app = options.app;
     this._window = new ThemedWindow({
       isDarkTheme: options.isDarkTheme,
       title: 'Manage Python environments',
@@ -61,7 +59,9 @@ export class ManagePythonEnvironmentDialog {
 
     if (bundledEnvInstallationExists) {
       try {
-        const bundledEnv = registry.getEnvironmentByPath(bundledPythonPath);
+        const bundledEnv = this._app.registry.getEnvironmentByPath(
+          bundledPythonPath
+        );
         const jlabVersion = bundledEnv.versions['jupyterlab'];
         const appVersion = app.getVersion();
 
@@ -74,18 +74,6 @@ export class ManagePythonEnvironmentDialog {
         console.error('Failed to check bundled environment update', error);
       }
     }
-
-    const condaEnvs: IPythonEnvironment[] = options.envs.filter(
-      env =>
-        env.type === IEnvironmentType.CondaEnv ||
-        env.type === IEnvironmentType.CondaRoot
-    );
-    const venvEnvs: IPythonEnvironment[] = options.envs.filter(
-      env => env.type === IEnvironmentType.VirtualEnv
-    );
-    const globalEnvs: IPythonEnvironment[] = options.envs.filter(
-      env => env.type === IEnvironmentType.Path
-    );
 
     const infoIconSrc = fs.readFileSync(
       path.join(__dirname, '../../../app-assets/info-icon.svg')
@@ -113,7 +101,7 @@ export class ManagePythonEnvironmentDialog {
           {
             label: 'Copy environment info',
             click: () => {
-              const env = this._registry.getEnvironmentByPath(pythonPath);
+              const env = this._app.registry.getEnvironmentByPath(pythonPath);
               if (env) {
                 clipboard.writeText(
                   JSON.stringify({
@@ -132,10 +120,17 @@ export class ManagePythonEnvironmentDialog {
           { type: 'separator', visible: installedByApp },
           {
             label: 'Delete',
-            visible: installedByApp
-            // click: () => {
-            //   this._app.showSettingsDialog();
-            // }
+            visible: installedByApp,
+            click: async () => {
+              try {
+                await deletePythonEnvironment(envPath);
+                await this._app.updateRegistry();
+                const envs = await this._app.registry.getEnvironmentList(true);
+                this.setPythonEnvironmentList(envs);
+              } catch (error) {
+                //
+              }
+            }
           }
         ];
 
@@ -145,25 +140,6 @@ export class ManagePythonEnvironmentDialog {
         });
       }
     );
-
-    const envTypeTemplate = `
-      <%
-        function getEnvTooltip(env) {
-          const packages = [];
-          for (const name in env.versions) {
-            packages.push(name + ': ' + env.versions[name]);
-          }
-          return env.name + '\\n' + env.path + '\\n' + packages.join(', ');
-        }
-      %>
-      <jp-menu-item class="menu-category"><div slot="start"><%- envType %> (<%- envs.length %>)</div></jp-menu-item>
-      <% envs.forEach(env => { %>
-        <jp-menu-item data-python-path="<%- env.path %>" onclick="onTreeItemClicked(this);" title="<%- getEnvTooltip(env) %>">
-          <div slot="start"><%- env.path %></div>
-          <div slot="end"><div class="env-right-content"><%- env.name %><div class="env-menu-icon" title="Show menu" onclick="handleEnvMenuClick(this);">${menuIconSrc}</div></div></div>
-        </jp-menu-item>
-      <% }); %>
-    `;
 
     const template = `
       <style>
@@ -342,10 +318,11 @@ export class ManagePythonEnvironmentDialog {
         background: none;
       }
       jp-menu-item {
-        padding-left: 5px;
+        padding-left: 15px;
       }
       jp-menu-item.menu-category {
         background: var(--neutral-layer-2);
+        padding-left: 5px;
       }
       jp-menu-item.active {
         background: var(--neutral-layer-3);
@@ -394,9 +371,6 @@ export class ManagePythonEnvironmentDialog {
 
           <div id="content-area">
             <jp-menu id="env-list">
-              <%- condaEnvs %>
-              <%- venvEnvs %>
-              <%- globalEnvs %>
             </jp-menu>
           </div>
         </jp-tab-panel>
@@ -583,11 +557,13 @@ export class ManagePythonEnvironmentDialog {
         const createEnvOutput = document.getElementById('create-env-output');
         const toggleInstallOutputButton = document.getElementById('toggle-install-output');
         const clearCreateFormButton = document.getElementById('clear-create-form');
+        const envListContainer = document.getElementById('env-list');
 
         const pythonEnvInstallDirectoryInput = document.getElementById('python-env-install-directory');
 
         let defaultPythonEnvChanged = false;
 
+        let envs = <%- JSON.stringify(envs) %>;
         const pythonEnvInstallPath = "<%- pythonEnvInstallPath %>";
         const pathSeparator = '${path.sep}';
 
@@ -637,14 +613,12 @@ export class ManagePythonEnvironmentDialog {
         }
 
         function handleInstallBundledEv() {
-          applyButton.setAttribute('disabled', 'disabled');
           installBundledEnvButton.setAttribute('disabled', 'disabled');
           window.electronAPI.installBundledPythonEnv();
         }
 
         function handleUpdateBundledEv() {
           showProgress('Updating environment', true);
-          applyButton.setAttribute('disabled', 'disabled');
           window.electronAPI.updateBundledPythonEnv();
         }
 
@@ -660,6 +634,74 @@ export class ManagePythonEnvironmentDialog {
 
         function handleEnvTypeChange() {
           updateCreateCommandPreview();
+        }
+
+        function getEnvTooltip(env) {
+          const packages = [];
+          for (const name in env.versions) {
+            packages.push(name + ': ' + env.versions[name]);
+          }
+          return env.name + '\\n' + env.path + '\\n' + packages.join(', ');
+        }
+        function getEnvTag(env) {
+          return env.path === "${defaultPythonPath}" ? ' (default)' : env.path === "${bundledPythonPath}" ? ' (bundled)' : '';
+        }
+
+        function generateEnvTypeList(name, envs) {
+          let html = '<jp-menu-item class="menu-category"><div slot="start">' + name + '(' + envs.length + ')</div></jp-menu-item>';
+          for (const env of envs) {
+            html += \`
+            <jp-menu-item data-python-path="\$\{env.path\}" title="\$\{getEnvTooltip(env)\}">
+              <div slot="start">\$\{env.path\}</div>
+              <div slot="end"><div class="env-right-content">\$\{env.name\}\$\{getEnvTag(env)\}<div class="env-menu-icon" title="Show menu" onclick="handleEnvMenuClick(this);">${menuIconSrc}</div></div></div>
+            </jp-menu-item>
+            \`;
+          }
+
+          return html;
+        }
+
+        function updateRegistry() {
+          return window.electronAPI.updateRegistry();
+        }
+
+        function fetchPythonEnvironmentList() {
+          return window.electronAPI.getPythonEnvironmentList(true);
+        }
+
+        function updatePythonEnvironmentList() {
+          while (envListContainer.lastElementChild) {
+            envListContainer.removeChild(envListContainer.lastElementChild);
+          }
+
+          // sort by Python path
+          const sortedEnvs = envs.sort((lhs, rhs) => lhs.path.localeCompare(rhs.path));
+
+          const condaEnvs = sortedEnvs.filter(
+            env =>
+              env.type === 'conda-env' ||
+              env.type === 'conda-root'
+          );
+          const venvEnvs = sortedEnvs.filter(
+            env => env.type === 'venv'
+          );
+          const globalEnvs = sortedEnvs.filter(
+            env => env.type === 'path'
+          );
+
+          let html = '';
+
+          if (condaEnvs.length > 0) {
+            html += generateEnvTypeList('conda', condaEnvs);
+          }
+          if (venvEnvs.length > 0) {
+            html += generateEnvTypeList('venv', venvEnvs);
+          }
+          if (globalEnvs.length > 0) {
+            html += generateEnvTypeList('global', globalEnvs);
+          }
+
+          envListContainer.innerHTML = html || 'No Python environment found.';
         }
 
         async function clearCreateForm() {
@@ -704,7 +746,7 @@ export class ManagePythonEnvironmentDialog {
         function getPackageList() {
           const includeJupyterLab = includeJupyterLabCheckbox.checked;
           let packages = includeJupyterLab ? 'jupyterlab ' : '';
-          const packageListValue = packageListInput.value.trim();
+          const packageListValue = packageListInput?.value.trim();
           if (packageListValue) {
             packages += packageListValue;
           }
@@ -731,7 +773,7 @@ export class ManagePythonEnvironmentDialog {
 
         let scrollTimeout = -1;
 
-        window.electronAPI.onInstallBundledPythonEnvStatus((status, msg) => {
+        window.electronAPI.onInstallBundledPythonEnvStatus(async (status, msg) => {
           if (status === 'RUNNING') {
             createEnvOutput.value = createEnvOutput.value + msg;
             const textarea = createEnvOutput.shadowRoot.getElementById('control');
@@ -760,6 +802,13 @@ export class ManagePythonEnvironmentDialog {
           if (status === 'SUCCESS') {
             bundledEnvRadio.removeAttribute('disabled');
             hideBundledEnvWarning();
+            try {
+              await updateRegistry();
+              envs = await fetchPythonEnvironmentList();
+              updatePythonEnvironmentList();
+            } catch(error) {
+
+            }
           }
 
           if (!(status === 'REMOVING_EXISTING_INSTALLATION' || status === 'STARTED')) {
@@ -767,7 +816,6 @@ export class ManagePythonEnvironmentDialog {
           }
 
           installBundledEnvButton.removeAttribute('disabled');
-          applyButton.removeAttribute('disabled');
         });
 
         function handleApply() {
@@ -810,6 +858,11 @@ export class ManagePythonEnvironmentDialog {
           pythonPathInput.value = path;
         });
 
+        window.electronAPI.onSetPythonEnvironmentList((newEnvs) => {
+          envs = newEnvs;
+          updatePythonEnvironmentList();
+        });
+
         function handleNewEnvCreateMethodChange() {
           defaultPythonEnvChanged = true;
           const createCopyOfBundledEnv = createCopyOfBundledEnvRadio.checked;
@@ -834,6 +887,7 @@ export class ManagePythonEnvironmentDialog {
         }
 
         document.addEventListener("DOMContentLoaded", () => {
+          updatePythonEnvironmentList();
           handleDefaultPythonEnvTypeChange();
           handleNewEnvCreateMethodChange();
           handleNewEnvNameChange();
@@ -843,18 +897,7 @@ export class ManagePythonEnvironmentDialog {
       </script>
     `;
     this._pageBody = ejs.render(template, {
-      condaEnvs: ejs.render(envTypeTemplate, {
-        envType: 'conda',
-        envs: condaEnvs
-      }),
-      venvEnvs: ejs.render(envTypeTemplate, {
-        envType: 'venv',
-        envs: venvEnvs
-      }),
-      globalEnvs: ejs.render(envTypeTemplate, {
-        envType: 'global',
-        envs: globalEnvs
-      }),
+      envs: options.envs,
       defaultPythonPath,
       selectBundledPythonPath,
       bundledEnvInstallationExists,
@@ -876,15 +919,23 @@ export class ManagePythonEnvironmentDialog {
     });
   }
 
+  setPythonEnvironmentList(envs: IPythonEnvironment[]) {
+    this._window.window.webContents.send(
+      EventTypeRenderer.SetPythonEnvironmentList,
+      envs
+    );
+  }
+
   private _window: ThemedWindow;
   private _pageBody: string;
   private _evm = new EventManager();
-  private _registry: IRegistry;
+  private _app: JupyterApplication;
 }
 
 export namespace ManagePythonEnvironmentDialog {
   export interface IOptions {
     isDarkTheme: boolean;
+    app: JupyterApplication;
     envs: IPythonEnvironment[];
     defaultPythonPath: string;
   }

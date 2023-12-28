@@ -1,4 +1,5 @@
 import { EventTypeMain, EventTypeRenderer } from '../eventtypes';
+import { IPythonEnvironment } from '../tokens';
 
 const { contextBridge, ipcRenderer } = require('electron');
 
@@ -8,10 +9,12 @@ type InstallBundledPythonEnvStatusListener = (
 ) => void;
 type CustomPythonPathSelectedListener = (path: string) => void;
 type WorkingDirectorySelectedListener = (path: string) => void;
+type SetPythonEnvironmentListListener = (envs: IPythonEnvironment[]) => void;
 
 let onInstallBundledPythonEnvStatusListener: InstallBundledPythonEnvStatusListener;
 let onCustomPythonPathSelectedListener: CustomPythonPathSelectedListener;
 let onWorkingDirectorySelectedListener: WorkingDirectorySelectedListener;
+let onSetPythonEnvironmentListListener: SetPythonEnvironmentListListener;
 
 contextBridge.exposeInMainWorld('electronAPI', {
   getAppConfig: () => {
@@ -27,6 +30,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
   },
   getNextPythonEnvironmentName: () => {
     return ipcRenderer.invoke(EventTypeMain.GetNextPythonEnvironmentName);
+  },
+  updateRegistry: () => {
+    return ipcRenderer.invoke(EventTypeMain.UpdateRegistry);
+  },
+  getPythonEnvironmentList: (cacheOK: boolean) => {
+    return ipcRenderer.invoke(EventTypeMain.GetPythonEnvironmentList, cacheOK);
   },
   createNewPythonEnvironment: (
     envPath: string,
@@ -82,6 +91,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   },
   onWorkingDirectorySelected: (callback: WorkingDirectorySelectedListener) => {
     onWorkingDirectorySelectedListener = callback;
+  },
+  onSetPythonEnvironmentList: (callback: SetPythonEnvironmentListListener) => {
+    onSetPythonEnvironmentListListener = callback;
   },
   setDefaultWorkingDirectory: (path: string) => {
     ipcRenderer.send(EventTypeMain.SetDefaultWorkingDirectory, path);
@@ -154,6 +166,12 @@ ipcRenderer.on(
 ipcRenderer.on(EventTypeRenderer.CustomPythonPathSelected, (event, path) => {
   if (onCustomPythonPathSelectedListener) {
     onCustomPythonPathSelectedListener(path);
+  }
+});
+
+ipcRenderer.on(EventTypeRenderer.SetPythonEnvironmentList, (event, envs) => {
+  if (onSetPythonEnvironmentListListener) {
+    onSetPythonEnvironmentListListener(envs);
   }
 });
 
