@@ -604,6 +604,15 @@ export interface IServerFactory {
    * @return a promise that is fulfilled when all servers are killed.
    */
   killAllServers: () => Promise<void[]>;
+
+  /**
+   * Check if any server was launched using the environment.
+   *
+   * @param pythonPath Python path for the environment.
+   *
+   * @return true if environment at pythonPath is in use.
+   */
+  isEnvironmentInUse(pythonPath: string): boolean;
 }
 
 export namespace IServerFactory {
@@ -747,6 +756,14 @@ export class JupyterServerFactory implements IServerFactory, IDisposable {
     // Empty the server array.
     this._servers = [];
     return Promise.all(stopPromises);
+  }
+
+  isEnvironmentInUse(pythonPath: string): boolean {
+    return (
+      this._servers.find(server => {
+        return server.server.info.environment.path === pythonPath;
+      }) !== undefined
+    );
   }
 
   dispose(): Promise<void> {

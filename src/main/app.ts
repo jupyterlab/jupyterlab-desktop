@@ -450,6 +450,10 @@ export class JupyterApplication implements IApplication, IDisposable {
     return this._registry;
   }
 
+  get serverFactory(): IServerFactory {
+    return this._serverFactory;
+  }
+
   async updateRegistry() {
     const registry = new Registry();
     await registry.ready;

@@ -91,6 +91,9 @@ export class ManagePythonEnvironmentDialog {
       async (event, pythonPath) => {
         const envPath = envPathForPythonPath(pythonPath);
         const installedByApp = isEnvInstalledByDesktopApp(envPath);
+        const deletable =
+          installedByApp &&
+          !this._app.serverFactory.isEnvironmentInUse(pythonPath);
         const template: MenuItemConstructorOptions[] = [
           {
             label: 'Copy Python path',
@@ -117,10 +120,10 @@ export class ManagePythonEnvironmentDialog {
               }
             }
           },
-          { type: 'separator', visible: installedByApp },
+          { type: 'separator', visible: deletable },
           {
             label: 'Delete',
-            visible: installedByApp,
+            visible: deletable,
             click: async () => {
               try {
                 await deletePythonEnvironment(envPath);
