@@ -269,7 +269,7 @@ export class ManagePythonEnvironmentDialog {
         height: 40px;
       }
       #create-command-preview::part(control) {
-        height: 40px;
+        height: 60px;
       }
       #tab-panel-server {
         padding-bottom: 20px;
@@ -424,7 +424,7 @@ export class ManagePythonEnvironmentDialog {
               Additional Python packages
               </div>
               <div class="row">
-                <jp-text-area id='package-list' appearance="outline" resize="vertical" rows="1" value="" oninput='handleAdditionalServerEnvsInput(this);' spellcheck="false" placeholder='Enter additional packages'>
+                <jp-text-area id='package-list' appearance="outline" resize="none" rows="1" value="" oninput='handleAdditionalServerEnvsInput(this);' spellcheck="false" placeholder='Enter additional package list separated by space'>
                 </jp-text-area>
               </div>
             </div>
@@ -434,7 +434,7 @@ export class ManagePythonEnvironmentDialog {
               Environment create command preview
               </div>
               <div class="row">
-              <jp-text-area id='create-command-preview' appearance="outline" resize="vertical" rows="1" readonly="" style="width: 100%;" spellcheck="false"></jp-text-area>
+              <jp-text-area id='create-command-preview' appearance="outline" resize="none" rows="1" readonly="" style="width: 100%;" spellcheck="false"></jp-text-area>
               </div>
             </div>
 
@@ -461,7 +461,7 @@ export class ManagePythonEnvironmentDialog {
 
           <div class="setting-section">
             <div class="header">
-              Default Python path for JupyterLab Server<div class="info-icon" title="Python executable to use when launching a new JupyterLab server">${infoIconSrc}</div>
+              Default Python path for JupyterLab Server<div class="info-icon" title="Python executable to use when launching a new JupyterLab server. The Python environment needs to have 'jupyterlab' Python package installed.">${infoIconSrc}</div>
             </div>
             <div id="content-local-server" style="width: 100%;">
               <div style="display: flex; flex-direction: column; row-gap: 5px;">
@@ -485,7 +485,7 @@ export class ManagePythonEnvironmentDialog {
 
           <div class="setting-section">
             <div class="header">
-              New Python environment install path<div class="info-icon" title="Parent directory where new Python environments will be created">${infoIconSrc}</div>
+              New Python environment install directory<div class="info-icon" title="Parent directory where new Python environments will be created">${infoIconSrc}</div>
             </div>
             <div class="row">
               <div style="flex-grow: 1;">
@@ -513,7 +513,7 @@ export class ManagePythonEnvironmentDialog {
 
           <div class="setting-section">
             <div class="header">
-              Python path<div class="info-icon" title="Python executable to use when creating new venv environments">${infoIconSrc}</div>
+              Python path to use when creating venv environments<div class="info-icon" title="Python executable to use when creating new venv environments">${infoIconSrc}</div>
             </div>
             <div class="row">
               <div style="flex-grow: 1;">

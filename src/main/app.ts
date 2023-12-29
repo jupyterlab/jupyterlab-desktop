@@ -453,6 +453,7 @@ export class JupyterApplication implements IApplication, IDisposable {
   async updateRegistry() {
     const registry = new Registry();
     await registry.ready;
+    await this._registry.dispose();
     this._registry = registry;
     appData.save();
   }
