@@ -30,6 +30,7 @@ import {
 } from './utils';
 import { SettingType, userSettings } from './config/settings';
 import { appData } from './config/appdata';
+import { condaEnvPathForCondaExePath, condaExePathForEnvPath } from './env';
 
 const envInfoPyCode = fs
   .readFileSync(path.join(__dirname, 'env_info.py'))
@@ -39,8 +40,6 @@ export interface IRegistry {
   getDefaultEnvironment: () => Promise<IPythonEnvironment>;
   getEnvironmentByPath: (pythonPath: string) => IPythonEnvironment;
   getEnvironmentList: (cacheOK: boolean) => Promise<IPythonEnvironment[]>;
-  condaRootPath: Promise<string>;
-  setCondaRootPath(rootPath: string): void;
   addEnvironment: (pythonPath: string) => IPythonEnvironment;
   validatePythonEnvironmentAtPath: (pythonPath: string) => Promise<boolean>;
   validateCondaBaseEnvironmentAtPath: (envPath: string) => boolean;
@@ -72,42 +71,52 @@ export class Registry implements IRegistry, IDisposable {
       }
     ];
 
+    // TODO: refactor into a recallable method
+
     // initialize environment list and default
+    // initialize environment list to cached ones
     this._environments = [
       ...appData.discoveredPythonEnvs,
       ...appData.userSetPythonEnvs
     ].filter(env => this._pathExistsSync(env.path));
 
+    // initialize default environment to user set or bundled
     let pythonPath = userSettings.getValue(SettingType.pythonPath);
     if (pythonPath === '') {
       pythonPath = getBundledPythonPath();
     }
+
+    // TODO: validate appData.condaPath and appData.systemPythonPath
 
     try {
       const defaultEnv = this._resolveEnvironmentSync(pythonPath);
 
       if (defaultEnv) {
         this._defaultEnv = defaultEnv;
+        // if default env is conda root, then set its conda executable as conda path
         if (
           defaultEnv.type === IEnvironmentType.CondaRoot &&
-          !this._condaRootPath
+          !appData.condaPath
         ) {
-          // this call overrides user set appData.condaRootPath
-          // which is probably better for compatibility
-          this.setCondaRootPath(getEnvironmentPath(defaultEnv));
+          this.setCondaPath(
+            condaExePathForEnvPath(getEnvironmentPath(defaultEnv))
+          );
         }
       }
     } catch (error) {
       //
     }
 
-    if (!this._condaRootPath && appData.condaRootPath) {
-      if (this.validateCondaBaseEnvironmentAtPath(appData.condaRootPath)) {
-        this.setCondaRootPath(appData.condaRootPath);
-
-        // set default env from appData.condaRootPath
+    // try to set default env from condaPath
+    if (!this._defaultEnv && appData.condaPath) {
+      if (
+        this.validateCondaBaseEnvironmentAtPath(
+          condaEnvPathForCondaExePath(appData.condaPath)
+        )
+      ) {
+        // set default env from appData.condPath
         if (!this._defaultEnv) {
-          const pythonPath = pythonPathForEnvPath(appData.condaRootPath, true);
+          const pythonPath = pythonPathForEnvPath(appData.condaPath, true);
           try {
             const defaultEnv = this._resolveEnvironmentSync(pythonPath);
             if (defaultEnv) {
@@ -120,14 +129,16 @@ export class Registry implements IRegistry, IDisposable {
       }
     }
 
+    // try to set systemPythonPath from default env
     if (
-      !this._systemPythonPath &&
-      appData.systemPythonPath &&
-      fs.existsSync(appData.systemPythonPath)
+      !appData.systemPythonPath &&
+      this._defaultEnv &&
+      fs.existsSync(this._defaultEnv.path)
     ) {
-      this.setSystemPythonPath(appData.systemPythonPath);
+      this.setSystemPythonPath(this._defaultEnv.path);
     }
 
+    // discover environments on system
     const pathEnvironments = this._loadPathEnvironments();
     const condaEnvironments = this._loadCondaEnvironments();
     const allEnvironments = [pathEnvironments, condaEnvironments];
@@ -334,21 +345,11 @@ export class Registry implements IRegistry, IDisposable {
     }
   }
 
-  get condaRootPath(): Promise<string> {
-    return Promise.resolve(this._condaRootPath);
-  }
-
-  setCondaRootPath(rootPath: string) {
-    this._condaRootPath = rootPath;
-    appData.condaRootPath = rootPath;
-  }
-
-  get systemPythonPath(): string {
-    return this._systemPythonPath;
+  setCondaPath(rootPath: string) {
+    appData.condaPath = rootPath;
   }
 
   setSystemPythonPath(pythonPath: string) {
-    this._systemPythonPath = pythonPath;
     appData.systemPythonPath = pythonPath;
   }
 
@@ -578,7 +579,7 @@ export class Registry implements IRegistry, IDisposable {
 
     const pythonPaths = await flattenedPythonPaths;
 
-    if (!this._systemPythonPath && pythonPaths.length > 0) {
+    if (!appData.systemPythonPath && pythonPaths.length > 0) {
       this.setSystemPythonPath(pythonPaths[0]);
     }
 
@@ -598,8 +599,8 @@ export class Registry implements IRegistry, IDisposable {
   private async _loadCondaEnvironments(): Promise<IPythonEnvironment[]> {
     const pathCondas = this._getPathCondas();
     const commonCondas = Promise.resolve(
-      Registry.COMMON_CONDA_LOCATIONS.filter(condaPath =>
-        this._pathExistsSync(condaPath)
+      Registry.COMMON_CONDA_LOCATIONS.filter(condaEnvPath =>
+        this._pathExistsSync(condaEnvPath)
       )
     );
 
@@ -691,19 +692,19 @@ export class Registry implements IRegistry, IDisposable {
     );
     const uniqueCondaRoots = this._getUniqueObjects(flattenedCondaRoots);
 
-    return uniqueCondaRoots.map(condaRootPath => {
-      const path = pythonPathForEnvPath(condaRootPath, true);
+    return uniqueCondaRoots.map(condaRootEnvPath => {
+      const path = pythonPathForEnvPath(condaRootEnvPath, true);
 
       const newRootEnvironment: IPythonEnvironment = {
-        name: basename(condaRootPath),
+        name: basename(condaRootEnvPath),
         path: path,
         type: IEnvironmentType.CondaRoot,
         versions: {},
         defaultKernel: 'python3'
       };
 
-      if (!this._condaRootPath) {
-        this.setCondaRootPath(condaRootPath);
+      if (!appData.condaPath) {
+        this.setCondaPath(condaExePathForEnvPath(condaRootEnvPath));
       }
 
       return newRootEnvironment;
@@ -1113,8 +1114,6 @@ export class Registry implements IRegistry, IDisposable {
   private _discoveredEnvironments: IPythonEnvironment[] = [];
   private _userSetEnvironments: IPythonEnvironment[] = [];
   private _defaultEnv: IPythonEnvironment;
-  private _condaRootPath: string;
-  private _systemPythonPath: string;
   private _registryBuilt: Promise<void>;
   private _requirements: Registry.IRequirement[];
   private _disposing: boolean = false;

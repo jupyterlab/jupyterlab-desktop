@@ -1,6 +1,6 @@
 import { ChildProcess, execFile } from 'child_process';
 import { IRegistry, SERVER_TOKEN_PREFIX } from './registry';
-import { dialog } from 'electron';
+import { dialog, ipcMain } from 'electron';
 import { ArrayExt } from '@lumino/algorithm';
 import log from 'electron-log';
 import * as fs from 'fs';
@@ -25,13 +25,16 @@ import {
   WorkspaceSettings
 } from './config/settings';
 import { randomBytes } from 'crypto';
+import { condaEnvPathForCondaExePath, getCondaPath } from './env';
+import { EventTypeMain } from './eventtypes';
+import { ManagePythonEnvironmentDialog } from './pythonenvdialog/pythonenvdialog';
 
 const SERVER_LAUNCH_TIMEOUT = 30000; // milliseconds
 const SERVER_RESTART_LIMIT = 3; // max server restarts
 
 function createLaunchScript(
   serverInfo: JupyterServer.IInfo,
-  baseCondaPath: string,
+  baseCondaEnvPath: string,
   port: number,
   token: string
 ): string {
@@ -82,7 +85,7 @@ function createLaunchScript(
         isBaseCondaActivate = false;
       } else {
         condaActivatePath = path.join(
-          baseCondaPath,
+          baseCondaEnvPath,
           'condabin',
           'activate.bat'
         );
@@ -93,9 +96,9 @@ function createLaunchScript(
         condaActivatePath = envActivatePath;
         isBaseCondaActivate = false;
       } else {
-        condaActivatePath = path.join(baseCondaPath, 'bin', 'activate');
+        condaActivatePath = path.join(baseCondaEnvPath, 'bin', 'activate');
         condaShellScriptPath = path.join(
-          baseCondaPath,
+          baseCondaEnvPath,
           'etc',
           'profile.d',
           'conda.sh'
@@ -177,13 +180,12 @@ export async function waitUntilServerIsUp(url: URL): Promise<boolean> {
 }
 
 export class JupyterServer {
-  constructor(options: JupyterServer.IOptions, registry: IRegistry) {
+  constructor(options: JupyterServer.IOptions) {
     this._options = options;
     this._info.environment = options.environment;
     const workingDir =
       this._options.workingDirectory || userSettings.resolvedWorkingDirectory;
     this._info.workingDirectory = workingDir;
-    this._registry = registry;
 
     const wsSettings = new WorkspaceSettings(workingDir);
     this._info.serverArgs = wsSettings.getValue(SettingType.serverArgs);
@@ -224,58 +226,39 @@ export class JupyterServer {
           `http://localhost:${this._info.port}/lab?token=${this._info.token}`
         );
 
-        let baseCondaPath: string = '';
+        let baseCondaEnvPath: string = '';
 
         if (this._info.environment.type === IEnvironmentType.CondaRoot) {
-          baseCondaPath = getEnvironmentPath(this._info.environment);
+          baseCondaEnvPath = getEnvironmentPath(this._info.environment);
         } else if (this._info.environment.type === IEnvironmentType.CondaEnv) {
-          baseCondaPath = await this._registry.condaRootPath;
+          const condaPath = getCondaPath();
 
-          if (!baseCondaPath) {
+          if (!condaPath) {
             const choice = dialog.showMessageBoxSync({
-              message: 'Select conda base environment',
+              message: 'conda not found',
               detail:
-                'Base conda environment not found. Please select a root conda environment to activate the custom environment.',
+                'conda executable not found. Please set conda path in settings to use the conda sub environment.',
               type: 'error',
-              buttons: ['OK', 'Cancel'],
-              defaultId: 0,
-              cancelId: 1
+              buttons: ['OK'],
+              defaultId: 0
             });
-            if (choice == 1) {
-              reject('Failed to activate conda environment');
-              return;
-            }
-
-            const filePaths = dialog.showOpenDialogSync({
-              properties: [
-                'openDirectory',
-                'showHiddenFiles',
-                'noResolveAliases'
-              ],
-              buttonLabel: 'Use Conda Root'
-            });
-
-            if (filePaths && filePaths.length > 0) {
-              baseCondaPath = filePaths[0];
-              if (
-                !this._registry.validateCondaBaseEnvironmentAtPath(
-                  baseCondaPath
-                )
-              ) {
-                reject('Invalid base conda environment');
-                return;
-              }
-              this._registry.setCondaRootPath(baseCondaPath);
-            } else {
-              reject('Failed to activate conda environment');
+            if (choice == 0) {
+              ipcMain.emit(
+                EventTypeMain.ShowManagePythonEnvironmentsDialog,
+                undefined /*event*/,
+                ManagePythonEnvironmentDialog.Tab.Settings
+              );
+              reject(`Error: conda executable not found.`);
               return;
             }
           }
+
+          baseCondaEnvPath = condaEnvPathForCondaExePath(condaPath);
         }
 
         const launchScriptPath = createLaunchScript(
           this._info,
-          baseCondaPath,
+          baseCondaEnvPath,
           this._info.port,
           this._info.token
         );
@@ -527,7 +510,6 @@ export class JupyterServer {
     serverEnvVars: {},
     version: null
   };
-  private _registry: IRegistry;
   private _stopping: boolean = false;
   private _restartCount: number = 0;
 }
@@ -787,7 +769,7 @@ export class JupyterServerFactory implements IServerFactory, IDisposable {
   ): JupyterServerFactory.IFactoryItem {
     let item: JupyterServerFactory.IFactoryItem = {
       factoryId: this._nextId++,
-      server: new JupyterServer(opts, this._registry),
+      server: new JupyterServer(opts),
       closing: null,
       used: false
     };

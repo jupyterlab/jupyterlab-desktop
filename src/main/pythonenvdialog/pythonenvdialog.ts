@@ -17,15 +17,18 @@ import {
   deletePythonEnvironment,
   envPathForPythonPath,
   getBundledPythonPath,
-  getCondaPath,
-  getNextPythonEnvName,
-  getPythonEnvsDirectory,
   isEnvInstalledByDesktopApp,
   versionWithoutSuffix
 } from '../utils';
 import { EventManager } from '../eventmanager';
 import { EventTypeMain, EventTypeRenderer } from '../eventtypes';
 import { JupyterApplication } from '../app';
+import {
+  getCondaPath,
+  getNextPythonEnvName,
+  getPythonEnvsDirectory,
+  getSystemPythonPath
+} from '../env';
 
 export class ManagePythonEnvironmentDialog {
   constructor(options: ManagePythonEnvironmentDialog.IOptions) {
@@ -85,6 +88,7 @@ export class ManagePythonEnvironmentDialog {
     const pythonEnvName = getNextPythonEnvName();
     const pythonEnvInstallPath = getPythonEnvsDirectory();
     const condaPath = getCondaPath();
+    const systemPythonPath = getSystemPythonPath();
 
     this._evm.registerEventHandler(
       EventTypeMain.ShowPythonEnvironmentContextMenu,
@@ -520,7 +524,7 @@ export class ManagePythonEnvironmentDialog {
             </div>
             <div class="row">
               <div style="flex-grow: 1;">
-                <jp-text-field type="text" id="python-path" value="<%- defaultPythonPath %>" style="width: 100%;" spellcheck="false"></jp-text-field>
+                <jp-text-field type="text" id="python-path" value="<%- systemPythonPath %>" style="width: 100%;" spellcheck="false"></jp-text-field>
               </div>
               <div>
                 <jp-button id='select-python-path' onclick='handleSelectPythonPath(this);'>Select path</jp-button>
@@ -911,6 +915,13 @@ export class ManagePythonEnvironmentDialog {
           handleNewEnvNameChange();
           <%- !bundledEnvInstallationExists ? 'showBundledEnvWarning("does-not-exist");' : '' %> 
           <%- (bundledEnvInstallationExists && !bundledEnvInstallationLatest) ? 'showBundledEnvWarning("not-latest");' : '' %>
+          ${
+            options.activateTab
+              ? `
+              document.getElementById('tab-${options.activateTab}').click();
+              `
+              : ''
+          }
         });
       </script>
     `;
@@ -922,7 +933,8 @@ export class ManagePythonEnvironmentDialog {
       bundledEnvInstallationLatest,
       pythonEnvName,
       pythonEnvInstallPath,
-      condaPath
+      condaPath,
+      systemPythonPath
     });
   }
 
@@ -951,10 +963,17 @@ export class ManagePythonEnvironmentDialog {
 }
 
 export namespace ManagePythonEnvironmentDialog {
+  export enum Tab {
+    Environments = 'envs',
+    Create = 'create',
+    Settings = 'settings'
+  }
+
   export interface IOptions {
     isDarkTheme: boolean;
     app: JupyterApplication;
     envs: IPythonEnvironment[];
     defaultPythonPath: string;
+    activateTab?: Tab;
   }
 }

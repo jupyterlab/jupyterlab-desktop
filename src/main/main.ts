@@ -1,18 +1,14 @@
 import { app, Menu, MenuItem } from 'electron';
 import log, { LevelOption } from 'electron-log';
 import * as fs from 'fs';
-import {
-  getAppDir,
-  getPythonEnvsDirectory,
-  isDevMode,
-  waitForFunction
-} from './utils';
+import { getAppDir, isDevMode, waitForFunction } from './utils';
 import { execSync } from 'child_process';
 import { JupyterApplication } from './app';
 import { ICLIArguments } from './tokens';
 import { SessionConfig } from './config/sessionconfig';
 import { SettingType, userSettings } from './config/settings';
 import { parseCLIArgs } from './cli';
+import { getPythonEnvsDirectory } from './env';
 
 let jupyterApp: JupyterApplication;
 let fileToOpenInMainInstance = '';

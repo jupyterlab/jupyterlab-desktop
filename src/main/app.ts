@@ -20,8 +20,6 @@ import {
   EnvironmentInstallStatus,
   getBundledPythonEnvPath,
   getBundledPythonPath,
-  getNextPythonEnvName,
-  getPythonEnvsDirectory,
   installBundledEnvironment,
   isDarkTheme,
   waitForDuration
@@ -54,13 +52,16 @@ import { AboutDialog } from './aboutdialog/aboutdialog';
 import { AuthDialog } from './authdialog/authdialog';
 import { ManagePythonEnvironmentDialog } from './pythonenvdialog/pythonenvdialog';
 import { addUserSetEnvironment, createPythonEnvironment } from './cli';
+import { getNextPythonEnvName, getPythonEnvsDirectory } from './env';
 
 export interface IApplication {
   createNewEmptySession(): void;
   createFreeServersIfNeeded(): void;
   checkForUpdates(showDialog: 'on-new-version' | 'always'): void;
   showSettingsDialog(activateTab?: SettingsDialog.Tab): void;
-  showManagePythonEnvsDialog(): void;
+  showManagePythonEnvsDialog(
+    activateTab?: ManagePythonEnvironmentDialog.Tab
+  ): void;
   showAboutDialog(): void;
   cliArgs: ICLIArguments;
 }
@@ -405,12 +406,15 @@ export class JupyterApplication implements IApplication, IDisposable {
     dialog.load();
   }
 
-  async showManagePythonEnvsDialog() {
+  async showManagePythonEnvsDialog(
+    activateTab?: ManagePythonEnvironmentDialog.Tab
+  ) {
     const dialog = new ManagePythonEnvironmentDialog({
       envs: await this._registry.getEnvironmentList(false),
       isDarkTheme: this._isDarkTheme,
       defaultPythonPath: userSettings.getValue(SettingType.pythonPath),
-      app: this
+      app: this,
+      activateTab
     });
     dialog.load();
   }
@@ -740,8 +744,8 @@ export class JupyterApplication implements IApplication, IDisposable {
 
     this._evm.registerEventHandler(
       EventTypeMain.ShowManagePythonEnvironmentsDialog,
-      async event => {
-        this.showManagePythonEnvsDialog();
+      async (event, activateTab) => {
+        this.showManagePythonEnvsDialog(activateTab);
       }
     );
 

@@ -4,9 +4,8 @@
 import * as path from 'path';
 import * as fs from 'fs';
 import { clearSession, getUserDataDir } from '../utils';
-import { IEnvironmentType, IPythonEnvironment } from '../tokens';
+import { IPythonEnvironment } from '../tokens';
 import { SessionConfig } from './sessionconfig';
-import { getOldSettings } from './settings';
 import { session as electronSession } from 'electron';
 import { ISignal, Signal } from '@lumino/signaling';
 
@@ -57,15 +56,25 @@ export class ApplicationData {
   read() {
     const appDataPath = this._getAppDataPath();
     if (!fs.existsSync(appDataPath)) {
-      // TODO: remove after 07/2023
-      this._migrateFromOldSettings();
       return;
     }
     const data = fs.readFileSync(appDataPath);
     const jsonData = JSON.parse(data.toString());
 
+    // TODO: remove after 1/1/2025
     if ('condaRootPath' in jsonData) {
-      this.condaRootPath = jsonData.condaRootPath;
+      // copied to prevent circular import
+      const condaExePathForEnvPath = (envPath: string) => {
+        if (process.platform === 'win32') {
+          return path.join(envPath, 'Scripts', 'conda.exe');
+        } else {
+          return path.join(envPath, 'bin', 'conda');
+        }
+      };
+      this.condaPath = condaExePathForEnvPath(jsonData.condaRootPath);
+    }
+    if ('condaPath' in jsonData) {
+      this.condaPath = jsonData.condaPath;
     }
 
     if ('systemPythonPath' in jsonData) {
@@ -158,35 +167,12 @@ export class ApplicationData {
     }
   }
 
-  private _migrateFromOldSettings() {
-    const oldSettings = getOldSettings();
-
-    if (oldSettings.condaRootPath) {
-      this.condaRootPath = oldSettings.condaRootPath;
-    }
-    if (oldSettings.pythonPath) {
-      this.userSetPythonEnvs.push({
-        path: oldSettings.pythonPath,
-        name: 'env',
-        type: IEnvironmentType.Path,
-        versions: {},
-        defaultKernel: 'python3'
-      });
-    }
-    if (oldSettings.remoteURL) {
-      this.recentRemoteURLs.push({
-        url: oldSettings.remoteURL,
-        date: new Date()
-      });
-    }
-  }
-
   save() {
     const appDataPath = this._getAppDataPath();
     const appDataJSON: { [key: string]: any } = {};
 
-    if (this.condaRootPath !== '') {
-      appDataJSON.condaRootPath = this.condaRootPath;
+    if (this.condaPath !== '') {
+      appDataJSON.condaPath = this.condaPath;
     }
 
     if (this.systemPythonPath !== '') {
@@ -383,7 +369,13 @@ export class ApplicationData {
   }
 
   newsList: INewsItem[] = [];
-  condaRootPath: string = '';
+  /**
+   * discovered condaPath
+   */
+  condaPath: string = '';
+  /**
+   * discovered Python path
+   */
   systemPythonPath: string = '';
   sessions: SessionConfig[] = [];
   recentRemoteURLs: IRecentRemoteURL[] = [];

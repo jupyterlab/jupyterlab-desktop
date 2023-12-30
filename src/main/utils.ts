@@ -78,11 +78,6 @@ export function getBundledPythonInstallDir(): string {
   return installDir;
 }
 
-// user data dir for<= 3.5.1-1
-export function getOldUserConfigPath() {
-  return path.join(getBundledPythonInstallDir(), 'jupyterlab-desktop-data');
-}
-
 export function getBundledPythonEnvPath(): string {
   const userDataDir = getBundledPythonInstallDir();
 
@@ -91,40 +86,6 @@ export function getBundledPythonEnvPath(): string {
 
 export function getBundledPythonPath(): string {
   return pythonPathForEnvPath(getBundledPythonEnvPath(), true);
-}
-
-export function getPythonEnvsDirectory(): string {
-  // TODO: user settings
-  const userDataDir = getBundledPythonInstallDir();
-
-  return path.join(userDataDir, 'envs');
-}
-
-export function getNextPythonEnvName(): string {
-  const envsDir = getPythonEnvsDirectory();
-  const prefix = 'env_';
-  const maxTries = 10000;
-
-  let index = 1;
-  const getNextName = () => {
-    return `${prefix}${index++}`;
-  };
-
-  let name = getNextName();
-
-  while (fs.existsSync(path.join(envsDir, name))) {
-    if (index > maxTries) {
-      return 'invalid_env';
-    }
-    name = getNextName();
-  }
-
-  return name;
-}
-
-export function getCondaPath() {
-  // user settings
-  return process.env['CONDA_EXE'];
 }
 
 export function isDarkTheme(themeType: string) {
@@ -491,6 +452,7 @@ export function isCondaEnv(envPath: string): boolean {
   return fs.existsSync(path.join(envPath, 'conda-meta'));
 }
 
+// TODO: sync with condaExePathForEnvPath
 export function isBaseCondaEnv(envPath: string): boolean {
   const isWin = process.platform === 'win32';
   const condaBinPath = path.join(
@@ -503,7 +465,7 @@ export function isBaseCondaEnv(envPath: string): boolean {
 
 export function createCommandScriptInEnv(
   envPath: string,
-  baseCondaPath: string,
+  baseCondaEnvPath: string,
   command?: string,
   joinStr?: string
 ): string {
@@ -537,9 +499,9 @@ export function createCommandScriptInEnv(
   // conda-packed environments
   let isBaseCondaActivate = false;
   if (!hasActivate && isConda) {
-    if (fs.existsSync(baseCondaPath)) {
-      activatePath = activatePathForEnvPath(baseCondaPath);
-      condaSourcePath = condaSourcePathForEnvPath(baseCondaPath);
+    if (fs.existsSync(baseCondaEnvPath)) {
+      activatePath = activatePathForEnvPath(baseCondaEnvPath);
+      condaSourcePath = condaSourcePathForEnvPath(baseCondaEnvPath);
       hasActivate = fs.existsSync(activatePath);
       isBaseCondaActivate = true;
     }

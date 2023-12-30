@@ -20,6 +20,7 @@ import { IEnvironmentType, IPythonEnvironment } from './tokens';
 import { SettingType, userSettings } from './config/settings';
 import { Registry } from './registry';
 import { app } from 'electron';
+import { condaEnvPathForCondaExePath } from './env';
 
 export function parseCLIArgs(argv: string[]) {
   return yargs(argv)
@@ -125,8 +126,8 @@ export function parseCLIArgs(argv: string[]) {
           case 'create':
             await handleEnvCreateCommand(argv);
             break;
-          case 'set-base-conda-env-path':
-            await handleEnvSetBaseCondaCommand(argv);
+          case 'set-conda-path':
+            await handleEnvSetCondaPathCommand(argv);
             break;
           case 'update-registry':
             await handleEnvUpdateRegistryCommand(argv);
@@ -151,11 +152,9 @@ export async function handleEnvInfoCommand(argv: any) {
   const defaultEnvPath = envPathForPythonPath(defaultPythonPath);
   const defaultEnvPathExists =
     fs.existsSync(defaultEnvPath) && fs.statSync(defaultEnvPath).isDirectory();
-  const condaRootPath = appData.condaRootPath;
-  const condaRootPathExists =
-    condaRootPath &&
-    fs.existsSync(condaRootPath) &&
-    fs.statSync(condaRootPath).isDirectory();
+  const condaPath = appData.condaPath;
+  const condaPathExists =
+    condaPath && fs.existsSync(condaPath) && fs.statSync(condaPath).isFile();
   const systemPythonPath = appData.systemPythonPath;
   const systemPythonPathExists =
     systemPythonPath &&
@@ -174,8 +173,8 @@ export async function handleEnvInfoCommand(argv: any) {
     }]`
   );
   infoLines.push(
-    `Base conda environment path:\n  "${condaRootPath}" [${
-      condaRootPathExists ? 'exists' : 'not found'
+    `conda path:\n  "${condaPath}" [${
+      condaPathExists ? 'exists' : 'not found'
     }]`
   );
   infoLines.push(
@@ -314,23 +313,16 @@ export async function createPythonEnvironment(
   callbacks?: ICommandRunCallbacks
 ) {
   const isConda = envType === 'conda';
-  const condaRootExists = isBaseCondaEnv(appData.condaRootPath);
+  const condaEnvPath = condaEnvPathForCondaExePath(appData.condaPath);
+  const condaBaseEnvExists = isBaseCondaEnv(condaEnvPath);
 
   if (isConda) {
     const createCommand = `conda create -y -c conda-forge -p ${envPath} ${packages}`;
-    await runCommandInEnvironment(
-      appData.condaRootPath,
-      createCommand,
-      callbacks
-    );
+    await runCommandInEnvironment(condaEnvPath, createCommand, callbacks);
   } else {
-    if (condaRootExists) {
+    if (condaBaseEnvExists) {
       const createCommand = `python -m venv create ${envPath}`;
-      await runCommandInEnvironment(
-        appData.condaRootPath,
-        createCommand,
-        callbacks
-      );
+      await runCommandInEnvironment(condaEnvPath, createCommand, callbacks);
     } else if (fs.existsSync(appData.systemPythonPath)) {
       execFileSync(appData.systemPythonPath, ['-m', 'venv', 'create', envPath]);
     } else {
@@ -383,7 +375,8 @@ export async function handleEnvCreateCommand(argv: any) {
   const excludeJlab = argv.excludeJlab === true;
   const envType = argv.envType;
   const isConda = envType === 'conda';
-  const condaRootExists = isBaseCondaEnv(appData.condaRootPath);
+  const condaEnvPath = condaEnvPathForCondaExePath(appData.condaPath);
+  const condaBaseEnvExists = isBaseCondaEnv(condaEnvPath);
 
   const packageList = argv._.slice(1);
   if (!excludeJlab) {
@@ -392,14 +385,14 @@ export async function handleEnvCreateCommand(argv: any) {
 
   console.log(`Creating Python environment at "${envPath}"...`);
 
-  if (isConda && !condaRootExists) {
+  if (isConda && !condaBaseEnvExists) {
     console.error(
       'conda base environment not found. You can set using jlab --set-base-conda-env-path command.'
     );
     return;
   }
 
-  const createCondaEnv = isConda || (envType === 'auto' && condaRootExists);
+  const createCondaEnv = isConda || (envType === 'auto' && condaBaseEnvExists);
 
   try {
     await createPythonEnvironment(
@@ -412,18 +405,18 @@ export async function handleEnvCreateCommand(argv: any) {
   }
 }
 
-export async function handleEnvSetBaseCondaCommand(argv: any) {
-  const envPath = argv.path as string;
-  if (!fs.existsSync(envPath)) {
-    console.error(`Environment path "${envPath}" does not exist`);
+export async function handleEnvSetCondaPathCommand(argv: any) {
+  const condaPath = argv.path as string;
+  if (!fs.existsSync(condaPath)) {
+    console.error(`conda path "${condaPath}" does not exist`);
     return;
-  } else if (!isBaseCondaEnv(envPath)) {
-    console.error(`"${envPath}" is not a base conda environemnt`);
+  } else if (!isBaseCondaEnv(condaEnvPathForCondaExePath(condaPath))) {
+    console.error(`"${condaPath}" is not in a base conda environemnt`);
     return;
   }
 
-  console.log(`Setting "${envPath}" as the base conda environment`);
-  appData.condaRootPath = envPath;
+  console.log(`Setting "${condaPath}" as the conda path`);
+  appData.condaPath = condaPath;
   appData.save();
 }
 
@@ -434,10 +427,8 @@ export async function launchCLIinEnvironment(
     const isWin = process.platform === 'win32';
     envPath = envPath || getBundledPythonEnvPath();
 
-    const activateCommand = createCommandScriptInEnv(
-      envPath,
-      appData.condaRootPath
-    );
+    const condaEnvPath = condaEnvPathForCondaExePath(appData.condaPath);
+    const activateCommand = createCommandScriptInEnv(envPath, condaEnvPath);
     const ext = isWin ? 'bat' : 'sh';
     const activateFilePath = createTempFile(`activate.${ext}`, activateCommand);
 
@@ -487,9 +478,10 @@ export async function runCommandInEnvironment(
   callbacks?: ICommandRunCallbacks
 ) {
   const isWin = process.platform === 'win32';
+  const condaEnvPath = condaEnvPathForCondaExePath(appData.condaPath);
   const commandScript = createCommandScriptInEnv(
     envPath,
-    appData.condaRootPath,
+    condaEnvPath,
     command,
     ' && '
   );

@@ -3,7 +3,7 @@
 
 import * as path from 'path';
 import * as fs from 'fs';
-import { getOldUserConfigPath, getUserDataDir, getUserHomeDir } from '../utils';
+import { getUserDataDir, getUserHomeDir } from '../utils';
 
 export const DEFAULT_WIN_WIDTH = 1024;
 export const DEFAULT_WIN_HEIGHT = 768;
@@ -55,7 +55,11 @@ export enum SettingType {
 
   ctrlWBehavior = 'ctrlWBehavior',
 
-  logLevel = 'logLevel'
+  logLevel = 'logLevel',
+
+  condaPath = 'condaPath',
+  systemPythonPath = 'systemPythonPath',
+  pythonEnvsPath = 'pythonEnvsPath'
 }
 
 export const serverLaunchArgsFixed = [
@@ -141,7 +145,11 @@ export class UserSettings {
 
       ctrlWBehavior: new Setting<CtrlWBehavior>(CtrlWBehavior.CloseTab),
 
-      logLevel: new Setting<string>(LogLevel.Warn)
+      logLevel: new Setting<string>(LogLevel.Warn),
+
+      condaPath: new Setting<string>(''),
+      systemPythonPath: new Setting<string>(''),
+      pythonEnvsPath: new Setting<string>('')
     };
 
     if (readSettings) {
@@ -160,8 +168,6 @@ export class UserSettings {
   read() {
     const userSettingsPath = this._getUserSettingsPath();
     if (!fs.existsSync(userSettingsPath)) {
-      // TODO: remove after 07/2023
-      this._migrateFromOldSettings();
       return;
     }
     const data = fs.readFileSync(userSettingsPath);
@@ -172,23 +178,6 @@ export class UserSettings {
         const setting = this._settings[key];
         setting.value = jsonData[key];
       }
-    }
-  }
-
-  private _migrateFromOldSettings() {
-    const oldSettings = getOldSettings();
-
-    if (SettingType.checkForUpdatesAutomatically in oldSettings) {
-      this._settings[SettingType.checkForUpdatesAutomatically].value =
-        oldSettings[SettingType.checkForUpdatesAutomatically];
-    }
-    if (SettingType.installUpdatesAutomatically in oldSettings) {
-      this._settings[SettingType.installUpdatesAutomatically].value =
-        oldSettings[SettingType.installUpdatesAutomatically];
-    }
-    if (SettingType.pythonPath in oldSettings) {
-      this._settings[SettingType.pythonPath].value =
-        oldSettings[SettingType.pythonPath];
     }
   }
 
@@ -340,24 +329,6 @@ export function resolveWorkingDirectory(
   }
 
   return resolved;
-}
-
-let _oldSettings: any;
-
-export function getOldSettings() {
-  if (_oldSettings) {
-    return _oldSettings;
-  }
-
-  try {
-    const oldConfigPath = getOldUserConfigPath();
-    const configData = JSON.parse(fs.readFileSync(oldConfigPath).toString());
-    _oldSettings = configData['jupyterlab-desktop']['JupyterLabDesktop'];
-  } catch (error) {
-    _oldSettings = {};
-  }
-
-  return _oldSettings;
 }
 
 export const userSettings = new UserSettings();
