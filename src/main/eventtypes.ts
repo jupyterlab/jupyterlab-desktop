@@ -62,13 +62,21 @@ export enum EventTypeMain {
   GetNextPythonEnvironmentName = 'get-next-python-environment-name',
   CreateNewPythonEnvironment = 'create-new-python-environment',
   ShowManagePythonEnvironmentsDialog = 'show-manage-python-environments-dialog',
-  SelectPythonEnvInstallDirectory = 'select-python-environment-install-directory',
+  SelectDirectoryPath = 'select-directory',
+  SelectFilePath = 'select-file',
   ShowPythonEnvironmentContextMenu = 'show-python-environment-context-menu',
   DeletePythonEnvironment = 'delete-python-environment',
   GetPythonEnvironmentList = 'get-python-environment-list',
   UpdateRegistry = 'update-registry',
   GetEnvironmentByPythonPath = 'get-environment-by-python-path',
-  AddEnvironmentByPythonPath = 'add-environment-by-python-path'
+  AddEnvironmentByPythonPath = 'add-environment-by-python-path',
+  ValidateNewPythonEnvironmentName = 'validate-new-env-name',
+  ValidatePythonEnvironmentInstallDirectory = 'validate-python-envs-directory',
+  SetPythonEnvironmentInstallDirectory = 'set-python-envs-directory',
+  ValidateCondaPath = 'validate-conda-path',
+  SetCondaPath = 'set-conda-path',
+  ValidateSystemPythonPath = 'validate-system-python-path',
+  SetSystemPythonPath = 'set-system-python-path'
 }
 
 // events sent to Renderer process

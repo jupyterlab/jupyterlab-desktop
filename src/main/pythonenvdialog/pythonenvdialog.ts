@@ -84,6 +84,12 @@ export class ManagePythonEnvironmentDialog {
     const menuIconSrc = fs.readFileSync(
       path.join(__dirname, '../../../app-assets/ellipsis-vertical.svg')
     );
+    const checkIconSrc = fs.readFileSync(
+      path.join(__dirname, '../../../app-assets/check-icon.svg')
+    );
+    const xMarkIconSrc = fs.readFileSync(
+      path.join(__dirname, '../../../app-assets/xmark.svg')
+    );
 
     const pythonEnvName = getNextPythonEnvName();
     const pythonEnvInstallPath = getPythonEnvsDirectory();
@@ -349,7 +355,7 @@ export class ManagePythonEnvironmentDialog {
         margin-right: -10px;
       }
       .env-menu-icon {
-        margin-left: 5px;
+        margin-left: 10px;
         width: 24px;
         height: 24px;
       }
@@ -359,6 +365,18 @@ export class ManagePythonEnvironmentDialog {
       }
       .env-menu-icon:hover {
         background-color: var(--neutral-layer-1);
+      }
+      jp-text-field .valid-icon {
+        display: none;
+      }
+      jp-text-field .valid-icon svg path {
+        fill: var(--accent-fill-hover);
+      }
+      jp-text-field .invalid-icon {
+        display: none;
+      }
+      jp-text-field .invalid-icon svg path {
+        fill: var(--error-fill-hover);
       }
       </style>
       <div id="container">
@@ -401,7 +419,9 @@ export class ManagePythonEnvironmentDialog {
               Name<div class="info-icon" title="Name of the environment and the installation directory">${infoIconSrc}</div>
               </div>
               <div class="row">
-                <jp-text-field type="text" id="new-env-name" value="<%= pythonEnvName %>" spellcheck="false" placeholder="environment name" oninput="handleNewEnvNameChange(this);"></jp-text-field>
+                <jp-text-field type="text" id="new-env-name" value="<%= pythonEnvName %>" spellcheck="false" placeholder="environment name" oninput="handleNewEnvNameInputChange(this);">
+                  <div slot="end"><div class="valid-icon">${checkIconSrc}</div><div class="invalid-icon">${xMarkIconSrc}</div></div>
+                </jp-text-field>
               </div>
               <div class="row">
                 <label id="env-install-path-label"></label>
@@ -496,7 +516,9 @@ export class ManagePythonEnvironmentDialog {
             </div>
             <div class="row">
               <div style="flex-grow: 1;">
-                <jp-text-field type="text" id='python-env-install-directory' value="<%= pythonEnvInstallPath %>" style="width: 100%;" spellcheck="false"></jp-text-field>
+                <jp-text-field type="text" id='python-env-install-directory' value="<%= pythonEnvInstallPath %>" style="width: 100%;" spellcheck="false" oninput="handlePythonEnvsDirInputChange(this);">
+                  <div slot="end"><div class="valid-icon">${checkIconSrc}</div><div class="invalid-icon">${xMarkIconSrc}</div></div>
+                </jp-text-field>
               </div>
               <div>
                 <jp-button onclick='handleSelectPythonEnvInstallDirectory(this);'>Select path</jp-button>
@@ -510,7 +532,9 @@ export class ManagePythonEnvironmentDialog {
             </div>
             <div class="row">
               <div style="flex-grow: 1;">
-                <jp-text-field type="text" id="conda-path" value="<%= condaPath %>" style="width: 100%;" spellcheck="false"></jp-text-field>
+                <jp-text-field type="text" id="conda-path" value="<%= condaPath %>" style="width: 100%;" spellcheck="false" oninput="handleCondaPathInputChange(this);">
+                  <div slot="end"><div class="valid-icon">${checkIconSrc}</div><div class="invalid-icon">${xMarkIconSrc}</div></div>
+                </jp-text-field>
               </div>
               <div>
                 <jp-button onclick='handleSelectCondaPath(this);'>Select path</jp-button>
@@ -524,10 +548,12 @@ export class ManagePythonEnvironmentDialog {
             </div>
             <div class="row">
               <div style="flex-grow: 1;">
-                <jp-text-field type="text" id="python-path" value="<%- systemPythonPath %>" style="width: 100%;" spellcheck="false"></jp-text-field>
+                <jp-text-field type="text" id="system-python-path" value="<%- systemPythonPath %>" style="width: 100%;" spellcheck="false" oninput="handleSystemPythonPathInputChange(this);">
+                  <div slot="end"><div class="valid-icon">${checkIconSrc}</div><div class="invalid-icon">${xMarkIconSrc}</div></div>
+                </jp-text-field>
               </div>
               <div>
-                <jp-button id='select-python-path' onclick='handleSelectPythonPath(this);'>Select path</jp-button>
+                <jp-button id='select-system-python-path' onclick='handleSelectSystemPythonPath(this);'>Select path</jp-button>
               </div>
             </div>
           </div>
@@ -567,12 +593,20 @@ export class ManagePythonEnvironmentDialog {
         const envListContainer = document.getElementById('env-list');
 
         const pythonEnvInstallDirectoryInput = document.getElementById('python-env-install-directory');
+        const condaPathInput = document.getElementById('conda-path');
+        const systemPythonPathInput = document.getElementById('system-python-path');
 
         let defaultPythonEnvChanged = false;
 
         let envs = <%- JSON.stringify(envs) %>;
         const pythonEnvInstallPath = "<%- pythonEnvInstallPath %>";
         const pathSeparator = '${path.sep}';
+        const debounceWait = 200;
+        let nameInputValid = false;
+        let nameInputValidationTimer = -1;
+        let envsDirInputValidationTimer = -1;
+        let condaPathInputValidationTimer = -1;
+        let systemPythonPathInputValidationTimer = -1;
 
         function handleEnvMenuClick(el) {
           const menuItem = el.closest('jp-menu-item');
@@ -597,9 +631,24 @@ export class ManagePythonEnvironmentDialog {
         }
 
         function handleSelectPythonEnvInstallDirectory() {
-          window.electronAPI.selectPythonEnvInstallDirectory().then(selected => {
+          window.electronAPI.selectDirectoryPath().then(selected => {
             pythonEnvInstallDirectoryInput.value = selected;
-          })
+            handlePythonEnvsDirInputChange();
+          });
+        }
+
+        function handleSelectCondaPath(el) {
+          window.electronAPI.selectFilePath().then(selected => {
+            condaPathInput.value = selected;
+            handleCondaPathInputChange();
+          });
+        }
+
+        function handleSelectSystemPythonPath(el) {
+          window.electronAPI.selectFilePath().then(selected => {
+            systemPythonPathInput.value = selected;
+            handleSystemPythonPathInputChange();
+          });
         }
 
         function showBundledEnvWarning(type) {
@@ -659,7 +708,7 @@ export class ManagePythonEnvironmentDialog {
         }
 
         function generateEnvTypeList(name, envs) {
-          let html = '<jp-menu-item class="menu-category"><div slot="start">' + name + '(' + envs.length + ')</div></jp-menu-item>';
+          let html = '<jp-menu-item class="menu-category"><div slot="start">' + name + ' (' + envs.length + ')</div></jp-menu-item>';
           for (const env of envs) {
             html += \`
             <jp-menu-item data-python-path="\$\{env.path\}" title="\$\{getEnvTooltip(env)\}">
@@ -725,7 +774,7 @@ export class ManagePythonEnvironmentDialog {
           createEnvOutputRow.style.display = "none";
           toggleInstallOutputButton.style.display = 'none';
           clearCreateFormButton.style.display = 'none';
-          handleNewEnvNameChange();
+          handleNewEnvNameInputChange();
           showProgress('');
           createButton.disabled = false;
         }
@@ -903,16 +952,94 @@ export class ManagePythonEnvironmentDialog {
           return \`\$\{pythonEnvInstallPath + pathSeparator + newEnvNameInput.value\}\`;
         }
 
-        function handleNewEnvNameChange() {
+        function handleNewEnvNameInputChange() {
           envInstallPathLabel.innerText = \`Installation path: "\$\{getEnvInstallPath()\}"\`;
           updateCreateCommandPreview();
+          validateNameInput();
+        }
+
+        function handlePythonEnvsDirInputChange() {
+          validateAndUpdatePythonEnvsDir();
+        }
+
+        function handleCondaPathInputChange() {
+          validateAndUpdateCondaPath();
+        }
+
+        function handleSystemPythonPathInputChange() {
+          validateAndUpdateSystemPythonPath();
+        }
+
+        function showInputValidStatus(input, valid, message) {
+          const validIcon = input.getElementsByClassName('valid-icon')[0];
+          const invalidIcon = input.getElementsByClassName('invalid-icon')[0];
+          validIcon.style.display = valid ? 'block' : 'none';
+          invalidIcon.style.display = valid ? 'none' : 'block';
+          invalidIcon.title = message || '';
+        }
+        function clearInputValidStatus(input) {
+          const validIcon = input.getElementsByClassName('valid-icon')[0];
+          const invalidIcon = input.getElementsByClassName('invalid-icon')[0];
+          validIcon.style.display = 'none';
+          invalidIcon.style.display = 'none';
+        }
+
+        function validateNameInput() {
+          clearTimeout(nameInputValidationTimer);
+          nameInputValidationTimer = setTimeout(async () => {
+            clearInputValidStatus(newEnvNameInput);
+            const response = await window.electronAPI.validateNewPythonEnvironmentName(newEnvNameInput.value);
+            showInputValidStatus(newEnvNameInput, response.valid, response.message);
+            nameInputValid = response.valid;
+            updateCreateButtonState();
+          }, debounceWait);
+        }
+
+        function validateAndUpdatePythonEnvsDir() {
+          clearTimeout(envsDirInputValidationTimer);
+          envsDirInputValidationTimer = setTimeout(async () => {
+            clearInputValidStatus(pythonEnvInstallDirectoryInput);
+            const response = await window.electronAPI.validatePythonEnvironmentInstallDirectory(pythonEnvInstallDirectoryInput.value);
+            showInputValidStatus(pythonEnvInstallDirectoryInput, response.valid, response.message);
+            if (response.valid) {
+              window.electronAPI.setPythonEnvironmentInstallDirectory(pythonEnvInstallDirectoryInput.value);
+            }
+          }, debounceWait);
+        }
+
+        function validateAndUpdateCondaPath() {
+          clearTimeout(condaPathInputValidationTimer);
+          condaPathInputValidationTimer = setTimeout(async () => {
+            clearInputValidStatus(condaPathInput);
+            const response = await window.electronAPI.validateCondaPath(condaPathInput.value);
+            showInputValidStatus(condaPathInput, response.valid, response.message);
+            if (response.valid) {
+              window.electronAPI.setCondaPath(condaPathInput.value);
+            }
+          }, debounceWait);
+        }
+
+        function validateAndUpdateSystemPythonPath() {
+          clearTimeout(systemPythonPathInputValidationTimer);
+          systemPythonPathInputValidationTimer = setTimeout(async () => {
+            clearInputValidStatus(systemPythonPathInput);
+            const response = await window.electronAPI.validateSystemPythonPath(systemPythonPathInput.value);
+            showInputValidStatus(systemPythonPathInput, response.valid, response.message);
+            if (response.valid) {
+              window.electronAPI.setSystemPythonPath(systemPythonPathInput.value);
+            }
+          }, debounceWait);
+        }
+
+        function updateCreateButtonState() {
+          createButton.disabled = !nameInputValid;
         }
 
         document.addEventListener("DOMContentLoaded", () => {
           updatePythonEnvironmentList();
           handleDefaultPythonEnvTypeChange();
           handleNewEnvCreateMethodChange();
-          handleNewEnvNameChange();
+          handleNewEnvNameInputChange();
           <%- !bundledEnvInstallationExists ? 'showBundledEnvWarning("does-not-exist");' : '' %> 
           <%- (bundledEnvInstallationExists && !bundledEnvInstallationLatest) ? 'showBundledEnvWarning("not-latest");' : '' %>
           ${
@@ -922,6 +1049,11 @@ export class ManagePythonEnvironmentDialog {
               `
               : ''
           }
+          setTimeout(() => {
+            handlePythonEnvsDirInputChange();
+            handleCondaPathInputChange();
+            handleSystemPythonPathInputChange();
+          }, 1000);
         });
       </script>
     `;
@@ -944,7 +1076,7 @@ export class ManagePythonEnvironmentDialog {
 
   load() {
     this._window.loadDialogContent(this._pageBody);
-    this._window.window.on('close', () => {
+    this._window.window.on('closed', () => {
       this._evm.dispose();
     });
   }

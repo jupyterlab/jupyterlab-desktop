@@ -48,7 +48,7 @@ import { SessionConfig } from '../config/sessionconfig';
 import { ISignal, Signal } from '@lumino/signaling';
 import { EventTypeMain } from '../eventtypes';
 import { EventManager } from '../eventmanager';
-import { runCommandInEnvironment } from '../cli';
+import { runCommandInEnvironment } from '../env';
 
 export enum ContentViewType {
   Welcome = 'welcome',

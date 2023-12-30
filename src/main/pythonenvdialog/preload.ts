@@ -49,8 +49,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
       packages
     );
   },
-  selectPythonEnvInstallDirectory: () => {
-    return ipcRenderer.invoke(EventTypeMain.SelectPythonEnvInstallDirectory);
+  selectDirectoryPath: (currentPath?: string) => {
+    return ipcRenderer.invoke(EventTypeMain.SelectDirectoryPath, currentPath);
+  },
+  selectFilePath: (currentPath?: string) => {
+    return ipcRenderer.invoke(EventTypeMain.SelectFilePath, currentPath);
   },
   showPythonEnvironmentContextMenu: (pythonPath: string) => {
     ipcRenderer.send(
@@ -160,6 +163,39 @@ contextBridge.exposeInMainWorld('electronAPI', {
   },
   setCtrlWBehavior: (behavior: string) => {
     ipcRenderer.send(EventTypeMain.SetCtrlWBehavior, behavior);
+  },
+  validateNewPythonEnvironmentName: (name: string) => {
+    return ipcRenderer.invoke(
+      EventTypeMain.ValidateNewPythonEnvironmentName,
+      name
+    );
+  },
+  validatePythonEnvironmentInstallDirectory: (dirPath: string) => {
+    return ipcRenderer.invoke(
+      EventTypeMain.ValidatePythonEnvironmentInstallDirectory,
+      dirPath
+    );
+  },
+  setPythonEnvironmentInstallDirectory: (dirPath: string) => {
+    return ipcRenderer.send(
+      EventTypeMain.SetPythonEnvironmentInstallDirectory,
+      dirPath
+    );
+  },
+  validateCondaPath: (condaPath: string) => {
+    return ipcRenderer.invoke(EventTypeMain.ValidateCondaPath, condaPath);
+  },
+  setCondaPath: (condaPath: string) => {
+    return ipcRenderer.send(EventTypeMain.SetCondaPath, condaPath);
+  },
+  validateSystemPythonPath: (pythonPath: string) => {
+    return ipcRenderer.invoke(
+      EventTypeMain.ValidateSystemPythonPath,
+      pythonPath
+    );
+  },
+  setSystemPythonPath: (pythonPath: string) => {
+    return ipcRenderer.send(EventTypeMain.SetSystemPythonPath, pythonPath);
   }
 });
 

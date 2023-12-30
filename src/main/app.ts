@@ -52,7 +52,13 @@ import { AboutDialog } from './aboutdialog/aboutdialog';
 import { AuthDialog } from './authdialog/authdialog';
 import { ManagePythonEnvironmentDialog } from './pythonenvdialog/pythonenvdialog';
 import { addUserSetEnvironment, createPythonEnvironment } from './cli';
-import { getNextPythonEnvName, getPythonEnvsDirectory } from './env';
+import {
+  getNextPythonEnvName,
+  validateCondaPath,
+  validateNewPythonEnvironmentName,
+  validatePythonEnvironmentInstallDirectory,
+  validateSystemPythonPath
+} from './env';
 
 export interface IApplication {
   createNewEmptySession(): void;
@@ -749,6 +755,20 @@ export class JupyterApplication implements IApplication, IDisposable {
       }
     );
 
+    this._evm.registerEventHandler(
+      EventTypeMain.SetPythonEnvironmentInstallDirectory,
+      async (event, dirPath) => {
+        userSettings.setValue(SettingType.pythonEnvsPath, dirPath);
+      }
+    );
+
+    this._evm.registerEventHandler(
+      EventTypeMain.SetCondaPath,
+      async (event, condaPath) => {
+        userSettings.setValue(SettingType.condaPath, condaPath);
+      }
+    );
+
     this._evm.registerSyncEventHandler(
       EventTypeMain.GetNextPythonEnvironmentName,
       (event, path) => {
@@ -757,10 +777,8 @@ export class JupyterApplication implements IApplication, IDisposable {
     );
 
     this._evm.registerSyncEventHandler(
-      EventTypeMain.SelectPythonEnvInstallDirectory,
-      event => {
-        const currentPath = getPythonEnvsDirectory();
-
+      EventTypeMain.SelectDirectoryPath,
+      (event, currentPath) => {
         return new Promise<string>((resolve, reject) => {
           dialog
             .showOpenDialog({
@@ -770,7 +788,26 @@ export class JupyterApplication implements IApplication, IDisposable {
                 'noResolveAliases',
                 'createDirectory'
               ],
-              buttonLabel: 'Use Directory',
+              buttonLabel: 'Use path',
+              defaultPath: currentPath
+            })
+            .then(({ filePaths }) => {
+              if (filePaths.length > 0) {
+                resolve(filePaths[0]);
+              }
+            });
+        });
+      }
+    );
+
+    this._evm.registerSyncEventHandler(
+      EventTypeMain.SelectFilePath,
+      (event, currentPath) => {
+        return new Promise<string>((resolve, reject) => {
+          dialog
+            .showOpenDialog({
+              properties: ['openFile', 'showHiddenFiles', 'noResolveAliases'],
+              buttonLabel: 'Use path',
               defaultPath: currentPath
             })
             .then(({ filePaths }) => {
@@ -829,6 +866,36 @@ export class JupyterApplication implements IApplication, IDisposable {
               resolve({ result: 'invalid', error: error.message });
             });
         });
+      }
+    );
+
+    this._evm.registerSyncEventHandler(
+      EventTypeMain.ValidateNewPythonEnvironmentName,
+      (event, name) => {
+        return Promise.resolve(validateNewPythonEnvironmentName(name));
+      }
+    );
+
+    this._evm.registerSyncEventHandler(
+      EventTypeMain.ValidatePythonEnvironmentInstallDirectory,
+      (event, dirPath) => {
+        return Promise.resolve(
+          validatePythonEnvironmentInstallDirectory(dirPath)
+        );
+      }
+    );
+
+    this._evm.registerSyncEventHandler(
+      EventTypeMain.ValidateCondaPath,
+      (event, condaPath) => {
+        return validateCondaPath(condaPath);
+      }
+    );
+
+    this._evm.registerSyncEventHandler(
+      EventTypeMain.ValidateSystemPythonPath,
+      (event, pythonPath) => {
+        return validateSystemPythonPath(pythonPath);
       }
     );
 

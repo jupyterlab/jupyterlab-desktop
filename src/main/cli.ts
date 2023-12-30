@@ -20,7 +20,11 @@ import { IEnvironmentType, IPythonEnvironment } from './tokens';
 import { SettingType, userSettings } from './config/settings';
 import { Registry } from './registry';
 import { app } from 'electron';
-import { condaEnvPathForCondaExePath } from './env';
+import {
+  condaEnvPathForCondaExePath,
+  ICommandRunCallbacks,
+  runCommandInEnvironment
+} from './env';
 
 export function parseCLIArgs(argv: string[]) {
   return yargs(argv)
@@ -459,73 +463,6 @@ export async function launchCLIinEnvironment(
         fs.unlinkSync(activateFilePath);
         resolve(true);
       }
-    });
-  });
-}
-
-export interface ICommandRunCallback {
-  (msg: string): void;
-}
-
-export interface ICommandRunCallbacks {
-  stdout?: ICommandRunCallback;
-  stderr?: ICommandRunCallback;
-}
-
-export async function runCommandInEnvironment(
-  envPath: string,
-  command: string,
-  callbacks?: ICommandRunCallbacks
-) {
-  const isWin = process.platform === 'win32';
-  const condaEnvPath = condaEnvPathForCondaExePath(appData.condaPath);
-  const commandScript = createCommandScriptInEnv(
-    envPath,
-    condaEnvPath,
-    command,
-    ' && '
-  );
-
-  // TODO: implement timeout. in case there is network issues
-
-  return new Promise<boolean>((resolve, reject) => {
-    const shell = isWin
-      ? spawn('cmd', ['/c', commandScript], {
-          env: process.env,
-          windowsVerbatimArguments: true
-        })
-      : spawn('bash', ['-c', commandScript], {
-          env: {
-            ...process.env,
-            BASH_SILENCE_DEPRECATION_WARNING: '1'
-          }
-        });
-
-    if (shell.stdout) {
-      shell.stdout.on('data', chunk => {
-        const msg = Buffer.from(chunk).toString();
-        console.debug('>', msg);
-        if (callbacks?.stdout) {
-          callbacks.stdout(msg);
-        }
-      });
-    }
-    if (shell.stderr) {
-      shell.stderr.on('data', chunk => {
-        const msg = Buffer.from(chunk).toString();
-        console.error('>', msg);
-        if (callbacks?.stdout) {
-          callbacks.stdout(msg);
-        }
-      });
-    }
-
-    shell.on('close', code => {
-      if (code !== 0) {
-        console.error('Shell exit with code:', code);
-        resolve(false);
-      }
-      resolve(true);
     });
   });
 }
