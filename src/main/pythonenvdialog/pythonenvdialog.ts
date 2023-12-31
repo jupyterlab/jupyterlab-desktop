@@ -90,6 +90,9 @@ export class ManagePythonEnvironmentDialog {
     const xMarkIconSrc = fs.readFileSync(
       path.join(__dirname, '../../../app-assets/xmark.svg')
     );
+    const xMarkCircleIconSrc = fs.readFileSync(
+      path.join(__dirname, '../../../app-assets/xmark-circle.svg')
+    );
 
     const pythonEnvName = getNextPythonEnvName();
     const pythonEnvInstallPath = getPythonEnvsDirectory();
@@ -135,13 +138,29 @@ export class ManagePythonEnvironmentDialog {
             label: 'Delete',
             visible: deletable,
             click: async () => {
+              this._window.window.webContents.send(
+                EventTypeRenderer.SetEnvironmentListUpdateStatus,
+                'ENV-DELETE-RUNNING'
+              );
               try {
                 await deletePythonEnvironment(envPath);
+                this._window.window.webContents.send(
+                  EventTypeRenderer.SetEnvironmentListUpdateStatus,
+                  'ENV-DELETE-RUNNING'
+                );
                 await this._app.updateRegistry();
+                this._window.window.webContents.send(
+                  EventTypeRenderer.SetEnvironmentListUpdateStatus,
+                  'ENV-DELETE-FINISHED'
+                );
                 const envs = await this._app.registry.getEnvironmentList(true);
                 this.setPythonEnvironmentList(envs);
               } catch (error) {
-                //
+                this._window.window.webContents.send(
+                  EventTypeRenderer.SetEnvironmentListUpdateStatus,
+                  'ENV-DELETE-FAILED',
+                  `Failed to delete environment. ${error.message}`
+                );
               }
             }
           }
@@ -166,12 +185,32 @@ export class ManagePythonEnvironmentDialog {
       }
       #content-area {
         background: var(--neutral-layer-4);
-        display: flex;
-        flex-direction: row;
-        column-gap: 20px;
-        flex-grow: 1;
+        width: 100%;
         overflow-y: auto;
         margin: 5px;
+      }
+      #env-list-progress {
+        width: 100%;
+        visibility: hidden;
+      }
+      #env-list-progress-message {
+        display: none;
+        border: 1px solid var(--error-fill-hover);
+        padding: 5px;
+        box-sizing: border-box;
+      }
+      #env-list-progress-message-content {
+        flex-grow: 1;
+      }
+      #env-list-progress-message-close {
+        cursor: pointer;
+      }
+      #env-list-progress-message-close svg {
+        width: 16px;
+        height: 16px;
+      }
+      #env-list-progress-message-close svg path {
+        fill: var(--error-fill-hover);
       }
       jp-tree-item::part(start) {
         flex-grow: 1;
@@ -402,9 +441,18 @@ export class ManagePythonEnvironmentDialog {
               </div>
             </div>
 
-            <div id="content-area">
-              <jp-menu id="env-list">
-              </jp-menu>
+            <div class="setting-section">
+              <div class="row">  
+                <jp-progress id="env-list-progress"></jp-progress>
+              </div>
+              <div id="env-list-progress-message" class="row">
+                <div id="env-list-progress-message-content"></div>
+                <div id="env-list-progress-message-close" onclick='setEnvListProgressMessage("");'>${xMarkIconSrc}</div>
+              </div>
+              <div id="content-area">
+                <jp-menu id="env-list">
+                </jp-menu>
+              </div>
             </div>
           </div>
         </jp-tab-panel>
@@ -429,7 +477,7 @@ export class ManagePythonEnvironmentDialog {
               </div>
               <div class="row">
                 <jp-text-field type="text" id="new-env-name" value="<%= pythonEnvName %>" spellcheck="false" placeholder="environment name" oninput="handleNewEnvNameInputChange(this);">
-                  <div slot="end"><div class="valid-icon">${checkIconSrc}</div><div class="invalid-icon">${xMarkIconSrc}</div></div>
+                  <div slot="end"><div class="valid-icon">${checkIconSrc}</div><div class="invalid-icon">${xMarkCircleIconSrc}</div></div>
                 </jp-text-field>
               </div>
               <div class="row">
@@ -525,7 +573,7 @@ export class ManagePythonEnvironmentDialog {
               <div class="row">
                 <div style="flex-grow: 1;">
                   <jp-text-field type="text" id='python-env-install-directory' value="<%= pythonEnvInstallPath %>" style="width: 100%;" spellcheck="false" oninput="handlePythonEnvsDirInputChange(this);">
-                    <div slot="end"><div class="valid-icon">${checkIconSrc}</div><div class="invalid-icon">${xMarkIconSrc}</div></div>
+                    <div slot="end"><div class="valid-icon">${checkIconSrc}</div><div class="invalid-icon">${xMarkCircleIconSrc}</div></div>
                   </jp-text-field>
                 </div>
                 <div>
@@ -541,7 +589,7 @@ export class ManagePythonEnvironmentDialog {
               <div class="row">
                 <div style="flex-grow: 1;">
                   <jp-text-field type="text" id="conda-path" value="<%= condaPath %>" style="width: 100%;" spellcheck="false" oninput="handleCondaPathInputChange(this);">
-                    <div slot="end"><div class="valid-icon">${checkIconSrc}</div><div class="invalid-icon">${xMarkIconSrc}</div></div>
+                    <div slot="end"><div class="valid-icon">${checkIconSrc}</div><div class="invalid-icon">${xMarkCircleIconSrc}</div></div>
                   </jp-text-field>
                 </div>
                 <div>
@@ -557,7 +605,7 @@ export class ManagePythonEnvironmentDialog {
               <div class="row">
                 <div style="flex-grow: 1;">
                   <jp-text-field type="text" id="system-python-path" value="<%- systemPythonPath %>" style="width: 100%;" spellcheck="false" oninput="handleSystemPythonPathInputChange(this);">
-                    <div slot="end"><div class="valid-icon">${checkIconSrc}</div><div class="invalid-icon">${xMarkIconSrc}</div></div>
+                    <div slot="end"><div class="valid-icon">${checkIconSrc}</div><div class="invalid-icon">${xMarkCircleIconSrc}</div></div>
                   </jp-text-field>
                 </div>
                 <div>
@@ -571,6 +619,9 @@ export class ManagePythonEnvironmentDialog {
 
       </div>
       <script>
+        const envListProgress = document.getElementById('env-list-progress');
+        const envListProgressMessage = document.getElementById('env-list-progress-message');
+        const envListProgressMessageContent = document.getElementById('env-list-progress-message-content');
         const bundledEnvRadio = document.getElementById('bundled-env');
         const customEnvRadio = document.getElementById('custom-env');
         const pythonPathInput = document.getElementById('python-path');
@@ -658,6 +709,15 @@ export class ManagePythonEnvironmentDialog {
             systemPythonPathInput.value = selected;
             handleSystemPythonPathInputChange();
           });
+        }
+
+        function showEnvListProgress(show) {
+          envListProgress.style.visibility = show ? 'visible' : 'hidden';
+        }
+
+        function setEnvListProgressMessage(message) {
+          envListProgressMessageContent.innerText = message;
+          envListProgressMessage.style.display = message ? 'flex' : 'none';
         }
 
         function showBundledEnvWarning(type) {
@@ -868,6 +928,10 @@ export class ManagePythonEnvironmentDialog {
 
           showProgress(message, animate);
 
+          if (!(status === 'REMOVING_EXISTING_INSTALLATION' || status === 'STARTED')) {
+            clearCreateFormButton.style.display = 'block';
+          }
+
           if (status === 'SUCCESS') {
             bundledEnvRadio.removeAttribute('disabled');
             hideBundledEnvWarning();
@@ -878,10 +942,6 @@ export class ManagePythonEnvironmentDialog {
             } catch(error) {
 
             }
-          }
-
-          if (!(status === 'REMOVING_EXISTING_INSTALLATION' || status === 'STARTED')) {
-            clearCreateFormButton.style.display = 'block';
           }
 
           installBundledEnvButton.removeAttribute('disabled');
@@ -924,6 +984,7 @@ export class ManagePythonEnvironmentDialog {
         }
 
         window.electronAPI.onCustomPythonPathSelected(async (path) => {
+          showEnvListProgress(true);
           const inRegistry = await window.electronAPI.getEnvironmentByPythonPath(path);
           if (!inRegistry) {
             if (await window.electronAPI.validatePythonPath(path)) {
@@ -932,15 +993,29 @@ export class ManagePythonEnvironmentDialog {
                 envs = await fetchPythonEnvironmentList();
                 updatePythonEnvironmentList();
               } catch(error) {
-  
+                setEnvListProgressMessage('Failed to update environment list.');
               }
+            } else {
+              setEnvListProgressMessage('Invalid Python path selected.');
             }
+          } else {
+            setEnvListProgressMessage('Environment is already in registry.');
           }
+          showEnvListProgress(false);
         });
 
         window.electronAPI.onSetPythonEnvironmentList((newEnvs) => {
           envs = newEnvs;
           updatePythonEnvironmentList();
+        });
+
+        window.electronAPI.onEnvironmentListUpdateStatus((status, message) => {
+          if (status === 'ENV-DELETE-RUNNING') {
+            showEnvListProgress(true);
+          } else if (status === 'ENV-DELETE-FINISHED' || status === 'ENV-DELETE-FAILED') {
+            showEnvListProgress(false);
+          }
+          setEnvListProgressMessage(message || '');
         });
 
         function handleNewEnvCreateMethodChange() {

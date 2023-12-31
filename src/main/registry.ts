@@ -86,7 +86,7 @@ export class Registry implements IRegistry, IDisposable {
       pythonPath = getBundledPythonPath();
     }
 
-    // TODO: validate appData.condaPath and appData.systemPythonPath
+    // TODO: validate appData.condaPath and appData.systemPythonPath. getCondaPath instead of appData.condaPath
 
     try {
       const defaultEnv = this._resolveEnvironmentSync(pythonPath);
@@ -116,7 +116,8 @@ export class Registry implements IRegistry, IDisposable {
       ) {
         // set default env from appData.condPath
         if (!this._defaultEnv) {
-          const pythonPath = pythonPathForEnvPath(appData.condaPath, true);
+          const condaEnvPath = condaEnvPathForCondaExePath(appData.condaPath);
+          const pythonPath = pythonPathForEnvPath(condaEnvPath, true);
           try {
             const defaultEnv = this._resolveEnvironmentSync(pythonPath);
             if (defaultEnv) {

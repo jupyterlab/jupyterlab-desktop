@@ -97,5 +97,6 @@ export enum EventTypeRenderer {
   DisableLocalServerActions = 'disable-local-server-actions',
   SetDefaultWorkingDirectoryResult = 'set-default-working-directory-result',
   ResetPythonEnvSelectPopup = 'reset-python-env-select-popup',
-  SetPythonEnvironmentList = 'set-python-environment-list'
+  SetPythonEnvironmentList = 'set-python-environment-list',
+  SetEnvironmentListUpdateStatus = 'set-environment-list-update-status'
 }

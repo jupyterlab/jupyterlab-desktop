@@ -10,11 +10,16 @@ type InstallBundledPythonEnvStatusListener = (
 type CustomPythonPathSelectedListener = (path: string) => void;
 type WorkingDirectorySelectedListener = (path: string) => void;
 type SetPythonEnvironmentListListener = (envs: IPythonEnvironment[]) => void;
+type EnvironmentListUpdateStatusListener = (
+  status: string,
+  message: string
+) => void;
 
 let onInstallBundledPythonEnvStatusListener: InstallBundledPythonEnvStatusListener;
 let onCustomPythonPathSelectedListener: CustomPythonPathSelectedListener;
 let onWorkingDirectorySelectedListener: WorkingDirectorySelectedListener;
 let onSetPythonEnvironmentListListener: SetPythonEnvironmentListListener;
+let onEnvironmentListUpdateStatusListener: EnvironmentListUpdateStatusListener;
 
 contextBridge.exposeInMainWorld('electronAPI', {
   getAppConfig: () => {
@@ -100,6 +105,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
   },
   onSetPythonEnvironmentList: (callback: SetPythonEnvironmentListListener) => {
     onSetPythonEnvironmentListListener = callback;
+  },
+  onEnvironmentListUpdateStatus: (
+    callback: EnvironmentListUpdateStatusListener
+  ) => {
+    onEnvironmentListUpdateStatusListener = callback;
   },
   setDefaultWorkingDirectory: (path: string) => {
     ipcRenderer.send(EventTypeMain.SetDefaultWorkingDirectory, path);
@@ -225,5 +235,14 @@ ipcRenderer.on(EventTypeRenderer.SetPythonEnvironmentList, (event, envs) => {
     onSetPythonEnvironmentListListener(envs);
   }
 });
+
+ipcRenderer.on(
+  EventTypeRenderer.SetEnvironmentListUpdateStatus,
+  (event, status, message) => {
+    if (onEnvironmentListUpdateStatusListener) {
+      onEnvironmentListUpdateStatusListener(status, message);
+    }
+  }
+);
 
 export {};
