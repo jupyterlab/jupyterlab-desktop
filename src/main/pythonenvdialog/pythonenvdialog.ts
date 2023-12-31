@@ -165,6 +165,7 @@ export class ManagePythonEnvironmentDialog {
         height: 100%;
       }
       #content-area {
+        background: var(--neutral-layer-4);
         display: flex;
         flex-direction: row;
         column-gap: 20px;
@@ -378,6 +379,10 @@ export class ManagePythonEnvironmentDialog {
       jp-text-field .invalid-icon svg path {
         fill: var(--error-fill-hover);
       }
+      .env-list-description-row {
+        padding: 5px;
+        color: var(--neutral-foreground-hint);
+      }
       </style>
       <div id="container">
       <jp-tabs id="category-tabs" false="" orientation="vertical">
@@ -386,17 +391,21 @@ export class ManagePythonEnvironmentDialog {
         <jp-tab id="tab-settings">Settings</jp-tab>
 
         <jp-tab-panel id="tab-panel-envs">
-          <span slot="heading">Available Python environments</span>
-          <div class="setting-section">
-            <div class="row">
-              <jp-button appearance="accent" onclick='handleAddExistingEnv(this);'>Add existing</jp-button>
-              <jp-button appearance="accent" onclick='handleCreateNewEnvLink(this);'>Create new</jp-button>
+          <div class="tab-panel-content">
+            <div class="setting-section">
+              <div class="row env-list-description-row">
+                Python paths for compatible environments discovered on your system are listed below. You can add other environments by selecting a Python executable path on your system, or create new environments. 'jupyterlab' Python package needs to be installed in an environment to be compatible with JupyterLab Desktop.
+              </div>
+              <div class="row">
+                <jp-button appearance="accent" onclick='handleAddExistingEnv(this);'>Add existing</jp-button>
+                <jp-button appearance="accent" onclick='handleCreateNewEnvLink(this);'>Create new</jp-button>
+              </div>
             </div>
-          </div>
 
-          <div id="content-area">
-            <jp-menu id="env-list">
-            </jp-menu>
+            <div id="content-area">
+              <jp-menu id="env-list">
+              </jp-menu>
+            </div>
           </div>
         </jp-tab-panel>
 
@@ -484,76 +493,76 @@ export class ManagePythonEnvironmentDialog {
         </jp-tab-panel>
 
         <jp-tab-panel id="tab-panel-settings">
-          <span slot="heading">Python environment settings</span>
+          <div class="tab-panel-content">
+            <div class="setting-section">
+              <div class="header">
+                Default Python path for JupyterLab Server<div class="info-icon" title="Python executable to use when launching a new JupyterLab server. The Python environment needs to have 'jupyterlab' Python package installed.">${infoIconSrc}</div>
+              </div>
+              <div id="content-local-server" style="width: 100%;">
+                <div style="display: flex; flex-direction: column; row-gap: 5px;">
+                  <div id="bundled-env-warning"><span id="bundled-env-warning-message"></span><jp-button id='install-bundled-env' onclick='handleInstallBundledEv(this);'>Install</jp-button><jp-button id='update-bundled-env' onclick='handleUpdateBundledEv(this);'>Update</jp-button></div>
+                  <jp-radio-group orientation="vertical">
+                    <jp-radio type="radio" id="bundled-env" name="env_type" value="bundled-env" <%= selectBundledPythonPath ? 'checked' : '' %> <%= !bundledEnvInstallationExists ? 'disabled' : '' %> onchange="handleDefaultPythonEnvTypeChange(this);">Use bundled Python environment installation</jp-radio>
+                    <jp-radio type="radio" id="custom-env" name="env_type" value="custom-env" <%= !selectBundledPythonPath ? 'checked' : '' %> onchange="handleDefaultPythonEnvTypeChange(this);">Use custom Python environment</jp-radio>
+                  </jp-radio-group>
 
-          <div class="setting-section">
-            <div class="header">
-              Default Python path for JupyterLab Server<div class="info-icon" title="Python executable to use when launching a new JupyterLab server. The Python environment needs to have 'jupyterlab' Python package installed.">${infoIconSrc}</div>
-            </div>
-            <div id="content-local-server" style="width: 100%;">
-              <div style="display: flex; flex-direction: column; row-gap: 5px;">
-                <div id="bundled-env-warning"><span id="bundled-env-warning-message"></span><jp-button id='install-bundled-env' onclick='handleInstallBundledEv(this);'>Install</jp-button><jp-button id='update-bundled-env' onclick='handleUpdateBundledEv(this);'>Update</jp-button></div>
-                <jp-radio-group orientation="vertical">
-                  <jp-radio type="radio" id="bundled-env" name="env_type" value="bundled-env" <%= selectBundledPythonPath ? 'checked' : '' %> <%= !bundledEnvInstallationExists ? 'disabled' : '' %> onchange="handleDefaultPythonEnvTypeChange(this);">Use bundled Python environment installation</jp-radio>
-                  <jp-radio type="radio" id="custom-env" name="env_type" value="custom-env" <%= !selectBundledPythonPath ? 'checked' : '' %> onchange="handleDefaultPythonEnvTypeChange(this);">Use custom Python environment</jp-radio>
-                </jp-radio-group>
-
-                <div class="row">
-                  <div style="flex-grow: 1;">
-                    <jp-text-field type="text" id="python-path" value="<%= defaultPythonPath %>" style="width: 100%;" spellcheck="false"></jp-text-field>
-                  </div>
-                  <div>
-                    <jp-button id='select-python-path' onclick='handleSelectPythonPath(this);'>Select path</jp-button>
+                  <div class="row">
+                    <div style="flex-grow: 1;">
+                      <jp-text-field type="text" id="python-path" value="<%= defaultPythonPath %>" style="width: 100%;" spellcheck="false"></jp-text-field>
+                    </div>
+                    <div>
+                      <jp-button id='select-python-path' onclick='handleSelectPythonPath(this);'>Select path</jp-button>
+                    </div>
                   </div>
                 </div>
               </div>
             </div>
-          </div>
 
-          <div class="setting-section">
-            <div class="header">
-              New Python environment install directory<div class="info-icon" title="Parent directory where new Python environments will be created">${infoIconSrc}</div>
-            </div>
-            <div class="row">
-              <div style="flex-grow: 1;">
-                <jp-text-field type="text" id='python-env-install-directory' value="<%= pythonEnvInstallPath %>" style="width: 100%;" spellcheck="false" oninput="handlePythonEnvsDirInputChange(this);">
-                  <div slot="end"><div class="valid-icon">${checkIconSrc}</div><div class="invalid-icon">${xMarkIconSrc}</div></div>
-                </jp-text-field>
+            <div class="setting-section">
+              <div class="header">
+                New Python environment install directory<div class="info-icon" title="Parent directory where new Python environments will be created">${infoIconSrc}</div>
               </div>
-              <div>
-                <jp-button onclick='handleSelectPythonEnvInstallDirectory(this);'>Select path</jp-button>
+              <div class="row">
+                <div style="flex-grow: 1;">
+                  <jp-text-field type="text" id='python-env-install-directory' value="<%= pythonEnvInstallPath %>" style="width: 100%;" spellcheck="false" oninput="handlePythonEnvsDirInputChange(this);">
+                    <div slot="end"><div class="valid-icon">${checkIconSrc}</div><div class="invalid-icon">${xMarkIconSrc}</div></div>
+                  </jp-text-field>
+                </div>
+                <div>
+                  <jp-button onclick='handleSelectPythonEnvInstallDirectory(this);'>Select path</jp-button>
+                </div>
               </div>
             </div>
-          </div>
 
-          <div class="setting-section">
-            <div class="header">
-              conda path<div class="info-icon" title="conda executable to use when creating new conda environments, or running conda commands">${infoIconSrc}</div>
-            </div>
-            <div class="row">
-              <div style="flex-grow: 1;">
-                <jp-text-field type="text" id="conda-path" value="<%= condaPath %>" style="width: 100%;" spellcheck="false" oninput="handleCondaPathInputChange(this);">
-                  <div slot="end"><div class="valid-icon">${checkIconSrc}</div><div class="invalid-icon">${xMarkIconSrc}</div></div>
-                </jp-text-field>
+            <div class="setting-section">
+              <div class="header">
+                conda path<div class="info-icon" title="conda executable to use when creating new conda environments, or running conda commands">${infoIconSrc}</div>
               </div>
-              <div>
-                <jp-button onclick='handleSelectCondaPath(this);'>Select path</jp-button>
+              <div class="row">
+                <div style="flex-grow: 1;">
+                  <jp-text-field type="text" id="conda-path" value="<%= condaPath %>" style="width: 100%;" spellcheck="false" oninput="handleCondaPathInputChange(this);">
+                    <div slot="end"><div class="valid-icon">${checkIconSrc}</div><div class="invalid-icon">${xMarkIconSrc}</div></div>
+                  </jp-text-field>
+                </div>
+                <div>
+                  <jp-button onclick='handleSelectCondaPath(this);'>Select path</jp-button>
+                </div>
               </div>
             </div>
-          </div>
 
-          <div class="setting-section">
-            <div class="header">
-              Python path to use when creating venv environments<div class="info-icon" title="Python executable to use when creating new venv environments">${infoIconSrc}</div>
-            </div>
-            <div class="row">
-              <div style="flex-grow: 1;">
-                <jp-text-field type="text" id="system-python-path" value="<%- systemPythonPath %>" style="width: 100%;" spellcheck="false" oninput="handleSystemPythonPathInputChange(this);">
-                  <div slot="end"><div class="valid-icon">${checkIconSrc}</div><div class="invalid-icon">${xMarkIconSrc}</div></div>
-                </jp-text-field>
+            <div class="setting-section">
+              <div class="header">
+                Python path to use when creating venv environments<div class="info-icon" title="Python executable to use when creating new venv environments">${infoIconSrc}</div>
               </div>
-              <div>
-                <jp-button id='select-system-python-path' onclick='handleSelectSystemPythonPath(this);'>Select path</jp-button>
+              <div class="row">
+                <div style="flex-grow: 1;">
+                  <jp-text-field type="text" id="system-python-path" value="<%- systemPythonPath %>" style="width: 100%;" spellcheck="false" oninput="handleSystemPythonPathInputChange(this);">
+                    <div slot="end"><div class="valid-icon">${checkIconSrc}</div><div class="invalid-icon">${xMarkIconSrc}</div></div>
+                  </jp-text-field>
+                </div>
+                <div>
+                  <jp-button id='select-system-python-path' onclick='handleSelectSystemPythonPath(this);'>Select path</jp-button>
+                </div>
               </div>
             </div>
           </div>
