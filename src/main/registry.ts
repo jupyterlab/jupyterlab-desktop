@@ -41,6 +41,7 @@ export interface IRegistry {
   getEnvironmentByPath: (pythonPath: string) => IPythonEnvironment;
   getEnvironmentList: (cacheOK: boolean) => Promise<IPythonEnvironment[]>;
   addEnvironment: (pythonPath: string) => IPythonEnvironment;
+  removeEnvironment: (pythonPath: string) => boolean;
   validatePythonEnvironmentAtPath: (pythonPath: string) => Promise<boolean>;
   validateCondaBaseEnvironmentAtPath: (envPath: string) => boolean;
   setDefaultPythonPath: (pythonPath: string) => void;
@@ -382,6 +383,34 @@ export class Registry implements IRegistry, IDisposable {
     }
 
     return env;
+  }
+
+  /**
+   * Remove environment from registry.
+   * @param pythonPath The location of the python executable to create an environment from
+   */
+  removeEnvironment(pythonPath: string): boolean {
+    const discoveredEnvironments = this._discoveredEnvironments.filter(
+      env => pythonPath !== env.path
+    );
+    if (discoveredEnvironments.length < this._discoveredEnvironments.length) {
+      this._discoveredEnvironments = discoveredEnvironments;
+      this._updateEnvironments();
+      this._environmentListUpdated.emit();
+      return true;
+    }
+
+    const userSetEnvironments = this._userSetEnvironments.filter(
+      env => pythonPath !== env.path
+    );
+    if (userSetEnvironments.length < this._userSetEnvironments.length) {
+      this._userSetEnvironments = userSetEnvironments;
+      this._updateEnvironments();
+      this._environmentListUpdated.emit();
+      return true;
+    }
+
+    return false;
   }
 
   async validatePythonEnvironmentAtPath(pythonPath: string): Promise<boolean> {

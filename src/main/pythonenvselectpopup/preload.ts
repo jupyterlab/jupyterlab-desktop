@@ -1,14 +1,17 @@
 import { EventTypeMain, EventTypeRenderer } from '../eventtypes';
+import { IPythonEnvironment } from '../tokens';
 
 const { contextBridge, ipcRenderer } = require('electron');
 
 type CurrentPythonPathSetListener = (path: string) => void;
 type ResetPythonEnvSelectPopupListener = () => void;
 type CustomPythonPathSelectedListener = (path: string) => void;
+type SetPythonEnvironmentListListener = (envs: IPythonEnvironment[]) => void;
 
 let onCustomPythonPathSelectedListener: CustomPythonPathSelectedListener;
 let onCurrentPythonPathSetListener: CurrentPythonPathSetListener;
 let onResetPythonEnvSelectPopupListener: ResetPythonEnvSelectPopupListener;
+let onSetPythonEnvironmentListListener: SetPythonEnvironmentListListener;
 
 contextBridge.exposeInMainWorld('electronAPI', {
   getAppConfig: () => {
@@ -41,6 +44,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   },
   hideEnvSelectPopup: () => {
     ipcRenderer.send(EventTypeMain.HideEnvSelectPopup);
+  },
+  onSetPythonEnvironmentList: (callback: SetPythonEnvironmentListListener) => {
+    onSetPythonEnvironmentListListener = callback;
   }
 });
 
@@ -59,6 +65,12 @@ ipcRenderer.on(EventTypeRenderer.ResetPythonEnvSelectPopup, event => {
 ipcRenderer.on(EventTypeRenderer.CustomPythonPathSelected, (event, path) => {
   if (onCustomPythonPathSelectedListener) {
     onCustomPythonPathSelectedListener(path);
+  }
+});
+
+ipcRenderer.on(EventTypeRenderer.SetPythonEnvironmentList, (event, envs) => {
+  if (onSetPythonEnvironmentListListener) {
+    onSetPythonEnvironmentListListener(envs);
   }
 });
 

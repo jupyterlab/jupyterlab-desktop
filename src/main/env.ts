@@ -204,6 +204,11 @@ export function validatePythonEnvironmentInstallDirectory(
   };
 }
 
+/**
+ * Checks if condaPath is a valid conda executable in a base conda environment
+ * @param condaPath path to conda executable
+ * @returns IFormInputValidationResponse with validity and error message if any
+ */
 export async function validateCondaPath(
   condaPath: string
 ): Promise<IFormInputValidationResponse> {

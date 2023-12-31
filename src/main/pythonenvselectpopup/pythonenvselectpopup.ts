@@ -7,9 +7,11 @@ import * as fs from 'fs';
 import { ThemedView } from '../dialog/themedview';
 import { EventTypeRenderer } from '../eventtypes';
 import { IPythonEnvironment } from '../tokens';
+import { IApplication } from '../app';
 
 export class PythonEnvironmentSelectPopup {
   constructor(options: PythonEnvironmentSelectView.IOptions) {
+    this._app = options.app;
     this._view = new ThemedView({
       isDarkTheme: options.isDarkTheme,
       preload: path.join(__dirname, './preload.js')
@@ -111,8 +113,7 @@ export class PythonEnvironmentSelectPopup {
         let currentPythonPath = "<%- currentPythonPath %>;";
         const pythonPathInput = document.getElementById('python-path');
         const envListMenu = document.getElementById('env-list');
-        const envs = <%- JSON.stringify(envs) %>;
-        const numEnvs = envs.length;
+        let envs = <%- JSON.stringify(envs) %>;
         let activeIndex = -1;
         const envPaths = envs.map(env => env.path);
         let filteredEnvIndixes = [];
@@ -170,6 +171,12 @@ export class PythonEnvironmentSelectPopup {
           currentPythonPath = path;
         });
 
+        window.electronAPI.onSetPythonEnvironmentList((newEnvs) => {
+          envs = newEnvs;
+          pythonPathInput.value = '';
+          updateMenu();
+        });
+
         // window.electronAPI.onCustomPythonPathSelected((path) => {
         //   pythonPathInput.value = path;
         //   window.electronAPI.setPythonPath(path);
@@ -218,6 +225,7 @@ export class PythonEnvironmentSelectPopup {
           updateMenu();
 
           pythonPathInput.control.onkeydown = (event) => {
+            const numEnvs = envs.length;
             const numFilteredEnvs = filterResults() ? filteredEnvIndixes.length : numEnvs;
             if (event.key === "Enter") {
               if (numFilteredEnvs > 0) {
@@ -279,6 +287,11 @@ export class PythonEnvironmentSelectPopup {
 
   load() {
     this._view.loadViewContent(this._pageBody);
+
+    this._app.registry.environmentListUpdated.connect(
+      this._onEnvironmentListUpdated,
+      this
+    );
   }
 
   setCurrentPythonPath(currentPythonPath: string) {
@@ -304,13 +317,27 @@ export class PythonEnvironmentSelectPopup {
     );
   }
 
+  setPythonEnvironmentList(envs: IPythonEnvironment[]) {
+    this._view.view.webContents.send(
+      EventTypeRenderer.SetPythonEnvironmentList,
+      envs
+    );
+  }
+
+  private async _onEnvironmentListUpdated() {
+    const envs = await this._app.registry.getEnvironmentList(true);
+    this.setPythonEnvironmentList(envs);
+  }
+
   private _view: ThemedView;
   private _pageBody: string;
   private _envs: IPythonEnvironment[];
+  private _app: IApplication;
 }
 
 export namespace PythonEnvironmentSelectView {
   export interface IOptions {
+    app: IApplication;
     isDarkTheme: boolean;
     envs: IPythonEnvironment[];
     bundledPythonPath: string;

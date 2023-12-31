@@ -36,9 +36,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getNextPythonEnvironmentName: () => {
     return ipcRenderer.invoke(EventTypeMain.GetNextPythonEnvironmentName);
   },
-  updateRegistry: () => {
-    return ipcRenderer.invoke(EventTypeMain.UpdateRegistry);
-  },
   getPythonEnvironmentList: (cacheOK: boolean) => {
     return ipcRenderer.invoke(EventTypeMain.GetPythonEnvironmentList, cacheOK);
   },

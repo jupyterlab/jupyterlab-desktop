@@ -148,13 +148,11 @@ export class ManagePythonEnvironmentDialog {
                   EventTypeRenderer.SetEnvironmentListUpdateStatus,
                   'ENV-DELETE-RUNNING'
                 );
-                await this._app.updateRegistry();
+                this._app.registry.removeEnvironment(pythonPath);
                 this._window.window.webContents.send(
                   EventTypeRenderer.SetEnvironmentListUpdateStatus,
                   'ENV-DELETE-FINISHED'
                 );
-                const envs = await this._app.registry.getEnvironmentList(true);
-                this.setPythonEnvironmentList(envs);
               } catch (error) {
                 this._window.window.webContents.send(
                   EventTypeRenderer.SetEnvironmentListUpdateStatus,
@@ -790,10 +788,6 @@ export class ManagePythonEnvironmentDialog {
           return html;
         }
 
-        function updateRegistry() {
-          return window.electronAPI.updateRegistry();
-        }
-
         function fetchPythonEnvironmentList() {
           return window.electronAPI.getPythonEnvironmentList(true);
         }
@@ -935,13 +929,6 @@ export class ManagePythonEnvironmentDialog {
           if (status === 'SUCCESS') {
             bundledEnvRadio.removeAttribute('disabled');
             hideBundledEnvWarning();
-            try {
-              await updateRegistry();
-              envs = await fetchPythonEnvironmentList();
-              updatePythonEnvironmentList();
-            } catch(error) {
-
-            }
           }
 
           installBundledEnvButton.removeAttribute('disabled');
@@ -989,12 +976,6 @@ export class ManagePythonEnvironmentDialog {
           if (!inRegistry) {
             if (await window.electronAPI.validatePythonPath(path)) {
               await window.electronAPI.addEnvironmentByPythonPath(path);
-              try {
-                envs = await fetchPythonEnvironmentList();
-                updatePythonEnvironmentList();
-              } catch(error) {
-                setEnvListProgressMessage('Failed to update environment list.');
-              }
             } else {
               setEnvListProgressMessage('Invalid Python path selected.');
             }
@@ -1160,7 +1141,17 @@ export class ManagePythonEnvironmentDialog {
 
   load() {
     this._window.loadDialogContent(this._pageBody);
+
+    this._app.registry.environmentListUpdated.connect(
+      this._onEnvironmentListUpdated,
+      this
+    );
+
     this._window.window.on('closed', () => {
+      this._app.registry.environmentListUpdated.disconnect(
+        this._onEnvironmentListUpdated,
+        this
+      );
       this._evm.dispose();
     });
   }
@@ -1170,6 +1161,11 @@ export class ManagePythonEnvironmentDialog {
       EventTypeRenderer.SetPythonEnvironmentList,
       envs
     );
+  }
+
+  private async _onEnvironmentListUpdated() {
+    const envs = await this._app.registry.getEnvironmentList(true);
+    this.setPythonEnvironmentList(envs);
   }
 
   private _window: ThemedWindow;

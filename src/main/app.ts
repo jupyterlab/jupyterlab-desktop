@@ -22,6 +22,7 @@ import {
   getBundledPythonPath,
   installBundledEnvironment,
   isDarkTheme,
+  pythonPathForEnvPath,
   waitForDuration
 } from './utils';
 import { IServerFactory, JupyterServerFactory } from './server';
@@ -70,6 +71,7 @@ export interface IApplication {
   ): void;
   showAboutDialog(): void;
   cliArgs: ICLIArguments;
+  registry: IRegistry;
 }
 
 interface IClearHistoryOptions {
@@ -464,14 +466,6 @@ export class JupyterApplication implements IApplication, IDisposable {
     return this._serverFactory;
   }
 
-  async updateRegistry() {
-    const registry = new Registry();
-    await registry.ready;
-    await this._registry.dispose();
-    this._registry = registry;
-    appData.save();
-  }
-
   dispose(): Promise<void> {
     if (this._disposePromise) {
       return this._disposePromise;
@@ -718,6 +712,8 @@ export class JupyterApplication implements IApplication, IDisposable {
             );
             if (status === EnvironmentInstallStatus.Success) {
               addUserSetEnvironment(installPath, true);
+              const pythonPath = pythonPathForEnvPath(installPath, true);
+              this._registry.addEnvironment(pythonPath);
             }
           },
           get forceOverwrite() {
@@ -823,13 +819,6 @@ export class JupyterApplication implements IApplication, IDisposable {
       EventTypeMain.ValidatePythonPath,
       (event, path) => {
         return this._registry.validatePythonEnvironmentAtPath(path);
-      }
-    );
-
-    this._evm.registerSyncEventHandler(
-      EventTypeMain.UpdateRegistry,
-      (event, cacheOK) => {
-        return this.updateRegistry();
       }
     );
 
@@ -1002,6 +991,8 @@ export class JupyterApplication implements IApplication, IDisposable {
               );
             }
           });
+          const pythonPath = pythonPathForEnvPath(envPath);
+          this._registry.addEnvironment(pythonPath);
           event.sender.send(
             EventTypeRenderer.InstallPythonEnvStatus,
             EnvironmentInstallStatus.Success

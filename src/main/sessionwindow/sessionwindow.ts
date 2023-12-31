@@ -285,10 +285,6 @@ export class SessionWindow implements IDisposable {
         this._recentSessionsChangedHandler,
         this
       );
-      this._registry.environmentListUpdated.disconnect(
-        this._onEnvironmentListUpdated,
-        this
-      );
 
       this._disposeSession().then(() => {
         this._disposePromise = null;
@@ -450,11 +446,6 @@ export class SessionWindow implements IDisposable {
   private _registerListeners() {
     appData.recentSessionsChanged.connect(
       this._recentSessionsChangedHandler,
-      this
-    );
-
-    this._registry.environmentListUpdated.connect(
-      this._onEnvironmentListUpdated,
       this
     );
 
@@ -1127,6 +1118,7 @@ export class SessionWindow implements IDisposable {
     const defaultPythonPath = defaultEnv ? defaultEnv.path : '';
 
     this._envSelectPopup = new PythonEnvironmentSelectPopup({
+      app: this._app,
       isDarkTheme: this._isDarkTheme,
       envs,
       bundledPythonPath: getBundledPythonPath(),
@@ -1516,13 +1508,6 @@ export class SessionWindow implements IDisposable {
     if (filePaths.length > 0) {
       this.handleOpenFilesOrFolders(filePaths);
     }
-  }
-
-  private _onEnvironmentListUpdated() {
-    // TODO: add ability to update popup's env list
-    // recreate env select popup to have newly added env listed
-    this._hideEnvSelectPopup();
-    this._createEnvSelectPopup();
   }
 
   private _wsSettings: WorkspaceSettings;
