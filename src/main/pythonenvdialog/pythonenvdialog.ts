@@ -694,6 +694,8 @@ export class ManagePythonEnvironmentDialog {
             pythonPathInput.setAttribute('disabled', 'disabled');
             selectPythonPathButton.setAttribute('disabled', 'disabled');
             window.electronAPI.setDefaultPythonPath('');
+            pythonPathInput.value = '${bundledPythonPath}';
+            validateAndUpdateCustomPythonPath();
           } else {
             pythonPathInput.removeAttribute('disabled');
             selectPythonPathButton.removeAttribute('disabled');
