@@ -96,8 +96,8 @@ export class ManagePythonEnvironmentDialog {
 
     const pythonEnvName = getNextPythonEnvName();
     const pythonEnvInstallPath = getPythonEnvsDirectory();
-    const condaPath = getCondaPath();
-    const systemPythonPath = getSystemPythonPath();
+    const condaPath = getCondaPath() || "";
+    const systemPythonPath = getSystemPythonPath() || "";
 
     this._evm.registerEventHandler(
       EventTypeMain.ShowPythonEnvironmentContextMenu,
@@ -671,8 +671,8 @@ export class ManagePythonEnvironmentDialog {
         let defaultPythonEnvChanged = false;
         let installingJupyterLabServerEnv = false;
         let selectingCustomJupyterLabServerPython = false;
-        let condaPath = <%- JSON.stringify(condaPath || "") %>;
-        let systemPythonPath = <%- JSON.stringify(systemPythonPath || "") %>;
+        let condaPath = <%- JSON.stringify(condaPath) %>;
+        let systemPythonPath = <%- JSON.stringify(systemPythonPath) %>;
 
         let envs = <%- JSON.stringify(envs) %>;
         const pythonEnvInstallPath = "<%- pythonEnvInstallPath %>";
