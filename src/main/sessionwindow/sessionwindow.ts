@@ -531,7 +531,7 @@ export class SessionWindow implements IDisposable {
               <a href="javascript:void(0);" onclick="sendMessageToMain('${EventTypeMain.InstallBundledPythonEnv}')">Install / update Python environment using the bundled installer</a>
             </div>
             <div class="message-row">
-              <a href="javascript:void(0);" onclick="sendMessageToMain('${EventTypeMain.ShowServerSettings}')">Change the default Python environment</a>
+              <a href="javascript:void(0);" onclick="sendMessageToMain('${EventTypeMain.ShowManagePythonEnvironmentsDialog}', 'settings')">Change the default Python environment</a>
             </div>
           `,
             false

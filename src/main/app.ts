@@ -200,6 +200,7 @@ class SessionWindowManager implements IDisposable {
 
         if (this._windows.length === 0) {
           this._options.app.closeSettingsDialog();
+          this._options.app.closeManagePythonEnvDialog();
           this._options.app.closeAboutDialog();
         }
       }
@@ -417,6 +418,11 @@ export class JupyterApplication implements IApplication, IDisposable {
   async showManagePythonEnvsDialog(
     activateTab?: ManagePythonEnvironmentDialog.Tab
   ) {
+    if (this._managePythonEnvDialog) {
+      this._managePythonEnvDialog.window.focus();
+      return;
+    }
+
     const dialog = new ManagePythonEnvironmentDialog({
       envs: await this._registry.getEnvironmentList(false),
       isDarkTheme: this._isDarkTheme,
@@ -424,6 +430,13 @@ export class JupyterApplication implements IApplication, IDisposable {
       app: this,
       activateTab
     });
+
+    this._managePythonEnvDialog = dialog;
+
+    dialog.window.on('closed', () => {
+      this._managePythonEnvDialog = null;
+    });
+
     dialog.load();
   }
 
@@ -431,6 +444,13 @@ export class JupyterApplication implements IApplication, IDisposable {
     if (this._settingsDialog) {
       this._settingsDialog.window.close();
       this._settingsDialog = null;
+    }
+  }
+
+  closeManagePythonEnvDialog() {
+    if (this._managePythonEnvDialog) {
+      this._managePythonEnvDialog.window.close();
+      this._managePythonEnvDialog = null;
     }
   }
 
@@ -472,6 +492,7 @@ export class JupyterApplication implements IApplication, IDisposable {
     }
 
     this.closeSettingsDialog();
+    this.closeManagePythonEnvDialog();
     this.closeAboutDialog();
 
     this._disposePromise = new Promise<void>((resolve, reject) => {
@@ -1131,6 +1152,7 @@ export class JupyterApplication implements IApplication, IDisposable {
   private _sessionWindowManager: SessionWindowManager;
   private _evm = new EventManager();
   private _settingsDialog: SettingsDialog;
+  private _managePythonEnvDialog: ManagePythonEnvironmentDialog;
   private _aboutDialog: AboutDialog;
   private _isDarkTheme: boolean;
 }
