@@ -177,14 +177,9 @@ export class PythonEnvironmentSelectPopup {
           updateMenu();
         });
 
-        // window.electronAPI.onCustomPythonPathSelected((path) => {
-        //   pythonPathInput.value = path;
-        //   window.electronAPI.setPythonPath(path);
-        // });
-
         function onMenuItemClicked(el) {
           const pythonPath = el.dataset.pythonPath;
-          window.electronAPI.setPythonPath(pythonPath);
+          window.electronAPI.setSessionPythonPath(pythonPath);
         }
 
         function handleManagePythonEnvs(el) {
@@ -231,7 +226,7 @@ export class PythonEnvironmentSelectPopup {
               if (numFilteredEnvs > 0) {
                 const menuItems = document.querySelectorAll('jp-menu-item');
                 const activeMenuItem = menuItems[activeIndex];
-                window.electronAPI.setPythonPath(activeMenuItem.dataset.pythonPath);
+                window.electronAPI.setSessionPythonPath(activeMenuItem.dataset.pythonPath);
               }
             } else if (event.key === "Escape") {
               window.electronAPI.hideEnvSelectPopup();

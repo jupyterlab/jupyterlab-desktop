@@ -771,7 +771,7 @@ export class SessionWindow implements IDisposable {
     });
 
     this._evm.registerEventHandler(
-      EventTypeMain.SetPythonPath,
+      EventTypeMain.SetSessionPythonPath,
       async (event, path) => {
         if (event.sender !== this._envSelectPopup?.view?.view?.webContents) {
           return;

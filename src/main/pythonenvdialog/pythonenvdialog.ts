@@ -246,6 +246,7 @@ export class ManagePythonEnvironmentDialog {
       #bundled-env-warning {
         display: none;
         align-items: center;
+        height: 40px;
       }
       #bundled-env-warning.warning {
         color: orange;
@@ -361,7 +362,7 @@ export class ManagePythonEnvironmentDialog {
         max-width: 200px;
       }
       #env-list {
-        max-width: 100%;
+        max-width: calc(100% - 5px);
         width: 100%;
         box-shadow: none;
       }
@@ -546,7 +547,13 @@ export class ManagePythonEnvironmentDialog {
               </div>
               <div id="content-local-server" style="width: 100%;">
                 <div style="display: flex; flex-direction: column; row-gap: 5px;">
-                  <div id="bundled-env-warning"><span id="bundled-env-warning-message"></span><jp-button id='install-bundled-env' onclick='handleInstallBundledEv(this);'>Install</jp-button><jp-button id='update-bundled-env' onclick='handleUpdateBundledEv(this);'>Update</jp-button></div>
+                  <div id="bundled-env-warning">
+                    <span id="bundled-env-warning-message"></span>
+                    <jp-button id='install-bundled-env' onclick='handleInstallBundledEv(this);'>Install</jp-button>
+                    <jp-button id='update-bundled-env' onclick='handleUpdateBundledEv(this);'>Update</jp-button>
+                    <div id="progress-animation-bundled-env-install" class="progress-animation"><jp-progress-ring></jp-progress-ring></div>
+                    <div id="progress-message-bundled-env-install" class="progress-message"></div>
+                  </div>
                   <jp-radio-group orientation="vertical">
                     <jp-radio type="radio" id="bundled-env" name="env_type" value="bundled-env" <%= selectBundledPythonPath ? 'checked' : '' %> <%= !bundledEnvInstallationExists ? 'disabled' : '' %> onchange="handleDefaultPythonEnvTypeChange(this);">Use bundled Python environment installation</jp-radio>
                     <jp-radio type="radio" id="custom-env" name="env_type" value="custom-env" <%= !selectBundledPythonPath ? 'checked' : '' %> onchange="handleDefaultPythonEnvTypeChange(this);">Use custom Python environment</jp-radio>
@@ -554,7 +561,9 @@ export class ManagePythonEnvironmentDialog {
 
                   <div class="row">
                     <div style="flex-grow: 1;">
-                      <jp-text-field type="text" id="python-path" value="<%= defaultPythonPath %>" style="width: 100%;" spellcheck="false"></jp-text-field>
+                      <jp-text-field type="text" id="python-path" value="<%= defaultPythonPath %>" style="width: 100%;" spellcheck="false" oninput="handleCustomPythonPathChange(this);">
+                        <div slot="end"><div class="valid-icon">${checkIconSrc}</div><div class="invalid-icon">${xMarkCircleIconSrc}</div></div>
+                      </jp-text-field>
                     </div>
                     <div>
                       <jp-button id='select-python-path' onclick='handleSelectPythonPath(this);'>Select path</jp-button>
@@ -642,8 +651,11 @@ export class ManagePythonEnvironmentDialog {
         const envInstallPathLabel = document.getElementById('env-install-path-label');
         const createCommandPreview = document.getElementById('create-command-preview');
         const createButton = document.getElementById('create');
-        const progressMessage = document.getElementById('progress-message');
-        const progressAnimation = document.getElementById('progress-animation');
+        const progressMessageBundledEnvInstall = document.getElementById('progress-message-bundled-env-install');
+        const progressAnimationBundledEnvInstall = document.getElementById('progress-animation-bundled-env-install');
+
+        const progressMessageCreateNew = document.getElementById('progress-message');
+        const progressAnimationCreateNew = document.getElementById('progress-animation');
         const createEnvOutputRow = document.getElementById('create-env-output-row');
         const createEnvOutput = document.getElementById('create-env-output');
         const toggleInstallOutputButton = document.getElementById('toggle-install-output');
@@ -655,6 +667,8 @@ export class ManagePythonEnvironmentDialog {
         const systemPythonPathInput = document.getElementById('system-python-path');
 
         let defaultPythonEnvChanged = false;
+        let installingJupyterLabServerEnv = false;
+        let selectingCustomJupyterLabServerPython = false;
 
         let envs = <%- JSON.stringify(envs) %>;
         const pythonEnvInstallPath = "<%- pythonEnvInstallPath %>";
@@ -662,6 +676,7 @@ export class ManagePythonEnvironmentDialog {
         const debounceWait = 200;
         let nameInputValid = false;
         let nameInputValidationTimer = -1;
+        let customPythonPathInputValidationTimer = -1;
         let envsDirInputValidationTimer = -1;
         let condaPathInputValidationTimer = -1;
         let systemPythonPathInputValidationTimer = -1;
@@ -678,13 +693,18 @@ export class ManagePythonEnvironmentDialog {
           if (useBundledEnv) {
             pythonPathInput.setAttribute('disabled', 'disabled');
             selectPythonPathButton.setAttribute('disabled', 'disabled');
+            window.electronAPI.setDefaultPythonPath('');
           } else {
             pythonPathInput.removeAttribute('disabled');
             selectPythonPathButton.removeAttribute('disabled');
+            if (isInputValid(pythonPathInput)) {
+              window.electronAPI.setDefaultPythonPath(pythonPathInput.value);
+            }
           }
         }
 
         function handleSelectPythonPath(el) {
+          selectingCustomJupyterLabServerPython = true;
           window.electronAPI.selectPythonPath();
         }
 
@@ -720,11 +740,11 @@ export class ManagePythonEnvironmentDialog {
 
         function showBundledEnvWarning(type) {
           if (type === 'does-not-exist') {
-            bundledEnvWarningMessage.innerText = 'Bundled environment not found';
+            bundledEnvWarningMessage.innerText = 'Bundled environment installation not found';
             installBundledEnvButton.style.display = 'block';
             bundledEnvWarningContainer.classList.add('warning');
           } else {
-            bundledEnvWarningMessage.innerText = 'Updates available for the bundled environment';
+            bundledEnvWarningMessage.innerText = 'Updates available for the bundled environment installation';
             updateBundledEnvButton.style.display = 'block';
             bundledEnvWarningContainer.classList.add('warning');
           }
@@ -736,22 +756,31 @@ export class ManagePythonEnvironmentDialog {
         }
 
         function handleInstallBundledEv() {
+          installingJupyterLabServerEnv = true;
           installBundledEnvButton.setAttribute('disabled', 'disabled');
           window.electronAPI.installBundledPythonEnv();
         }
 
         function handleUpdateBundledEv() {
-          showProgress('Updating environment', true);
+          installingJupyterLabServerEnv = true;
+          showBundledEnvInstallProgress('Updating environment', true);
           window.electronAPI.updateBundledPythonEnv();
         }
 
-        function showProgress(message, animate) {
-          progressMessage.innerText = message;
-          progressMessage.style.visibility = message !== '' ? 'visible' : 'hidden';
-          progressAnimation.style.visibility = animate ? 'visible' : 'hidden';
+        function showBundledEnvInstallProgress(message, animate) {
+          progressMessageBundledEnvInstall.innerText = message;
+          progressMessageBundledEnvInstall.style.visibility = message !== '' ? 'visible' : 'hidden';
+          progressAnimationBundledEnvInstall.style.visibility = animate ? 'visible' : 'hidden';
+        }
+
+        function showProgressCreateNew(message, animate) {
+          progressMessageCreateNew.innerText = message;
+          progressMessageCreateNew.style.visibility = message !== '' ? 'visible' : 'hidden';
+          progressAnimationCreateNew.style.visibility = animate ? 'visible' : 'hidden';
         }
 
         function handleAddExistingEnv(el) {
+          selectingCustomJupyterLabServerPython = false;
           window.electronAPI.browsePythonPath();
         }
 
@@ -838,7 +867,7 @@ export class ManagePythonEnvironmentDialog {
           toggleInstallOutputButton.style.display = 'none';
           clearCreateFormButton.style.display = 'none';
           handleNewEnvNameInputChange();
-          showProgress('');
+          showProgressCreateNew('');
           createButton.disabled = false;
         }
 
@@ -853,6 +882,7 @@ export class ManagePythonEnvironmentDialog {
         }
 
         function handleCreate() {
+          installingJupyterLabServerEnv = false;
           createButton.disabled = true;
           const createCopyOfBundledEnv = createCopyOfBundledEnvRadio.checked;
           const envPath = getEnvInstallPath();
@@ -896,7 +926,7 @@ export class ManagePythonEnvironmentDialog {
 
         let scrollTimeout = -1;
 
-        window.electronAPI.onInstallBundledPythonEnvStatus(async (status, msg) => {
+        async function handleInstallBundledPythonEnvStatusCreateNew(status, msg) {
           if (status === 'RUNNING') {
             createEnvOutput.value = createEnvOutput.value + msg;
             const textarea = createEnvOutput.shadowRoot.getElementById('control');
@@ -920,7 +950,7 @@ export class ManagePythonEnvironmentDialog {
           const animate = status === 'REMOVING_EXISTING_INSTALLATION'
             || status === 'STARTED';
 
-          showProgress(message, animate);
+          showProgressCreateNew(message, animate);
 
           if (!(status === 'REMOVING_EXISTING_INSTALLATION' || status === 'STARTED')) {
             clearCreateFormButton.style.display = 'block';
@@ -932,6 +962,39 @@ export class ManagePythonEnvironmentDialog {
           }
 
           installBundledEnvButton.removeAttribute('disabled');
+        }
+
+        async function handleInstallBundledPythonEnvStatusJupyterLabServerEnv(status, msg) {
+          const message = status === 'REMOVING_EXISTING_INSTALLATION' ?
+            'Removing the existing installation' :
+            status === 'STARTED' ?
+            'Installing Python environment' :
+            status === 'CANCELLED' ?
+            'Installation cancelled!' :
+            status === 'FAILURE' ?
+              'Failed to install the environment!' :
+            status === 'SUCCESS' ? 'Installation succeeded' : '';
+          
+          const animate = status === 'REMOVING_EXISTING_INSTALLATION'
+            || status === 'STARTED';
+
+          showBundledEnvInstallProgress(message, animate);
+
+          if (status === 'SUCCESS') {
+            bundledEnvRadio.removeAttribute('disabled');
+            hideBundledEnvWarning();
+          }
+
+          installBundledEnvButton.removeAttribute('disabled');
+          applyButton.removeAttribute('disabled');
+        }
+
+        window.electronAPI.onInstallBundledPythonEnvStatus((status, msg) => {
+          if (installingJupyterLabServerEnv) {
+            handleInstallBundledPythonEnvStatusJupyterLabServerEnv(status, msg);
+          } else {
+            handleInstallBundledPythonEnvStatusCreateNew(status, msg);
+          }
         });
 
         function handleApply() {
@@ -970,7 +1033,7 @@ export class ManagePythonEnvironmentDialog {
           window.electronAPI.restartApp();
         }
 
-        window.electronAPI.onCustomPythonPathSelected(async (path) => {
+        async function handleCustomPythonPathSelectedForAddExistingEnv(path) {
           showEnvListProgress(true);
           const inRegistry = await window.electronAPI.getEnvironmentByPythonPath(path);
           if (!inRegistry) {
@@ -983,6 +1046,19 @@ export class ManagePythonEnvironmentDialog {
             setEnvListProgressMessage('Environment is already in registry.');
           }
           showEnvListProgress(false);
+        }
+
+        async function handleCustomPythonPathSelectedForCustomJupyterLabServer(path) {
+          pythonPathInput.value = path;
+          handleCustomPythonPathChange();
+        }
+
+        window.electronAPI.onCustomPythonPathSelected((path) => {
+          if (selectingCustomJupyterLabServerPython) {
+            handleCustomPythonPathSelectedForCustomJupyterLabServer(path);
+          } else {
+            handleCustomPythonPathSelectedForAddExistingEnv(path);
+          }
         });
 
         window.electronAPI.onSetPythonEnvironmentList((newEnvs) => {
@@ -1017,6 +1093,10 @@ export class ManagePythonEnvironmentDialog {
           return \`\$\{pythonEnvInstallPath + pathSeparator + newEnvNameInput.value\}\`;
         }
 
+        function handleCustomPythonPathChange() {
+          validateAndUpdateCustomPythonPath();
+        }
+
         function handleNewEnvNameInputChange() {
           envInstallPathLabel.innerText = \`Installation path: "\$\{getEnvInstallPath()\}"\`;
           updateCreateCommandPreview();
@@ -1035,6 +1115,10 @@ export class ManagePythonEnvironmentDialog {
           validateAndUpdateSystemPythonPath();
         }
 
+        function isInputValid(input) {
+          const validIcon = input.getElementsByClassName('valid-icon')[0];
+          return validIcon.style.display === 'block';
+        }
         function showInputValidStatus(input, valid, message) {
           const validIcon = input.getElementsByClassName('valid-icon')[0];
           const invalidIcon = input.getElementsByClassName('invalid-icon')[0];
@@ -1069,6 +1153,33 @@ export class ManagePythonEnvironmentDialog {
             if (response.valid) {
               window.electronAPI.setPythonEnvironmentInstallDirectory(pythonEnvInstallDirectoryInput.value);
             }
+          }, debounceWait);
+        }
+
+        function validateAndUpdateCustomPythonPath() {
+          clearTimeout(customPythonPathInputValidationTimer);
+          customPythonPathInputValidationTimer = setTimeout(async () => {
+            clearInputValidStatus(pythonPathInput);
+
+            let valid = false;
+            let message = '';
+            const pythonPath = pythonPathInput.value;
+            const inRegistry = await window.electronAPI.getEnvironmentByPythonPath(pythonPath);
+            if (inRegistry) {
+              valid = true;
+            } else {
+              if (await window.electronAPI.validatePythonPath(pythonPath)) {
+                await window.electronAPI.addEnvironmentByPythonPath(pythonPath);
+                valid = true;
+              } else {
+                valid = false;
+                message = 'Invalid Python path. Make sure "jupyterlab" Python package is installed in the environment.';
+              }
+            }
+            if (valid && !bundledEnvRadio.checked) {
+              window.electronAPI.setDefaultPythonPath(pythonPathInput.value);
+            }
+            showInputValidStatus(pythonPathInput, valid, message);
           }, debounceWait);
         }
 
@@ -1116,6 +1227,7 @@ export class ManagePythonEnvironmentDialog {
           }
           setTimeout(() => {
             handlePythonEnvsDirInputChange();
+            handleCustomPythonPathChange();
             handleCondaPathInputChange();
             handleSystemPythonPathInputChange();
           }, 1000);

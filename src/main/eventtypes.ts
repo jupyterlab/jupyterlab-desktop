@@ -19,7 +19,7 @@ export enum EventTypeMain {
   DeleteRecentSession = 'delete-recent-session',
   OpenDroppedFiles = 'open-dropped-files',
   OpenNewsLink = 'open-news-link',
-  SetPythonPath = 'set-python-path',
+  SetSessionPythonPath = 'set-session-python-path',
   ShowEnvSelectPopup = 'show-env-select-popup',
   HideEnvSelectPopup = 'hide-env-select-popup',
   SetRemoteServerOptions = 'set-remote-server-options',

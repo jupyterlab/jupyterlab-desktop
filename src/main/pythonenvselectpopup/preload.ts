@@ -28,8 +28,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   browsePythonPath: (currentPath: string) => {
     ipcRenderer.send(EventTypeMain.SelectPythonPath, currentPath);
   },
-  setPythonPath: (path: string) => {
-    ipcRenderer.send(EventTypeMain.SetPythonPath, path);
+  setSessionPythonPath: (path: string) => {
+    ipcRenderer.send(EventTypeMain.SetSessionPythonPath, path);
   },
   onCurrentPythonPathSet: (callback: CurrentPythonPathSetListener) => {
     onCurrentPythonPathSetListener = callback;
