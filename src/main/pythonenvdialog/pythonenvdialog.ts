@@ -639,9 +639,10 @@ export class ManagePythonEnvironmentDialog {
         const updateBundledEnvButton = document.getElementById('update-bundled-env');
         
         const createCopyOfBundledEnvRadio = document.getElementById('create-copy-of-bundled-env');
-        const createNewEnvRadioRadio = document.getElementById('create-new-env');
+        const createNewEnvRadio = document.getElementById('create-new-env');
         const envTypeSection = document.getElementById('env-type-section');
         const envTypeCondaRadio = document.getElementById('env-type-conda');
+        const envTypeVenvRadio = document.getElementById('env-type-venv');
         const packagesSection = document.getElementById('packages-section');
         const createCommandPreviewSection = document.getElementById('create-command-preview-section');
 
@@ -665,10 +666,13 @@ export class ManagePythonEnvironmentDialog {
         const pythonEnvInstallDirectoryInput = document.getElementById('python-env-install-directory');
         const condaPathInput = document.getElementById('conda-path');
         const systemPythonPathInput = document.getElementById('system-python-path');
+        const categoryTabs = document.getElementById('category-tabs');
 
         let defaultPythonEnvChanged = false;
         let installingJupyterLabServerEnv = false;
         let selectingCustomJupyterLabServerPython = false;
+        let condaPath = <%- JSON.stringify(condaPath) %>;
+        let systemPythonPath = <%- JSON.stringify(systemPythonPath) %>;
 
         let envs = <%- JSON.stringify(envs) %>;
         const pythonEnvInstallPath = "<%- pythonEnvInstallPath %>";
@@ -787,7 +791,7 @@ export class ManagePythonEnvironmentDialog {
         }
 
         function handleCreateNewEnvLink() {
-          document.getElementById('category-tabs').setAttribute('activeid', 'tab-create');
+          categoryTabs.setAttribute('activeid', 'tab-create');
         }
 
         function handleEnvTypeChange() {
@@ -1192,7 +1196,8 @@ export class ManagePythonEnvironmentDialog {
             const response = await window.electronAPI.validateCondaPath(condaPathInput.value);
             showInputValidStatus(condaPathInput, response.valid, response.message);
             if (response.valid) {
-              window.electronAPI.setCondaPath(condaPathInput.value);
+              condaPath = condaPathInput.value;
+              window.electronAPI.setCondaPath(condaPath);
             }
           }, debounceWait);
         }
@@ -1204,7 +1209,8 @@ export class ManagePythonEnvironmentDialog {
             const response = await window.electronAPI.validateSystemPythonPath(systemPythonPathInput.value);
             showInputValidStatus(systemPythonPathInput, response.valid, response.message);
             if (response.valid) {
-              window.electronAPI.setSystemPythonPath(systemPythonPathInput.value);
+              systemPythonPath = systemPythonPathInput.value;
+              window.electronAPI.setSystemPythonPath(systemPythonPath);
             }
           }, debounceWait);
         }
@@ -1213,17 +1219,58 @@ export class ManagePythonEnvironmentDialog {
           createButton.disabled = !nameInputValid;
         }
 
+        function updateCreateNewEnvOptions() {
+          createNewEnvRadio.title = '';
+          envTypeCondaRadio.title = '';
+          envTypeVenvRadio.title = '';
+
+          if (!condaPath && !systemPythonPath) { // neither available
+            createNewEnvRadio.disabled = true;
+            createNewEnvRadio.title = 'conda and system Python path not found. You can set in the settings tab.';
+            createCopyOfBundledEnvRadio.checked = true;
+          } else if (!condaPath) { // only venv available
+            createNewEnvRadio.disabled = false;
+            envTypeCondaRadio.disabled = true;
+            envTypeCondaRadio.title = 'conda path not found. You can set in the settings tab.';
+            envTypeVenvRadio.disabled = false;
+            envTypeVenvRadio.checked = true;
+          } else if (!systemPythonPath) { // only conda available
+            createNewEnvRadio.disabled = false;
+            envTypeCondaRadio.disabled = false;
+            envTypeVenvRadio.disabled = true;
+            envTypeVenvRadio.title = 'System Python path not found. You can set in the settings tab.';
+            envTypeCondaRadio.checked = true;
+          } else {
+            createNewEnvRadio.disabled = false;
+            envTypeCondaRadio.disabled = false;
+            envTypeVenvRadio.disabled = false;
+          }
+        }
+
         document.addEventListener("DOMContentLoaded", () => {
           updatePythonEnvironmentList();
           handleDefaultPythonEnvTypeChange();
           handleNewEnvCreateMethodChange();
           handleNewEnvNameInputChange();
+
+          const observer = new MutationObserver((mutations) => {
+            mutations.forEach((mutation) => {
+              if (mutation.type === "attributes" && mutation.attributeName === "activeid") {
+                if (categoryTabs.getAttribute('activeid') === 'tab-create') {
+                  updateCreateNewEnvOptions();
+                }
+              }
+            });
+          });
+          
+          observer.observe(categoryTabs, { attributes: true });
+
           <%- !bundledEnvInstallationExists ? 'showBundledEnvWarning("does-not-exist");' : '' %> 
           <%- (bundledEnvInstallationExists && !bundledEnvInstallationLatest) ? 'showBundledEnvWarning("not-latest");' : '' %>
           ${
             options.activateTab
               ? `
-              document.getElementById('tab-${options.activateTab}').click();
+              categoryTabs.setAttribute('activeid', 'tab-${options.activateTab}');
               `
               : ''
           }
