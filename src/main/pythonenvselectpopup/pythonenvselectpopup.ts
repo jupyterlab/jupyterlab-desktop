@@ -24,6 +24,12 @@ export class PythonEnvironmentSelectPopup {
     const uFuzzyScriptSrc = fs.readFileSync(
       path.join(__dirname, '../../../app-assets/uFuzzy.iife.min.js')
     );
+    const copyIconSrc = fs.readFileSync(
+      path.join(__dirname, '../../../app-assets/copy-icon.svg')
+    );
+    const xMarkIconSrc = fs.readFileSync(
+      path.join(__dirname, '../../../app-assets/xmark.svg')
+    );
 
     const template = `
       <style>
@@ -40,11 +46,38 @@ export class PythonEnvironmentSelectPopup {
         .row {display: flex; align-items: center;}
         .row.error {color: rgb(231, 92, 88);}
         .radio-row {align-items: center;}
+        #header {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          color: var(--neutral-foreground-hint);
+        }
         #restart-title {
+          flex-grow: 1;
           margin-left: 5px;
           height: 30px;
           line-height: 30px;
           font-weight: bold;
+        }
+        #close-button, #copy-button {
+          cursor: pointer;
+        }
+        #close-button svg {
+          width: 18px;
+          height: 18px;
+        }
+        #copy-button svg {
+          width: 16px;
+          height: 16px;
+        }
+        #close-button svg path, #copy-button svg path {
+          fill: var(--neutral-foreground-hint);
+        }
+        #close-button:hover svg path, #copy-button:hover svg path {
+          fill: var(--neutral-foreground-rest);
+        }
+        #copy-button:active svg path {
+          fill: var(--accent-foreground-active);
         }
         #python-path {
           outline: none;
@@ -94,8 +127,16 @@ export class PythonEnvironmentSelectPopup {
       </style>
       <script>${uFuzzyScriptSrc}</script>
       <div style="height: 100%; display: flex; flex-direction: column; row-gap: 5px;">
-        <div id="restart-title">
-          Restart session using a different Python environment
+        <div id="header">
+          <div id="restart-title">
+            Restart session using a different Python environment
+          </div>
+          <div id="copy-button" onclick='handleCopySessionInfo();' title="Copy session info to clipboard">
+            ${copyIconSrc}
+          </div>
+          <div id="close-button" onclick='window.electronAPI.hideEnvSelectPopup();' title="Close menu">
+            ${xMarkIconSrc}
+          </div>
         </div>
         <div>
           <div style="display: flex; flex-direction: row; align-items: center; flex-grow: 1;">
@@ -115,7 +156,7 @@ export class PythonEnvironmentSelectPopup {
         const envListMenu = document.getElementById('env-list');
         let envs = <%- JSON.stringify(envs) %>;
         let activeIndex = -1;
-        const envPaths = envs.map(env => env.path);
+        let envPaths = envs.map(env => env.path);
         let filteredEnvIndixes = [];
         const uf = new uFuzzy({
           intraChars: "[A-Za-z0-9_]",
@@ -159,6 +200,10 @@ export class PythonEnvironmentSelectPopup {
           envListMenu.innerHTML = html;
         }
 
+        function handleCopySessionInfo() {
+          window.electronAPI.copySessionInfo();
+        }
+
         window.electronAPI.onResetPythonEnvSelectPopup((path) => {
           pythonPathInput.value = '';
           activeIndex = 0;
@@ -173,6 +218,7 @@ export class PythonEnvironmentSelectPopup {
 
         window.electronAPI.onSetPythonEnvironmentList((newEnvs) => {
           envs = newEnvs;
+          envPaths = envs.map(env => env.path);
           pythonPathInput.value = '';
           updateMenu();
         });
@@ -313,6 +359,7 @@ export class PythonEnvironmentSelectPopup {
   }
 
   setPythonEnvironmentList(envs: IPythonEnvironment[]) {
+    this._envs = envs;
     this._view.view.webContents.send(
       EventTypeRenderer.SetPythonEnvironmentList,
       envs

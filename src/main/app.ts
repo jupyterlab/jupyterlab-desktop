@@ -1029,7 +1029,7 @@ export class JupyterApplication implements IApplication, IDisposable {
 
     this._evm.registerSyncEventHandler(
       EventTypeMain.GetServerInfo,
-      (event): Promise<IServerInfo> => {
+      (event): IServerInfo => {
         for (const sessionWindow of this._sessionWindowManager.windows) {
           if (
             event.sender === sessionWindow.titleBarView?.view?.webContents ||

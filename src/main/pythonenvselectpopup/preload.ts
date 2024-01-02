@@ -47,6 +47,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   },
   onSetPythonEnvironmentList: (callback: SetPythonEnvironmentListListener) => {
     onSetPythonEnvironmentListListener = callback;
+  },
+  copySessionInfo: () => {
+    return ipcRenderer.invoke(EventTypeMain.CopySessionInfoToClipboard);
   }
 });
 

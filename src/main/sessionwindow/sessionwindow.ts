@@ -945,6 +945,44 @@ export class SessionWindow implements IDisposable {
         }
       }
     );
+
+    this._evm.registerSyncEventHandler(
+      EventTypeMain.CopySessionInfoToClipboard,
+      event => {
+        if (event.sender !== this._envSelectPopup?.view?.view?.webContents) {
+          return;
+        }
+
+        const serverInfo = this.getServerInfo();
+
+        let content = '';
+
+        if (serverInfo.type === 'local') {
+          content = [
+            'type: local server',
+            `url: ${serverInfo.url}`,
+            `server root: ${serverInfo.workingDirectory}`,
+            `env name: ${serverInfo.environment.name}`,
+            `env Python path: ${serverInfo.environment.path}`,
+            `versions: ${JSON.stringify(serverInfo.environment.versions)}`
+          ].join('\n');
+        } else {
+          const url = new URL(serverInfo.url);
+          const isLocalUrl =
+            url.hostname === 'localhost' || url.hostname === '127.0.0.1';
+
+          content = [
+            `type: ${isLocalUrl ? 'local' : 'remote'} connection`,
+            `url: ${serverInfo.url}`,
+            `session data: ${
+              serverInfo.persistSessionData ? '' : 'not '
+            }persisted`
+          ].join('\n');
+        }
+
+        clipboard.writeText(content);
+      }
+    );
   }
 
   private _restartServerInPythonEnvironment(pythonPath: string) {
@@ -976,7 +1014,7 @@ export class SessionWindow implements IDisposable {
     }
   }
 
-  async getServerInfo(): Promise<IServerInfo> {
+  getServerInfo(): IServerInfo {
     if (this._contentViewType !== ContentViewType.Lab) {
       return null;
     }
@@ -1113,19 +1151,24 @@ export class SessionWindow implements IDisposable {
   }
 
   private async _createEnvSelectPopup() {
-    const envs = await this.registry.getEnvironmentList(false);
     const defaultEnv = await this._registry.getDefaultEnvironment();
     const defaultPythonPath = defaultEnv ? defaultEnv.path : '';
 
     this._envSelectPopup = new PythonEnvironmentSelectPopup({
       app: this._app,
       isDarkTheme: this._isDarkTheme,
-      envs,
+      envs: [], // start with empty list, populate later
       bundledPythonPath: getBundledPythonPath(),
       defaultPythonPath
     });
 
     this._envSelectPopup.load();
+
+    this.registry.getEnvironmentList(false).then(envs => {
+      this._envSelectPopup.setPythonEnvironmentList(envs);
+      this._resizeEnvSelectPopup();
+      this._envSelectPopup.resetView();
+    });
   }
 
   private async _showEnvSelectPopup() {
@@ -1141,7 +1184,6 @@ export class SessionWindow implements IDisposable {
       }
     }
 
-    // TODO: bug. this._envSelectPopup might still be loading
     this._envSelectPopup.setCurrentPythonPath(currentPythonPath);
     this._envSelectPopup.resetView();
 

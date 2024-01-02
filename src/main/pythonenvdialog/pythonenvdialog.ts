@@ -96,8 +96,8 @@ export class ManagePythonEnvironmentDialog {
 
     const pythonEnvName = getNextPythonEnvName();
     const pythonEnvInstallPath = getPythonEnvsDirectory();
-    const condaPath = getCondaPath() || "";
-    const systemPythonPath = getSystemPythonPath() || "";
+    const condaPath = getCondaPath() || '';
+    const systemPythonPath = getSystemPythonPath() || '';
 
     this._evm.registerEventHandler(
       EventTypeMain.ShowPythonEnvironmentContextMenu,
