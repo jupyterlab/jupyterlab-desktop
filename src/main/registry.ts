@@ -44,7 +44,7 @@ export interface IRegistry {
   removeEnvironment: (pythonPath: string) => boolean;
   validatePythonEnvironmentAtPath: (pythonPath: string) => Promise<boolean>;
   validateCondaBaseEnvironmentAtPath: (envPath: string) => boolean;
-  setDefaultPythonPath: (pythonPath: string) => void;
+  setDefaultPythonPath: (pythonPath: string) => boolean;
   getCurrentPythonEnvironment: () => IPythonEnvironment;
   getAdditionalPathIncludesForPythonPath: (pythonPath: string) => string;
   getRequirements: () => Registry.IRequirement[];
@@ -88,6 +88,7 @@ export class Registry implements IRegistry, IDisposable {
     }
 
     // TODO: validate appData.condaPath and appData.systemPythonPath. getCondaPath instead of appData.condaPath
+    // try to set condaPath from CONDA_EXE
 
     try {
       const defaultEnv = this._resolveEnvironmentSync(pythonPath);
@@ -484,8 +485,24 @@ export class Registry implements IRegistry, IDisposable {
     };
   }
 
-  setDefaultPythonPath(pythonPath: string): void {
-    this._defaultEnv = this.getEnvironmentByPath(pythonPath);
+  setDefaultPythonPath(pythonPath: string): boolean {
+    if (pythonPath === '') {
+      pythonPath = getBundledPythonPath();
+    }
+
+    let env = this.getEnvironmentByPath(pythonPath);
+    if (env) {
+      this._defaultEnv = env;
+      return true;
+    }
+
+    env = this._resolveEnvironmentSync(pythonPath);
+    if (env) {
+      this._defaultEnv = env;
+      return true;
+    }
+
+    return false;
   }
 
   getCurrentPythonEnvironment(): IPythonEnvironment {

@@ -783,6 +783,7 @@ export class JupyterApplication implements IApplication, IDisposable {
       EventTypeMain.SetPythonEnvironmentInstallDirectory,
       async (event, dirPath) => {
         userSettings.setValue(SettingType.pythonEnvsPath, dirPath);
+        userSettings.save();
       }
     );
 
@@ -790,6 +791,15 @@ export class JupyterApplication implements IApplication, IDisposable {
       EventTypeMain.SetCondaPath,
       async (event, condaPath) => {
         userSettings.setValue(SettingType.condaPath, condaPath);
+        userSettings.save();
+      }
+    );
+
+    this._evm.registerEventHandler(
+      EventTypeMain.SetSystemPythonPath,
+      async (event, pythonPath) => {
+        userSettings.setValue(SettingType.systemPythonPath, pythonPath);
+        userSettings.save();
       }
     );
 
@@ -933,6 +943,8 @@ export class JupyterApplication implements IApplication, IDisposable {
       EventTypeMain.SetDefaultPythonPath,
       (event, path) => {
         userSettings.setValue(SettingType.pythonPath, path);
+        userSettings.save();
+        this._registry.setDefaultPythonPath(path);
       }
     );
 
