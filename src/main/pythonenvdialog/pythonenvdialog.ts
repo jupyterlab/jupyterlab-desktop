@@ -715,21 +715,21 @@ export class ManagePythonEnvironmentDialog {
         }
 
         function handleSelectPythonEnvInstallDirectory() {
-          window.electronAPI.selectDirectoryPath().then(selected => {
+          window.electronAPI.selectDirectoryPath(pythonEnvInstallDirectoryInput.value).then(selected => {
             pythonEnvInstallDirectoryInput.value = selected;
             handlePythonEnvsDirInputChange();
           });
         }
 
         function handleSelectCondaPath(el) {
-          window.electronAPI.selectFilePath().then(selected => {
+          window.electronAPI.selectFilePath(condaPathInput.value).then(selected => {
             condaPathInput.value = selected;
             handleCondaPathInputChange();
           });
         }
 
         function handleSelectSystemPythonPath(el) {
-          window.electronAPI.selectFilePath().then(selected => {
+          window.electronAPI.selectFilePath(systemPythonPathInput.value).then(selected => {
             systemPythonPathInput.value = selected;
             handleSystemPythonPathInputChange();
           });
