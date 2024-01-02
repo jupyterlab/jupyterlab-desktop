@@ -405,6 +405,10 @@ export class ManagePythonEnvironmentDialog {
       .env-menu-icon:hover {
         background-color: var(--neutral-layer-1);
       }
+      jp-text-field .valid-icon svg, jp-text-field .invalid-icon svg {
+        width: 18px;
+        height: 18px;
+      }
       jp-text-field .valid-icon {
         display: none;
       }
