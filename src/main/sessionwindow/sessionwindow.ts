@@ -1162,13 +1162,17 @@ export class SessionWindow implements IDisposable {
       defaultPythonPath
     });
 
-    this._envSelectPopup.load();
+    const listPromise = this.registry.getEnvironmentList(false);
 
-    this.registry.getEnvironmentList(false).then(envs => {
-      this._envSelectPopup.setPythonEnvironmentList(envs);
-      this._resizeEnvSelectPopup();
-      this._envSelectPopup.resetView();
+    this._envSelectPopup.view.view.webContents.on('did-finish-load', () => {
+      listPromise.then(envs => {
+        this._envSelectPopup.setPythonEnvironmentList(envs);
+        this._resizeEnvSelectPopup();
+        this._envSelectPopup.resetView();
+      });
     });
+
+    this._envSelectPopup.load();
   }
 
   private async _showEnvSelectPopup() {

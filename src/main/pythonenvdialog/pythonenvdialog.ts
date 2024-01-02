@@ -675,8 +675,8 @@ export class ManagePythonEnvironmentDialog {
         let systemPythonPath = <%- JSON.stringify(systemPythonPath) %>;
 
         let envs = <%- JSON.stringify(envs) %>;
-        const pythonEnvInstallPath = "<%- pythonEnvInstallPath %>";
-        const pathSeparator = '${path.sep}';
+        const pythonEnvInstallPath = <%- JSON.stringify(pythonEnvInstallPath) %>;
+        const pathSeparator = ${JSON.stringify(path.sep)};
         const debounceWait = 200;
         let nameInputValid = false;
         let nameInputValidationTimer = -1;
@@ -698,7 +698,7 @@ export class ManagePythonEnvironmentDialog {
             pythonPathInput.setAttribute('disabled', 'disabled');
             selectPythonPathButton.setAttribute('disabled', 'disabled');
             window.electronAPI.setDefaultPythonPath('');
-            pythonPathInput.value = '${bundledPythonPath}';
+            pythonPathInput.value = ${JSON.stringify(bundledPythonPath)};
             validateAndUpdateCustomPythonPath();
           } else {
             pythonPathInput.removeAttribute('disabled');
@@ -806,7 +806,11 @@ export class ManagePythonEnvironmentDialog {
           return env.name + '\\n' + env.path + '\\n' + packages.join(', ');
         }
         function getEnvTag(env) {
-          return env.path === "${defaultPythonPath}" ? ' (default)' : env.path === "${bundledPythonPath}" ? ' (bundled)' : '';
+          return env.path === ${JSON.stringify(
+            defaultPythonPath
+          )} ? ' (default)' : env.path === ${JSON.stringify(
+      bundledPythonPath
+    )} ? ' (bundled)' : '';
         }
 
         function generateEnvTypeList(name, envs) {
@@ -961,13 +965,6 @@ export class ManagePythonEnvironmentDialog {
           if (!(status === 'REMOVING_EXISTING_INSTALLATION' || status === 'STARTED')) {
             clearCreateFormButton.style.display = 'block';
           }
-
-          if (status === 'SUCCESS') {
-            bundledEnvRadio.removeAttribute('disabled');
-            hideBundledEnvWarning();
-          }
-
-          installBundledEnvButton.removeAttribute('disabled');
         }
 
         async function handleInstallBundledPythonEnvStatusJupyterLabServerEnv(status, msg) {

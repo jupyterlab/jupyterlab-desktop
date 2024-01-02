@@ -151,7 +151,7 @@ export class PythonEnvironmentSelectPopup {
       </div>
 
       <script>
-        let currentPythonPath = "<%- currentPythonPath %>;";
+        let currentPythonPath = <%- JSON.stringify(currentPythonPath) %>;
         const pythonPathInput = document.getElementById('python-path');
         const envListMenu = document.getElementById('env-list');
         let envs = <%- JSON.stringify(envs) %>;
@@ -176,7 +176,11 @@ export class PythonEnvironmentSelectPopup {
           const envPath = env.path;
           const hilitedEnvPath = higlightRanges ? uFuzzy.highlight(envPath, higlightRanges) : envPath;
           const envName = env.name;
-          const flag = envPath === currentPythonPath ? ' (current)' : envPath === "${defaultPythonPath}" ? ' (default)' : envPath === "${bundledPythonPath}" ? ' (bundled)' : '';
+          const flag = envPath === currentPythonPath ? ' (current)' : envPath === ${JSON.stringify(
+            defaultPythonPath
+          )} ? ' (default)' : envPath === ${JSON.stringify(
+      bundledPythonPath
+    )} ? ' (bundled)' : '';
           return \`<jp-menu-item data-python-path="\$\{envPath\}" onclick="onMenuItemClicked(this);" title="\$\{getEnvTooltip(env)\}">\$\{hilitedEnvPath\}
                 <div slot="end">\$\{envName\}\$\{flag\}
                 </div>
