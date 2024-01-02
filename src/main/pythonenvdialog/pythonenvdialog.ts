@@ -98,6 +98,10 @@ export class ManagePythonEnvironmentDialog {
     const pythonEnvInstallPath = getPythonEnvsDirectory();
     const condaPath = getCondaPath() || '';
     const systemPythonPath = getSystemPythonPath() || '';
+    const activateRelPath =
+      process.platform === 'win32'
+        ? path.join('Scripts', 'activate.bat')
+        : path.join('bin', 'activate');
 
     this._evm.registerEventHandler(
       EventTypeMain.ShowPythonEnvironmentContextMenu,
@@ -321,7 +325,7 @@ export class ManagePythonEnvironmentDialog {
         height: 40px;
       }
       #create-command-preview::part(control) {
-        height: 60px;
+        height: 80px;
       }
       #tab-panel-server {
         padding-bottom: 20px;
@@ -934,7 +938,8 @@ export class ManagePythonEnvironmentDialog {
           if (isConda) {
             createCommandPreview.value = \`conda create -p \$\{getEnvInstallPath()\} -c conda-forge \$\{getPackageList()\}\`;
           } else {
-            createCommandPreview.value = \`python -m venv create \$\{getEnvInstallPath()\}\npython -m pip install \$\{getPackageList()\}\`;
+            const envPath = getEnvInstallPath();
+            createCommandPreview.value = \`python -m venv create \$\{envPath\}\n\$\{envPath\}\$\{pathSeparator\}${activateRelPath}\npython -m pip install \$\{getPackageList()\}\`;
           }
         }
 
