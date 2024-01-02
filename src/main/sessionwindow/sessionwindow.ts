@@ -946,7 +946,7 @@ export class SessionWindow implements IDisposable {
       }
     );
 
-    this._evm.registerSyncEventHandler(
+    this._evm.registerEventHandler(
       EventTypeMain.CopySessionInfoToClipboard,
       event => {
         if (event.sender !== this._envSelectPopup?.view?.view?.webContents) {
