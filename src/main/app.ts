@@ -723,6 +723,13 @@ export class JupyterApplication implements IApplication, IDisposable {
     this._evm.registerEventHandler(
       EventTypeMain.InstallBundledPythonEnv,
       async (event, envPath: string) => {
+        // for security, make sure event is sent from the dialog when path is specified
+        if (
+          envPath &&
+          event.sender !== this._managePythonEnvDialog?.window?.webContents
+        ) {
+          return;
+        }
         const installPath = envPath || getBundledPythonEnvPath();
         await installBundledEnvironment(installPath, {
           onInstallStatus: (status, message) => {
@@ -998,6 +1005,11 @@ export class JupyterApplication implements IApplication, IDisposable {
     this._evm.registerEventHandler(
       EventTypeMain.CreateNewPythonEnvironment,
       async (event, envPath: string, envType: string, packages: string) => {
+        // for security, make sure event is sent from the dialog
+        if (event.sender !== this._managePythonEnvDialog?.window?.webContents) {
+          return;
+        }
+
         event.sender.send(
           EventTypeRenderer.InstallPythonEnvStatus,
           EnvironmentInstallStatus.Started

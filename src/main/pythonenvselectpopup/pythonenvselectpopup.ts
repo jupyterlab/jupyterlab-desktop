@@ -306,6 +306,7 @@ export class PythonEnvironmentSelectPopup {
           pythonPathInput.control.oninput = (event) => {
             activeIndex = 0;
             filterEnvironmentList();
+            updateActiveItem();
           };
 
           window.onkeydown = (event) => {
