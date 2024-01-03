@@ -3,14 +3,71 @@
 
 import * as fs from 'fs';
 import * as path from 'path';
+import * as semver from 'semver';
+import log from 'electron-log';
 import { SettingType, userSettings } from './config/settings';
 import { appData } from './config/appdata';
 import {
   createCommandScriptInEnv,
+  envPathForPythonPath,
   getBundledPythonInstallDir,
-  isBaseCondaEnv
+  isBaseCondaEnv,
+  pythonPathForEnvPath,
+  runCommand,
+  runCommandSync,
+  versionWithoutSuffix
 } from './utils';
+import {
+  EnvironmentTypeName,
+  IEnvironmentType,
+  IPythonEnvironment
+} from './tokens';
 import { execFileSync, spawn } from 'child_process';
+
+const envInfoPyCode = fs
+  .readFileSync(path.join(__dirname, 'env_info.py'))
+  .toString();
+
+export interface IJupyterEnvRequirement {
+  /**
+   * The display name for the requirement
+   */
+  name: string;
+  /**
+   * The actual module name that will be used with the python executable
+   */
+  moduleName: string;
+  /**
+   * List of extra commands that will produce a version number for checking
+   */
+  commands: string[];
+  /**
+   * The Range of acceptable version produced by the previous commands field
+   */
+  versionRange: semver.Range;
+
+  /**
+   * pip install command
+   */
+  pipCommand: string;
+  /**
+   * conda install command
+   */
+  condaCommand: string;
+}
+
+const MIN_JLAB_VERSION_REQUIRED = '3.0.0';
+
+export const JUPYTER_ENV_REQUIREMENTS = [
+  {
+    name: 'jupyterlab',
+    moduleName: 'jupyterlab',
+    commands: ['--version'],
+    versionRange: new semver.Range(`>=${MIN_JLAB_VERSION_REQUIRED}`),
+    pipCommand: `"jupyterlab>=${MIN_JLAB_VERSION_REQUIRED}"`,
+    condaCommand: `"jupyterlab>=${MIN_JLAB_VERSION_REQUIRED}"`
+  }
+];
 
 export interface IFormInputValidationResponse {
   valid: boolean;
@@ -204,6 +261,40 @@ export function validatePythonEnvironmentInstallDirectory(
   };
 }
 
+export async function validatePythonPath(
+  pythonPath: string
+): Promise<IFormInputValidationResponse> {
+  return new Promise<IFormInputValidationResponse>((resolve, reject) => {
+    const returnInvalid = (message: string) => {
+      resolve({
+        valid: false,
+        message
+      });
+    };
+    try {
+      if (!fs.existsSync(pythonPath)) {
+        returnInvalid('Python executable does not exist');
+      } else {
+        const stat = fs.lstatSync(pythonPath);
+        if (!stat || !(stat.isFile() || stat.isSymbolicLink())) {
+          returnInvalid('Not a valid file');
+        } else {
+          const output = execFileSync(pythonPath, ['-c', 'print(":valid:")']);
+          if (output.toString().trim() === ':valid:') {
+            resolve({
+              valid: true
+            });
+          }
+
+          returnInvalid('Not a valid Python executable');
+        }
+      }
+    } catch (error) {
+      returnInvalid('Invalid input. Enter a valid Python executable path.');
+    }
+  });
+}
+
 /**
  * Checks if condaPath is a valid conda executable in a base conda environment
  * @param condaPath path to conda executable
@@ -305,4 +396,160 @@ export async function validateSystemPythonPath(
       returnInvalid('Invalid input. Enter a valid Python executable path.');
     }
   });
+}
+
+export function getAdditionalPathIncludesForPythonPath(
+  pythonPath: string
+): string {
+  const platform = process.platform;
+
+  let envPath = envPathForPythonPath(pythonPath);
+
+  let pathEnv = '';
+  if (platform === 'win32') {
+    pathEnv = `${envPath};${envPath}\\Library\\mingw-w64\\bin;${envPath}\\Library\\usr\\bin;${envPath}\\Library\\bin;${envPath}\\Scripts;${envPath}\\bin;${process.env['PATH']}`;
+  } else {
+    pathEnv = `${envPath}:${envPath}/bin:${process.env['PATH']}`;
+  }
+
+  return pathEnv;
+}
+
+export async function getEnvironmentInfoFromPythonPath(
+  pythonPath: string
+): Promise<IPythonEnvironment> {
+  try {
+    const envInfoOut = await runCommand(pythonPath, ['-c', envInfoPyCode], {
+      // TODO: is this still necessary?
+      env: { PATH: getAdditionalPathIncludesForPythonPath(pythonPath) }
+    });
+    const envInfo = JSON.parse(envInfoOut.trim());
+    const envType =
+      envInfo.type === 'conda-root'
+        ? IEnvironmentType.CondaRoot
+        : envInfo.type === 'conda-env'
+        ? IEnvironmentType.CondaEnv
+        : IEnvironmentType.VirtualEnv;
+    const envName = `${EnvironmentTypeName[envType]}: ${envInfo.name}`;
+
+    return {
+      path: pythonPath,
+      type: envType,
+      name: envName,
+      versions: envInfo.versions,
+      defaultKernel: envInfo.defaultKernel
+    };
+  } catch (error) {
+    log.error(`Failed to get environment info at path '${pythonPath}'.`, error);
+  }
+}
+
+export function getEnvironmentInfoFromPythonPathSync(
+  pythonPath: string
+): IPythonEnvironment {
+  const envInfoOut = runCommandSync(pythonPath, ['-c', envInfoPyCode], {
+    env: { PATH: getAdditionalPathIncludesForPythonPath(pythonPath) }
+  });
+  const envInfo = JSON.parse(envInfoOut.trim());
+  const envType =
+    envInfo.type === 'conda-root'
+      ? IEnvironmentType.CondaRoot
+      : envInfo.type === 'conda-env'
+      ? IEnvironmentType.CondaEnv
+      : IEnvironmentType.VirtualEnv;
+  const envName = `${EnvironmentTypeName[envType]}: ${envInfo.name}`;
+
+  return {
+    path: pythonPath,
+    type: envType,
+    name: envName,
+    versions: envInfo.versions,
+    defaultKernel: envInfo.defaultKernel
+  };
+}
+
+export function environmentSatisfiesRequirements(
+  environment: IPythonEnvironment,
+  requirements?: IJupyterEnvRequirement[]
+): boolean {
+  if (!requirements) {
+    requirements = JUPYTER_ENV_REQUIREMENTS;
+  }
+
+  return requirements.every((req, index, reqSelf) => {
+    try {
+      const version = environment.versions[req.name];
+      return semver.satisfies(versionWithoutSuffix(version), req.versionRange);
+    } catch (e) {
+      return false;
+    }
+  });
+}
+
+export async function updateDiscoveredPythonPaths() {
+  await updateDiscoveredPathsFromPythonPath();
+  await updateDiscoveredPathsFromCondaPath();
+  await updateDiscoveredPathsFromSystemPythonPath();
+}
+
+export async function updateDiscoveredPathsFromPythonPath() {
+  const pythonPath = appData.pythonPath;
+  if (!pythonPath) {
+    return;
+  }
+
+  if (!appData.condaPath) {
+    const envPath = envPathForPythonPath(pythonPath);
+    const condaPath = condaExePathForEnvPath(envPath);
+    if ((await validateCondaPath(condaPath)).valid) {
+      appData.condaPath = condaPath;
+    }
+  }
+
+  if (!appData.systemPythonPath) {
+    appData.systemPythonPath = pythonPath;
+  }
+}
+
+export async function updateDiscoveredPathsFromCondaPath() {
+  const condaPath = appData.condaPath;
+  if (!condaPath) {
+    return;
+  }
+
+  const envPath = condaEnvPathForCondaExePath(condaPath);
+  const pythonPath = pythonPathForEnvPath(envPath);
+
+  if (!appData.pythonPath) {
+    const env = await getEnvironmentInfoFromPythonPath(pythonPath);
+    if (env && environmentSatisfiesRequirements(env)) {
+      appData.pythonPath = env.path;
+    }
+  }
+
+  if (!appData.systemPythonPath) {
+    appData.systemPythonPath = pythonPath;
+  }
+}
+
+export async function updateDiscoveredPathsFromSystemPythonPath() {
+  const systemPythonPath = appData.systemPythonPath;
+  if (!systemPythonPath) {
+    return;
+  }
+
+  if (!appData.pythonPath) {
+    const env = await getEnvironmentInfoFromPythonPath(systemPythonPath);
+    if (env && environmentSatisfiesRequirements(env)) {
+      appData.pythonPath = env.path;
+    }
+  }
+
+  if (!appData.condaPath) {
+    const envPath = envPathForPythonPath(systemPythonPath);
+    const condaPath = condaExePathForEnvPath(envPath);
+    if ((await validateCondaPath(condaPath)).valid) {
+      appData.condaPath = condaPath;
+    }
+  }
 }

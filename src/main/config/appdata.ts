@@ -61,6 +61,10 @@ export class ApplicationData {
     const data = fs.readFileSync(appDataPath);
     const jsonData = JSON.parse(data.toString());
 
+    if ('pythonPath' in jsonData) {
+      this.pythonPath = jsonData.pythonPath;
+    }
+
     // TODO: remove after 1/1/2025
     if ('condaRootPath' in jsonData) {
       // copied to prevent circular import
@@ -170,6 +174,10 @@ export class ApplicationData {
   save() {
     const appDataPath = this._getAppDataPath();
     const appDataJSON: { [key: string]: any } = {};
+
+    if (this.pythonPath !== '') {
+      appDataJSON.pythonPath = this.pythonPath;
+    }
 
     if (this.condaPath !== '') {
       appDataJSON.condaPath = this.condaPath;
@@ -369,6 +377,10 @@ export class ApplicationData {
   }
 
   newsList: INewsItem[] = [];
+  /**
+   * discovered pythonPath (for JupyterLab server)
+   */
+  pythonPath: string = '';
   /**
    * discovered condaPath
    */

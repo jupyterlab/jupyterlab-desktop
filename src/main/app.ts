@@ -55,6 +55,7 @@ import { ManagePythonEnvironmentDialog } from './pythonenvdialog/pythonenvdialog
 import { addUserSetEnvironment, createPythonEnvironment } from './cli';
 import {
   getNextPythonEnvName,
+  JUPYTER_ENV_REQUIREMENTS,
   validateCondaPath,
   validateNewPythonEnvironmentName,
   validatePythonEnvironmentInstallDirectory,
@@ -929,7 +930,7 @@ export class JupyterApplication implements IApplication, IDisposable {
     this._evm.registerEventHandler(
       EventTypeMain.ShowInvalidPythonPathMessage,
       (event, path) => {
-        const requirements = this._registry.getRequirements();
+        const requirements = JUPYTER_ENV_REQUIREMENTS;
         const reqVersions = requirements.map(
           req => `${req.name} ${req.versionRange.format()}`
         );

@@ -1,14 +1,11 @@
-import { execFile, ExecFileOptions, execFileSync } from 'child_process';
 import { basename, join, normalize } from 'path';
 import * as path from 'path';
-import * as semver from 'semver';
 import * as fs from 'fs';
 import log from 'electron-log';
 const which = require('which');
 const WinRegistry = require('winreg');
 import { ISignal, Signal } from '@lumino/signaling';
 import {
-  EnvironmentTypeName,
   IDisposable,
   IEnvironmentType,
   IPythonEnvironment,
@@ -26,15 +23,19 @@ import {
   isCondaEnv,
   isPortInUse,
   pythonPathForEnvPath,
-  versionWithoutSuffix
+  runCommand
 } from './utils';
 import { SettingType, userSettings } from './config/settings';
 import { appData } from './config/appdata';
-import { condaEnvPathForCondaExePath, condaExePathForEnvPath } from './env';
-
-const envInfoPyCode = fs
-  .readFileSync(path.join(__dirname, 'env_info.py'))
-  .toString();
+import {
+  condaEnvPathForCondaExePath,
+  condaExePathForEnvPath,
+  environmentSatisfiesRequirements,
+  getEnvironmentInfoFromPythonPath,
+  getEnvironmentInfoFromPythonPathSync,
+  IJupyterEnvRequirement,
+  JUPYTER_ENV_REQUIREMENTS
+} from './env';
 
 export interface IRegistry {
   getDefaultEnvironment: () => Promise<IPythonEnvironment>;
@@ -46,8 +47,6 @@ export interface IRegistry {
   validateCondaBaseEnvironmentAtPath: (envPath: string) => boolean;
   setDefaultPythonPath: (pythonPath: string) => boolean;
   getCurrentPythonEnvironment: () => IPythonEnvironment;
-  getAdditionalPathIncludesForPythonPath: (pythonPath: string) => string;
-  getRequirements: () => Registry.IRequirement[];
   getRequirementsInstallCommand: (envPath: string) => string;
   getEnvironmentInfo(pythonPath: string): Promise<IPythonEnvironment>;
   getRunningServerList(): Promise<string[]>;
@@ -57,21 +56,9 @@ export interface IRegistry {
 }
 
 export const SERVER_TOKEN_PREFIX = 'jlab:srvr:';
-const MIN_JLAB_VERSION_REQUIRED = '3.0.0';
 
 export class Registry implements IRegistry, IDisposable {
   constructor() {
-    this._requirements = [
-      {
-        name: 'jupyterlab',
-        moduleName: 'jupyterlab',
-        commands: ['--version'],
-        versionRange: new semver.Range(`>=${MIN_JLAB_VERSION_REQUIRED}`),
-        pipCommand: `"jupyterlab>=${MIN_JLAB_VERSION_REQUIRED}"`,
-        condaCommand: `"jupyterlab>=${MIN_JLAB_VERSION_REQUIRED}"`
-      }
-    ];
-
     // TODO: refactor into a recallable method
 
     // initialize environment list and default
@@ -109,6 +96,8 @@ export class Registry implements IRegistry, IDisposable {
       //
     }
 
+    // TODO: try to set _defaultEnv from discovered path appData.pythonPath
+
     // try to set default env from condaPath
     if (!this._defaultEnv && appData.condaPath) {
       if (
@@ -124,6 +113,7 @@ export class Registry implements IRegistry, IDisposable {
             const defaultEnv = this._resolveEnvironmentSync(pythonPath);
             if (defaultEnv) {
               this._defaultEnv = defaultEnv;
+              // TODO: set appData.pythonPath ?
             }
           } catch (error) {
             //
@@ -146,9 +136,7 @@ export class Registry implements IRegistry, IDisposable {
     const condaEnvironments = this._loadCondaEnvironments();
     const allEnvironments = [pathEnvironments, condaEnvironments];
     if (process.platform === 'win32') {
-      let windowRegEnvironments = this._loadWindowsRegistryEnvironments(
-        this._requirements
-      );
+      let windowRegEnvironments = this._loadWindowsRegistryEnvironments();
       allEnvironments.push(windowRegEnvironments);
     }
 
@@ -175,6 +163,7 @@ export class Registry implements IRegistry, IDisposable {
 
         if (!this._defaultEnv && this._environments.length > 0) {
           this._defaultEnv = this._environments[0];
+          // TODO: set appData.pythonPath
         }
         return;
       })
@@ -224,7 +213,7 @@ export class Registry implements IRegistry, IDisposable {
     filteredEnvs = resolvedEnvs.filter(env => env !== undefined);
 
     if (sort) {
-      this._sortEnvironments(filteredEnvs, this._requirements);
+      this._sortEnvironments(filteredEnvs, JUPYTER_ENV_REQUIREMENTS);
     }
 
     return filteredEnvs;
@@ -239,10 +228,7 @@ export class Registry implements IRegistry, IDisposable {
 
     const env = await this.getEnvironmentInfo(pythonPath);
 
-    if (
-      env &&
-      this._environmentSatisfiesRequirements(env, this._requirements)
-    ) {
+    if (env && environmentSatisfiesRequirements(env)) {
       return env;
     }
   }
@@ -269,10 +255,10 @@ export class Registry implements IRegistry, IDisposable {
       } as IPythonEnvResolveError;
     }
 
-    if (!this._environmentSatisfiesRequirements(env, this._requirements)) {
+    if (!environmentSatisfiesRequirements(env)) {
       const envPath = envPathForPythonPath(pythonPath);
       const versionsFound: string[] = [];
-      this._requirements.forEach(req => {
+      JUPYTER_ENV_REQUIREMENTS.forEach(req => {
         versionsFound.push(`${req.name}: ${env.versions[req.name]}`);
       });
 
@@ -427,36 +413,7 @@ export class Registry implements IRegistry, IDisposable {
       return;
     }
 
-    try {
-      const envInfoOut = await this._runCommand(
-        pythonPath,
-        ['-c', envInfoPyCode],
-        {
-          env: { PATH: this.getAdditionalPathIncludesForPythonPath(pythonPath) }
-        }
-      );
-      const envInfo = JSON.parse(envInfoOut.trim());
-      const envType =
-        envInfo.type === 'conda-root'
-          ? IEnvironmentType.CondaRoot
-          : envInfo.type === 'conda-env'
-          ? IEnvironmentType.CondaEnv
-          : IEnvironmentType.VirtualEnv;
-      const envName = `${EnvironmentTypeName[envType]}: ${envInfo.name}`;
-
-      return {
-        path: pythonPath,
-        type: envType,
-        name: envName,
-        versions: envInfo.versions,
-        defaultKernel: envInfo.defaultKernel
-      };
-    } catch (error) {
-      log.error(
-        `Failed to get environment info at path '${pythonPath}'.`,
-        error
-      );
-    }
+    return getEnvironmentInfoFromPythonPath(pythonPath);
   }
 
   getEnvironmentInfoSync(pythonPath: string): IPythonEnvironment {
@@ -464,25 +421,7 @@ export class Registry implements IRegistry, IDisposable {
       return;
     }
 
-    const envInfoOut = this._runCommandSync(pythonPath, ['-c', envInfoPyCode], {
-      env: { PATH: this.getAdditionalPathIncludesForPythonPath(pythonPath) }
-    });
-    const envInfo = JSON.parse(envInfoOut.trim());
-    const envType =
-      envInfo.type === 'conda-root'
-        ? IEnvironmentType.CondaRoot
-        : envInfo.type === 'conda-env'
-        ? IEnvironmentType.CondaEnv
-        : IEnvironmentType.VirtualEnv;
-    const envName = `${EnvironmentTypeName[envType]}: ${envInfo.name}`;
-
-    return {
-      path: pythonPath,
-      type: envType,
-      name: envName,
-      versions: envInfo.versions,
-      defaultKernel: envInfo.defaultKernel
-    };
+    return getEnvironmentInfoFromPythonPathSync(pythonPath);
   }
 
   setDefaultPythonPath(pythonPath: string): boolean {
@@ -493,12 +432,14 @@ export class Registry implements IRegistry, IDisposable {
     let env = this.getEnvironmentByPath(pythonPath);
     if (env) {
       this._defaultEnv = env;
+      // TODO: set appData.pythonPath
       return true;
     }
 
     env = this._resolveEnvironmentSync(pythonPath);
     if (env) {
       this._defaultEnv = env;
+      // TODO: set appData.pythonPath
       return true;
     }
 
@@ -509,32 +450,13 @@ export class Registry implements IRegistry, IDisposable {
     return this._defaultEnv;
   }
 
-  getAdditionalPathIncludesForPythonPath(pythonPath: string): string {
-    const platform = process.platform;
-
-    let envPath = envPathForPythonPath(pythonPath);
-
-    let pathEnv = '';
-    if (platform === 'win32') {
-      pathEnv = `${envPath};${envPath}\\Library\\mingw-w64\\bin;${envPath}\\Library\\usr\\bin;${envPath}\\Library\\bin;${envPath}\\Scripts;${envPath}\\bin;${process.env['PATH']}`;
-    } else {
-      pathEnv = `${envPath}:${envPath}/bin:${process.env['PATH']}`;
-    }
-
-    return pathEnv;
-  }
-
-  getRequirements(): Registry.IRequirement[] {
-    return this._requirements;
-  }
-
   getRequirementsInstallCommand(envPath: string): string {
     const isConda = isCondaEnv(envPath);
     const cmdList = [
       isConda ? 'conda install -c conda-forge -y' : 'pip install'
     ];
 
-    this._requirements.forEach(req => {
+    JUPYTER_ENV_REQUIREMENTS.forEach(req => {
       cmdList.push(isConda ? req.condaCommand : req.pipCommand);
     });
 
@@ -764,7 +686,7 @@ export class Registry implements IRegistry, IDisposable {
 
     return await Promise.all(
       condasInPath.map(async condaExecutablePath => {
-        const condaInfoOutput = this._runCommand(condaExecutablePath, [
+        const condaInfoOutput = runCommand(condaExecutablePath, [
           'info',
           '--json'
         ]);
@@ -789,9 +711,9 @@ export class Registry implements IRegistry, IDisposable {
     );
   }
 
-  private async _loadWindowsRegistryEnvironments(
-    requirements: Registry.IRequirement[]
-  ): Promise<IPythonEnvironment[]> {
+  private async _loadWindowsRegistryEnvironments(): Promise<
+    IPythonEnvironment[]
+  > {
     const valuePredicate = (value: any) => {
       return value.name === '(Default)';
     };
@@ -875,23 +797,6 @@ export class Registry implements IRegistry, IDisposable {
     return pathValues.filter(valueFilter).map(v => v.value);
   }
 
-  private _environmentSatisfiesRequirements(
-    environment: IPythonEnvironment,
-    requirements: Registry.IRequirement[]
-  ): boolean {
-    return requirements.every((req, index, reqSelf) => {
-      try {
-        const version = environment.versions[req.name];
-        return semver.satisfies(
-          versionWithoutSuffix(version),
-          req.versionRange
-        );
-      } catch (e) {
-        return false;
-      }
-    });
-  }
-
   private _convertExecutableOutputFromJson(
     output: Promise<string>
   ): Promise<any> {
@@ -960,7 +865,7 @@ export class Registry implements IRegistry, IDisposable {
   ): Promise<string> {
     let totalCommands = ['-m', moduleName].concat(commands);
     return new Promise<string>((resolve, reject) => {
-      this._runCommand(pythonPath, totalCommands)
+      runCommand(pythonPath, totalCommands)
         .then(output => {
           let missingModuleReg = new RegExp(`No module named ${moduleName}$`);
           let commandErrorReg = new RegExp(`Error executing Jupyter command`);
@@ -981,82 +886,9 @@ export class Registry implements IRegistry, IDisposable {
     });
   }
 
-  private async _runCommand(
-    executablePath: string,
-    commands: string[],
-    options?: ExecFileOptions
-  ): Promise<string> {
-    return new Promise((resolve, reject) => {
-      let executableRun = execFile(executablePath, commands, options);
-      let stdoutBufferChunks: Buffer[] = [];
-      let stdoutLength = 0;
-      let stderrBufferChunks: Buffer[] = [];
-      let stderrLength = 0;
-
-      executableRun.stdout.on('data', chunk => {
-        if (typeof chunk === 'string') {
-          let newBuffer = Buffer.from(chunk);
-          stdoutLength += newBuffer.length;
-          stdoutBufferChunks.push(newBuffer);
-        } else {
-          stdoutLength += chunk.length;
-          stdoutBufferChunks.push(chunk);
-        }
-      });
-
-      executableRun.stderr.on('data', chunk => {
-        if (typeof chunk === 'string') {
-          let newBuffer = Buffer.from(chunk);
-          stderrLength += newBuffer.length;
-          stderrBufferChunks.push(Buffer.from(newBuffer));
-        } else {
-          stderrLength += chunk.length;
-          stderrBufferChunks.push(chunk);
-        }
-      });
-
-      executableRun.on('close', () => {
-        executableRun.removeAllListeners();
-
-        let stdoutOutput = Buffer.concat(
-          stdoutBufferChunks,
-          stdoutLength
-        ).toString();
-        let stderrOutput = Buffer.concat(
-          stderrBufferChunks,
-          stderrLength
-        ).toString();
-
-        if (stdoutOutput.length === 0) {
-          if (stderrOutput.length === 0) {
-            reject(
-              new Error(
-                `"${executablePath} ${commands.join(
-                  ' '
-                )}" produced no output to stdout or stderr!`
-              )
-            );
-          } else {
-            resolve(stderrOutput);
-          }
-        } else {
-          resolve(stdoutOutput);
-        }
-      });
-    });
-  }
-
-  private _runCommandSync(
-    executablePath: string,
-    commands: string[],
-    options?: ExecFileOptions
-  ): string {
-    return execFileSync(executablePath, commands, options).toString();
-  }
-
   private _sortEnvironments(
     environments: IPythonEnvironment[],
-    requirements: Registry.IRequirement[]
+    requirements: IJupyterEnvRequirement[]
   ) {
     environments.sort((a, b) => {
       let typeCompareResult = this._compareEnvType(a.type, b.type);
@@ -1080,7 +912,7 @@ export class Registry implements IRegistry, IDisposable {
   private _compareVersions(
     a: IVersionContainer,
     b: IVersionContainer,
-    requirements: Registry.IRequirement[]
+    requirements: IJupyterEnvRequirement[]
   ): number {
     let versionPairs = requirements.map(req => {
       return [a[req.name], b[req.name]];
@@ -1162,7 +994,6 @@ export class Registry implements IRegistry, IDisposable {
   private _userSetEnvironments: IPythonEnvironment[] = [];
   private _defaultEnv: IPythonEnvironment;
   private _registryBuilt: Promise<void>;
-  private _requirements: Registry.IRequirement[];
   private _disposing: boolean = false;
   private _environmentListUpdated = new Signal<this, void>(this);
 }
@@ -1173,33 +1004,6 @@ export namespace Registry {
    * in the registry. Each requirement should correspond to a python module that is also
    * executable via the '-m <module_name>' interface
    */
-  export interface IRequirement {
-    /**
-     * The display name for the requirement
-     */
-    name: string;
-    /**
-     * The actual module name that will be used with the python executable
-     */
-    moduleName: string;
-    /**
-     * List of extra commands that will produce a version number for checking
-     */
-    commands: string[];
-    /**
-     * The Range of acceptable version produced by the previous commands field
-     */
-    versionRange: semver.Range;
-
-    /**
-     * pip install command
-     */
-    pipCommand: string;
-    /**
-     * conda install command
-     */
-    condaCommand: string;
-  }
 
   export const COMMON_CONDA_LOCATIONS = [
     join(getUserHomeDir(), 'anaconda3'),

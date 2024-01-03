@@ -10,7 +10,7 @@ import log from 'electron-log';
 import { AddressInfo, createServer, Socket } from 'net';
 import { app, nativeTheme } from 'electron';
 import { IPythonEnvironment } from './tokens';
-import { exec } from 'child_process';
+import { exec, execFile, ExecFileOptions, execFileSync } from 'child_process';
 
 export const DarkThemeBGColor = '#212121';
 export const LightThemeBGColor = '#ffffff';
@@ -580,4 +580,77 @@ export function getLogFilePath(processType: 'main' | 'renderer' = 'main') {
         `/.config/jupyterlab-desktop/logs/${processType}.log`
       );
   }
+}
+
+export async function runCommand(
+  executablePath: string,
+  commands: string[],
+  options?: ExecFileOptions
+): Promise<string> {
+  return new Promise((resolve, reject) => {
+    let executableRun = execFile(executablePath, commands, options);
+    let stdoutBufferChunks: Buffer[] = [];
+    let stdoutLength = 0;
+    let stderrBufferChunks: Buffer[] = [];
+    let stderrLength = 0;
+
+    executableRun.stdout.on('data', chunk => {
+      if (typeof chunk === 'string') {
+        let newBuffer = Buffer.from(chunk);
+        stdoutLength += newBuffer.length;
+        stdoutBufferChunks.push(newBuffer);
+      } else {
+        stdoutLength += chunk.length;
+        stdoutBufferChunks.push(chunk);
+      }
+    });
+
+    executableRun.stderr.on('data', chunk => {
+      if (typeof chunk === 'string') {
+        let newBuffer = Buffer.from(chunk);
+        stderrLength += newBuffer.length;
+        stderrBufferChunks.push(Buffer.from(newBuffer));
+      } else {
+        stderrLength += chunk.length;
+        stderrBufferChunks.push(chunk);
+      }
+    });
+
+    executableRun.on('close', () => {
+      executableRun.removeAllListeners();
+
+      let stdoutOutput = Buffer.concat(
+        stdoutBufferChunks,
+        stdoutLength
+      ).toString();
+      let stderrOutput = Buffer.concat(
+        stderrBufferChunks,
+        stderrLength
+      ).toString();
+
+      if (stdoutOutput.length === 0) {
+        if (stderrOutput.length === 0) {
+          reject(
+            new Error(
+              `"${executablePath} ${commands.join(
+                ' '
+              )}" produced no output to stdout or stderr!`
+            )
+          );
+        } else {
+          resolve(stderrOutput);
+        }
+      } else {
+        resolve(stdoutOutput);
+      }
+    });
+  });
+}
+
+export function runCommandSync(
+  executablePath: string,
+  commands: string[],
+  options?: ExecFileOptions
+): string {
+  return execFileSync(executablePath, commands, options).toString();
 }
