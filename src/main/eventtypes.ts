@@ -76,7 +76,8 @@ export enum EventTypeMain {
   SetCondaPath = 'set-conda-path',
   ValidateSystemPythonPath = 'validate-system-python-path',
   SetSystemPythonPath = 'set-system-python-path',
-  CopySessionInfoToClipboard = 'copy-session-info-to-clipboard'
+  CopySessionInfoToClipboard = 'copy-session-info-to-clipboard',
+  RestartSession = 'restart-session'
 }
 
 // events sent to Renderer process

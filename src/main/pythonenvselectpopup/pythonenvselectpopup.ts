@@ -24,6 +24,9 @@ export class PythonEnvironmentSelectPopup {
     const uFuzzyScriptSrc = fs.readFileSync(
       path.join(__dirname, '../../../app-assets/uFuzzy.iife.min.js')
     );
+    const restartIconSrc = fs.readFileSync(
+      path.join(__dirname, '../../../app-assets/rotate-right-icon.svg')
+    );
     const copyIconSrc = fs.readFileSync(
       path.join(__dirname, '../../../app-assets/copy-icon.svg')
     );
@@ -59,10 +62,10 @@ export class PythonEnvironmentSelectPopup {
           line-height: 30px;
           font-weight: bold;
         }
-        #close-button, #copy-button {
+        #header .toolbar-button {
           cursor: pointer;
         }
-        #close-button svg {
+        #header .toolbar-button svg {
           width: 18px;
           height: 18px;
         }
@@ -70,14 +73,17 @@ export class PythonEnvironmentSelectPopup {
           width: 16px;
           height: 16px;
         }
-        #close-button svg path, #copy-button svg path {
+        #header .toolbar-button svg path {
           fill: var(--neutral-foreground-hint);
         }
-        #close-button:hover svg path, #copy-button:hover svg path {
+        #header .toolbar-button:hover svg path {
           fill: var(--neutral-foreground-rest);
         }
-        #copy-button:active svg path {
+        #header .toolbar-button:active svg path {
           fill: var(--accent-foreground-active);
+        }
+        #close-button {
+          margin-left: 5px;
         }
         #python-path {
           outline: none;
@@ -131,10 +137,13 @@ export class PythonEnvironmentSelectPopup {
           <div id="restart-title">
             Restart session using a different Python environment
           </div>
-          <div id="copy-button" onclick='handleCopySessionInfo();' title="Copy session info to clipboard">
+          <div class="toolbar-button" id="restart-button" onclick='handleRestartSession();' title="Restart session">
+            ${restartIconSrc}
+          </div>
+          <div class="toolbar-button" id="copy-button" onclick='handleCopySessionInfo();' title="Copy session info to clipboard">
             ${copyIconSrc}
           </div>
-          <div id="close-button" onclick='window.electronAPI.hideEnvSelectPopup();' title="Close menu">
+          <div class="toolbar-button" id="close-button" onclick='window.electronAPI.hideEnvSelectPopup();' title="Close menu">
             ${xMarkIconSrc}
           </div>
         </div>
@@ -202,6 +211,10 @@ export class PythonEnvironmentSelectPopup {
           }
 
           envListMenu.innerHTML = html;
+        }
+
+        function handleRestartSession() {
+          window.electronAPI.restartSession();
         }
 
         function handleCopySessionInfo() {

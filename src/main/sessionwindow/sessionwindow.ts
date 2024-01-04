@@ -947,6 +947,32 @@ export class SessionWindow implements IDisposable {
     );
 
     this._evm.registerEventHandler(
+      EventTypeMain.RestartSession,
+      async event => {
+        if (event.sender !== this._envSelectPopup?.view?.view?.webContents) {
+          return;
+        }
+
+        let currentPythonPath = this._wsSettings.getValue(
+          SettingType.pythonPath
+        );
+        if (!currentPythonPath) {
+          const defaultEnv = await this.registry.getDefaultEnvironment();
+          if (defaultEnv) {
+            currentPythonPath = defaultEnv.path;
+          }
+        }
+
+        if (!currentPythonPath) {
+          return;
+        }
+
+        this._hideEnvSelectPopup();
+        this._restartServerInPythonEnvironment(currentPythonPath);
+      }
+    );
+
+    this._evm.registerEventHandler(
       EventTypeMain.CopySessionInfoToClipboard,
       event => {
         if (event.sender !== this._envSelectPopup?.view?.view?.webContents) {
