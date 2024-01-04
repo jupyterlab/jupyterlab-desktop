@@ -22,6 +22,7 @@ import { Registry } from './registry';
 import { app } from 'electron';
 import {
   condaEnvPathForCondaExePath,
+  getPythonEnvsDirectory,
   ICommandRunCallbacks,
   runCommandInEnvironment
 } from './env';
@@ -80,7 +81,7 @@ export function parseCLIArgs(argv: string[]) {
       h: 'help'
     })
     .command(
-      'env <action> [path]',
+      'env <action> [name]',
       'Manage Python environments',
       yargs => {
         yargs
@@ -89,10 +90,15 @@ export function parseCLIArgs(argv: string[]) {
             type: 'string',
             default: ''
           })
-          .positional('path', {
+          .positional('name', {
+            describe: 'Environment name',
             type: 'string',
-            default: '',
-            describe: 'Destination path'
+            default: ''
+          })
+          .option('path', {
+            describe: 'Destination path',
+            type: 'string',
+            default: ''
           })
           .option('force', {
             describe: 'Force the action',
@@ -150,8 +156,11 @@ export async function handleEnvInfoCommand(argv: any) {
   const bundledEnvPathExists =
     fs.existsSync(bundledEnvPath) && fs.statSync(bundledEnvPath).isDirectory();
   let defaultPythonPath = userSettings.getValue(SettingType.pythonPath);
-  if (defaultPythonPath === '') {
+  if (!defaultPythonPath) {
     defaultPythonPath = getBundledPythonPath();
+  }
+  if (!fs.existsSync(defaultPythonPath)) {
+    defaultPythonPath = appData.pythonPath;
   }
   const defaultEnvPath = envPathForPythonPath(defaultPythonPath);
   const defaultEnvPathExists =
@@ -164,6 +173,9 @@ export async function handleEnvInfoCommand(argv: any) {
     systemPythonPath &&
     fs.existsSync(systemPythonPath) &&
     fs.statSync(systemPythonPath).isFile();
+  const envsDir = getPythonEnvsDirectory();
+  const envsDirExists =
+    envsDir && fs.existsSync(envsDir) && fs.statSync(envsDir).isDirectory();
 
   const infoLines: string[] = [];
   infoLines.push(
@@ -184,6 +196,11 @@ export async function handleEnvInfoCommand(argv: any) {
   infoLines.push(
     `System Python path:\n  "${systemPythonPath}" [${
       systemPythonPathExists ? 'exists' : 'not found'
+    }]`
+  );
+  infoLines.push(
+    `Python environment install directory:\n  "${envsDir}" [${
+      envsDirExists ? 'exists' : 'not found'
     }]`
   );
 
@@ -260,7 +277,14 @@ export function addUserSetEnvironment(envPath: string, isConda: boolean) {
 }
 
 export async function handleEnvInstallCommand(argv: any) {
-  const installPath = (argv.path as string) || getBundledPythonEnvPath();
+  let installPath: string;
+  if (argv.name) {
+    installPath = path.join(getPythonEnvsDirectory(), argv.name);
+  } else if (argv.path) {
+    installPath = argv.path;
+  } else {
+    installPath = getBundledPythonEnvPath();
+  }
   console.log(`Installing to "${installPath}"`);
 
   await installBundledEnvironment(installPath, {
@@ -281,7 +305,7 @@ export async function handleEnvInstallCommand(argv: any) {
           console.error(`Failed to install.`, message);
           break;
         case EnvironmentInstallStatus.Success:
-          if (argv.path) {
+          if (argv.name || argv.path) {
             addUserSetEnvironment(installPath, true);
           }
           console.log('Installation succeeded.');
@@ -297,7 +321,15 @@ export async function handleEnvInstallCommand(argv: any) {
 }
 
 export async function handleEnvActivateCommand(argv: any) {
-  const envPath = (argv.path as string) || getBundledPythonEnvPath();
+  let envPath: string;
+  if (argv.name) {
+    envPath = path.join(getPythonEnvsDirectory(), argv.name);
+  } else if (argv.path) {
+    envPath = argv.path;
+  } else {
+    envPath = getBundledPythonEnvPath();
+  }
+
   console.log(`Activating Python environment "${envPath}"`);
 
   await launchCLIinEnvironment(envPath);
@@ -352,7 +384,12 @@ export async function createPythonEnvironment(
 }
 
 export async function handleEnvCreateCommand(argv: any) {
-  const envPath = argv.path as string;
+  let envPath: string;
+  if (argv.name) {
+    envPath = path.join(getPythonEnvsDirectory(), argv.name);
+  } else if (argv.path) {
+    envPath = argv.path;
+  }
 
   if (!envPath) {
     console.error('Environment path not set.');
