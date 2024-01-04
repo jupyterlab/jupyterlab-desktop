@@ -96,7 +96,23 @@ export class Registry implements IRegistry, IDisposable {
       //
     }
 
-    // TODO: try to set _defaultEnv from discovered path appData.pythonPath
+    // try to set default env from discovered pythonPath
+    if (!this._defaultEnv && appData.pythonPath) {
+      const defaultEnv = this._resolveEnvironmentSync(appData.pythonPath);
+
+      if (defaultEnv) {
+        this._defaultEnv = defaultEnv;
+        // if default env is conda root, then set its conda executable as conda path
+        if (
+          defaultEnv.type === IEnvironmentType.CondaRoot &&
+          !appData.condaPath
+        ) {
+          this.setCondaPath(
+            condaExePathForEnvPath(getEnvironmentPath(defaultEnv))
+          );
+        }
+      }
+    }
 
     // try to set default env from condaPath
     if (!this._defaultEnv && appData.condaPath) {
@@ -113,7 +129,9 @@ export class Registry implements IRegistry, IDisposable {
             const defaultEnv = this._resolveEnvironmentSync(pythonPath);
             if (defaultEnv) {
               this._defaultEnv = defaultEnv;
-              // TODO: set appData.pythonPath ?
+              if (!appData.pythonPath) {
+                appData.pythonPath = pythonPath;
+              }
             }
           } catch (error) {
             //
@@ -132,6 +150,7 @@ export class Registry implements IRegistry, IDisposable {
     }
 
     // discover environments on system
+    // TODO: rediscover environments in app's envs directory
     const pathEnvironments = this._loadPathEnvironments();
     const condaEnvironments = this._loadCondaEnvironments();
     const allEnvironments = [pathEnvironments, condaEnvironments];
@@ -163,7 +182,9 @@ export class Registry implements IRegistry, IDisposable {
 
         if (!this._defaultEnv && this._environments.length > 0) {
           this._defaultEnv = this._environments[0];
-          // TODO: set appData.pythonPath
+          if (!appData.pythonPath) {
+            appData.pythonPath = this._defaultEnv.path;
+          }
         }
         return;
       })
@@ -429,17 +450,17 @@ export class Registry implements IRegistry, IDisposable {
       pythonPath = getBundledPythonPath();
     }
 
+    // check if already resolved
     let env = this.getEnvironmentByPath(pythonPath);
     if (env) {
       this._defaultEnv = env;
-      // TODO: set appData.pythonPath
       return true;
     }
 
+    // try to resolve it
     env = this._resolveEnvironmentSync(pythonPath);
     if (env) {
       this._defaultEnv = env;
-      // TODO: set appData.pythonPath
       return true;
     }
 

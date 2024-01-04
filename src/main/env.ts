@@ -487,12 +487,12 @@ export function environmentSatisfiesRequirements(
 }
 
 export async function updateDiscoveredPythonPaths() {
-  await updateDiscoveredPathsFromPythonPath();
+  await updateDiscoveredPathsFromServerPythonPath();
   await updateDiscoveredPathsFromCondaPath();
   await updateDiscoveredPathsFromSystemPythonPath();
 }
 
-export async function updateDiscoveredPathsFromPythonPath() {
+export async function updateDiscoveredPathsFromServerPythonPath() {
   const pythonPath = appData.pythonPath;
   if (!pythonPath) {
     return;

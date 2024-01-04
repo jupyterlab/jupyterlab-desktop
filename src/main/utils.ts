@@ -588,60 +588,22 @@ export async function runCommand(
   options?: ExecFileOptions
 ): Promise<string> {
   return new Promise((resolve, reject) => {
-    let executableRun = execFile(executablePath, commands, options);
-    let stdoutBufferChunks: Buffer[] = [];
-    let stdoutLength = 0;
-    let stderrBufferChunks: Buffer[] = [];
-    let stderrLength = 0;
-
-    executableRun.stdout.on('data', chunk => {
-      if (typeof chunk === 'string') {
-        let newBuffer = Buffer.from(chunk);
-        stdoutLength += newBuffer.length;
-        stdoutBufferChunks.push(newBuffer);
-      } else {
-        stdoutLength += chunk.length;
-        stdoutBufferChunks.push(chunk);
+    execFile(executablePath, commands, options, (error, stdout, stderr) => {
+      if (error) {
+        reject(error);
       }
-    });
-
-    executableRun.stderr.on('data', chunk => {
-      if (typeof chunk === 'string') {
-        let newBuffer = Buffer.from(chunk);
-        stderrLength += newBuffer.length;
-        stderrBufferChunks.push(Buffer.from(newBuffer));
+      if (stdout) {
+        resolve(stdout);
+      } else if (stderr) {
+        resolve(stderr);
       } else {
-        stderrLength += chunk.length;
-        stderrBufferChunks.push(chunk);
-      }
-    });
-
-    executableRun.on('close', () => {
-      executableRun.removeAllListeners();
-
-      let stdoutOutput = Buffer.concat(
-        stdoutBufferChunks,
-        stdoutLength
-      ).toString();
-      let stderrOutput = Buffer.concat(
-        stderrBufferChunks,
-        stderrLength
-      ).toString();
-
-      if (stdoutOutput.length === 0) {
-        if (stderrOutput.length === 0) {
-          reject(
-            new Error(
-              `"${executablePath} ${commands.join(
-                ' '
-              )}" produced no output to stdout or stderr!`
-            )
-          );
-        } else {
-          resolve(stderrOutput);
-        }
-      } else {
-        resolve(stdoutOutput);
+        reject(
+          new Error(
+            `"${executablePath} ${commands.join(
+              ' '
+            )}" produced no output to stdout or stderr!`
+          )
+        );
       }
     });
   });
