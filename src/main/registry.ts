@@ -35,7 +35,8 @@ import {
   getEnvironmentInfoFromPythonPathSync,
   IJupyterEnvRequirement,
   JUPYTER_ENV_REQUIREMENTS,
-  updateDiscoveredPythonPaths
+  updateDiscoveredPythonPaths,
+  validatePythonPath
 } from './env';
 
 export interface IRegistry {
@@ -427,7 +428,11 @@ export class Registry implements IRegistry, IDisposable {
   }
 
   async validatePythonEnvironmentAtPath(pythonPath: string): Promise<boolean> {
-    return (await this._resolveEnvironment(pythonPath)) !== undefined;
+    const isValidPythonBinary = (await validatePythonPath(pythonPath)).valid;
+    return (
+      isValidPythonBinary &&
+      (await this._resolveEnvironment(pythonPath)) !== undefined
+    );
   }
 
   validateCondaBaseEnvironmentAtPath(envPath: string): boolean {

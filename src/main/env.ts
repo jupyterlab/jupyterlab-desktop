@@ -279,8 +279,8 @@ export async function validatePythonPath(
         if (!stat || !(stat.isFile() || stat.isSymbolicLink())) {
           returnInvalid('Not a valid file');
         } else {
-          const output = execFileSync(pythonPath, ['-c', 'print(":valid:")']);
-          if (output.toString().trim() === ':valid:') {
+          const output = execFileSync(pythonPath, ['--version']);
+          if (output.toString().trim().startsWith('Python ')) {
             resolve({
               valid: true
             });
