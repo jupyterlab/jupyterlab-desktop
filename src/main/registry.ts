@@ -387,6 +387,9 @@ export class Registry implements IRegistry, IDisposable {
 
     const env = this._resolveEnvironmentSync(pythonPath);
     if (env) {
+      if (!this._defaultEnv) {
+        this._defaultEnv = env;
+      }
       this._userSetEnvironments.push(env);
       this._updateEnvironments();
       this._environmentListUpdated.emit();

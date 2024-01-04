@@ -94,7 +94,7 @@ export enum EventTypeRenderer {
   SetRecentSessionList = 'set-recent-session-list',
   SetNewsList = 'set-news-list',
   SetNotificationMessage = 'set-notification-message',
-  DisableLocalServerActions = 'disable-local-server-actions',
+  EnableLocalServerActions = 'enable-local-server-actions',
   SetDefaultWorkingDirectoryResult = 'set-default-working-directory-result',
   ResetPythonEnvSelectPopup = 'reset-python-env-select-popup',
   SetPythonEnvironmentList = 'set-python-environment-list',
