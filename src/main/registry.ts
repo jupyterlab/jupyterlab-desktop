@@ -34,7 +34,8 @@ import {
   getEnvironmentInfoFromPythonPath,
   getEnvironmentInfoFromPythonPathSync,
   IJupyterEnvRequirement,
-  JUPYTER_ENV_REQUIREMENTS
+  JUPYTER_ENV_REQUIREMENTS,
+  updateDiscoveredPythonPaths
 } from './env';
 
 export interface IRegistry {
@@ -186,7 +187,8 @@ export class Registry implements IRegistry, IDisposable {
             appData.pythonPath = this._defaultEnv.path;
           }
         }
-        return;
+
+        await updateDiscoveredPythonPaths();
       })
       .catch(reason => {
         if (reason.fileName || reason.lineNumber) {
