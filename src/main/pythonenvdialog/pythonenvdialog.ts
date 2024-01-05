@@ -890,7 +890,7 @@ export class ManagePythonEnvironmentDialog {
         }
 
         function toggleInstallOutput() {
-          if (createEnvOutputRow.style.display === 'none') {
+          if (createEnvOutputRow.style.display !== 'flex') {
             createEnvOutputRow.style.display = 'flex';
             toggleInstallOutputButton.innerText = 'Hide output';
           } else {
