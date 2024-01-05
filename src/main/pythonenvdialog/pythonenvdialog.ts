@@ -214,35 +214,6 @@ export class ManagePythonEnvironmentDialog {
       #env-list-progress-message-close svg path {
         fill: var(--error-fill-hover);
       }
-      jp-tree-item::part(start) {
-        flex-grow: 1;
-      }
-      jp-tree-item::part(end) {
-        text-decoration: underline;
-        float: right;
-      }
-      #categories {
-        width: 200px;
-      }
-      #category-content-container {
-        flex-grow: 1;
-      }
-      .category-content {
-        display: flex;
-        flex-direction: column;
-      }
-      #category-jupyterlab jp-divider {
-        margin: 15px 0;
-      }
-      #server-config-section {
-        display: flex;
-        flex-direction: column;
-        align-items: flex-start;
-      }
-      jp-tab-panel #tab-updates {
-        display: flex;
-        align-items: flex-start;
-      }
       #category-tabs {
         width: 100%;
         height: 100%;
@@ -266,15 +237,6 @@ export class ManagePythonEnvironmentDialog {
         align-items: center;
         width: 100%;
       }
-      .header-row {
-        height: 50px;
-        min-height: 50px;
-        overflow-y: hidden;
-        display: flex;
-        flex-direction: row;
-        align-items: center;
-        margin-bottom: 5px;
-      }
       .progress-message {
         margin-right: 5px; line-height: 24px; visibility: hidden;
       }
@@ -286,18 +248,6 @@ export class ManagePythonEnvironmentDialog {
       }
       #toggle-install-output {
         display: none;
-      }
-      #news-feed-settings {
-        display: flex;
-        flex-direction: column;
-        margin: 10px 0;
-      }
-      #clear-history {
-        display: flex;
-        flex-direction: column;
-      }
-      #clear-history-progress {
-        visibility: hidden;
       }
       .setting-section {
         display: flex;
@@ -316,8 +266,6 @@ export class ManagePythonEnvironmentDialog {
       jp-tab-panel .setting-section:last-child {
         border-bottom: none;
       }
-      #additional-server-args,
-      #server-launch-command-preview,
       #package-list {
         width: 100%;
       }
@@ -326,9 +274,6 @@ export class ManagePythonEnvironmentDialog {
       }
       #create-command-preview::part(control) {
         height: 80px;
-      }
-      #tab-panel-server {
-        padding-bottom: 20px;
       }
       #package-list.invalid::part(control) {
         border-color: red;
@@ -1008,42 +953,6 @@ export class ManagePythonEnvironmentDialog {
             handleInstallBundledPythonEnvStatusCreateNew(status, msg);
           }
         });
-
-        function handleApply() {
-          const startupMode = document.querySelector('jp-radio[name="startup-mode"].checked').value;
-          window.electronAPI.setStartupMode(startupMode);
-          const theme = document.querySelector('jp-radio[name="theme"].checked').value;
-          window.electronAPI.setTheme(theme);
-          window.electronAPI.setSyncJupyterLabTheme(syncJupyterLabThemeCheckbox.checked);
-          const showNewsFeedCheckbox = document.getElementById('checkbox-show-news-feed');
-          window.electronAPI.setShowNewsFeed(showNewsFeedCheckbox.checked);
-          window.electronAPI.setCheckForUpdatesAutomatically(autoUpdateCheckCheckbox.checked);
-          window.electronAPI.setInstallUpdatesAutomatically(autoInstallCheckbox.checked);
-
-          window.electronAPI.setDefaultWorkingDirectory(workingDirectoryInput.value);
-
-          window.electronAPI.setServerLaunchArgs(additionalServerArgs.value, overrideDefaultServerArgs.checked);
-          window.electronAPI.setServerEnvVars(parseServerEnvVars().envVars);
-
-          const ctrlWBehavior = document.querySelector('jp-radio[name="ctrl-w-behavior"].checked').value;
-          window.electronAPI.setCtrlWBehavior(ctrlWBehavior);
-
-          if (defaultPythonEnvChanged) {
-            if (bundledEnvRadio.checked) {
-              window.electronAPI.setDefaultPythonPath('');
-            } else {
-              window.electronAPI.validatePythonPath(pythonPathInput.value).then((valid) => {
-                if (valid) {
-                  window.electronAPI.setDefaultPythonPath(pythonPathInput.value);
-                } else {
-                  window.electronAPI.showInvalidPythonPathMessage(pythonPathInput.value);
-                }
-              });
-            }
-          }
-
-          window.electronAPI.restartApp();
-        }
 
         async function handleCustomPythonPathSelectedForAddExistingEnv(path) {
           showEnvListProgress(true);

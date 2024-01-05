@@ -394,7 +394,6 @@ export class JupyterApplication implements IApplication, IDisposable {
         defaultWorkingDirectory: userSettings.getValue(
           SettingType.defaultWorkingDirectory
         ),
-        defaultPythonPath: userSettings.getValue(SettingType.pythonPath),
         logLevel: userSettings.getValue(SettingType.logLevel),
         activateTab: activateTab,
         serverArgs: userSettings.getValue(SettingType.serverArgs),

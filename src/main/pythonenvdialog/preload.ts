@@ -8,7 +8,6 @@ type InstallBundledPythonEnvStatusListener = (
   msg: string
 ) => void;
 type CustomPythonPathSelectedListener = (path: string) => void;
-type WorkingDirectorySelectedListener = (path: string) => void;
 type SetPythonEnvironmentListListener = (envs: IPythonEnvironment[]) => void;
 type EnvironmentListUpdateStatusListener = (
   status: string,
@@ -17,7 +16,6 @@ type EnvironmentListUpdateStatusListener = (
 
 let onInstallBundledPythonEnvStatusListener: InstallBundledPythonEnvStatusListener;
 let onCustomPythonPathSelectedListener: CustomPythonPathSelectedListener;
-let onWorkingDirectorySelectedListener: WorkingDirectorySelectedListener;
 let onSetPythonEnvironmentListListener: SetPythonEnvironmentListListener;
 let onEnvironmentListUpdateStatusListener: EnvironmentListUpdateStatusListener;
 
@@ -29,9 +27,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
   },
   isDarkTheme: () => {
     return ipcRenderer.invoke(EventTypeMain.IsDarkTheme);
-  },
-  restartApp: () => {
-    ipcRenderer.send(EventTypeMain.RestartApp);
   },
   getNextPythonEnvironmentName: () => {
     return ipcRenderer.invoke(EventTypeMain.GetNextPythonEnvironmentName);
@@ -66,40 +61,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
   browsePythonPath: (currentPath: string) => {
     ipcRenderer.send(EventTypeMain.SelectPythonPath, currentPath);
   },
-
-  setCheckForUpdatesAutomatically: (check: boolean) => {
-    ipcRenderer.send(EventTypeMain.SetCheckForUpdatesAutomatically, check);
-  },
-  setInstallUpdatesAutomatically: (install: boolean) => {
-    ipcRenderer.send(EventTypeMain.SetInstallUpdatesAutomatically, install);
-  },
-  checkForUpdates: () => {
-    ipcRenderer.send(EventTypeMain.CheckForUpdates);
-  },
-  showLogs: () => {
-    ipcRenderer.send(EventTypeMain.ShowLogs);
-  },
-  launchInstallerDownloadPage: () => {
-    ipcRenderer.send(EventTypeMain.LaunchInstallerDownloadPage);
-  },
-  setStartupMode: (mode: string) => {
-    ipcRenderer.send(EventTypeMain.SetStartupMode, mode);
-  },
-  setTheme: (theme: string) => {
-    ipcRenderer.send(EventTypeMain.SetTheme, theme);
-  },
-  setSyncJupyterLabTheme: (sync: boolean) => {
-    ipcRenderer.send(EventTypeMain.SetSyncJupyterLabTheme, sync);
-  },
-  setShowNewsFeed: (show: string) => {
-    ipcRenderer.send(EventTypeMain.SetShowNewsFeed, show);
-  },
-  selectWorkingDirectory: () => {
-    ipcRenderer.send(EventTypeMain.SelectWorkingDirectory);
-  },
-  onWorkingDirectorySelected: (callback: WorkingDirectorySelectedListener) => {
-    onWorkingDirectorySelectedListener = callback;
-  },
   onSetPythonEnvironmentList: (callback: SetPythonEnvironmentListListener) => {
     onSetPythonEnvironmentListListener = callback;
   },
@@ -107,9 +68,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
     callback: EnvironmentListUpdateStatusListener
   ) => {
     onEnvironmentListUpdateStatusListener = callback;
-  },
-  setDefaultWorkingDirectory: (path: string) => {
-    ipcRenderer.send(EventTypeMain.SetDefaultWorkingDirectory, path);
   },
   installBundledPythonEnv: (envPath: string) => {
     ipcRenderer.send(EventTypeMain.InstallBundledPythonEnv, envPath);
@@ -146,31 +104,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
       pythonPath
     );
   },
-  showInvalidPythonPathMessage: (path: string) => {
-    ipcRenderer.send(EventTypeMain.ShowInvalidPythonPathMessage, path);
-  },
-  clearHistory: (options: any) => {
-    return ipcRenderer.invoke(EventTypeMain.ClearHistory, options);
-  },
-  setLogLevel: (level: string) => {
-    ipcRenderer.send(EventTypeMain.SetLogLevel, level);
-  },
-  setServerLaunchArgs: (
-    serverArgs: string,
-    overrideDefaultServerArgs: boolean
-  ) => {
-    ipcRenderer.send(
-      EventTypeMain.SetServerLaunchArgs,
-      serverArgs,
-      overrideDefaultServerArgs
-    );
-  },
-  setServerEnvVars: (serverEnvVars: any) => {
-    ipcRenderer.send(EventTypeMain.SetServerEnvVars, serverEnvVars);
-  },
-  setCtrlWBehavior: (behavior: string) => {
-    ipcRenderer.send(EventTypeMain.SetCtrlWBehavior, behavior);
-  },
   validateNewPythonEnvironmentName: (name: string) => {
     return ipcRenderer.invoke(
       EventTypeMain.ValidateNewPythonEnvironmentName,
@@ -203,12 +136,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
   },
   setSystemPythonPath: (pythonPath: string) => {
     return ipcRenderer.send(EventTypeMain.SetSystemPythonPath, pythonPath);
-  }
-});
-
-ipcRenderer.on(EventTypeRenderer.WorkingDirectorySelected, (event, path) => {
-  if (onWorkingDirectorySelectedListener) {
-    onWorkingDirectorySelectedListener(path);
   }
 });
 
