@@ -188,8 +188,6 @@ export class ManagePythonEnvironmentDialog {
       #content-area {
         background: var(--neutral-layer-4);
         width: 100%;
-        overflow-y: auto;
-        margin: 5px;
       }
       #env-list-progress {
         width: 100%;
@@ -200,6 +198,7 @@ export class ManagePythonEnvironmentDialog {
         border: 1px solid var(--error-fill-hover);
         padding: 5px;
         box-sizing: border-box;
+        margin-bottom: 5px;
       }
       #env-list-progress-message-content {
         flex-grow: 1;
@@ -254,7 +253,6 @@ export class ManagePythonEnvironmentDialog {
         flex-direction: column;
         align-items: baseline;
         padding-bottom: 10px;
-        padding-right: 5px;
       }
       .setting-section .header {
         line-height: 30px;
