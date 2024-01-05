@@ -193,7 +193,7 @@ export class ManagePythonEnvironmentDialog {
       }
       #env-list-progress {
         width: 100%;
-        visibility: hidden;
+        display: none;
       }
       #env-list-progress-message {
         display: none;
@@ -254,6 +254,7 @@ export class ManagePythonEnvironmentDialog {
         flex-direction: column;
         align-items: baseline;
         padding-bottom: 10px;
+        padding-right: 5px;
       }
       .setting-section .header {
         line-height: 30px;
@@ -262,6 +263,9 @@ export class ManagePythonEnvironmentDialog {
       }
       .setting-section jp-text-field {
         width: 100%;
+      }
+      .setting-section.env-list-section {
+        overflow-y: auto;
       }
       jp-tab-panel .setting-section:last-child {
         border-bottom: none;
@@ -393,7 +397,7 @@ export class ManagePythonEnvironmentDialog {
               </div>
             </div>
 
-            <div class="setting-section">
+            <div class="setting-section env-list-section">
               <div class="row">  
                 <jp-progress id="env-list-progress"></jp-progress>
               </div>
@@ -689,7 +693,7 @@ export class ManagePythonEnvironmentDialog {
         }
 
         function showEnvListProgress(show) {
-          envListProgress.style.visibility = show ? 'visible' : 'hidden';
+          envListProgress.style.display = show ? 'block' : 'none';
         }
 
         function setEnvListProgressMessage(message) {
