@@ -198,19 +198,30 @@ export class PythonEnvironmentSelectPopup {
 
         function updateMenu(filterOrder, filterInfo) {
           let html = '';
+          activeIndex = 0;
 
           if (filterOrder && filterInfo) {
             for (let i = 0; i < filterOrder.length; i++) {
               const infoIdx = filterOrder[i];
-              html += generateMenuItem(envs[filterInfo.idx[infoIdx]], filterInfo.ranges[infoIdx]);
+              const env = envs[filterInfo.idx[infoIdx]];
+              if (env.path === currentPythonPath) {
+                activeIndex = i;
+              }
+              html += generateMenuItem(env, filterInfo.ranges[infoIdx]);
             }
           } else {
-            for (const env of envs) {
+            for (let i = 0; i < envs.length; i++) {
+              const env = envs[i];
+              if (env.path === currentPythonPath) {
+                activeIndex = i;
+              }
               html += generateMenuItem(env);
             }
           }
 
           envListMenu.innerHTML = html;
+
+          updateActiveItem();
         }
 
         function handleRestartSession() {
@@ -254,6 +265,10 @@ export class PythonEnvironmentSelectPopup {
           document.querySelectorAll('jp-menu-item').forEach((item) => {
             item.classList.remove('active');
           });
+
+          if (activeIndex < 0 || activeIndex >= envListMenu.children.length) {
+            return;
+          }
 
           const activeItem = envListMenu.children[activeIndex];
           activeItem.scrollIntoView();

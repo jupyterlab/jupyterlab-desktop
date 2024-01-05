@@ -1212,15 +1212,8 @@ export class SessionWindow implements IDisposable {
       return;
     }
 
-    let currentPythonPath = this._wsSettings.getValue(SettingType.pythonPath);
-    if (!currentPythonPath) {
-      const defaultEnv = await this.registry.getDefaultEnvironment();
-      if (defaultEnv) {
-        currentPythonPath = defaultEnv.path;
-      }
-    }
-
-    this._envSelectPopup.setCurrentPythonPath(currentPythonPath);
+    const serverInfo = this.getServerInfo();
+    this._envSelectPopup.setCurrentPythonPath(serverInfo?.environment?.path);
     this._envSelectPopup.resetView();
 
     this._window.addBrowserView(this._envSelectPopup.view.view);
