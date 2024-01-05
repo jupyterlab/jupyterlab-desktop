@@ -1177,7 +1177,13 @@ export class SessionWindow implements IDisposable {
   }
 
   private async _createEnvSelectPopup() {
-    const defaultEnv = await this._registry.getDefaultEnvironment();
+    let defaultEnv: IPythonEnvironment;
+    try {
+      defaultEnv = await this._registry.getDefaultEnvironment();
+    } catch (error) {
+      //
+    }
+
     const defaultPythonPath = defaultEnv ? defaultEnv.path : '';
 
     this._envSelectPopup = new PythonEnvironmentSelectPopup({
