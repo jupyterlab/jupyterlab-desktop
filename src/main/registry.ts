@@ -71,6 +71,8 @@ export class Registry implements IRegistry, IDisposable {
     ].filter(env => this._pathExistsSync(env.path));
 
     // initialize default environment to user set or bundled
+    // TODO: try to use userSettings.pythonPath and bundled python path separately
+    // because userSettings.pythonPath might be invalid but bundled one may be valid
     let pythonPath = userSettings.getValue(SettingType.pythonPath);
     if (pythonPath === '') {
       pythonPath = getBundledPythonPath();
@@ -100,19 +102,23 @@ export class Registry implements IRegistry, IDisposable {
 
     // try to set default env from discovered pythonPath
     if (!this._defaultEnv && appData.pythonPath) {
-      const defaultEnv = this._resolveEnvironmentSync(appData.pythonPath);
+      try {
+        const defaultEnv = this._resolveEnvironmentSync(appData.pythonPath);
 
-      if (defaultEnv) {
-        this._defaultEnv = defaultEnv;
-        // if default env is conda root, then set its conda executable as conda path
-        if (
-          defaultEnv.type === IEnvironmentType.CondaRoot &&
-          !appData.condaPath
-        ) {
-          this.setCondaPath(
-            condaExePathForEnvPath(getEnvironmentPath(defaultEnv))
-          );
+        if (defaultEnv) {
+          this._defaultEnv = defaultEnv;
+          // if default env is conda root, then set its conda executable as conda path
+          if (
+            defaultEnv.type === IEnvironmentType.CondaRoot &&
+            !appData.condaPath
+          ) {
+            this.setCondaPath(
+              condaExePathForEnvPath(getEnvironmentPath(defaultEnv))
+            );
+          }
         }
+      } catch (error) {
+        //
       }
     }
 
