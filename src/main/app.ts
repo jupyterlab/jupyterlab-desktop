@@ -1022,6 +1022,23 @@ export class JupyterApplication implements IApplication, IDisposable {
           return;
         }
 
+        // still check input to prevent chaining malicious commands
+        const invalidCharInputRegex = new RegExp('[&;|]');
+        const invalidInputMessage = invalidCharInputRegex.test(envPath)
+          ? 'Invalid environment name input'
+          : invalidCharInputRegex.test(packages)
+          ? 'Invalid package list input'
+          : '';
+
+        if (invalidInputMessage) {
+          event.sender.send(
+            EventTypeRenderer.InstallPythonEnvStatus,
+            EnvironmentInstallStatus.Failure,
+            invalidInputMessage
+          );
+          return;
+        }
+
         event.sender.send(
           EventTypeRenderer.InstallPythonEnvStatus,
           EnvironmentInstallStatus.Started

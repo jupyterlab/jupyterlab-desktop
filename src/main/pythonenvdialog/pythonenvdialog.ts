@@ -910,7 +910,7 @@ export class ManagePythonEnvironmentDialog {
             status === 'CANCELLED' ?
             'Installation cancelled!' :
             status === 'FAILURE' ?
-              'Failed to install the environment!' :
+              msg || 'Failed to install the environment!' :
             status === 'SUCCESS' ? 'Installation succeeded' : '';
           
           const animate = status === 'REMOVING_EXISTING_INSTALLATION'
