@@ -66,6 +66,7 @@ export interface IPythonEnvironment {
 
 export enum PythonEnvResolveErrorType {
   PathNotFound = 'path-not-found',
+  InvalidPythonBinary = 'invalid-python-binary',
   ResolveError = 'resolve-error',
   RequirementsNotSatisfied = 'requirements-not-satisfied'
 }
@@ -73,6 +74,11 @@ export enum PythonEnvResolveErrorType {
 export interface IPythonEnvResolveError {
   type: PythonEnvResolveErrorType;
   message?: string;
+}
+
+export interface IPythonEnvValidateResult {
+  valid: boolean;
+  error?: IPythonEnvResolveError;
 }
 
 export interface IDisposable {

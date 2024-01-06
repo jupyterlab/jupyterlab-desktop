@@ -956,14 +956,35 @@ export class ManagePythonEnvironmentDialog {
           }
         });
 
+        function getEnvironmentValidationErrorMessage(error) {
+          let message = 'Invalid Python path selected';
+
+          if (!error) {
+            return message;
+          }
+
+          if (error.type === 'path-not-found') {
+            message = 'File not found at the selected path';
+          } else if (error.type === 'invalid-python-binary') {
+            message = 'File selected is not a Python binary';
+          } else if (error.type === 'requirements-not-satisfied') {
+            message = 'Required Python package (jupyterlab) not found in the selected environment. Install in the selected environment and retry.';
+          } else if (error.type === PythonEnvResolveErrorType.ResolveError) {
+            message = 'Failed to get environment information at selected path';
+          }
+
+          return message;
+        }
+
         async function handleCustomPythonPathSelectedForAddExistingEnv(path) {
           showEnvListProgress(true);
           const inRegistry = await window.electronAPI.getEnvironmentByPythonPath(path);
           if (!inRegistry) {
-            if (await window.electronAPI.validatePythonPath(path)) {
+            const validateResult = await window.electronAPI.validatePythonPath(path);
+            if (validateResult.valid) {
               await window.electronAPI.addEnvironmentByPythonPath(path);
             } else {
-              setEnvListProgressMessage('Invalid Python path selected.');
+              setEnvListProgressMessage(getEnvironmentValidationErrorMessage(validateResult.error));
             }
           } else {
             setEnvListProgressMessage('Environment is already in registry.');
@@ -1091,12 +1112,13 @@ export class ManagePythonEnvironmentDialog {
             if (inRegistry) {
               valid = true;
             } else {
-              if (await window.electronAPI.validatePythonPath(pythonPath)) {
+              const validateResult = await window.electronAPI.validatePythonPath(pythonPath);
+              if (validateResult.valid) {
                 await window.electronAPI.addEnvironmentByPythonPath(pythonPath);
                 valid = true;
               } else {
                 valid = false;
-                message = 'Invalid Python path. Make sure "jupyterlab" Python package is installed in the environment.';
+                message = getEnvironmentValidationErrorMessage(validateResult.error);
               }
             }
             if (valid && !bundledEnvRadio.checked) {

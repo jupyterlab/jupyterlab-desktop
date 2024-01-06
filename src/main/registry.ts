@@ -10,6 +10,7 @@ import {
   IEnvironmentType,
   IPythonEnvironment,
   IPythonEnvResolveError,
+  IPythonEnvValidateResult,
   IVersionContainer,
   PythonEnvResolveErrorType
 } from './tokens';
@@ -45,7 +46,9 @@ export interface IRegistry {
   getEnvironmentList: (cacheOK: boolean) => Promise<IPythonEnvironment[]>;
   addEnvironment: (pythonPath: string) => IPythonEnvironment;
   removeEnvironment: (pythonPath: string) => boolean;
-  validatePythonEnvironmentAtPath: (pythonPath: string) => Promise<boolean>;
+  validatePythonEnvironmentAtPath: (
+    pythonPath: string
+  ) => Promise<IPythonEnvValidateResult>;
   validateCondaBaseEnvironmentAtPath: (envPath: string) => boolean;
   setDefaultPythonPath: (pythonPath: string) => boolean;
   getCurrentPythonEnvironment: () => IPythonEnvironment;
@@ -263,6 +266,11 @@ export class Registry implements IRegistry, IDisposable {
     }
   }
 
+  /**
+   * Resolve Python environment at pythonPath
+   * @param pythonPath Python path
+   * @returns Python environment info or throws exception PythonEnvResolveErrorType
+   */
   private _resolveEnvironmentSync(pythonPath: string): IPythonEnvironment {
     if (!this._pathExistsSync(pythonPath)) {
       log.error(`Python path "${pythonPath}" does not exist.`);
@@ -392,17 +400,20 @@ export class Registry implements IRegistry, IDisposable {
       return inUserSetEnvList;
     }
 
-    const env = this._resolveEnvironmentSync(pythonPath);
-    if (env) {
-      if (!this._defaultEnv) {
-        this._defaultEnv = env;
+    try {
+      const env = this._resolveEnvironmentSync(pythonPath);
+      if (env) {
+        if (!this._defaultEnv) {
+          this._defaultEnv = env;
+        }
+        this._userSetEnvironments.push(env);
+        this._updateEnvironments();
+        this._environmentListUpdated.emit();
+        return env;
       }
-      this._userSetEnvironments.push(env);
-      this._updateEnvironments();
-      this._environmentListUpdated.emit();
+    } catch (error) {
+      //
     }
-
-    return env;
   }
 
   /**
@@ -433,12 +444,46 @@ export class Registry implements IRegistry, IDisposable {
     return false;
   }
 
-  async validatePythonEnvironmentAtPath(pythonPath: string): Promise<boolean> {
-    const isValidPythonBinary = (await validatePythonPath(pythonPath)).valid;
-    return (
-      isValidPythonBinary &&
-      (await this._resolveEnvironment(pythonPath)) !== undefined
-    );
+  async validatePythonEnvironmentAtPath(
+    pythonPath: string
+  ): Promise<IPythonEnvValidateResult> {
+    if (!fs.existsSync(pythonPath)) {
+      return {
+        valid: false,
+        error: {
+          type: PythonEnvResolveErrorType.PathNotFound
+        }
+      };
+    }
+    if (!(await validatePythonPath(pythonPath)).valid) {
+      return {
+        valid: false,
+        error: {
+          type: PythonEnvResolveErrorType.InvalidPythonBinary
+        }
+      };
+    }
+
+    try {
+      const env = this._resolveEnvironmentSync(pythonPath);
+      if (!env) {
+        return {
+          valid: false,
+          error: {
+            type: PythonEnvResolveErrorType.ResolveError
+          }
+        };
+      }
+    } catch (error) {
+      return {
+        valid: false,
+        error
+      };
+    }
+
+    return {
+      valid: true
+    };
   }
 
   validateCondaBaseEnvironmentAtPath(envPath: string): boolean {
@@ -474,10 +519,14 @@ export class Registry implements IRegistry, IDisposable {
     }
 
     // try to resolve it
-    env = this._resolveEnvironmentSync(pythonPath);
-    if (env) {
-      this._defaultEnv = env;
-      return true;
+    try {
+      env = this._resolveEnvironmentSync(pythonPath);
+      if (env) {
+        this._defaultEnv = env;
+        return true;
+      }
+    } catch (error) {
+      //
     }
 
     return false;
