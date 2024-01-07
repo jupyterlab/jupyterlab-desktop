@@ -24,7 +24,9 @@ import {
   condaEnvPathForCondaExePath,
   getPythonEnvsDirectory,
   ICommandRunCallbacks,
-  runCommandInEnvironment
+  runCommandInEnvironment,
+  validateCondaPath,
+  validateSystemPythonPath
 } from './env';
 
 export function parseCLIArgs(argv: string[]) {
@@ -139,6 +141,9 @@ export function parseCLIArgs(argv: string[]) {
           case 'set-conda-path':
             await handleEnvSetCondaPathCommand(argv);
             break;
+          case 'set-system-python-path':
+            await handleEnvSetSystemPythonPathCommand(argv);
+            break;
           case 'update-registry':
             await handleEnvUpdateRegistryCommand(argv);
             break;
@@ -152,9 +157,11 @@ export function parseCLIArgs(argv: string[]) {
 }
 
 export async function handleEnvInfoCommand(argv: any) {
-  const bundledEnvPath = getBundledPythonEnvPath();
-  const bundledEnvPathExists =
-    fs.existsSync(bundledEnvPath) && fs.statSync(bundledEnvPath).isDirectory();
+  const bundledPythonPath = getBundledPythonPath();
+  const bundledPythonPathExists =
+    fs.existsSync(bundledPythonPath) &&
+    (fs.statSync(bundledPythonPath).isFile() ||
+      fs.statSync(bundledPythonPath).isSymbolicLink());
   let defaultPythonPath = userSettings.getValue(SettingType.pythonPath);
   if (!defaultPythonPath) {
     defaultPythonPath = getBundledPythonPath();
@@ -162,9 +169,10 @@ export async function handleEnvInfoCommand(argv: any) {
   if (!fs.existsSync(defaultPythonPath)) {
     defaultPythonPath = appData.pythonPath;
   }
-  const defaultEnvPath = envPathForPythonPath(defaultPythonPath);
-  const defaultEnvPathExists =
-    fs.existsSync(defaultEnvPath) && fs.statSync(defaultEnvPath).isDirectory();
+  const defaultPythonPathExists =
+    fs.existsSync(defaultPythonPath) &&
+    (fs.statSync(defaultPythonPath).isFile() ||
+      fs.statSync(defaultPythonPath).isSymbolicLink());
   const condaPath = appData.condaPath;
   const condaPathExists =
     condaPath && fs.existsSync(condaPath) && fs.statSync(condaPath).isFile();
@@ -179,13 +187,13 @@ export async function handleEnvInfoCommand(argv: any) {
 
   const infoLines: string[] = [];
   infoLines.push(
-    `Default Python environment path:\n  "${defaultEnvPath}" [${
-      defaultEnvPathExists ? 'exists' : 'not found'
+    `Default Python path for JupyterLab Server:\n  "${defaultPythonPath}" [${
+      defaultPythonPathExists ? 'exists' : 'not found'
     }]`
   );
   infoLines.push(
-    `Bundled Python environment installation path:\n  "${bundledEnvPath}" [${
-      bundledEnvPathExists ? 'exists' : 'not found'
+    `Bundled Python installation path:\n  "${bundledPythonPath}" [${
+      bundledPythonPathExists ? 'exists' : 'not found'
     }]`
   );
   infoLines.push(
@@ -218,7 +226,7 @@ export async function handleEnvListCommand(argv: any) {
       const envPath = envPathForPythonPath(env.path);
       const installedByApp = isEnvInstalledByDesktopApp(envPath);
       listLines.push(
-        `  [${env.name}], path: ${envPath}${
+        `  [${env.name}], Python path: ${env.path}${
           installedByApp ? ', installed by JupyterLab Desktop' : ''
         }\n    packages: ${versions.join(', ')}`
       );
@@ -328,6 +336,13 @@ export async function handleEnvActivateCommand(argv: any) {
     envPath = argv.path;
   } else {
     envPath = getBundledPythonEnvPath();
+  }
+
+  if (
+    !(envPath && fs.existsSync(envPath) && fs.statSync(envPath).isDirectory())
+  ) {
+    console.error(`Invalid environment directory "${envPath}"`);
+    return;
   }
 
   console.log(`Activating Python environment "${envPath}"`);
@@ -451,14 +466,29 @@ export async function handleEnvSetCondaPathCommand(argv: any) {
   if (!fs.existsSync(condaPath)) {
     console.error(`conda path "${condaPath}" does not exist`);
     return;
-  } else if (!isBaseCondaEnv(condaEnvPathForCondaExePath(condaPath))) {
-    console.error(`"${condaPath}" is not in a base conda environemnt`);
+  } else if (!(await validateCondaPath(condaPath)).valid) {
+    console.error(`"${condaPath}" is not a valid conda path`);
     return;
   }
 
   console.log(`Setting "${condaPath}" as the conda path`);
-  appData.condaPath = condaPath;
-  appData.save();
+  userSettings.setValue(SettingType.condaPath, condaPath);
+  userSettings.save();
+}
+
+export async function handleEnvSetSystemPythonPathCommand(argv: any) {
+  const systemPythonPath = argv.path as string;
+  if (!fs.existsSync(systemPythonPath)) {
+    console.error(`Python path "${systemPythonPath}" does not exist`);
+    return;
+  } else if (!(await validateSystemPythonPath(systemPythonPath)).valid) {
+    console.error(`"${systemPythonPath}" is not a valid Python path`);
+    return;
+  }
+
+  console.log(`Setting "${systemPythonPath}" as the system Python path`);
+  userSettings.setValue(SettingType.systemPythonPath, systemPythonPath);
+  userSettings.save();
 }
 
 export async function launchCLIinEnvironment(
