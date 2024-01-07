@@ -150,7 +150,7 @@ export class ManagePythonEnvironmentDialog {
             click: () => {
               const condaPath = getCondaPath() || '';
               const condaEnvPath = condaEnvPathForCondaExePath(condaPath);
-              let activateCommand = createCommandScriptInEnv(
+              const activateCommand = createCommandScriptInEnv(
                 envPath,
                 condaEnvPath
               );

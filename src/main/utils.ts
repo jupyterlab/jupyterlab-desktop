@@ -676,6 +676,10 @@ export function launchTerminalInDirectory(
       exec(`start cmd.exe /K cd /D "${dirPath}"`);
     }
   } else {
-    //
+    let callCommands = '';
+    if (commands) {
+      callCommands = ` -- bash -c "${commands}; exec bash"`;
+    }
+    exec(`gnome-terminal --working-directory="${dirPath}"${callCommands}`);
   }
 }
