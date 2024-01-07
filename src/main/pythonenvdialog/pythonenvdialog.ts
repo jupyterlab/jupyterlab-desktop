@@ -14,16 +14,20 @@ import * as fs from 'fs';
 import { ThemedWindow } from '../dialog/themedwindow';
 import { IPythonEnvironment } from '../tokens';
 import {
+  createCommandScriptInEnv,
   deletePythonEnvironment,
   envPathForPythonPath,
   getBundledPythonPath,
   isEnvInstalledByDesktopApp,
+  launchTerminalInDirectory,
+  openDirectoryInExplorer,
   versionWithoutSuffix
 } from '../utils';
 import { EventManager } from '../eventmanager';
 import { EventTypeMain, EventTypeRenderer } from '../eventtypes';
 import { JupyterApplication } from '../app';
 import {
+  condaEnvPathForCondaExePath,
   getCondaPath,
   getNextPythonEnvName,
   getPythonEnvsDirectory,
@@ -111,6 +115,10 @@ export class ManagePythonEnvironmentDialog {
         const deletable =
           installedByApp &&
           !this._app.serverFactory.isEnvironmentInUse(pythonPath);
+        const openInExplorerLabel =
+          process.platform === 'darwin'
+            ? 'Reveal in Finder'
+            : 'Open in Explorer';
         const template: MenuItemConstructorOptions[] = [
           {
             label: 'Copy Python path',
@@ -135,6 +143,25 @@ export class ManagePythonEnvironmentDialog {
               } else {
                 clipboard.writeText('Failed to get environment info!');
               }
+            }
+          },
+          {
+            label: 'Launch Terminal',
+            click: () => {
+              const condaPath = getCondaPath() || '';
+              const condaEnvPath = condaEnvPathForCondaExePath(condaPath);
+              let activateCommand = createCommandScriptInEnv(
+                envPath,
+                condaEnvPath
+              );
+
+              launchTerminalInDirectory(envPath, activateCommand);
+            }
+          },
+          {
+            label: openInExplorerLabel,
+            click: () => {
+              openDirectoryInExplorer(envPath);
             }
           },
           { type: 'separator', visible: deletable },

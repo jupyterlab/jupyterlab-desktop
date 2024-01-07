@@ -616,3 +616,49 @@ export function runCommandSync(
 ): string {
   return execFileSync(executablePath, commands, options).toString();
 }
+
+export function openDirectoryInExplorer(dirPath: string): boolean {
+  if (!(fs.existsSync(dirPath) && fs.statSync(dirPath).isDirectory())) {
+    return false;
+  }
+
+  const { platform } = process;
+  const openCommand =
+    platform === 'darwin'
+      ? 'open'
+      : platform === 'win32'
+      ? 'explorer'
+      : 'xdg-open';
+
+  exec(`${openCommand} "${dirPath}"`);
+
+  return true;
+}
+
+export function launchTerminalInDirectory(
+  dirPath: string,
+  commands?: string
+): boolean {
+  if (!(fs.existsSync(dirPath) && fs.statSync(dirPath).isDirectory())) {
+    return false;
+  }
+
+  const { platform } = process;
+  let callCommands = '';
+  if (commands) {
+    // replace " with '
+    commands = commands.split('"').join("'");
+    callCommands = `&& ${commands}`;
+  }
+
+  if (platform === 'darwin') {
+    exec(
+      `osascript -e 'tell application "Terminal" to do script "cd '${dirPath}' ${callCommands}"' -e 'tell application "Terminal" to activate'`
+    );
+    ``;
+  } else if (platform === 'win32') {
+    exec(`start cmd.exe /K cd /D '${dirPath}' ${callCommands}`);
+  } else {
+    //
+  }
+}
