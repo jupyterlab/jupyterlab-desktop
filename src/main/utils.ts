@@ -644,20 +644,37 @@ export function launchTerminalInDirectory(
   }
 
   const { platform } = process;
-  let callCommands = '';
-  if (commands) {
-    // replace " with '
-    commands = commands.split('"').join("'");
-    callCommands = `&& ${commands}`;
-  }
-
   if (platform === 'darwin') {
+    let callCommands = '';
+    if (commands) {
+      // replace " with '
+      commands = commands.split('"').join("'");
+      callCommands = `&& ${commands}`;
+    }
+
     exec(
       `osascript -e 'tell application "Terminal" to do script "cd '${dirPath}' ${callCommands}"' -e 'tell application "Terminal" to activate'`
     );
     ``;
   } else if (platform === 'win32') {
-    exec(`start cmd.exe /K cd /D '${dirPath}' ${callCommands}`);
+    if (commands) {
+      const activateFilePath = createTempFile(
+        `activate.bat`,
+        `cd /D "${dirPath}"\n${commands}`
+      );
+
+      exec(`start cmd.exe /K ${activateFilePath}`);
+
+      setTimeout(() => {
+        try {
+          fs.unlinkSync(activateFilePath);
+        } catch (error) {
+          console.error('Failed to delete the temp file');
+        }
+      }, 2000);
+    } else {
+      exec(`start cmd.exe /K cd /D "${dirPath}"`);
+    }
   } else {
     //
   }
