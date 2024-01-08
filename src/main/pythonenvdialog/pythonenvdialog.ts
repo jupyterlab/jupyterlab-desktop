@@ -119,7 +119,7 @@ export class ManagePythonEnvironmentDialog {
           process.platform === 'darwin'
             ? 'Reveal in Finder'
             : 'Open in Explorer';
-        const template: MenuItemConstructorOptions[] = [
+        const envMenuTemplate: MenuItemConstructorOptions[] = [
           {
             label: 'Copy Python path',
             click: () => {
@@ -163,11 +163,13 @@ export class ManagePythonEnvironmentDialog {
             click: () => {
               openDirectoryInExplorer(envPath);
             }
-          },
-          { type: 'separator', visible: deletable },
+          }
+        ];
+
+        const deletableEnvMenuItems: MenuItemConstructorOptions[] = [
+          { type: 'separator' },
           {
             label: 'Delete',
-            visible: deletable,
             click: async () => {
               this._window.window.webContents.send(
                 EventTypeRenderer.SetEnvironmentListUpdateStatus,
@@ -195,7 +197,11 @@ export class ManagePythonEnvironmentDialog {
           }
         ];
 
-        const menu = Menu.buildFromTemplate(template);
+        const menu = Menu.buildFromTemplate(
+          deletable
+            ? [...envMenuTemplate, ...deletableEnvMenuItems]
+            : envMenuTemplate
+        );
         menu.popup({
           window: BrowserWindow.fromWebContents(event.sender)
         });

@@ -395,7 +395,10 @@ export async function createPythonEnvironment(
     source: 'registry',
     appVersion: app.getVersion()
   });
-  addUserSetEnvironment(envPath, isConda);
+
+  if (packages.includes('jupyterlab')) {
+    addUserSetEnvironment(envPath, isConda);
+  }
 }
 
 export async function handleEnvCreateCommand(argv: any) {
