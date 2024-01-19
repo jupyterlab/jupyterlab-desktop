@@ -59,7 +59,8 @@ export enum SettingType {
 
   condaPath = 'condaPath',
   systemPythonPath = 'systemPythonPath',
-  pythonEnvsPath = 'pythonEnvsPath'
+  pythonEnvsPath = 'pythonEnvsPath',
+  condaChannels = 'condaChannels'
 }
 
 export const serverLaunchArgsFixed = [
@@ -149,7 +150,8 @@ export class UserSettings {
 
       condaPath: new Setting<string>(''),
       systemPythonPath: new Setting<string>(''),
-      pythonEnvsPath: new Setting<string>('')
+      pythonEnvsPath: new Setting<string>(''),
+      condaChannels: new Setting<string[]>(['conda-forge'])
     };
 
     if (readSettings) {

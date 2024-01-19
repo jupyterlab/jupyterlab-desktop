@@ -32,6 +32,7 @@ import {
   condaEnvPathForCondaExePath,
   condaExePathForEnvPath,
   environmentSatisfiesRequirements,
+  getCondaChannels,
   getEnvironmentInfoFromPythonPath,
   getEnvironmentInfoFromPythonPathSync,
   IJupyterEnvRequirement,
@@ -538,8 +539,10 @@ export class Registry implements IRegistry, IDisposable {
 
   getRequirementsInstallCommand(envPath: string): string {
     const isConda = isCondaEnv(envPath);
+    const condaChannels = getCondaChannels();
+    const channels = condaChannels.map(channel => `-c ${channel}`);
     const cmdList = [
-      isConda ? 'conda install -c conda-forge -y' : 'pip install'
+      isConda ? `conda install ${channels.join(' ')} -y` : 'pip install'
     ];
 
     JUPYTER_ENV_REQUIREMENTS.forEach(req => {

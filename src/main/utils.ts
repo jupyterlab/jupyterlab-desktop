@@ -59,6 +59,11 @@ export function getEnvironmentPath(environment: IPythonEnvironment): string {
   return envPathForPythonPath(environment.path);
 }
 
+export function getBundledEnvInstallerPath(): string {
+  const appDir = getAppDir();
+  return path.join(appDir, 'env_installer', 'jlab_server.tar.gz');
+}
+
 export function getBundledPythonInstallDir(): string {
   // this directory path cannot have any spaces since
   // conda environments cannot be installed to such paths
@@ -235,7 +240,7 @@ export enum EnvironmentDeleteStatus {
   Success = 'SUCCESS'
 }
 
-export interface IBundledEnvironmentInstallListener {
+export interface ICondaPackEnvironmentInstallListener {
   onInstallStatus: (status: EnvironmentInstallStatus, message?: string) => void;
   forceOverwrite?: boolean;
   confirmOverwrite?: () => Promise<boolean>;
@@ -243,18 +248,23 @@ export interface IBundledEnvironmentInstallListener {
 
 export async function installBundledEnvironment(
   installPath: string,
-  listener?: IBundledEnvironmentInstallListener
+  listener?: ICondaPackEnvironmentInstallListener
 ): Promise<boolean> {
+  const condaPackPath = getBundledEnvInstallerPath();
+
+  return installCondaPackEnvironment(condaPackPath, installPath, listener);
+}
+
+export async function installCondaPackEnvironment(
+  condaPackPath: string,
+  installPath: string,
+  listener?: ICondaPackEnvironmentInstallListener
+): Promise<boolean> {
+  const isBundledInstaller = condaPackPath === getBundledEnvInstallerPath();
   // eslint-disable-next-line no-async-promise-executor
   return new Promise<boolean>(async (resolve, reject) => {
     const platform = process.platform;
     const isWin = platform === 'win32';
-    const appDir = getAppDir();
-    const installerPath = path.join(
-      appDir,
-      'env_installer',
-      'jlab_server.tar.gz'
-    );
     installPath = installPath || getBundledPythonEnvPath();
 
     if (fs.existsSync(installPath)) {
@@ -283,7 +293,7 @@ export async function installBundledEnvironment(
 
     try {
       fs.mkdirSync(installPath, { recursive: true });
-      await tar.x({ C: installPath, file: installerPath });
+      await tar.x({ C: installPath, file: condaPackPath });
     } catch (error) {
       listener?.onInstallStatus(
         EnvironmentInstallStatus.Failure,
@@ -306,7 +316,8 @@ export async function installBundledEnvironment(
 
     if (platform === 'darwin') {
       unpackCommand = `${createUnsignScriptInEnv(
-        installPath
+        installPath,
+        isBundledInstaller ? undefined : getBinarySignList(installPath)
       )}\n${unpackCommand}`;
     }
 
@@ -537,27 +548,71 @@ export function createCommandScriptInEnv(
   return scriptLines.join(joinStr);
 }
 
+export function getBinarySignList(envPath: string) {
+  const { isBinary } = require('istextorbinary');
+  const envBinDir = path.join(envPath, 'bin');
+
+  const needsSigning = (filePath: string) => {
+    // conly consider bin directory, and .so, .dylib files in other directories
+    if (
+      filePath.startsWith(envBinDir) ||
+      filePath.endsWith('.so') ||
+      filePath.endsWith('.dylib')
+    ) {
+      // check for binary content
+      return isBinary(null, fs.readFileSync(filePath));
+    }
+
+    return false;
+  };
+
+  const findBinariesInDirectory = (dirPath: string): string[] => {
+    let results: string[] = [];
+    const list = fs.readdirSync(dirPath);
+    list.forEach(filePath => {
+      filePath = dirPath + '/' + filePath;
+      const stat = fs.lstatSync(filePath);
+      if (stat && stat.isDirectory()) {
+        results = results.concat(findBinariesInDirectory(filePath));
+      } else {
+        if (!stat.isSymbolicLink() && needsSigning(filePath)) {
+          results.push(path.relative(envPath, filePath));
+        }
+      }
+    });
+
+    return results;
+  };
+
+  return findBinariesInDirectory(envPath);
+}
+
 /*
   signed tarball contents need to be unsigned except for python binary,
   otherwise server runs into issues at runtime. python binary comes originally
   ad-hoc signed. after installation it needs be converted from hardened runtime,
   back to ad-hoc signed.
 */
-export function createUnsignScriptInEnv(envPath: string): string {
+export function createUnsignScriptInEnv(
+  envPath: string,
+  signList?: string[]
+): string {
   const appDir = getAppDir();
-  const signListFile = path.join(
-    appDir,
-    'env_installer',
-    `sign-osx-${process.arch === 'arm64' ? 'arm64' : '64'}.txt`
-  );
-  const fileContents = fs.readFileSync(signListFile, 'utf-8');
-  const signList: string[] = [];
+  if (!signList) {
+    signList = [];
+    const signListFile = path.join(
+      appDir,
+      'env_installer',
+      `sign-osx-${process.arch === 'arm64' ? 'arm64' : '64'}.txt`
+    );
+    const fileContents = fs.readFileSync(signListFile, 'utf-8');
 
-  fileContents.split(/\r?\n/).forEach(line => {
-    if (line) {
-      signList.push(`"${line}"`);
-    }
-  });
+    fileContents.split(/\r?\n/).forEach(line => {
+      if (line) {
+        signList.push(`"${line}"`);
+      }
+    });
+  }
 
   // sign all binaries with ad-hoc signature
   return `cd ${envPath} && codesign -s - -o 0x2 -f ${signList.join(

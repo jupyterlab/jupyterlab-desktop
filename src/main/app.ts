@@ -56,6 +56,7 @@ import { addUserSetEnvironment, createPythonEnvironment } from './cli';
 import {
   getNextPythonEnvName,
   JUPYTER_ENV_REQUIREMENTS,
+  validateCondaChannels,
   validateCondaPath,
   validateNewPythonEnvironmentName,
   validatePythonEnvironmentInstallDirectory,
@@ -796,6 +797,16 @@ export class JupyterApplication implements IApplication, IDisposable {
     );
 
     this._evm.registerEventHandler(
+      EventTypeMain.SetCondaChannels,
+      async (event, condaChannels) => {
+        const channelList =
+          condaChannels.trim() === '' ? [] : condaChannels.split(' ');
+        userSettings.setValue(SettingType.condaChannels, channelList);
+        userSettings.save();
+      }
+    );
+
+    this._evm.registerEventHandler(
       EventTypeMain.SetSystemPythonPath,
       async (event, pythonPath) => {
         userSettings.setValue(SettingType.systemPythonPath, pythonPath);
@@ -916,6 +927,13 @@ export class JupyterApplication implements IApplication, IDisposable {
       EventTypeMain.ValidateCondaPath,
       (event, condaPath) => {
         return validateCondaPath(condaPath);
+      }
+    );
+
+    this._evm.registerSyncEventHandler(
+      EventTypeMain.ValidateCondaChannels,
+      (event, condaChannels) => {
+        return Promise.resolve(validateCondaChannels(condaChannels));
       }
     );
 
@@ -1044,13 +1062,18 @@ export class JupyterApplication implements IApplication, IDisposable {
           EnvironmentInstallStatus.Started
         );
         try {
-          await createPythonEnvironment(envPath, envType, packages, {
-            stdout: (msg: string) => {
-              event.sender.send(
-                EventTypeRenderer.InstallPythonEnvStatus,
-                EnvironmentInstallStatus.Running,
-                msg
-              );
+          await createPythonEnvironment({
+            envPath,
+            envType,
+            packageList: packages.split(' '),
+            callbacks: {
+              stdout: (msg: string) => {
+                event.sender.send(
+                  EventTypeRenderer.InstallPythonEnvStatus,
+                  EnvironmentInstallStatus.Running,
+                  msg
+                );
+              }
             }
           });
           const pythonPath = pythonPathForEnvPath(envPath);

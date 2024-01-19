@@ -28,6 +28,7 @@ import { EventTypeMain, EventTypeRenderer } from '../eventtypes';
 import { JupyterApplication } from '../app';
 import {
   condaEnvPathForCondaExePath,
+  getCondaChannels,
   getCondaPath,
   getNextPythonEnvName,
   getPythonEnvsDirectory,
@@ -41,7 +42,7 @@ export class ManagePythonEnvironmentDialog {
       isDarkTheme: options.isDarkTheme,
       title: 'Manage Python environments',
       width: 800,
-      height: 500,
+      height: 600,
       preload: path.join(__dirname, './preload.js')
     });
 
@@ -101,6 +102,7 @@ export class ManagePythonEnvironmentDialog {
     const pythonEnvName = getNextPythonEnvName();
     const pythonEnvInstallPath = getPythonEnvsDirectory();
     const condaPath = getCondaPath() || '';
+    const condaChannels = getCondaChannels().join(' ');
     const systemPythonPath = getSystemPythonPath() || '';
     const activateRelPath =
       process.platform === 'win32'
@@ -297,6 +299,10 @@ export class ManagePythonEnvironmentDialog {
       }
       .setting-section.env-list-section {
         overflow-y: auto;
+        margin-bottom: 10px;
+      }
+      .setting-section.conda-channels-section {
+        width: 50%;
       }
       jp-tab-panel .setting-section:last-child {
         border-bottom: none;
@@ -593,6 +599,19 @@ export class ManagePythonEnvironmentDialog {
               </div>
             </div>
 
+            <div class="setting-section conda-channels-section">
+              <div class="header">
+                conda channels<div class="info-icon" title="List of conda channels (separated by space) to use when installing new conda packages">${infoIconSrc}</div>
+              </div>
+              <div class="row">
+                <div style="flex-grow: 1;">
+                  <jp-text-field type="text" id="conda-channels" value="<%= condaChannels %>" style="width: 100%;" spellcheck="false" oninput="handleCondaChannelsInputChange(this);">
+                    <div slot="end"><div class="valid-icon">${checkIconSrc}</div><div class="invalid-icon">${xMarkCircleIconSrc}</div></div>
+                  </jp-text-field>
+                </div>
+              </div>
+            </div>
+
             <div class="setting-section">
               <div class="header">
                 Python path to use when creating venv environments<div class="info-icon" title="Python executable to use when creating new venv environments">${infoIconSrc}</div>
@@ -653,6 +672,7 @@ export class ManagePythonEnvironmentDialog {
 
         const pythonEnvInstallDirectoryInput = document.getElementById('python-env-install-directory');
         const condaPathInput = document.getElementById('conda-path');
+        const condaChannelsInput = document.getElementById('conda-channels');
         const systemPythonPathInput = document.getElementById('system-python-path');
         const categoryTabs = document.getElementById('category-tabs');
 
@@ -660,6 +680,7 @@ export class ManagePythonEnvironmentDialog {
         let installingJupyterLabServerEnv = false;
         let selectingCustomJupyterLabServerPython = false;
         let condaPath = <%- JSON.stringify(condaPath) %>;
+        let condaChannels = '<%- condaChannels %>';
         let systemPythonPath = <%- JSON.stringify(systemPythonPath) %>;
 
         let envs = <%- JSON.stringify(envs) %>;
@@ -671,6 +692,7 @@ export class ManagePythonEnvironmentDialog {
         let customPythonPathInputValidationTimer = -1;
         let envsDirInputValidationTimer = -1;
         let condaPathInputValidationTimer = -1;
+        let condaChannelsInputValidationTimer = -1;
         let systemPythonPathInputValidationTimer = -1;
 
         function handleEnvMenuClick(el) {
@@ -916,7 +938,7 @@ export class ManagePythonEnvironmentDialog {
         function updateCreateCommandPreview() {
           const isConda = envTypeCondaRadio.checked;
           if (isConda) {
-            createCommandPreview.value = \`conda create -p \$\{getEnvInstallPath()\} -c conda-forge \$\{getPackageList()\}\`;
+            createCommandPreview.value = \`conda create -p \$\{getEnvInstallPath()\} \$\{getCondaChannels()\}\ \$\{getPackageList()\}\`;
           } else {
             const envPath = getEnvInstallPath();
             createCommandPreview.value = \`python -m venv create \$\{envPath\}\n\$\{envPath\}\$\{pathSeparator\}${activateRelPath}\npython -m pip install \$\{getPackageList()\}\`;
@@ -1070,6 +1092,13 @@ export class ManagePythonEnvironmentDialog {
           return \`\$\{pythonEnvInstallPath + pathSeparator + newEnvNameInput.value\}\`;
         }
 
+        function getCondaChannels() {
+          if (condaChannels.trim() === '') {
+            return '';
+          }
+          return condaChannels.split(' ').map(channel => \`-c \$\{channel\}\`).join(' ');
+        }
+
         function handleCustomPythonPathChange() {
           validateAndUpdateCustomPythonPath();
         }
@@ -1086,6 +1115,10 @@ export class ManagePythonEnvironmentDialog {
 
         function handleCondaPathInputChange() {
           validateAndUpdateCondaPath();
+        }
+
+        function handleCondaChannelsInputChange() {
+          validateAndUpdateCondaChannels();
         }
 
         function handleSystemPythonPathInputChange() {
@@ -1174,6 +1207,19 @@ export class ManagePythonEnvironmentDialog {
           }, debounceWait);
         }
 
+        function validateAndUpdateCondaChannels() {
+          clearTimeout(condaChannelsInputValidationTimer);
+          condaChannelsInputValidationTimer = setTimeout(async () => {
+            clearInputValidStatus(condaChannelsInput);
+            const response = await window.electronAPI.validateCondaChannels(condaChannelsInput.value);
+            showInputValidStatus(condaChannelsInput, response.valid, response.message);
+            if (response.valid) {
+              condaChannels = condaChannelsInput.value;
+              window.electronAPI.setCondaChannels(condaChannels);
+            }
+          }, debounceWait);
+        }
+
         function validateAndUpdateSystemPythonPath() {
           clearTimeout(systemPythonPathInputValidationTimer);
           systemPythonPathInputValidationTimer = setTimeout(async () => {
@@ -1217,6 +1263,8 @@ export class ManagePythonEnvironmentDialog {
             envTypeCondaRadio.disabled = false;
             envTypeVenvRadio.disabled = false;
           }
+
+          updateCreateCommandPreview();
         }
 
         document.addEventListener("DOMContentLoaded", () => {
@@ -1250,6 +1298,7 @@ export class ManagePythonEnvironmentDialog {
             handlePythonEnvsDirInputChange();
             handleCustomPythonPathChange();
             handleCondaPathInputChange();
+            handleCondaChannelsInputChange();
             handleSystemPythonPathInputChange();
           }, 1000);
         });
@@ -1264,6 +1313,7 @@ export class ManagePythonEnvironmentDialog {
       pythonEnvName,
       pythonEnvInstallPath,
       condaPath,
+      condaChannels,
       systemPythonPath
     });
   }

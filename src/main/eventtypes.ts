@@ -74,6 +74,8 @@ export enum EventTypeMain {
   SetPythonEnvironmentInstallDirectory = 'set-python-envs-directory',
   ValidateCondaPath = 'validate-conda-path',
   SetCondaPath = 'set-conda-path',
+  ValidateCondaChannels = 'validate-conda-channels',
+  SetCondaChannels = 'set-conda-channels',
   ValidateSystemPythonPath = 'validate-system-python-path',
   SetSystemPythonPath = 'set-system-python-path',
   CopySessionInfoToClipboard = 'copy-session-info-to-clipboard',

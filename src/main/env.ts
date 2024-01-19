@@ -89,6 +89,15 @@ export function getCondaPath() {
   }
 }
 
+export function getCondaChannels(): string[] {
+  let condaChannels = userSettings.getValue(SettingType.condaChannels);
+  if (condaChannels && Array.isArray(condaChannels)) {
+    return condaChannels;
+  }
+
+  return ['conda-forge'];
+}
+
 export function getSystemPythonPath() {
   let pythonPath = userSettings.getValue(SettingType.systemPythonPath);
   if (pythonPath && fs.existsSync(pythonPath)) {
@@ -221,7 +230,7 @@ export function validateNewPythonEnvironmentName(
 
   if (name.trim() === '') {
     message = 'Name cannot be empty';
-  } else if (!name.match(/^(\w+\.?)*\w+$/)) {
+  } else if (!name.match(/^[a-zA-Z0-9-_]+$/)) {
     message = 'Name can only have letters, numbers, - and _';
   } else if (fs.existsSync(path.join(envsDir, name))) {
     message = 'An environment with this name / directory already exists';
@@ -362,6 +371,25 @@ export async function validateCondaPath(
       returnInvalid('Invalid input. Enter a valid conda executable path.');
     }
   });
+}
+
+export function validateCondaChannels(
+  condaChannels: string
+): IFormInputValidationResponse {
+  let message = '';
+  let valid = false;
+
+  if (condaChannels.trim() === '') {
+    valid = true;
+  } else if (!condaChannels.match(/^[a-zA-Z0-9-_ ]+$/)) {
+    message = 'Channel name can only have letters, numbers, - and _';
+  } else {
+    valid = true;
+  }
+  return {
+    valid,
+    message
+  };
 }
 
 export async function validateSystemPythonPath(

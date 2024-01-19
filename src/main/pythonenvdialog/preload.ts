@@ -128,6 +128,15 @@ contextBridge.exposeInMainWorld('electronAPI', {
   setCondaPath: (condaPath: string) => {
     return ipcRenderer.send(EventTypeMain.SetCondaPath, condaPath);
   },
+  validateCondaChannels: (condaChannels: string) => {
+    return ipcRenderer.invoke(
+      EventTypeMain.ValidateCondaChannels,
+      condaChannels
+    );
+  },
+  setCondaChannels: (condaChannels: string) => {
+    return ipcRenderer.send(EventTypeMain.SetCondaChannels, condaChannels);
+  },
   validateSystemPythonPath: (pythonPath: string) => {
     return ipcRenderer.invoke(
       EventTypeMain.ValidateSystemPythonPath,

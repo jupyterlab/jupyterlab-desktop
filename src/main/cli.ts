@@ -4,9 +4,10 @@ import {
   createTempFile,
   EnvironmentInstallStatus,
   envPathForPythonPath,
+  getBundledEnvInstallerPath,
   getBundledPythonEnvPath,
   getBundledPythonPath,
-  installBundledEnvironment,
+  installCondaPackEnvironment,
   isBaseCondaEnv,
   isEnvInstalledByDesktopApp,
   markEnvironmentAsJupyterInstalled,
@@ -22,6 +23,7 @@ import { Registry } from './registry';
 import { app } from 'electron';
 import {
   condaEnvPathForCondaExePath,
+  getCondaChannels,
   getPythonEnvsDirectory,
   ICommandRunCallbacks,
   runCommandInEnvironment,
@@ -45,15 +47,15 @@ export function parseCLIArgs(argv: string[]) {
       'Launch in /data/nb and open /data/nb/test.ipynb and /data/nb/sub/test2.ipynb'
     )
     .example(
-      'jlab env install',
+      'jlab env create',
       'Install bundled Python environment to the default path'
     )
     .example(
-      'jlab env install --path /opt/jlab_server',
+      'jlab env create --source bundle --prefix /opt/jlab_server',
       'Install bundled Python environment to /opt/jlab_server'
     )
     .example(
-      'jlab env create --path /opt/jlab_server',
+      'jlab env create --prefix /opt/jlab_server',
       'Create new Python environment at /opt/jlab_server'
     )
     .example(
@@ -80,10 +82,13 @@ export function parseCLIArgs(argv: string[]) {
     })
     .help('h')
     .alias({
-      h: 'help'
+      h: 'help',
+      n: 'name',
+      c: 'channel',
+      p: 'prefix'
     })
     .command(
-      'env <action> [name]',
+      'env <action>',
       'Manage Python environments',
       yargs => {
         yargs
@@ -92,15 +97,36 @@ export function parseCLIArgs(argv: string[]) {
             type: 'string',
             default: ''
           })
-          .positional('name', {
+          .option('name', {
             describe: 'Environment name',
             type: 'string',
             default: ''
           })
-          .option('path', {
-            describe: 'Destination path',
+          .option('prefix', {
+            describe: 'Environment location',
             type: 'string',
             default: ''
+          })
+          .option('source', {
+            describe: 'Environment / package source',
+            type: 'string',
+            default: ''
+          })
+          .option('source-type', {
+            describe: 'Environment / package source type',
+            choices: [
+              'registry',
+              'bundle',
+              'conda-pack',
+              'conda-lock-file',
+              'conda-env-file'
+            ],
+            default: 'registry'
+          })
+          .option('channel', {
+            describe: 'conda package channels',
+            type: 'array',
+            default: []
           })
           .option('force', {
             describe: 'Force the action',
@@ -130,7 +156,7 @@ export function parseCLIArgs(argv: string[]) {
             await handleEnvListCommand(argv);
             break;
           case 'install':
-            await handleEnvInstallCommand(argv);
+            console.log('Not implemented yet!');
             break;
           case 'activate':
             await handleEnvActivateCommand(argv);
@@ -284,18 +310,14 @@ export function addUserSetEnvironment(envPath: string, isConda: boolean) {
   }
 }
 
-export async function handleEnvInstallCommand(argv: any) {
-  let installPath: string;
-  if (argv.name) {
-    installPath = path.join(getPythonEnvsDirectory(), argv.name);
-  } else if (argv.path) {
-    installPath = argv.path;
-  } else {
-    installPath = getBundledPythonEnvPath();
-  }
+export async function handleInstallCondaPackEnvironment(
+  condaPackPath: string,
+  installPath: string,
+  forceOverwrite: boolean
+) {
   console.log(`Installing to "${installPath}"`);
 
-  await installBundledEnvironment(installPath, {
+  await installCondaPackEnvironment(condaPackPath, installPath, {
     onInstallStatus: (status, message) => {
       switch (status) {
         case EnvironmentInstallStatus.RemovingExistingInstallation:
@@ -313,7 +335,7 @@ export async function handleEnvInstallCommand(argv: any) {
           console.error(`Failed to install.`, message);
           break;
         case EnvironmentInstallStatus.Success:
-          if (argv.name || argv.path) {
+          if (installPath !== getBundledPythonEnvPath()) {
             addUserSetEnvironment(installPath, true);
           }
           console.log('Installation succeeded.');
@@ -321,11 +343,35 @@ export async function handleEnvInstallCommand(argv: any) {
       }
     },
     get forceOverwrite() {
-      return argv.force;
+      return forceOverwrite;
     }
   }).catch(reason => {
     //
   });
+}
+
+async function installAdditionalCondaPackagesToEnv(
+  envPath: string,
+  packageList: string[],
+  channelList?: string[],
+  callbacks?: ICommandRunCallbacks
+) {
+  const baseCondaEnvPath = condaEnvPathForCondaExePath(appData.condaPath);
+  const condaBaseEnvExists = isBaseCondaEnv(baseCondaEnvPath);
+
+  if (!condaBaseEnvExists) {
+    throw {
+      message: `Base conda path not found "${baseCondaEnvPath}".`
+    };
+  }
+
+  const packages = packageList.join();
+  const condaChannels =
+    channelList?.length > 0 ? channelList : getCondaChannels();
+  const channels = condaChannels.map(channel => `-c ${channel}`).join(' ');
+  const installCommand = `conda install -y ${channels} -p ${envPath} ${packages}`;
+  console.log(`Installing additional packages: "${packages}"`);
+  await runCommandInEnvironment(baseCondaEnvPath, installCommand, callbacks);
 }
 
 export async function handleEnvActivateCommand(argv: any) {
@@ -357,23 +403,84 @@ export async function handleEnvUpdateRegistryCommand(argv: any) {
   appData.save();
 }
 
+export interface ICreatePythonEnvironmentOptions {
+  envPath: string;
+  envType: string;
+  sourceFilePath?: string;
+  sourceType?:
+    | 'registry'
+    | 'bundle'
+    | 'conda-pack'
+    | 'conda-lock-file'
+    | 'conda-env-file';
+  packageList?: string[];
+  condaChannels?: string[];
+  callbacks?: ICommandRunCallbacks;
+}
+
 export async function createPythonEnvironment(
-  envPath: string,
-  envType: string,
-  packages: string,
-  callbacks?: ICommandRunCallbacks
+  options: ICreatePythonEnvironmentOptions
 ) {
+  const {
+    envPath,
+    envType,
+    packageList,
+    callbacks,
+    sourceFilePath,
+    sourceType
+  } = options;
   const isConda = envType === 'conda';
-  const condaEnvPath = condaEnvPathForCondaExePath(appData.condaPath);
-  const condaBaseEnvExists = isBaseCondaEnv(condaEnvPath);
+  const baseCondaEnvPath = condaEnvPathForCondaExePath(appData.condaPath);
+  const condaBaseEnvExists = isBaseCondaEnv(baseCondaEnvPath);
+  const packages = packageList ? packageList.join(' ') : '';
 
   if (isConda) {
-    const createCommand = `conda create -y -c conda-forge -p ${envPath} ${packages}`;
-    await runCommandInEnvironment(condaEnvPath, createCommand, callbacks);
+    if (!condaBaseEnvExists) {
+      throw {
+        message:
+          'Failed to create Python environment. Base conda environment not found.'
+      };
+    }
+
+    const condaChannels =
+      options.condaChannels?.length > 0
+        ? options.condaChannels
+        : getCondaChannels();
+    const channels = condaChannels.map(channel => `-c ${channel}`).join(' ');
+    if (sourceType === 'conda-lock-file') {
+      const createCommand = `conda-lock install -p ${envPath} ${sourceFilePath}`;
+      await runCommandInEnvironment(baseCondaEnvPath, createCommand, callbacks);
+
+      if (packages) {
+        const installCommand = `conda install -y ${channels} -p ${envPath} ${packages}`;
+        console.log(`Installing additional packages: "${packages}"`);
+        await runCommandInEnvironment(
+          baseCondaEnvPath,
+          installCommand,
+          callbacks
+        );
+      }
+    } else if (sourceType === 'conda-env-file') {
+      const createCommand = `conda env create -p ${envPath} -f ${sourceFilePath} -y`;
+      await runCommandInEnvironment(baseCondaEnvPath, createCommand, callbacks);
+
+      if (packages) {
+        const installCommand = `conda install -y ${channels} -p ${envPath} ${packages}`;
+        console.log(`Installing additional packages: "${packages}"`);
+        await runCommandInEnvironment(
+          baseCondaEnvPath,
+          installCommand,
+          callbacks
+        );
+      }
+    } else {
+      const createCommand = `conda create -p ${envPath} ${packages} ${channels} -y`;
+      await runCommandInEnvironment(baseCondaEnvPath, createCommand, callbacks);
+    }
   } else {
     if (condaBaseEnvExists) {
       const createCommand = `python -m venv create ${envPath}`;
-      await runCommandInEnvironment(condaEnvPath, createCommand, callbacks);
+      await runCommandInEnvironment(baseCondaEnvPath, createCommand, callbacks);
     } else if (fs.existsSync(appData.systemPythonPath)) {
       execFileSync(appData.systemPythonPath, ['-m', 'venv', 'create', envPath]);
     } else {
@@ -383,7 +490,7 @@ export async function createPythonEnvironment(
       };
     }
 
-    if (packages.trim() !== '') {
+    if (packages) {
       const installCommand = `python -m pip install ${packages}`;
       console.log('Installing packages...');
       await runCommandInEnvironment(envPath, installCommand, callbacks);
@@ -401,12 +508,38 @@ export async function createPythonEnvironment(
   }
 }
 
+function isURL(urlString: string) {
+  try {
+    const url = new URL(urlString);
+    return url && (url.protocol === 'https:' || url.protocol === 'http:');
+  } catch (error) {
+    return false;
+  }
+}
+
+async function downloadToTempFile(
+  fetchURL: string,
+  fileName: string
+): Promise<string> {
+  const downloadPath = createTempFile(fileName, '', null);
+  const response = await fetch(fetchURL);
+  const arrayBuffer = await response.arrayBuffer();
+  const buffer = Buffer.from(arrayBuffer);
+  fs.writeFileSync(downloadPath, buffer);
+
+  return downloadPath;
+}
+
 export async function handleEnvCreateCommand(argv: any) {
   let envPath: string;
+  let installingToBundledEnvPath = false;
   if (argv.name) {
     envPath = path.join(getPythonEnvsDirectory(), argv.name);
   } else if (argv.path) {
     envPath = argv.path;
+  } else {
+    envPath = getBundledPythonEnvPath();
+    installingToBundledEnvPath = true;
   }
 
   if (!envPath) {
@@ -431,18 +564,95 @@ export async function handleEnvCreateCommand(argv: any) {
     }
   }
 
+  // if no name or prefix path specified (jlab env create), use bundled installer
+  let source = installingToBundledEnvPath ? 'bundle' : argv.source;
+
+  const { sourceType } = argv;
+  const isCondaPackSource = source === 'bundle' || sourceType === 'conda-pack';
+
   const excludeJlab = argv.excludeJlab === true;
   const envType = argv.envType;
-  const isConda = envType === 'conda';
+  const isConda =
+    envType === 'conda' ||
+    sourceType === 'conda-pack' ||
+    sourceType === 'conda-lock-file' ||
+    sourceType === 'conda-env-file';
   const condaEnvPath = condaEnvPathForCondaExePath(appData.condaPath);
   const condaBaseEnvExists = isBaseCondaEnv(condaEnvPath);
 
-  const packageList = argv._.slice(1);
-  if (!excludeJlab) {
+  const packageList: string[] = argv._.slice(1);
+  // add jupyterlab package unless source is conda pack
+  if (!isCondaPackSource && !excludeJlab) {
     packageList.push('jupyterlab');
   }
 
   console.log(`Creating Python environment at "${envPath}"...`);
+
+  let sourceIsTempFile = false;
+  let sourceFilePath = '';
+
+  if (isCondaPackSource) {
+    if (source === 'bundle') {
+      sourceFilePath = getBundledEnvInstallerPath();
+    } else if (sourceType === 'conda-pack') {
+      if (isURL(source)) {
+        try {
+          sourceFilePath = await downloadToTempFile(source, 'pack.tar.gz');
+          sourceIsTempFile = true;
+        } catch (error) {
+          console.error(error);
+        }
+      } else {
+        if (fs.existsSync(source) && fs.statSync(source).isFile()) {
+          sourceFilePath = source;
+        }
+      }
+    }
+
+    if (sourceFilePath) {
+      await handleInstallCondaPackEnvironment(
+        sourceFilePath,
+        envPath,
+        argv.force
+      );
+      if (sourceIsTempFile) {
+        fs.unlinkSync(sourceFilePath);
+      }
+
+      if (packageList.length > 0) {
+        await installAdditionalCondaPackagesToEnv(
+          envPath,
+          packageList,
+          argv.channel
+        );
+      }
+    }
+
+    return;
+  }
+
+  if (sourceType === 'conda-lock-file' || sourceType === 'conda-env-file') {
+    if (isURL(source)) {
+      try {
+        sourceFilePath = await downloadToTempFile(
+          source,
+          sourceType === 'conda-lock-file' ? 'env.lock' : 'env.yml'
+        );
+        sourceIsTempFile = true;
+      } catch (error) {
+        console.error(error);
+      }
+    } else {
+      if (fs.existsSync(source) && fs.statSync(source).isFile()) {
+        sourceFilePath = source;
+      }
+    }
+
+    if (!sourceFilePath) {
+      console.error(`Invalid env source "${source}"!`);
+      return;
+    }
+  }
 
   if (isConda && !condaBaseEnvExists) {
     console.error(
@@ -454,13 +664,20 @@ export async function handleEnvCreateCommand(argv: any) {
   const createCondaEnv = isConda || (envType === 'auto' && condaBaseEnvExists);
 
   try {
-    await createPythonEnvironment(
+    await createPythonEnvironment({
       envPath,
-      createCondaEnv ? 'conda' : 'venv',
-      packageList.join(' ')
-    );
+      envType: createCondaEnv ? 'conda' : 'venv',
+      sourceFilePath: sourceFilePath,
+      sourceType: sourceType,
+      packageList,
+      condaChannels: argv.channel
+    });
   } catch (error) {
     console.error(error);
+  }
+
+  if (sourceIsTempFile) {
+    fs.unlinkSync(sourceFilePath);
   }
 }
 
