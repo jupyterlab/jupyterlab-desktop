@@ -527,11 +527,13 @@ async function downloadToTempFile(
   fetchURL: string,
   fileName: string
 ): Promise<string> {
+  console.log(`Downloading "${fetchURL}"...`);
   const downloadPath = createTempFile(fileName, '', null);
   const response = await fetch(fetchURL);
   const arrayBuffer = await response.arrayBuffer();
   const buffer = Buffer.from(arrayBuffer);
   fs.writeFileSync(downloadPath, buffer);
+  console.log(`Finished downloading and saved to temp file "${downloadPath}"`);
 
   return downloadPath;
 }
