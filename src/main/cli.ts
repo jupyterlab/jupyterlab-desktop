@@ -360,9 +360,7 @@ async function installAdditionalCondaPackagesToEnv(
   const condaBaseEnvExists = isBaseCondaEnv(baseCondaEnvPath);
 
   if (!condaBaseEnvExists) {
-    throw {
-      message: `Base conda path not found "${baseCondaEnvPath}".`
-    };
+    throw new Error(`Base conda path not found "${baseCondaEnvPath}".`);
   }
 
   const packages = packageList.join();
@@ -436,10 +434,9 @@ export async function createPythonEnvironment(
 
   if (isConda) {
     if (!condaBaseEnvExists) {
-      throw {
-        message:
-          'Failed to create Python environment. Base conda environment not found.'
-      };
+      throw new Error(
+        'Failed to create Python environment. Base conda environment not found.'
+      );
     }
 
     const condaChannels =
@@ -449,7 +446,17 @@ export async function createPythonEnvironment(
     const channels = condaChannels.map(channel => `-c ${channel}`).join(' ');
     if (sourceType === 'conda-lock-file') {
       const createCommand = `conda-lock install -p ${envPath} ${sourceFilePath}`;
-      await runCommandInEnvironment(baseCondaEnvPath, createCommand, callbacks);
+      if (
+        !(await runCommandInEnvironment(
+          baseCondaEnvPath,
+          createCommand,
+          callbacks
+        ))
+      ) {
+        throw new Error(
+          `Failed to create environment from pack. Make sure conda-lock Python package is installed in then base environment "${baseCondaEnvPath}".`
+        );
+      }
 
       if (packages) {
         const installCommand = `conda install -y ${channels} -p ${envPath} ${packages}`;
@@ -484,10 +491,9 @@ export async function createPythonEnvironment(
     } else if (fs.existsSync(appData.systemPythonPath)) {
       execFileSync(appData.systemPythonPath, ['-m', 'venv', 'create', envPath]);
     } else {
-      throw {
-        message:
-          'Failed to create Python environment. Python executable not found.'
-      };
+      throw new Error(
+        'Failed to create Python environment. Python executable not found.'
+      );
     }
 
     if (packages) {
