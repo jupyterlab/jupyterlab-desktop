@@ -19,6 +19,7 @@ Below are detailed information on topics which commonly come up in questions and
 - [Double clicking .ipynb files not launching JLD](#double-clicking-ipynb-files-not-launching-jld)
 - [Detecting if an issue is specific to JupyterLab Desktop or not](#Detecting-if-an-issue-is-specific-to-JupyterLab-Desktop-or-not)
 - [Debugging application launch issues](#Debugging-application-launch-issues)
+- [Reverting to an older version and disabling auto-update](#Reverting-to-an-older-version-and-disabling-auto-update)
 
 ## JupyterLab Desktop vs JupyterLab Web Application versions
 
@@ -195,3 +196,19 @@ Application launch might fail for various reasons and it is best to check logs f
 3. Try removing custom environment settings from `settings.json` and/or `desktop-settings.json`. You can see [configuration and data files section in User Guide](user-guide.md#Configuration-and-data-files) for the locations of these files in different systems. Retry launch and check logs.
 4. Try removing application cache data from `app-data.json`. Retry launch and check logs.
 5. Try to launch using `jlab --log-level debug` CLI command to check if there are any logs output in system Terminal.
+
+## Reverting to an older version and disabling auto-update
+
+JupyterLab Desktop automatically downloads and installs new versions on some platforms. If newer versions are causing compatibility issues or other problems you can reinstall an older version. Follow the steps below to disable auto-updates, and revert to an older version.
+
+1. Close all running JupyterLab Desktop instances, make sure all processes have stopped.
+2. Open your [User settings file](user-guide.md#configuration-and-data-files) and add the settings below.
+
+   ```json
+   {
+     "checkForUpdatesAutomatically": false,
+     "installUpdatesAutomatically": false
+   }
+   ```
+
+3. Install older version of JupyterLab Desktop from the [Releases](https://github.com/jupyterlab/jupyterlab-desktop/releases/) page.
