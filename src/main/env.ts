@@ -169,7 +169,8 @@ export async function runCommandInEnvironment(
   callbacks?: ICommandRunCallbacks
 ) {
   const isWin = process.platform === 'win32';
-  const condaEnvPath = condaEnvPathForCondaExePath(appData.condaPath);
+  const baseCondaPath = getCondaPath();
+  const condaEnvPath = condaEnvPathForCondaExePath(baseCondaPath);
   const commandScript = createCommandScriptInEnv(
     envPath,
     condaEnvPath,

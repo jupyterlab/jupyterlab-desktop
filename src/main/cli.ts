@@ -24,7 +24,9 @@ import { app } from 'electron';
 import {
   condaEnvPathForCondaExePath,
   getCondaChannels,
+  getCondaPath,
   getPythonEnvsDirectory,
+  getSystemPythonPath,
   ICommandRunCallbacks,
   runCommandInEnvironment,
   validateCondaPath,
@@ -192,6 +194,7 @@ export async function handleEnvInfoCommand(argv: any) {
     fs.existsSync(bundledPythonPath) &&
     (fs.statSync(bundledPythonPath).isFile() ||
       fs.statSync(bundledPythonPath).isSymbolicLink());
+  // TODO: move this logic to getJupyterLabPythonPath or similar
   let defaultPythonPath = userSettings.getValue(SettingType.pythonPath);
   if (!defaultPythonPath) {
     defaultPythonPath = getBundledPythonPath();
@@ -203,11 +206,11 @@ export async function handleEnvInfoCommand(argv: any) {
     fs.existsSync(defaultPythonPath) &&
     (fs.statSync(defaultPythonPath).isFile() ||
       fs.statSync(defaultPythonPath).isSymbolicLink());
-  const condaPath = appData.condaPath;
+  const condaPath = getCondaPath();
   const condaChannels = userSettings.getValue(SettingType.condaChannels);
   const condaPathExists =
     condaPath && fs.existsSync(condaPath) && fs.statSync(condaPath).isFile();
-  const systemPythonPath = appData.systemPythonPath;
+  const systemPythonPath = getSystemPythonPath();
   const systemPythonPathExists =
     systemPythonPath &&
     fs.existsSync(systemPythonPath) &&
@@ -362,7 +365,8 @@ async function installAdditionalCondaPackagesToEnv(
   channelList?: string[],
   callbacks?: ICommandRunCallbacks
 ) {
-  const baseCondaEnvPath = condaEnvPathForCondaExePath(appData.condaPath);
+  const baseCondaPath = getCondaPath();
+  const baseCondaEnvPath = condaEnvPathForCondaExePath(baseCondaPath);
   const condaBaseEnvExists = isBaseCondaEnv(baseCondaEnvPath);
 
   if (!condaBaseEnvExists) {
@@ -434,7 +438,8 @@ export async function createPythonEnvironment(
     sourceType
   } = options;
   const isConda = envType === 'conda';
-  const baseCondaEnvPath = condaEnvPathForCondaExePath(appData.condaPath);
+  const baseCondaPath = getCondaPath();
+  const baseCondaEnvPath = condaEnvPathForCondaExePath(baseCondaPath);
   const condaBaseEnvExists = isBaseCondaEnv(baseCondaEnvPath);
   const packages = packageList ? packageList.join(' ') : '';
 
@@ -491,11 +496,12 @@ export async function createPythonEnvironment(
       await runCommandInEnvironment(baseCondaEnvPath, createCommand, callbacks);
     }
   } else {
+    const systemPythonPath = getSystemPythonPath();
     if (condaBaseEnvExists) {
       const createCommand = `python -m venv create ${envPath}`;
       await runCommandInEnvironment(baseCondaEnvPath, createCommand, callbacks);
-    } else if (fs.existsSync(appData.systemPythonPath)) {
-      execFileSync(appData.systemPythonPath, ['-m', 'venv', 'create', envPath]);
+    } else if (fs.existsSync(systemPythonPath)) {
+      execFileSync(systemPythonPath, ['-m', 'venv', 'create', envPath]);
     } else {
       throw new Error(
         'Failed to create Python environment. Python executable not found.'
@@ -591,7 +597,8 @@ export async function handleEnvCreateCommand(argv: any) {
     sourceType === 'conda-pack' ||
     sourceType === 'conda-lock-file' ||
     sourceType === 'conda-env-file';
-  const condaEnvPath = condaEnvPathForCondaExePath(appData.condaPath);
+  const baseCondaPath = getCondaPath();
+  const condaEnvPath = condaEnvPathForCondaExePath(baseCondaPath);
   const condaBaseEnvExists = isBaseCondaEnv(condaEnvPath);
 
   const packageList: string[] = argv._.slice(1);
@@ -751,8 +758,9 @@ export async function launchCLIinEnvironment(
     const isWin = process.platform === 'win32';
     envPath = envPath || getBundledPythonEnvPath();
 
-    const condaEnvPath = condaEnvPathForCondaExePath(appData.condaPath);
-    const activateCommand = createCommandScriptInEnv(envPath, condaEnvPath);
+    const baseCondaPath = getCondaPath();
+    const baseCondaEnvPath = condaEnvPathForCondaExePath(baseCondaPath);
+    const activateCommand = createCommandScriptInEnv(envPath, baseCondaEnvPath);
     const ext = isWin ? 'bat' : 'sh';
     const activateFilePath = createTempFile(`activate.${ext}`, activateCommand);
 
