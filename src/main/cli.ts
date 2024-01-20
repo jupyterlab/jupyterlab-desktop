@@ -133,10 +133,11 @@ export function parseCLIArgs(argv: string[]) {
             type: 'boolean',
             default: false
           })
-          .option('exclude-jlab', {
-            describe: 'Exclude jupyterlab Python package in env create',
+          .option('add-jupyterlab-package', {
+            describe:
+              'Auto-add jupyterlab Python package to newly created environments',
             type: 'boolean',
-            default: false
+            default: true
           })
           .option('env-type', {
             describe: 'Python environment type',
@@ -166,6 +167,9 @@ export function parseCLIArgs(argv: string[]) {
             break;
           case 'set-conda-path':
             await handleEnvSetCondaPathCommand(argv);
+            break;
+          case 'set-conda-channels':
+            await handleEnvSetCondaChannelsCommand(argv);
             break;
           case 'set-system-python-path':
             await handleEnvSetSystemPythonPathCommand(argv);
@@ -200,6 +204,7 @@ export async function handleEnvInfoCommand(argv: any) {
     (fs.statSync(defaultPythonPath).isFile() ||
       fs.statSync(defaultPythonPath).isSymbolicLink());
   const condaPath = appData.condaPath;
+  const condaChannels = userSettings.getValue(SettingType.condaChannels);
   const condaPathExists =
     condaPath && fs.existsSync(condaPath) && fs.statSync(condaPath).isFile();
   const systemPythonPath = appData.systemPythonPath;
@@ -227,6 +232,7 @@ export async function handleEnvInfoCommand(argv: any) {
       condaPathExists ? 'exists' : 'not found'
     }]`
   );
+  infoLines.push(`conda channels:\n  "${condaChannels.join(' ')}"`);
   infoLines.push(
     `System Python path:\n  "${systemPythonPath}" [${
       systemPythonPathExists ? 'exists' : 'not found'
@@ -376,8 +382,8 @@ export async function handleEnvActivateCommand(argv: any) {
   let envPath: string;
   if (argv.name) {
     envPath = path.join(getPythonEnvsDirectory(), argv.name);
-  } else if (argv.path) {
-    envPath = argv.path;
+  } else if (argv.prefix) {
+    envPath = path.resolve(argv.prefix);
   } else {
     envPath = getBundledPythonEnvPath();
   }
@@ -454,7 +460,7 @@ export async function createPythonEnvironment(
         ))
       ) {
         throw new Error(
-          `Failed to create environment from pack. Make sure conda-lock Python package is installed in then base environment "${baseCondaEnvPath}".`
+          `Failed to create environment from pack. Make sure "conda-lock" Python package is installed in then base environment "${baseCondaEnvPath}".`
         );
       }
 
@@ -543,8 +549,8 @@ export async function handleEnvCreateCommand(argv: any) {
   let installingToBundledEnvPath = false;
   if (argv.name) {
     envPath = path.join(getPythonEnvsDirectory(), argv.name);
-  } else if (argv.path) {
-    envPath = argv.path;
+  } else if (argv.prefix) {
+    envPath = path.resolve(argv.prefix);
   } else {
     envPath = getBundledPythonEnvPath();
     installingToBundledEnvPath = true;
@@ -578,7 +584,7 @@ export async function handleEnvCreateCommand(argv: any) {
   const { sourceType } = argv;
   const isCondaPackSource = source === 'bundle' || sourceType === 'conda-pack';
 
-  const excludeJlab = argv.excludeJlab === true;
+  const addJupyterlabPackage = argv.addJupyterlabPackage === true;
   const envType = argv.envType;
   const isConda =
     envType === 'conda' ||
@@ -590,7 +596,7 @@ export async function handleEnvCreateCommand(argv: any) {
 
   const packageList: string[] = argv._.slice(1);
   // add jupyterlab package unless source is conda pack
-  if (!isCondaPackSource && !excludeJlab) {
+  if (!isCondaPackSource && addJupyterlabPackage) {
     packageList.push('jupyterlab');
   }
 
@@ -611,6 +617,7 @@ export async function handleEnvCreateCommand(argv: any) {
           console.error(error);
         }
       } else {
+        source = path.resolve(source);
         if (fs.existsSync(source) && fs.statSync(source).isFile()) {
           sourceFilePath = source;
         }
@@ -651,6 +658,7 @@ export async function handleEnvCreateCommand(argv: any) {
         console.error(error);
       }
     } else {
+      source = path.resolve(source);
       if (fs.existsSync(source) && fs.statSync(source).isFile()) {
         sourceFilePath = source;
       }
@@ -690,7 +698,12 @@ export async function handleEnvCreateCommand(argv: any) {
 }
 
 export async function handleEnvSetCondaPathCommand(argv: any) {
-  const condaPath = argv.path as string;
+  const condaPath = argv._.length === 2 ? argv._[1] : undefined;
+  if (!condaPath) {
+    console.error('Please set a valid conda path');
+    return;
+  }
+
   if (!fs.existsSync(condaPath)) {
     console.error(`conda path "${condaPath}" does not exist`);
     return;
@@ -704,8 +717,20 @@ export async function handleEnvSetCondaPathCommand(argv: any) {
   userSettings.save();
 }
 
+export async function handleEnvSetCondaChannelsCommand(argv: any) {
+  const channelList = argv._.slice(1);
+  console.log(`Setting conda channels to "${channelList.join(' ')}"`);
+  userSettings.setValue(SettingType.condaChannels, channelList);
+  userSettings.save();
+}
+
 export async function handleEnvSetSystemPythonPathCommand(argv: any) {
-  const systemPythonPath = argv.path as string;
+  const systemPythonPath = argv._.length === 2 ? argv._[1] : undefined;
+  if (!systemPythonPath) {
+    console.error('Please set a valid Python path');
+    return;
+  }
+
   if (!fs.existsSync(systemPythonPath)) {
     console.error(`Python path "${systemPythonPath}" does not exist`);
     return;
