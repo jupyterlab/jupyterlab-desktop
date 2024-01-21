@@ -8,6 +8,7 @@ import { ThemedView } from '../dialog/themedview';
 import { EventTypeRenderer } from '../eventtypes';
 import { IPythonEnvironment } from '../tokens';
 import { IApplication } from '../app';
+import { getRelativePathToUserHome } from '../utils';
 
 export class PythonEnvironmentSelectPopup {
   constructor(options: PythonEnvironmentSelectView.IOptions) {
@@ -20,6 +21,8 @@ export class PythonEnvironmentSelectPopup {
     const { envs, defaultPythonPath, bundledPythonPath } = options;
     this._envs = options.envs;
     const currentPythonPath = options.currentPythonPath || '';
+    const currentPythonPathRelative =
+      getRelativePathToUserHome(currentPythonPath) || currentPythonPath;
 
     const uFuzzyScriptSrc = fs.readFileSync(
       path.join(__dirname, '../../../app-assets/uFuzzy.iife.min.js')
@@ -53,13 +56,29 @@ export class PythonEnvironmentSelectPopup {
           display: flex;
           align-items: center;
           gap: 10px;
-          color: var(--neutral-foreground-hint);
+          margin-left: 5px;
+          padding: 6px 0 8px 0;
+          border-image: linear-gradient(to right, var(--neutral-stroke-active), transparent) 1;
+          border-width: 1px;
+          border-style: none none solid none;
+        }
+        #current-python-path-label {
+          display: flex;
+          margin-right: 5px;
+        }
+        #current-python-path-label .current-python-path {
+          display: block;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          max-width: 370px;
+          margin-left: 5px;
         }
         #popup-title {
           flex-grow: 1;
           margin-left: 5px;
-          height: 30px;
-          line-height: 30px;
+          height: 25px;
+          line-height: 25px;
           font-weight: bold;
         }
         #header .toolbar-button {
@@ -115,6 +134,9 @@ export class PythonEnvironmentSelectPopup {
           width: 100%;
           box-shadow: none;
         }
+        ::-webkit-scrollbar {
+          display: none;
+        }
         jp-menu {
           background: none;
         }
@@ -130,21 +152,34 @@ export class PythonEnvironmentSelectPopup {
         jp-menu-item::part(end) {
           margin-left: 10px;
         }
+        .current-session-actions {
+          display: flex;
+          gap: 5px;
+          align-items: center;
+          flex-grow: 1;
+        }
       </style>
       <script>${uFuzzyScriptSrc}</script>
       <div style="height: 100%; display: flex; flex-direction: column; row-gap: 5px;">
         <div id="header">
-          <div id="popup-title">
-            Loading Python environment list...
-          </div>
-          <div class="toolbar-button" id="restart-button" onclick='handleRestartSession();' title="Restart session">
-            ${restartIconSrc}
-          </div>
-          <div class="toolbar-button" id="copy-button" onclick='handleCopySessionInfo();' title="Copy session info to clipboard">
-            ${copyIconSrc}
+          <div class="current-session-actions">
+            <div id="current-python-path-label">
+              Current environment
+            </div>
+            <div class="toolbar-button" id="restart-button" onclick='handleRestartSession();' title="Restart session">
+              ${restartIconSrc}
+            </div>
+            <div class="toolbar-button" id="copy-button" onclick='handleCopySessionInfo();' title="Copy session info to clipboard">
+              ${copyIconSrc}
+            </div>
           </div>
           <div class="toolbar-button" id="close-button" onclick='window.electronAPI.hideEnvSelectPopup();' title="Close menu">
             ${xMarkIconSrc}
+          </div>
+        </div>
+        <div>
+          <div id="popup-title">
+            Loading Python environment list...
           </div>
         </div>
         <div>
@@ -162,6 +197,8 @@ export class PythonEnvironmentSelectPopup {
       <script>
         const popupTitle = document.getElementById('popup-title');
         let currentPythonPath = <%- JSON.stringify(currentPythonPath) %>;
+        let currentPythonPathRelative = <%- JSON.stringify(currentPythonPathRelative) %>;
+        const currentPythonPathLabel = document.getElementById('current-python-path-label');
         const pythonPathInput = document.getElementById('python-path');
         const envListMenu = document.getElementById('env-list');
         let envs = <%- JSON.stringify(envs) %>;
@@ -220,10 +257,11 @@ export class PythonEnvironmentSelectPopup {
             }
           }
 
-          popupTitle.innerText = html.length > 0 ?
-            'Restart session using a different Python environment' :
+          const filterEnabled = envs.length > 0;
+          popupTitle.innerText = filterEnabled ?
+            'Restart session with a different Python environment' :
             'Loading Python environment list...';
-          pythonPathInput.disabled = !html;
+          pythonPathInput.disabled = !filterEnabled;
 
           envListMenu.innerHTML = html;
 
@@ -238,16 +276,24 @@ export class PythonEnvironmentSelectPopup {
           window.electronAPI.copySessionInfo();
         }
 
-        window.electronAPI.onResetPythonEnvSelectPopup((path) => {
+        window.electronAPI.onResetPythonEnvSelectPopup(() => {
           pythonPathInput.value = '';
           activeIndex = 0;
           filterEnvironmentList();
           updateActiveItem();
-          pythonPathInput.focus();
+          // scroll to top
+          if (envListMenu.childNodes.length > 0) {
+            envListMenu.childNodes[0].scrollIntoView();
+          }
+          setTimeout(() => {
+            pythonPathInput.focus();
+          }, 300);
         });
 
-        window.electronAPI.onCurrentPythonPathSet((path) => {
+        window.electronAPI.onCurrentPythonPathSet((path, relativePath) => {
           currentPythonPath = path;
+          currentPythonPathRelative = relativePath;
+          updateCurrentEnvLabel();
         });
 
         window.electronAPI.onSetPythonEnvironmentList((newEnvs) => {
@@ -277,13 +323,16 @@ export class PythonEnvironmentSelectPopup {
           }
 
           const activeItem = envListMenu.children[activeIndex];
-          activeItem.scrollIntoView();
           activeItem.classList.add('active');
         }
 
         function filterResults() {
           const input = pythonPathInput.value;
           return input.trim() !== '';
+        }
+
+        function updateCurrentEnvLabel() {
+          currentPythonPathLabel.innerHTML = \`Current environment: <div class="current-python-path" title="\$\{currentPythonPath\}">\$\{currentPythonPathRelative\}</div>\`;
         }
 
         function filterEnvironmentList() {
@@ -302,6 +351,7 @@ export class PythonEnvironmentSelectPopup {
 
         document.addEventListener("DOMContentLoaded", () => {
           updateMenu();
+          updateCurrentEnvLabel();
 
           pythonPathInput.control.onkeydown = (event) => {
             const numEnvs = envs.length;
@@ -353,17 +403,11 @@ export class PythonEnvironmentSelectPopup {
             pythonPathInput.focus();
           }, 500);
         });
-
-        // make sure active item is visible
-        window.onresize = () => {
-          setTimeout(() => {
-            updateActiveItem();
-          }, 0);
-        };
       </script>
         `;
     this._pageBody = ejs.render(template, {
       currentPythonPath,
+      currentPythonPathRelative,
       envs
     });
   }
@@ -382,9 +426,11 @@ export class PythonEnvironmentSelectPopup {
   }
 
   setCurrentPythonPath(currentPythonPath: string) {
+    const relativePath = getRelativePathToUserHome(currentPythonPath);
     this._view.view.webContents.send(
       EventTypeRenderer.SetCurrentPythonPath,
-      currentPythonPath
+      currentPythonPath,
+      relativePath || currentPythonPath
     );
   }
 
@@ -397,6 +443,7 @@ export class PythonEnvironmentSelectPopup {
   getScrollHeight(): number {
     const envCount = this._envs.length;
     return (
+      34 + // header
       30 + // title
       40 + // path input
       (envCount > 0 ? envCount * 40 + 14 : 0) + // env list

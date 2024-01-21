@@ -221,7 +221,7 @@ export class ManagePythonEnvironmentDialog {
         height: 100%;
       }
       #content-area {
-        background: var(--neutral-layer-4);
+        background: var(--neutral-layer-2);
         width: 100%;
       }
       #env-list-progress {
@@ -363,11 +363,11 @@ export class ManagePythonEnvironmentDialog {
         padding-left: 15px;
       }
       jp-menu-item.menu-category {
-        background: var(--neutral-layer-2);
+        background: var(--neutral-layer-3);
         padding-left: 5px;
       }
       jp-menu-item.active {
-        background: var(--neutral-layer-3);
+        background: var(--neutral-layer-4);
       }
       jp-menu-item::part(content) {
         width: 100%;
@@ -941,7 +941,10 @@ export class ManagePythonEnvironmentDialog {
             createCommandPreview.value = \`conda create -p \$\{getEnvInstallPath()\} \$\{getCondaChannels()\}\ \$\{getPackageList()\}\`;
           } else {
             const envPath = getEnvInstallPath();
-            createCommandPreview.value = \`python -m venv create \$\{envPath\}\n\$\{envPath\}\$\{pathSeparator\}${activateRelPath.replace("\\", "\\\\")}\npython -m pip install \$\{getPackageList()\}\`;
+            createCommandPreview.value = \`python -m venv create \$\{envPath\}\n\$\{envPath\}\$\{pathSeparator\}${activateRelPath.replace(
+              '\\',
+              '\\\\'
+            )}\npython -m pip install \$\{getPackageList()\}\`;
           }
         }
 

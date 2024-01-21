@@ -55,6 +55,13 @@ export function getSchemasDir(): string {
   return path.normalize(path.join(getAppDir(), './build/schemas'));
 }
 
+export function getRelativePathToUserHome(absolutePath: string): string {
+  const home = getUserHomeDir();
+  if (absolutePath.startsWith(home)) {
+    return `~${path.sep}${path.relative(home, absolutePath)}`;
+  }
+}
+
 export function getEnvironmentPath(environment: IPythonEnvironment): string {
   return envPathForPythonPath(environment.path);
 }

@@ -3,7 +3,10 @@ import { IPythonEnvironment } from '../tokens';
 
 const { contextBridge, ipcRenderer } = require('electron');
 
-type CurrentPythonPathSetListener = (path: string) => void;
+type CurrentPythonPathSetListener = (
+  path: string,
+  relativePath: string
+) => void;
 type ResetPythonEnvSelectPopupListener = () => void;
 type CustomPythonPathSelectedListener = (path: string) => void;
 type SetPythonEnvironmentListListener = (envs: IPythonEnvironment[]) => void;
@@ -56,11 +59,14 @@ contextBridge.exposeInMainWorld('electronAPI', {
   }
 });
 
-ipcRenderer.on(EventTypeRenderer.SetCurrentPythonPath, (event, path) => {
-  if (onCurrentPythonPathSetListener) {
-    onCurrentPythonPathSetListener(path);
+ipcRenderer.on(
+  EventTypeRenderer.SetCurrentPythonPath,
+  (event, path, relativePath) => {
+    if (onCurrentPythonPathSetListener) {
+      onCurrentPythonPathSetListener(path, relativePath);
+    }
   }
-});
+);
 
 ipcRenderer.on(EventTypeRenderer.ResetPythonEnvSelectPopup, event => {
   if (onResetPythonEnvSelectPopupListener) {

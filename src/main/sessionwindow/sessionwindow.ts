@@ -71,7 +71,7 @@ export interface IServerInfo {
 }
 
 const titleBarHeight = 29;
-const defaultEnvSelectPopupHeight = 300;
+const defaultEnvSelectPopupHeight = 330;
 
 export class SessionWindow implements IDisposable {
   constructor(options: SessionWindow.IOptions) {
