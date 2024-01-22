@@ -117,7 +117,11 @@ if (cli.flags.updateBinarySignList) {
     'mo'
   ]);
 
-  const skipPathComponents = ['/pytz/zoneinfo/', '/tzdata/zoneinfo/', 'share/terminfo/'];
+  const skipPathComponents = [
+    '/pytz/zoneinfo/',
+    '/tzdata/zoneinfo/',
+    'share/terminfo/'
+  ];
 
   const needsSigning = filePath => {
     // consider bin, libexec, sbin directories, and .so, .dylib files in other directories
