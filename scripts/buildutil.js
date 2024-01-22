@@ -94,11 +94,13 @@ if (cli.flags.updateBinarySignList) {
   const { isBinary } = require('istextorbinary');
   const envInstallerDir = path.resolve('env_installer', 'jlab_server');
   const envBinDir = path.join(envInstallerDir, 'bin');
+  const libExecDir = path.join(envInstallerDir, 'libexec');
 
   const needsSigning = filePath => {
-    // conly consider bin directory, and .so, .dylib files in other directories
+    // only consider bin & libexec directory, and .so, .dylib files in other directories
     if (
       filePath.startsWith(envBinDir) ||
+      filePath.startsWith(libExecDir) ||
       filePath.endsWith('.so') ||
       filePath.endsWith('.dylib')
     ) {
