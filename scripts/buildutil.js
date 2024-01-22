@@ -109,6 +109,7 @@ if (cli.flags.updateBinarySignList) {
     'tiff',
     'ico',
     'icns',
+    'ppm',
     'dat',
     'woff',
     'woff2',
@@ -124,7 +125,11 @@ if (cli.flags.updateBinarySignList) {
     'exe',
     'whl',
     'parquet',
-    'a'
+    'a',
+    'testcase',
+    'npy',
+    'npz',
+    'pkl'
   ]);
 
   const skipPathComponents = [
