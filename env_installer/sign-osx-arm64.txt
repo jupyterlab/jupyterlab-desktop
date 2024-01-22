@@ -512,3 +512,14 @@ libexec/lzo/examples/lzopack
 libexec/lzo/examples/lzotest
 libexec/lzo/examples/simple
 libexec/lzo/examples/testmini
+sbin/gss-server
+sbin/kadmin.local
+sbin/kadmind
+sbin/kdb5_util
+sbin/kprop
+sbin/kpropd
+sbin/kproplog
+sbin/krb5kdc
+sbin/sim_server
+sbin/sserver
+sbin/uuserver
