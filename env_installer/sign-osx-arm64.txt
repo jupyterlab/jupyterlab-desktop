@@ -84,8 +84,6 @@ bin/xmllint
 bin/xz
 bin/xzdec
 bin/zstd
-lib/Tk.icns
-lib/Tk.tiff
 lib/itcl4.2.3/libitcl4.2.3.dylib
 lib/itcl4.2.3/libitclstub4.2.3.a
 lib/krb5/plugins/kdb/db2.so

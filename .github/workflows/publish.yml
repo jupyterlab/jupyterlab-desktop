@@ -15,7 +15,7 @@ jobs:
       matrix:
         cfg:
         # - { platform: linux, platform_name: Linux,  os: ubuntu-latest, build_platform: linux-64, conda_platform: linux-64 }
-        # - { platform: osx-64, platform_name: macOS x64, os: macos-latest, build_platform: osx-64, conda_platform: osx-64 }
+        - { platform: osx-64, platform_name: macOS x64, os: macos-latest, build_platform: osx-64, conda_platform: osx-64 }
         - { platform: osx-arm64, platform_name: macOS arm64, os: macos-latest, build_platform: osx-64, conda_platform: osx-arm64 }
         # - { platform: win, platform_name: Windows, os: windows-latest, build_platform: win-64, conda_platform: win-64 }
 
