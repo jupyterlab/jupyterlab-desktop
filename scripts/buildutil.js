@@ -105,13 +105,19 @@ if (cli.flags.updateBinarySignList) {
   const skipExtensions = new Set([
     'pyc',
     'png',
-    'dat',
     'jpg',
+    'gif',
+    'ico',
+    'dat',
     'woff',
     'woff2',
     'ttf',
-    'pdf'
+    'pdf',
+    'eot',
+    'mo'
   ]);
+
+  const skipPathComponents = ['/pytz/zoneinfo/', '/tzdata/zoneinfo/', 'share/terminfo/'];
 
   const needsSigning = filePath => {
     // consider bin, libexec, sbin directories, and .so, .dylib files in other directories
@@ -124,14 +130,15 @@ if (cli.flags.updateBinarySignList) {
     // ) {
     // check for binary content
 
-    const ext = getFileExtension(filePath);
+    const skippedPath = skipPathComponents.find(component => {
+      return filePath.includes(component);
+    });
 
-    if (!skipExtensions.has(ext)) {
-      return isBinary(null, fs.readFileSync(filePath));
+    if (skippedPath || skipExtensions.has(getFileExtension(filePath))) {
+      return false;
     }
-    // }
 
-    return false;
+    return isBinary(null, fs.readFileSync(filePath));
   };
 
   const findBinariesInDirectory = dirPath => {
