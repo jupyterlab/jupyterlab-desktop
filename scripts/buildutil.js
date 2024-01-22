@@ -93,15 +93,14 @@ if (cli.flags.checkVersionMatch) {
 if (cli.flags.updateBinarySignList) {
   const { isBinary } = require('istextorbinary');
   const envInstallerDir = path.resolve('env_installer', 'jlab_server');
-  // const envBinDir = path.join(envInstallerDir, 'bin');
-  // const envSbinDir = path.join(envInstallerDir, 'sbin');
-  // const envLibexecDir = path.join(envInstallerDir, 'libexec');
+
   const getFileExtension = filePath => {
     const lastDot = filePath.lastIndexOf('.');
     if (lastDot !== -1) {
       return filePath.substring(lastDot + 1);
     }
   };
+
   const skipExtensions = new Set([
     'pyc',
     'png',
@@ -116,7 +115,16 @@ if (cli.flags.updateBinarySignList) {
     'ttf',
     'pdf',
     'eot',
-    'mo'
+    'mo',
+    'wav',
+    'zip',
+    'gz',
+    'xz',
+    'bz2',
+    'exe',
+    'whl',
+    'parquet',
+    'a'
   ]);
 
   const skipPathComponents = [
@@ -125,17 +133,8 @@ if (cli.flags.updateBinarySignList) {
     'share/terminfo/'
   ];
 
+  // sign binary files except for certain extensions and certain directories
   const needsSigning = filePath => {
-    // consider bin, libexec, sbin directories, and .so, .dylib files in other directories
-    // if (
-    //   filePath.startsWith(envBinDir) ||
-    //   filePath.startsWith(envLibexecDir) ||
-    //   filePath.startsWith(envSbinDir) ||
-    //   filePath.endsWith('.so') ||
-    //   filePath.endsWith('.dylib')
-    // ) {
-    // check for binary content
-
     const skippedPath = skipPathComponents.find(component => {
       return filePath.includes(component);
     });
