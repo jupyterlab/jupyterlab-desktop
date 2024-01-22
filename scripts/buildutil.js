@@ -96,6 +96,22 @@ if (cli.flags.updateBinarySignList) {
   // const envBinDir = path.join(envInstallerDir, 'bin');
   // const envSbinDir = path.join(envInstallerDir, 'sbin');
   // const envLibexecDir = path.join(envInstallerDir, 'libexec');
+  const getFileExtension = filePath => {
+    const lastDot = filePath.lastIndexOf('.');
+    if (lastDot !== -1) {
+      return filePath.substring(lastDot + 1);
+    }
+  };
+  const skipExtensions = new Set([
+    'pyc',
+    'png',
+    'dat',
+    'jpg',
+    'woff',
+    'woff2',
+    'ttf',
+    'pdf'
+  ]);
 
   const needsSigning = filePath => {
     // consider bin, libexec, sbin directories, and .so, .dylib files in other directories
@@ -107,7 +123,10 @@ if (cli.flags.updateBinarySignList) {
     //   filePath.endsWith('.dylib')
     // ) {
     // check for binary content
-    if (!filePath.endsWith('.pyc')) {
+
+    const ext = getFileExtension(filePath);
+
+    if (!skipExtensions.has(ext)) {
       return isBinary(null, fs.readFileSync(filePath));
     }
     // }
