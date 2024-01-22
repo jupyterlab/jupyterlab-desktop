@@ -107,10 +107,12 @@ if (cli.flags.updateBinarySignList) {
     //   filePath.endsWith('.dylib')
     // ) {
     // check for binary content
-    return isBinary(null, fs.readFileSync(filePath));
+    if (!filePath.endsWith('.pyc')) {
+      return isBinary(null, fs.readFileSync(filePath));
+    }
     // }
 
-    // return false;
+    return false;
   };
 
   const findBinariesInDirectory = dirPath => {
