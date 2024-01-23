@@ -71,9 +71,9 @@
     "afterSign": "scripts/notarize.js",
     "linux": {
       "target": [
-        "snap",
         "deb",
-        "rpm"
+        "rpm",
+        "snap"
       ],
       "category": "Science;Development;",
       "extraResources": [
@@ -88,13 +88,21 @@
         "--after-install=build/linux_after_install.sh"
       ]
     },
+    "rpm": {
+      "depends": [
+        "libXScrnSaver"
+      ],
+      "fpm": [
+        "--after-install=build/linux_after_install.sh"
+      ]
+    },
     "snap": {
-      "confinement": "strict",
+      "confinement": "classic",
       "base": "core22",
       "environment": {
-        "SHELL": "/bin/bash"
-      },
-      "plugs": ["default",{"personal-files":{"interface":"personal-files","write":["$HOME/.jupyter","$HOME/.ipynb_checkpoints","$HOME/.ipython"]}}]
+        "SHELL": "/bin/bash",
+        "GTK_USE_PORTAL":"1"
+      }
     },
     "win": {
       "target": [
@@ -105,14 +113,6 @@
           "from": "dist-resources/win/jlab.cmd",
           "to": "jlab.cmd"
         }
-      ]
-    },
-    "rpm": {
-      "depends": [
-        "libXScrnSaver"
-      ],
-      "fpm": [
-        "--after-install=build/linux_after_install.sh"
       ]
     },
     "nsis": {

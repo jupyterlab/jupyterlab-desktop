@@ -137,6 +137,15 @@ jobs:
           name: fedora-installer
           path: |
             dist/JupyterLab.rpm
+      
+      - name: Upload Snap Installer
+        if: matrix.cfg.platform == 'linux'
+        uses: actions/upload-artifact@v4
+        id: snap-artifact
+        with:
+          name: snap-installer
+          path: |
+            dist/JupyterLab.snap
 
       - name: Upload macOS x64 Installer
         if: matrix.cfg.platform == 'osx-64'
@@ -241,3 +250,31 @@ jobs:
           asset_name: latest.yml
           tag: v${{ steps.package-info.outputs.version}}
           overwrite: true
+          
+      - name: Upload snap installer as Release asset
+        if: matrix.cfg.platform == 'linux' && steps.release-exists.outputs.result == 'true'
+        uses: svenstaro/upload-release-action@v2
+        with:
+          repo_token: ${{ secrets.JLAB_APP_TOKEN }}
+          file: dist/JupyterLab.snap
+          asset_name: JupyterLab-Setup.snap
+          tag: v${{ steps.package-info.outputs.version}}
+          overwrite: true
+      
+      - name: Publish snap to the latest/edge channel in Snap Store
+        if: matrix.cfg.platform == 'linux'
+        uses: snapcore/action-publish@v1
+        env:
+          SNAPCRAFT_STORE_CREDENTIALS: ${{ secrets.SNAPCRAFT_STORE_CREDENTIALS }}
+        with:
+          snap: dist/JupyterLab.snap
+          release: edge
+          
+      - name: Publish snap to the latest/stable channel in Snap Store
+        if: matrix.cfg.platform == 'linux' && steps.release-exists.outputs.result == 'true'
+        uses: snapcore/action-publish@v1
+        env:
+          SNAPCRAFT_STORE_CREDENTIALS: ${{ secrets.SNAPCRAFT_STORE_CREDENTIALS }}
+        with:
+          snap: dist/JupyterLab.snap
+          release: stable
