@@ -145,7 +145,7 @@ lib/libncurses.6.dylib
 lib/libncursesw.6.dylib
 lib/libnghttp2.14.dylib
 lib/libomp.dylib
-lib/libopenblasp-r0.3.25.dylib
+lib/libopenblasp-r0.3.26.dylib
 lib/libopenjp2.2.5.0.dylib
 lib/libpanel.6.dylib
 lib/libpanelw.6.dylib
