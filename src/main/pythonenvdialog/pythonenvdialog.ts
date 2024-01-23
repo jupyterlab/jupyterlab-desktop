@@ -233,7 +233,7 @@ export class ManagePythonEnvironmentDialog {
         border: 1px solid var(--error-fill-hover);
         padding: 5px;
         box-sizing: border-box;
-        margin-bottom: 5px;
+        margin-top: 5px;
       }
       #env-list-progress-message-content {
         flex-grow: 1;
@@ -432,9 +432,6 @@ export class ManagePythonEnvironmentDialog {
                 <jp-button appearance="accent" onclick='handleAddExistingEnv(this);'>Add existing</jp-button>
                 <jp-button appearance="accent" onclick='handleCreateNewEnvLink(this);'>Create new</jp-button>
               </div>
-            </div>
-
-            <div class="setting-section env-list-section">
               <div class="row">  
                 <jp-progress id="env-list-progress"></jp-progress>
               </div>
@@ -442,6 +439,9 @@ export class ManagePythonEnvironmentDialog {
                 <div id="env-list-progress-message-content"></div>
                 <div id="env-list-progress-message-close" onclick='setEnvListProgressMessage("");'>${xMarkIconSrc}</div>
               </div>
+            </div>
+
+            <div class="setting-section env-list-section">
               <div id="content-area">
                 <jp-menu id="env-list">
                 </jp-menu>

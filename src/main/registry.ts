@@ -35,6 +35,7 @@ import {
   getCondaChannels,
   getEnvironmentInfoFromPythonPath,
   getEnvironmentInfoFromPythonPathSync,
+  getPythonEnvsDirectory,
   IJupyterEnvRequirement,
   JUPYTER_ENV_REQUIREMENTS,
   updateDiscoveredPythonPaths,
@@ -176,7 +177,7 @@ export class Registry implements IRegistry, IDisposable {
         let discoveredEnvs = [].concat(...environments);
 
         this._userSetEnvironments = await this._resolveEnvironments(
-          appData.userSetPythonEnvs,
+          this._getUserSetPythonEnvs(),
           true
         );
 
@@ -231,6 +232,47 @@ export class Registry implements IRegistry, IDisposable {
     this._userSetEnvironments = [];
     this._updateEnvironments();
     this._environmentListUpdated.emit();
+  }
+
+  // rediscover Python envs directory for user installed environments,
+  // in case they are not in cache already
+  private _getUserSetPythonEnvs(): IPythonEnvironment[] {
+    const envsDir = getPythonEnvsDirectory();
+    const envsDirExists =
+      envsDir && fs.existsSync(envsDir) && fs.statSync(envsDir).isDirectory();
+    let userInstalledEnvs: IPythonEnvironment[] = [];
+
+    if (envsDirExists) {
+      try {
+        const list = fs.readdirSync(envsDir);
+        list.forEach(filePath => {
+          const envPath = envsDir + '/' + filePath;
+          const stat = fs.lstatSync(envPath);
+          if (stat && stat.isDirectory()) {
+            const pythonPath = pythonPathForEnvPath(envPath);
+            if (fs.existsSync(pythonPath)) {
+              const found = appData.userSetPythonEnvs.find(env => {
+                return env.path === pythonPath;
+              });
+
+              if (!found) {
+                userInstalledEnvs.push({
+                  path: pythonPath,
+                  name: '',
+                  type: IEnvironmentType.Path,
+                  versions: {},
+                  defaultKernel: 'python3'
+                });
+              }
+            }
+          }
+        });
+      } catch (error) {
+        log.error(`Failed to re-discover /envs directory (${envsDir})`, error);
+      }
+    }
+
+    return [...appData.userSetPythonEnvs, ...userInstalledEnvs];
   }
 
   private async _resolveEnvironments(
