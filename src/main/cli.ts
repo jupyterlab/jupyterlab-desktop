@@ -578,7 +578,7 @@ export async function handleEnvCreateCommand(argv: any) {
       }
     } else {
       console.error(
-        'Environment path not empty. Use --force flag to overwrite.'
+        `Environment path ("${envPath}") not empty. Use --force flag to overwrite.`
       );
       return;
     }
@@ -627,6 +627,8 @@ export async function handleEnvCreateCommand(argv: any) {
         source = path.resolve(source);
         if (fs.existsSync(source) && fs.statSync(source).isFile()) {
           sourceFilePath = source;
+        } else {
+          console.error(`Source not found at "${source}".`);
         }
       }
     }

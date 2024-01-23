@@ -321,10 +321,10 @@ export async function installCondaPackEnvironment(
       ? `${installPath}\\Scripts\\activate.bat && conda-unpack`
       : `source "${installPath}/bin/activate" && conda-unpack`;
 
-    if (platform === 'darwin') {
+    // only unsign when installing from bundled installer
+    if (platform === 'darwin' && isBundledInstaller) {
       unpackCommand = `${createUnsignScriptInEnv(
-        installPath,
-        isBundledInstaller ? undefined : getBinarySignList(installPath)
+        installPath
       )}\n${unpackCommand}`;
     }
 
@@ -600,26 +600,21 @@ export function getBinarySignList(envPath: string) {
   ad-hoc signed. after installation it needs be converted from hardened runtime,
   back to ad-hoc signed.
 */
-export function createUnsignScriptInEnv(
-  envPath: string,
-  signList?: string[]
-): string {
+export function createUnsignScriptInEnv(envPath: string): string {
   const appDir = getAppDir();
-  if (!signList) {
-    signList = [];
-    const signListFile = path.join(
-      appDir,
-      'env_installer',
-      `sign-osx-${process.arch === 'arm64' ? 'arm64' : '64'}.txt`
-    );
-    const fileContents = fs.readFileSync(signListFile, 'utf-8');
+  const signListFile = path.join(
+    appDir,
+    'env_installer',
+    `sign-osx-${process.arch === 'arm64' ? 'arm64' : '64'}.txt`
+  );
+  const fileContents = fs.readFileSync(signListFile, 'utf-8');
+  const signList: string[] = [];
 
-    fileContents.split(/\r?\n/).forEach(line => {
-      if (line) {
-        signList.push(`"${line}"`);
-      }
-    });
-  }
+  fileContents.split(/\r?\n/).forEach(line => {
+    if (line) {
+      signList.push(`"${line}"`);
+    }
+  });
 
   // sign all binaries with ad-hoc signature
   return `cd ${envPath} && codesign -s - -o 0x2 -f ${signList.join(
