@@ -111,9 +111,15 @@ function createLaunchScript(
 
   if (isWin) {
     if (isConda) {
+      const parentDir = path.dirname(condaActivatePath);
+      const activateName = path.basename(condaActivatePath);
+      // server launch sometimes fails if activate.bat is called directly.
+      // so, cd into activate directory then back to working directory
       script = `
-        CALL ${condaActivatePath}
+        CALL cd /d "${parentDir}"
+        CALL ${activateName}
         ${isBaseCondaActivate ? `CALL conda activate ${envPath}` : ''}
+        CALL cd /d "${serverInfo.workingDirectory}"
         CALL ${launchCmd}`;
     } else {
       script = `

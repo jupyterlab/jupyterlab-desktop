@@ -591,15 +591,6 @@ export async function handleEnvCreateCommand(argv: any) {
   const isCondaPackSource = source === 'bundle' || sourceType === 'conda-pack';
 
   const addJupyterlabPackage = argv.addJupyterlabPackage === true;
-  const envType = argv.envType;
-  const isConda =
-    envType === 'conda' ||
-    sourceType === 'conda-pack' ||
-    sourceType === 'conda-lock-file' ||
-    sourceType === 'conda-env-file';
-  const baseCondaPath = getCondaPath();
-  const condaEnvPath = condaEnvPathForCondaExePath(baseCondaPath);
-  const condaBaseEnvExists = isBaseCondaEnv(condaEnvPath);
 
   const packageList: string[] = argv._.slice(1);
   // add jupyterlab package unless source is conda pack
@@ -678,6 +669,20 @@ export async function handleEnvCreateCommand(argv: any) {
       return;
     }
   }
+
+  const envType = argv.envType;
+  const isConda =
+    envType === 'conda' ||
+    sourceType === 'conda-pack' ||
+    sourceType === 'conda-lock-file' ||
+    sourceType === 'conda-env-file';
+  const baseCondaPath = getCondaPath();
+  const condaEnvPath = baseCondaPath
+    ? condaEnvPathForCondaExePath(baseCondaPath)
+    : '';
+  const condaBaseEnvExists = condaEnvPath
+    ? isBaseCondaEnv(condaEnvPath)
+    : false;
 
   if (isConda && !condaBaseEnvExists) {
     console.error(
