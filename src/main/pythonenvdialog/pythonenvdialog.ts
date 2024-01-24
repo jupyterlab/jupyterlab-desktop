@@ -6,6 +6,7 @@ import {
   app,
   BrowserWindow,
   clipboard,
+  dialog,
   Menu,
   MenuItemConstructorOptions
 } from 'electron';
@@ -21,7 +22,8 @@ import {
   isEnvInstalledByDesktopApp,
   launchTerminalInDirectory,
   openDirectoryInExplorer,
-  versionWithoutSuffix
+  versionWithoutSuffix,
+  waitForDuration
 } from '../utils';
 import { EventManager } from '../eventmanager';
 import { EventTypeMain, EventTypeRenderer } from '../eventtypes';
@@ -173,6 +175,25 @@ export class ManagePythonEnvironmentDialog {
           {
             label: 'Delete',
             click: async () => {
+              const envPath = envPathForPythonPath(pythonPath);
+              const envName = path.basename(envPath);
+
+              const choice = dialog.showMessageBoxSync({
+                type: 'warning',
+                message: `Delete environment`,
+                detail: `Are you sure you want to delete "${envName}"?`,
+                buttons: ['Delete', 'Cancel'],
+                defaultId: 1,
+                cancelId: 1
+              });
+
+              // allow dialog to close
+              if (choice === 0) {
+                await waitForDuration(200);
+              } else {
+                return;
+              }
+
               this._window.window.webContents.send(
                 EventTypeRenderer.SetEnvironmentListUpdateStatus,
                 'ENV-DELETE-RUNNING'
