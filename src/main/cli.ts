@@ -377,7 +377,9 @@ async function installAdditionalCondaPackagesToEnv(
   const condaChannels =
     channelList?.length > 0 ? channelList : getCondaChannels();
   const channels = condaChannels.map(channel => `-c ${channel}`).join(' ');
-  const installCommand = `conda install -y ${channels} -p ${envPath} ${packages}`;
+  // TODO: remove classic solver. since installing additional packages onto conda-lock
+  // generated environments fails with mamba solver, classic is used here.
+  const installCommand = `conda install -y ${channels} --solver=classic -p ${envPath} ${packages}`;
   console.log(`Installing additional packages: "${packages}"`);
   await runCommandInEnvironment(baseCondaEnvPath, installCommand, callbacks);
 }
@@ -470,7 +472,9 @@ export async function createPythonEnvironment(
       }
 
       if (packages) {
-        const installCommand = `conda install -y ${channels} -p ${envPath} ${packages}`;
+        // TODO: remove classic solver. since installing additional packages onto conda-lock
+        // generated environments fails with mamba solver, classic is used here.
+        const installCommand = `conda install -y ${channels} --solver=classic -p ${envPath} ${packages}`;
         console.log(`Installing additional packages: "${packages}"`);
         await runCommandInEnvironment(
           baseCondaEnvPath,
@@ -665,7 +669,7 @@ export async function handleEnvCreateCommand(argv: any) {
     }
 
     if (!sourceFilePath) {
-      console.error(`Invalid env source "${source}"!`);
+      console.error(`Invalid env source "${source}".`);
       return;
     }
   }
