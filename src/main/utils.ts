@@ -10,7 +10,7 @@ import log from 'electron-log';
 import { AddressInfo, createServer, Socket } from 'net';
 import { app, nativeTheme } from 'electron';
 import { IPythonEnvironment } from './tokens';
-import { exec } from 'child_process';
+import { exec, execFile, ExecFileOptions, execFileSync } from 'child_process';
 
 export const DarkThemeBGColor = '#212121';
 export const LightThemeBGColor = '#ffffff';
@@ -55,8 +55,20 @@ export function getSchemasDir(): string {
   return path.normalize(path.join(getAppDir(), './build/schemas'));
 }
 
+export function getRelativePathToUserHome(absolutePath: string): string {
+  const home = getUserHomeDir();
+  if (absolutePath.startsWith(home)) {
+    return `~${path.sep}${path.relative(home, absolutePath)}`;
+  }
+}
+
 export function getEnvironmentPath(environment: IPythonEnvironment): string {
   return envPathForPythonPath(environment.path);
+}
+
+export function getBundledEnvInstallerPath(): string {
+  const appDir = getAppDir();
+  return path.join(appDir, 'env_installer', 'jlab_server.tar.gz');
 }
 
 export function getBundledPythonInstallDir(): string {
@@ -76,11 +88,6 @@ export function getBundledPythonInstallDir(): string {
   }
 
   return installDir;
-}
-
-// user data dir for<= 3.5.1-1
-export function getOldUserConfigPath() {
-  return path.join(getBundledPythonInstallDir(), 'jupyterlab-desktop-data');
 }
 
 export function getBundledPythonEnvPath(): string {
@@ -225,13 +232,22 @@ export function versionWithoutSuffix(version: string) {
 
 export enum EnvironmentInstallStatus {
   Started = 'STARTED',
+  Running = 'RUNNING',
   Failure = 'FAILURE',
   Cancelled = 'CANCELLED',
   Success = 'SUCCESS',
   RemovingExistingInstallation = 'REMOVING_EXISTING_INSTALLATION'
 }
 
-export interface IBundledEnvironmentInstallListener {
+export enum EnvironmentDeleteStatus {
+  Started = 'STARTED',
+  Running = 'RUNNING',
+  Failure = 'FAILURE',
+  Cancelled = 'CANCELLED',
+  Success = 'SUCCESS'
+}
+
+export interface ICondaPackEnvironmentInstallListener {
   onInstallStatus: (status: EnvironmentInstallStatus, message?: string) => void;
   forceOverwrite?: boolean;
   confirmOverwrite?: () => Promise<boolean>;
@@ -239,18 +255,23 @@ export interface IBundledEnvironmentInstallListener {
 
 export async function installBundledEnvironment(
   installPath: string,
-  listener?: IBundledEnvironmentInstallListener
+  listener?: ICondaPackEnvironmentInstallListener
 ): Promise<boolean> {
+  const condaPackPath = getBundledEnvInstallerPath();
+
+  return installCondaPackEnvironment(condaPackPath, installPath, listener);
+}
+
+export async function installCondaPackEnvironment(
+  condaPackPath: string,
+  installPath: string,
+  listener?: ICondaPackEnvironmentInstallListener
+): Promise<boolean> {
+  const isBundledInstaller = condaPackPath === getBundledEnvInstallerPath();
   // eslint-disable-next-line no-async-promise-executor
   return new Promise<boolean>(async (resolve, reject) => {
     const platform = process.platform;
     const isWin = platform === 'win32';
-    const appDir = getAppDir();
-    const installerPath = path.join(
-      appDir,
-      'env_installer',
-      'jlab_server.tar.gz'
-    );
     installPath = installPath || getBundledPythonEnvPath();
 
     if (fs.existsSync(installPath)) {
@@ -279,7 +300,7 @@ export async function installBundledEnvironment(
 
     try {
       fs.mkdirSync(installPath, { recursive: true });
-      await tar.x({ C: installPath, file: installerPath });
+      await tar.x({ C: installPath, file: condaPackPath });
     } catch (error) {
       listener?.onInstallStatus(
         EnvironmentInstallStatus.Failure,
@@ -290,13 +311,18 @@ export async function installBundledEnvironment(
       return;
     }
 
-    markEnvironmentAsJupyterInstalled(installPath);
+    markEnvironmentAsJupyterInstalled(installPath, {
+      type: 'conda',
+      source: 'bundled-installer',
+      appVersion: app.getVersion()
+    });
 
     let unpackCommand = isWin
       ? `${installPath}\\Scripts\\activate.bat && conda-unpack`
       : `source "${installPath}/bin/activate" && conda-unpack`;
 
-    if (platform === 'darwin') {
+    // only unsign when installing from bundled installer
+    if (platform === 'darwin' && isBundledInstaller) {
       unpackCommand = `${createUnsignScriptInEnv(
         installPath
       )}\n${unpackCommand}`;
@@ -349,6 +375,38 @@ export function markEnvironmentAsJupyterInstalled(
   } catch (error) {
     console.error('Failed to create file', envInstallInfoPath, error);
   }
+}
+
+export interface IEnvironmentDeleteListener {
+  onDeleteStatus: (status: EnvironmentDeleteStatus, message?: string) => void;
+}
+
+export async function deletePythonEnvironment(
+  envPath: string,
+  listener?: IEnvironmentDeleteListener
+): Promise<boolean> {
+  return new Promise<boolean>((resolve, reject) => {
+    if (!isEnvInstalledByDesktopApp(envPath)) {
+      listener?.onDeleteStatus(
+        EnvironmentDeleteStatus.Failure,
+        'Environment cannot be deleted since it was not installed by JupyterLab Desktop.'
+      );
+      reject();
+    }
+
+    try {
+      listener?.onDeleteStatus(
+        EnvironmentDeleteStatus.Running,
+        'Deleting environment files...'
+      );
+      fs.rmSync(envPath, { recursive: true, force: true });
+      listener?.onDeleteStatus(EnvironmentDeleteStatus.Success);
+      resolve(true);
+    } catch (error) {
+      listener?.onDeleteStatus(EnvironmentDeleteStatus.Failure, error.message);
+      reject();
+    }
+  });
 }
 
 export function createTempFile(
@@ -404,10 +462,15 @@ export function jupyterEnvInstallInfoPathForEnvPath(envPath: string) {
   return path.join(envPath, '.jupyter', 'env.json');
 }
 
+export function isEnvInstalledByDesktopApp(envPath: string) {
+  return fs.existsSync(jupyterEnvInstallInfoPathForEnvPath(envPath));
+}
+
 export function isCondaEnv(envPath: string): boolean {
   return fs.existsSync(path.join(envPath, 'conda-meta'));
 }
 
+// TODO: sync with condaExePathForEnvPath
 export function isBaseCondaEnv(envPath: string): boolean {
   const isWin = process.platform === 'win32';
   const condaBinPath = path.join(
@@ -420,7 +483,7 @@ export function isBaseCondaEnv(envPath: string): boolean {
 
 export function createCommandScriptInEnv(
   envPath: string,
-  baseCondaPath: string,
+  baseCondaEnvPath: string,
   command?: string,
   joinStr?: string
 ): string {
@@ -454,9 +517,9 @@ export function createCommandScriptInEnv(
   // conda-packed environments
   let isBaseCondaActivate = false;
   if (!hasActivate && isConda) {
-    if (fs.existsSync(baseCondaPath)) {
-      activatePath = activatePathForEnvPath(baseCondaPath);
-      condaSourcePath = condaSourcePathForEnvPath(baseCondaPath);
+    if (fs.existsSync(baseCondaEnvPath)) {
+      activatePath = activatePathForEnvPath(baseCondaEnvPath);
+      condaSourcePath = condaSourcePathForEnvPath(baseCondaEnvPath);
       hasActivate = fs.existsSync(activatePath);
       isBaseCondaActivate = true;
     }
@@ -490,6 +553,45 @@ export function createCommandScriptInEnv(
   }
 
   return scriptLines.join(joinStr);
+}
+
+export function getBinarySignList(envPath: string) {
+  const { isBinary } = require('istextorbinary');
+  const envBinDir = path.join(envPath, 'bin');
+
+  const needsSigning = (filePath: string) => {
+    // conly consider bin directory, and .so, .dylib files in other directories
+    if (
+      filePath.startsWith(envBinDir) ||
+      filePath.endsWith('.so') ||
+      filePath.endsWith('.dylib')
+    ) {
+      // check for binary content
+      return isBinary(null, fs.readFileSync(filePath));
+    }
+
+    return false;
+  };
+
+  const findBinariesInDirectory = (dirPath: string): string[] => {
+    let results: string[] = [];
+    const list = fs.readdirSync(dirPath);
+    list.forEach(filePath => {
+      filePath = dirPath + '/' + filePath;
+      const stat = fs.lstatSync(filePath);
+      if (stat && stat.isDirectory()) {
+        results = results.concat(findBinariesInDirectory(filePath));
+      } else {
+        if (!stat.isSymbolicLink() && needsSigning(filePath)) {
+          results.push(path.relative(envPath, filePath));
+        }
+      }
+    });
+
+    return results;
+  };
+
+  return findBinariesInDirectory(envPath);
 }
 
 /*
@@ -534,5 +636,107 @@ export function getLogFilePath(processType: 'main' | 'renderer' = 'main') {
         getUserHomeDir(),
         `/.config/jupyterlab-desktop/logs/${processType}.log`
       );
+  }
+}
+
+export async function runCommand(
+  executablePath: string,
+  commands: string[],
+  options?: ExecFileOptions
+): Promise<string> {
+  return new Promise((resolve, reject) => {
+    execFile(executablePath, commands, options, (error, stdout, stderr) => {
+      if (error) {
+        reject(error);
+      }
+      if (stdout) {
+        resolve(stdout);
+      } else if (stderr) {
+        resolve(stderr);
+      } else {
+        reject(
+          new Error(
+            `"${executablePath} ${commands.join(
+              ' '
+            )}" produced no output to stdout or stderr!`
+          )
+        );
+      }
+    });
+  });
+}
+
+export function runCommandSync(
+  executablePath: string,
+  commands: string[],
+  options?: ExecFileOptions
+): string {
+  return execFileSync(executablePath, commands, options).toString();
+}
+
+export function openDirectoryInExplorer(dirPath: string): boolean {
+  if (!(fs.existsSync(dirPath) && fs.statSync(dirPath).isDirectory())) {
+    return false;
+  }
+
+  const { platform } = process;
+  const openCommand =
+    platform === 'darwin'
+      ? 'open'
+      : platform === 'win32'
+      ? 'explorer'
+      : 'xdg-open';
+
+  exec(`${openCommand} "${dirPath}"`);
+
+  return true;
+}
+
+export function launchTerminalInDirectory(
+  dirPath: string,
+  commands?: string
+): boolean {
+  if (!(fs.existsSync(dirPath) && fs.statSync(dirPath).isDirectory())) {
+    return false;
+  }
+
+  const { platform } = process;
+  if (platform === 'darwin') {
+    let callCommands = '';
+    if (commands) {
+      // replace " with '
+      commands = commands.split('"').join("'");
+      callCommands = `&& ${commands}`;
+    }
+
+    exec(
+      `osascript -e 'tell application "Terminal" to do script "cd '${dirPath}' ${callCommands}"' -e 'tell application "Terminal" to activate'`
+    );
+    ``;
+  } else if (platform === 'win32') {
+    if (commands) {
+      const activateFilePath = createTempFile(
+        `activate.bat`,
+        `cd /D "${dirPath}"\n${commands}`
+      );
+
+      exec(`start cmd.exe /K ${activateFilePath}`);
+
+      setTimeout(() => {
+        try {
+          fs.unlinkSync(activateFilePath);
+        } catch (error) {
+          console.error('Failed to delete the temp file');
+        }
+      }, 2000);
+    } else {
+      exec(`start cmd.exe /K cd /D "${dirPath}"`);
+    }
+  } else {
+    let callCommands = '';
+    if (commands) {
+      callCommands = ` -- bash -c "${commands}; exec bash"`;
+    }
+    exec(`gnome-terminal --working-directory="${dirPath}"${callCommands}`);
   }
 }

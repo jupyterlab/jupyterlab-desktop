@@ -11,7 +11,7 @@ type SetNotificationMessageListener = (
   message: string,
   closable: boolean
 ) => void;
-type DisableLocalServerActionsListener = () => void;
+type EnableLocalServerActionsListener = (enable: boolean) => void;
 type InstallBundledPythonEnvStatusListener = (
   status: string,
   message: string
@@ -20,7 +20,7 @@ type InstallBundledPythonEnvStatusListener = (
 let onSetRecentSessionListListener: SetRecentSessionListListener;
 let onSetNewsListListener: SetNewsListListener;
 let onSetNotificationMessageListener: SetNotificationMessageListener;
-let onDisableLocalServerActionsListener: DisableLocalServerActionsListener;
+let onEnableLocalServerActionsListener: EnableLocalServerActionsListener;
 let onInstallBundledPythonEnvStatusListener: InstallBundledPythonEnvStatusListener;
 
 contextBridge.exposeInMainWorld('electronAPI', {
@@ -71,10 +71,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   onSetNotificationMessage: (callback: SetNotificationMessageListener) => {
     onSetNotificationMessageListener = callback;
   },
-  onDisableLocalServerActions: (
-    callback: DisableLocalServerActionsListener
-  ) => {
-    onDisableLocalServerActionsListener = callback;
+  onEnableLocalServerActions: (callback: EnableLocalServerActionsListener) => {
+    onEnableLocalServerActionsListener = callback;
   },
   onInstallBundledPythonEnvStatus: (
     callback: InstallBundledPythonEnvStatusListener
@@ -107,14 +105,14 @@ ipcRenderer.on(
   }
 );
 
-ipcRenderer.on(EventTypeRenderer.DisableLocalServerActions, event => {
-  if (onDisableLocalServerActionsListener) {
-    onDisableLocalServerActionsListener();
+ipcRenderer.on(EventTypeRenderer.EnableLocalServerActions, (event, enable) => {
+  if (onEnableLocalServerActionsListener) {
+    onEnableLocalServerActionsListener(enable);
   }
 });
 
 ipcRenderer.on(
-  EventTypeRenderer.InstallBundledPythonEnvStatus,
+  EventTypeRenderer.InstallPythonEnvStatus,
   (event, result, message) => {
     if (onInstallBundledPythonEnvStatusListener) {
       onInstallBundledPythonEnvStatusListener(result, message);

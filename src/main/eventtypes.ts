@@ -19,7 +19,7 @@ export enum EventTypeMain {
   DeleteRecentSession = 'delete-recent-session',
   OpenDroppedFiles = 'open-dropped-files',
   OpenNewsLink = 'open-news-link',
-  SetPythonPath = 'set-python-path',
+  SetSessionPythonPath = 'set-session-python-path',
   ShowEnvSelectPopup = 'show-env-select-popup',
   HideEnvSelectPopup = 'hide-env-select-popup',
   SetRemoteServerOptions = 'set-remote-server-options',
@@ -58,13 +58,34 @@ export enum EventTypeMain {
   SetAuthDialogResponse = 'set-auth-dialog-response',
   InstallPythonEnvRequirements = 'install-python-env-requirements',
   ShowLogs = 'show-logs',
-  CopyToClipboard = 'copy-to-clipboard'
+  CopyToClipboard = 'copy-to-clipboard',
+  GetNextPythonEnvironmentName = 'get-next-python-environment-name',
+  CreateNewPythonEnvironment = 'create-new-python-environment',
+  ShowManagePythonEnvironmentsDialog = 'show-manage-python-environments-dialog',
+  SelectDirectoryPath = 'select-directory',
+  SelectFilePath = 'select-file',
+  ShowPythonEnvironmentContextMenu = 'show-python-environment-context-menu',
+  DeletePythonEnvironment = 'delete-python-environment',
+  GetPythonEnvironmentList = 'get-python-environment-list',
+  GetEnvironmentByPythonPath = 'get-environment-by-python-path',
+  AddEnvironmentByPythonPath = 'add-environment-by-python-path',
+  ValidateNewPythonEnvironmentName = 'validate-new-env-name',
+  ValidatePythonEnvironmentInstallDirectory = 'validate-python-envs-directory',
+  SetPythonEnvironmentInstallDirectory = 'set-python-envs-directory',
+  ValidateCondaPath = 'validate-conda-path',
+  SetCondaPath = 'set-conda-path',
+  ValidateCondaChannels = 'validate-conda-channels',
+  SetCondaChannels = 'set-conda-channels',
+  ValidateSystemPythonPath = 'validate-system-python-path',
+  SetSystemPythonPath = 'set-system-python-path',
+  CopySessionInfoToClipboard = 'copy-session-info-to-clipboard',
+  RestartSession = 'restart-session'
 }
 
 // events sent to Renderer process
 export enum EventTypeRenderer {
   WorkingDirectorySelected = 'working-directory-selected',
-  InstallBundledPythonEnvStatus = 'install-bundled-python-env-status',
+  InstallPythonEnvStatus = 'install-python-env-status',
   CustomPythonPathSelected = 'custom-python-path-selected',
   ShowProgress = 'show-progress',
   SetCurrentPythonPath = 'set-current-python-path',
@@ -76,6 +97,9 @@ export enum EventTypeRenderer {
   SetRecentSessionList = 'set-recent-session-list',
   SetNewsList = 'set-news-list',
   SetNotificationMessage = 'set-notification-message',
-  DisableLocalServerActions = 'disable-local-server-actions',
-  SetDefaultWorkingDirectoryResult = 'set-default-working-directory-result'
+  EnableLocalServerActions = 'enable-local-server-actions',
+  SetDefaultWorkingDirectoryResult = 'set-default-working-directory-result',
+  ResetPythonEnvSelectPopup = 'reset-python-env-select-popup',
+  SetPythonEnvironmentList = 'set-python-environment-list',
+  SetEnvironmentListUpdateStatus = 'set-environment-list-update-status'
 }

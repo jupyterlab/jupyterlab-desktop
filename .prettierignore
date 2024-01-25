@@ -11,3 +11,5 @@
 .vscode/
 
 env_installer
+
+src/assets/uFuzzy.iife.min.js

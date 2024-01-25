@@ -583,25 +583,33 @@ export class WelcomeView {
 
           function showNotificationPanel(message, closable) {
             notificationPanelMessage.innerHTML = message;
-            notificationPanel.style.display = "flex";
             notificationPanelCloseButton.style.display = closable ? 'block' : 'none'; 
+            notificationPanel.style.display = message === "" ? "none" : "flex";
           }
 
           function closeNotificationPanel() {
             notificationPanel.style.display = "none";
           }
 
-          function disableLocalServerActions() {
+          function enableLocalServerActions(enable) {
             const serverActionIds = ["new-notebook-link", "new-session-link", "open-file-or-folder-link", "open-file-link", "open-folder-link"];
             serverActionIds.forEach(id => {
               const link = document.getElementById(id);
               if (link) {
-                link.classList.add("disabled");
+                if (enable) {
+                  link.classList.remove("disabled");
+                } else {
+                  link.classList.add("disabled");
+                }
               }
             });
 
             document.querySelectorAll('div.recent-item-local').forEach(link => {
-              link.classList.add("disabled");
+              if (enable) {
+                link.classList.remove("disabled");
+              } else {
+                link.classList.add("disabled");
+              }
             });
           }
 
@@ -609,8 +617,8 @@ export class WelcomeView {
             showNotificationPanel(message, closable);
           });
 
-          window.electronAPI.onDisableLocalServerActions(() => {
-            disableLocalServerActions();
+          window.electronAPI.onEnableLocalServerActions((enable) => {
+            enableLocalServerActions(enable);
           });
 
           window.electronAPI.onInstallBundledPythonEnvStatus((status, detail) => {
@@ -620,7 +628,7 @@ export class WelcomeView {
               'Installation cancelled!' :
               status === 'FAILURE' ?
                 'Failed to install!' :
-              status === 'SUCCESS' ? 'Installation succeeded. Restarting now...' : '';
+              status === 'SUCCESS' ? 'Installation succeeded.' : '';
             if (detail) {
               message += \`[\$\{detail\}]\`;
             }
@@ -629,7 +637,7 @@ export class WelcomeView {
     
             if (status === 'SUCCESS') {
               setTimeout(() => {
-                sendMessageToMain('restart-app');
+                showNotificationPanel('', true);
               }, 2000);
             }
           });
@@ -660,25 +668,26 @@ export class WelcomeView {
       this._updateNewsList();
     }
 
-    this._registry.getDefaultEnvironment().catch(() => {
-      this.disableLocalServerActions();
-      this.showNotification(
-        `
-        <div>
-          <svg style="width: 20px; height: 20px; fill: orange; margin-right: 6px;">
-            <use href="#triangle-exclamation" />
-          </svg>
-        </div>
-        Python environment not found. <a href="javascript:void(0);" onclick="sendMessageToMain('${EventTypeMain.InstallBundledPythonEnv}')">Install using the bundled installer</a> or <a href="javascript:void(0);" onclick="sendMessageToMain('${EventTypeMain.ShowServerSettings}')">Change the default Python environment</a>
-        `,
-        true
+    this._registry.environmentListUpdated.connect(
+      this._onEnvironmentListUpdated,
+      this
+    );
+
+    this._view.webContents.on('destroyed', () => {
+      this._registry.environmentListUpdated.disconnect(
+        this._onEnvironmentListUpdated,
+        this
       );
     });
+    this._onEnvironmentListUpdated();
   }
 
-  disableLocalServerActions() {
+  enableLocalServerActions(enable: boolean) {
     this._viewReady.then(() => {
-      this._view.webContents.send(EventTypeRenderer.DisableLocalServerActions);
+      this._view.webContents.send(
+        EventTypeRenderer.EnableLocalServerActions,
+        enable
+      );
     });
   }
 
@@ -690,6 +699,29 @@ export class WelcomeView {
         closable
       );
     });
+  }
+
+  private async _onEnvironmentListUpdated() {
+    this._registry
+      .getDefaultEnvironment()
+      .then(() => {
+        this.enableLocalServerActions(true);
+        this.showNotification('', false);
+      })
+      .catch(() => {
+        this.enableLocalServerActions(false);
+        this.showNotification(
+          `
+        <div>
+          <svg style="width: 20px; height: 20px; fill: orange; margin-right: 6px;">
+            <use href="#triangle-exclamation" />
+          </svg>
+        </div>
+        Python environment not found. <a href="javascript:void(0);" onclick="sendMessageToMain('${EventTypeMain.InstallBundledPythonEnv}')">Install using the bundled installer</a> or <a href="javascript:void(0);" onclick="sendMessageToMain('${EventTypeMain.ShowManagePythonEnvironmentsDialog}', 'settings')">Change the default Python environment</a>
+        `,
+          true
+        );
+      });
   }
 
   private _updateNewsList() {

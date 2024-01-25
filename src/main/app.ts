@@ -17,10 +17,12 @@ import * as semver from 'semver';
 import * as fs from 'fs';
 import {
   clearSession,
+  EnvironmentInstallStatus,
   getBundledPythonEnvPath,
   getBundledPythonPath,
   installBundledEnvironment,
   isDarkTheme,
+  pythonPathForEnvPath,
   waitForDuration
 } from './utils';
 import { IServerFactory, JupyterServerFactory } from './server';
@@ -49,14 +51,29 @@ import { EventTypeMain, EventTypeRenderer } from './eventtypes';
 import { SettingsDialog } from './settingsdialog/settingsdialog';
 import { AboutDialog } from './aboutdialog/aboutdialog';
 import { AuthDialog } from './authdialog/authdialog';
+import { ManagePythonEnvironmentDialog } from './pythonenvdialog/pythonenvdialog';
+import { addUserSetEnvironment, createPythonEnvironment } from './cli';
+import {
+  getNextPythonEnvName,
+  JUPYTER_ENV_REQUIREMENTS,
+  validateCondaChannels,
+  validateCondaPath,
+  validateNewPythonEnvironmentName,
+  validatePythonEnvironmentInstallDirectory,
+  validateSystemPythonPath
+} from './env';
 
 export interface IApplication {
   createNewEmptySession(): void;
   createFreeServersIfNeeded(): void;
   checkForUpdates(showDialog: 'on-new-version' | 'always'): void;
   showSettingsDialog(activateTab?: SettingsDialog.Tab): void;
+  showManagePythonEnvsDialog(
+    activateTab?: ManagePythonEnvironmentDialog.Tab
+  ): void;
   showAboutDialog(): void;
   cliArgs: ICLIArguments;
+  registry: IRegistry;
 }
 
 interface IClearHistoryOptions {
@@ -185,6 +202,7 @@ class SessionWindowManager implements IDisposable {
 
         if (this._windows.length === 0) {
           this._options.app.closeSettingsDialog();
+          this._options.app.closeManagePythonEnvDialog();
           this._options.app.closeAboutDialog();
         }
       }
@@ -377,7 +395,6 @@ export class JupyterApplication implements IApplication, IDisposable {
         defaultWorkingDirectory: userSettings.getValue(
           SettingType.defaultWorkingDirectory
         ),
-        defaultPythonPath: userSettings.getValue(SettingType.pythonPath),
         logLevel: userSettings.getValue(SettingType.logLevel),
         activateTab: activateTab,
         serverArgs: userSettings.getValue(SettingType.serverArgs),
@@ -399,10 +416,42 @@ export class JupyterApplication implements IApplication, IDisposable {
     dialog.load();
   }
 
+  async showManagePythonEnvsDialog(
+    activateTab?: ManagePythonEnvironmentDialog.Tab
+  ) {
+    if (this._managePythonEnvDialog) {
+      this._managePythonEnvDialog.window.focus();
+      return;
+    }
+
+    const dialog = new ManagePythonEnvironmentDialog({
+      envs: await this._registry.getEnvironmentList(false),
+      isDarkTheme: this._isDarkTheme,
+      defaultPythonPath: userSettings.getValue(SettingType.pythonPath),
+      app: this,
+      activateTab
+    });
+
+    this._managePythonEnvDialog = dialog;
+
+    dialog.window.on('closed', () => {
+      this._managePythonEnvDialog = null;
+    });
+
+    dialog.load();
+  }
+
   closeSettingsDialog() {
     if (this._settingsDialog) {
       this._settingsDialog.window.close();
       this._settingsDialog = null;
+    }
+  }
+
+  closeManagePythonEnvDialog() {
+    if (this._managePythonEnvDialog) {
+      this._managePythonEnvDialog.window.close();
+      this._managePythonEnvDialog = null;
     }
   }
 
@@ -430,12 +479,21 @@ export class JupyterApplication implements IApplication, IDisposable {
     }
   }
 
+  get registry(): IRegistry {
+    return this._registry;
+  }
+
+  get serverFactory(): IServerFactory {
+    return this._serverFactory;
+  }
+
   dispose(): Promise<void> {
     if (this._disposePromise) {
       return this._disposePromise;
     }
 
     this.closeSettingsDialog();
+    this.closeManagePythonEnvDialog();
     this.closeAboutDialog();
 
     this._disposePromise = new Promise<void>((resolve, reject) => {
@@ -665,15 +723,27 @@ export class JupyterApplication implements IApplication, IDisposable {
 
     this._evm.registerEventHandler(
       EventTypeMain.InstallBundledPythonEnv,
-      async event => {
-        const installPath = getBundledPythonEnvPath();
+      async (event, envPath: string) => {
+        // for security, make sure event is sent from the dialog when path is specified
+        if (
+          envPath &&
+          event.sender !== this._managePythonEnvDialog?.window?.webContents
+        ) {
+          return;
+        }
+        const installPath = envPath || getBundledPythonEnvPath();
         await installBundledEnvironment(installPath, {
           onInstallStatus: (status, message) => {
             event.sender.send(
-              EventTypeRenderer.InstallBundledPythonEnvStatus,
+              EventTypeRenderer.InstallPythonEnvStatus,
               status,
               message
             );
+            if (status === EnvironmentInstallStatus.Success) {
+              addUserSetEnvironment(installPath, true);
+              const pythonPath = pythonPathForEnvPath(installPath, true);
+              this._registry.addEnvironment(pythonPath);
+            }
           },
           get forceOverwrite() {
             return false;
@@ -703,10 +773,122 @@ export class JupyterApplication implements IApplication, IDisposable {
       }
     );
 
+    this._evm.registerEventHandler(
+      EventTypeMain.ShowManagePythonEnvironmentsDialog,
+      async (event, activateTab) => {
+        this.showManagePythonEnvsDialog(activateTab);
+      }
+    );
+
+    this._evm.registerEventHandler(
+      EventTypeMain.SetPythonEnvironmentInstallDirectory,
+      async (event, dirPath) => {
+        userSettings.setValue(SettingType.pythonEnvsPath, dirPath);
+        userSettings.save();
+      }
+    );
+
+    this._evm.registerEventHandler(
+      EventTypeMain.SetCondaPath,
+      async (event, condaPath) => {
+        userSettings.setValue(SettingType.condaPath, condaPath);
+        userSettings.save();
+      }
+    );
+
+    this._evm.registerEventHandler(
+      EventTypeMain.SetCondaChannels,
+      async (event, condaChannels) => {
+        const channelList =
+          condaChannels.trim() === '' ? [] : condaChannels.split(' ');
+        userSettings.setValue(SettingType.condaChannels, channelList);
+        userSettings.save();
+      }
+    );
+
+    this._evm.registerEventHandler(
+      EventTypeMain.SetSystemPythonPath,
+      async (event, pythonPath) => {
+        userSettings.setValue(SettingType.systemPythonPath, pythonPath);
+        userSettings.save();
+      }
+    );
+
+    this._evm.registerSyncEventHandler(
+      EventTypeMain.GetNextPythonEnvironmentName,
+      (event, path) => {
+        return getNextPythonEnvName();
+      }
+    );
+
+    this._evm.registerSyncEventHandler(
+      EventTypeMain.SelectDirectoryPath,
+      (event, currentPath) => {
+        return new Promise<string>((resolve, reject) => {
+          dialog
+            .showOpenDialog({
+              properties: [
+                'openDirectory',
+                'showHiddenFiles',
+                'noResolveAliases',
+                'createDirectory'
+              ],
+              buttonLabel: 'Use path',
+              defaultPath: currentPath
+            })
+            .then(({ filePaths }) => {
+              if (filePaths.length > 0) {
+                resolve(filePaths[0]);
+              }
+            });
+        });
+      }
+    );
+
+    this._evm.registerSyncEventHandler(
+      EventTypeMain.SelectFilePath,
+      (event, currentPath) => {
+        return new Promise<string>((resolve, reject) => {
+          dialog
+            .showOpenDialog({
+              properties: ['openFile', 'showHiddenFiles', 'noResolveAliases'],
+              buttonLabel: 'Use path',
+              defaultPath: currentPath
+            })
+            .then(({ filePaths }) => {
+              if (filePaths.length > 0) {
+                resolve(filePaths[0]);
+              }
+            });
+        });
+      }
+    );
+
     this._evm.registerSyncEventHandler(
       EventTypeMain.ValidatePythonPath,
       (event, path) => {
         return this._registry.validatePythonEnvironmentAtPath(path);
+      }
+    );
+
+    this._evm.registerSyncEventHandler(
+      EventTypeMain.GetEnvironmentByPythonPath,
+      (event, pythonPath) => {
+        return this._registry.getEnvironmentByPath(pythonPath);
+      }
+    );
+
+    this._evm.registerSyncEventHandler(
+      EventTypeMain.AddEnvironmentByPythonPath,
+      (event, pythonPath) => {
+        return this._registry.addEnvironment(pythonPath);
+      }
+    );
+
+    this._evm.registerSyncEventHandler(
+      EventTypeMain.GetPythonEnvironmentList,
+      (event, cacheOK) => {
+        return this._registry.getEnvironmentList(cacheOK);
       }
     );
 
@@ -725,10 +907,47 @@ export class JupyterApplication implements IApplication, IDisposable {
       }
     );
 
+    this._evm.registerSyncEventHandler(
+      EventTypeMain.ValidateNewPythonEnvironmentName,
+      (event, name) => {
+        return Promise.resolve(validateNewPythonEnvironmentName(name));
+      }
+    );
+
+    this._evm.registerSyncEventHandler(
+      EventTypeMain.ValidatePythonEnvironmentInstallDirectory,
+      (event, dirPath) => {
+        return Promise.resolve(
+          validatePythonEnvironmentInstallDirectory(dirPath)
+        );
+      }
+    );
+
+    this._evm.registerSyncEventHandler(
+      EventTypeMain.ValidateCondaPath,
+      (event, condaPath) => {
+        return validateCondaPath(condaPath);
+      }
+    );
+
+    this._evm.registerSyncEventHandler(
+      EventTypeMain.ValidateCondaChannels,
+      (event, condaChannels) => {
+        return Promise.resolve(validateCondaChannels(condaChannels));
+      }
+    );
+
+    this._evm.registerSyncEventHandler(
+      EventTypeMain.ValidateSystemPythonPath,
+      (event, pythonPath) => {
+        return validateSystemPythonPath(pythonPath);
+      }
+    );
+
     this._evm.registerEventHandler(
       EventTypeMain.ShowInvalidPythonPathMessage,
       (event, path) => {
-        const requirements = this._registry.getRequirements();
+        const requirements = JUPYTER_ENV_REQUIREMENTS;
         const reqVersions = requirements.map(
           req => `${req.name} ${req.versionRange.format()}`
         );
@@ -742,6 +961,8 @@ export class JupyterApplication implements IApplication, IDisposable {
       EventTypeMain.SetDefaultPythonPath,
       (event, path) => {
         userSettings.setValue(SettingType.pythonPath, path);
+        userSettings.save();
+        this._registry.setDefaultPythonPath(path);
       }
     );
 
@@ -811,9 +1032,68 @@ export class JupyterApplication implements IApplication, IDisposable {
       }
     );
 
+    this._evm.registerEventHandler(
+      EventTypeMain.CreateNewPythonEnvironment,
+      async (event, envPath: string, envType: string, packages: string) => {
+        // for security, make sure event is sent from the dialog
+        if (event.sender !== this._managePythonEnvDialog?.window?.webContents) {
+          return;
+        }
+
+        // still check input to prevent chaining malicious commands
+        const invalidCharInputRegex = new RegExp('[&;|]');
+        const invalidInputMessage = invalidCharInputRegex.test(envPath)
+          ? 'Invalid environment name input'
+          : invalidCharInputRegex.test(packages)
+          ? 'Invalid package list input'
+          : '';
+
+        if (invalidInputMessage) {
+          event.sender.send(
+            EventTypeRenderer.InstallPythonEnvStatus,
+            EnvironmentInstallStatus.Failure,
+            invalidInputMessage
+          );
+          return;
+        }
+
+        event.sender.send(
+          EventTypeRenderer.InstallPythonEnvStatus,
+          EnvironmentInstallStatus.Started
+        );
+        try {
+          await createPythonEnvironment({
+            envPath,
+            envType,
+            packageList: packages.split(' '),
+            callbacks: {
+              stdout: (msg: string) => {
+                event.sender.send(
+                  EventTypeRenderer.InstallPythonEnvStatus,
+                  EnvironmentInstallStatus.Running,
+                  msg
+                );
+              }
+            }
+          });
+          const pythonPath = pythonPathForEnvPath(envPath);
+          this._registry.addEnvironment(pythonPath);
+          event.sender.send(
+            EventTypeRenderer.InstallPythonEnvStatus,
+            EnvironmentInstallStatus.Success
+          );
+        } catch (error) {
+          event.sender.send(
+            EventTypeRenderer.InstallPythonEnvStatus,
+            EnvironmentInstallStatus.Failure
+          );
+        }
+      }
+    );
+
     this._evm.registerSyncEventHandler(
       EventTypeMain.GetServerInfo,
-      (event): Promise<IServerInfo> => {
+      (event): IServerInfo => {
         for (const sessionWindow of this._sessionWindowManager.windows) {
           if (
             event.sender === sessionWindow.titleBarView?.view?.webContents ||
@@ -936,6 +1216,7 @@ export class JupyterApplication implements IApplication, IDisposable {
   private _sessionWindowManager: SessionWindowManager;
   private _evm = new EventManager();
   private _settingsDialog: SettingsDialog;
+  private _managePythonEnvDialog: ManagePythonEnvironmentDialog;
   private _aboutDialog: AboutDialog;
   private _isDarkTheme: boolean;
 }

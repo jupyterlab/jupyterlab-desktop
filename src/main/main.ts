@@ -8,6 +8,7 @@ import { ICLIArguments } from './tokens';
 import { SessionConfig } from './config/sessionconfig';
 import { SettingType, userSettings } from './config/settings';
 import { parseCLIArgs } from './cli';
+import { getPythonEnvsDirectory } from './env';
 
 let jupyterApp: JupyterApplication;
 let fileToOpenInMainInstance = '';
@@ -136,6 +137,18 @@ function setupJLabCommand() {
   }
 }
 
+function createPythonEnvsDirectory() {
+  const envsDir = getPythonEnvsDirectory();
+
+  try {
+    if (!fs.existsSync(envsDir)) {
+      fs.mkdirSync(envsDir, { recursive: true });
+    }
+  } catch (error) {
+    log.error(error);
+  }
+}
+
 function setApplicationMenu() {
   if (process.platform !== 'darwin') {
     return;
@@ -182,6 +195,7 @@ app.on('ready', async () => {
     redirectConsoleToLog();
     setApplicationMenu();
     setupJLabCommand();
+    createPythonEnvsDirectory();
     argv.cwd = process.cwd();
     jupyterApp = new JupyterApplication((argv as unknown) as ICLIArguments);
   } catch (error) {
