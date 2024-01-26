@@ -555,45 +555,6 @@ export function createCommandScriptInEnv(
   return scriptLines.join(joinStr);
 }
 
-export function getBinarySignList(envPath: string) {
-  const { isBinary } = require('istextorbinary');
-  const envBinDir = path.join(envPath, 'bin');
-
-  const needsSigning = (filePath: string) => {
-    // conly consider bin directory, and .so, .dylib files in other directories
-    if (
-      filePath.startsWith(envBinDir) ||
-      filePath.endsWith('.so') ||
-      filePath.endsWith('.dylib')
-    ) {
-      // check for binary content
-      return isBinary(null, fs.readFileSync(filePath));
-    }
-
-    return false;
-  };
-
-  const findBinariesInDirectory = (dirPath: string): string[] => {
-    let results: string[] = [];
-    const list = fs.readdirSync(dirPath);
-    list.forEach(filePath => {
-      filePath = dirPath + '/' + filePath;
-      const stat = fs.lstatSync(filePath);
-      if (stat && stat.isDirectory()) {
-        results = results.concat(findBinariesInDirectory(filePath));
-      } else {
-        if (!stat.isSymbolicLink() && needsSigning(filePath)) {
-          results.push(path.relative(envPath, filePath));
-        }
-      }
-    });
-
-    return results;
-  };
-
-  return findBinariesInDirectory(envPath);
-}
-
 /*
   signed tarball contents need to be unsigned except for python binary,
   otherwise server runs into issues at runtime. python binary comes originally

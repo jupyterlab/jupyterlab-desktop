@@ -14,10 +14,10 @@ jobs:
     strategy:
       matrix:
         cfg:
-        - { platform: linux, platform_name: Linux,  os: ubuntu-latest, build_platform: linux-64, conda_platform: linux-64 }
+        - { platform: linux-64, platform_name: Linux x64,  os: ubuntu-latest, build_platform: linux-64, conda_platform: linux-64 }
         - { platform: osx-64, platform_name: macOS x64, os: macos-latest, build_platform: osx-64, conda_platform: osx-64 }
         - { platform: osx-arm64, platform_name: macOS arm64, os: macos-latest, build_platform: osx-64, conda_platform: osx-arm64 }
-        - { platform: win, platform_name: Windows, os: windows-latest, build_platform: win-64, conda_platform: win-64 }
+        - { platform: win-64, platform_name: Windows x64, os: windows-latest, build_platform: win-64, conda_platform: win-64 }
 
     name: '${{ matrix.cfg.platform_name }} installer'
     runs-on: ${{ matrix.cfg.os }}
@@ -123,7 +123,7 @@ jobs:
         if: steps.release-exists.outputs.result == 'true'
 
       - name: Upload Debian Installer
-        if: matrix.cfg.platform == 'linux'
+        if: matrix.cfg.platform == 'linux-64'
         uses: actions/upload-artifact@v4
         with:
           name: debian-installer
@@ -131,7 +131,7 @@ jobs:
             dist/JupyterLab.deb
 
       - name: Upload Fedora Installer
-        if: matrix.cfg.platform == 'linux'
+        if: matrix.cfg.platform == 'linux-64'
         uses: actions/upload-artifact@v4
         with:
           name: fedora-installer
@@ -154,8 +154,8 @@ jobs:
           path: |
             dist/JupyterLab-arm64.dmg
 
-      - name: Upload Windows Installer
-        if: matrix.cfg.platform == 'win'
+      - name: Upload Windows x64 Installer
+        if: matrix.cfg.platform == 'win-64'
         uses: actions/upload-artifact@v4
         with:
           name: windows-installer
@@ -163,7 +163,7 @@ jobs:
             dist/JupyterLab-Setup.exe
 
       - name: Upload Debian Installer as Release asset
-        if: matrix.cfg.platform == 'linux' && steps.release-exists.outputs.result == 'true'
+        if: matrix.cfg.platform == 'linux-64' && steps.release-exists.outputs.result == 'true'
         uses: svenstaro/upload-release-action@v2
         with:
           repo_token: ${{ secrets.JLAB_APP_TOKEN }}
@@ -173,7 +173,7 @@ jobs:
           overwrite: true
 
       - name: Upload Fedora Installer as Release asset
-        if: matrix.cfg.platform == 'linux' && steps.release-exists.outputs.result == 'true'
+        if: matrix.cfg.platform == 'linux-64' && steps.release-exists.outputs.result == 'true'
         uses: svenstaro/upload-release-action@v2
         with:
           repo_token: ${{ secrets.JLAB_APP_TOKEN }}
@@ -222,8 +222,8 @@ jobs:
           tag: v${{ steps.package-info.outputs.version}}
           overwrite: true
 
-      - name: Upload Windows Installer as Release asset
-        if: matrix.cfg.platform == 'win' && steps.release-exists.outputs.result == 'true'
+      - name: Upload Windows x64 Installer as Release asset
+        if: matrix.cfg.platform == 'win-64' && steps.release-exists.outputs.result == 'true'
         uses: svenstaro/upload-release-action@v2
         with:
           repo_token: ${{ secrets.JLAB_APP_TOKEN }}
@@ -233,7 +233,7 @@ jobs:
           overwrite: true
 
       - name: Upload latest.yml Release asset
-        if: matrix.cfg.platform == 'win' && steps.release-exists.outputs.result == 'true'
+        if: matrix.cfg.platform == 'win-64' && steps.release-exists.outputs.result == 'true'
         uses: svenstaro/upload-release-action@v2
         with:
           repo_token: ${{ secrets.JLAB_APP_TOKEN }}
