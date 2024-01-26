@@ -27,7 +27,7 @@
     "update_conda_lock": "cd env_installer && rimraf *.lock && conda-lock --kind explicit -f jlab_server.yaml && cd -",
     "clean_env_installer": "rimraf ./env_installer/jlab_server.tar.gz && rimraf ./env_installer/jlab_server",
     "create_env_installer": "yarn clean_env_installer && conda-lock install --no-validate-platform --prefix ./env_installer/jlab_server ./env_installer/conda-${ENV_PLATFORM}.lock && conda pack -p ./env_installer/jlab_server -o ./env_installer/jlab_server.tar.gz",
-    "create_env_installer:linux": "ENV_PLATFORM=linux-64 yarn create_env_installer",
+    "create_env_installer:linux-64": "ENV_PLATFORM=linux-64 yarn create_env_installer",
     "create_env_installer:linux-aarch64": "ENV_PLATFORM=linux-aarch64 yarn create_env_installer",
     "create_env_installer:osx-64": "ENV_PLATFORM=osx-64 yarn create_env_installer",
     "create_env_installer:osx-arm64": "ENV_PLATFORM=osx-arm64 yarn create_env_installer",
