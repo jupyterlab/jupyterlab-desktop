@@ -17,6 +17,7 @@
     "pack": "yarn build && electron-builder --dir",
     "dist": "yarn build && electron-builder",
     "dist:linux-64": "yarn build && electron-builder --linux --publish never",
+    "dist:linux-aarch64": "yarn build && electron-builder --linux --arm64 --publish never",
     "dist:osx": "yarn build && electron-builder --macos --publish never",
     "dist:osx-64": "yarn dist:osx",
     "dist:osx-arm64": "yarn dist:osx",
