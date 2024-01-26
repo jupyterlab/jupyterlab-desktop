@@ -126,7 +126,7 @@ jobs:
         if: matrix.cfg.platform == 'linux-64'
         uses: actions/upload-artifact@v4
         with:
-          name: debian-installer
+          name: debian-installer-x64
           path: |
             dist/JupyterLab.deb
 
@@ -134,7 +134,7 @@ jobs:
         if: matrix.cfg.platform == 'linux-64'
         uses: actions/upload-artifact@v4
         with:
-          name: fedora-installer
+          name: fedora-installer-x64
           path: |
             dist/JupyterLab.rpm
 
@@ -158,7 +158,7 @@ jobs:
         if: matrix.cfg.platform == 'win-64'
         uses: actions/upload-artifact@v4
         with:
-          name: windows-installer
+          name: windows-installer-x64
           path: |
             dist/JupyterLab-Setup.exe
 
@@ -168,7 +168,7 @@ jobs:
         with:
           repo_token: ${{ secrets.JLAB_APP_TOKEN }}
           file: dist/JupyterLab.deb
-          asset_name: JupyterLab-Setup-Debian.deb
+          asset_name: JupyterLab-Setup-Debian-x64.deb
           tag: v${{ steps.package-info.outputs.version}}
           overwrite: true
 
@@ -178,7 +178,7 @@ jobs:
         with:
           repo_token: ${{ secrets.JLAB_APP_TOKEN }}
           file: dist/JupyterLab.rpm
-          asset_name: JupyterLab-Setup-Fedora.rpm
+          asset_name: JupyterLab-Setup-Fedora-x64.rpm
           tag: v${{ steps.package-info.outputs.version}}
           overwrite: true
 
@@ -228,7 +228,7 @@ jobs:
         with:
           repo_token: ${{ secrets.JLAB_APP_TOKEN }}
           file: dist/JupyterLab-Setup.exe
-          asset_name: JupyterLab-Setup-Windows.exe
+          asset_name: JupyterLab-Setup-Windows-x64.exe
           tag: v${{ steps.package-info.outputs.version}}
           overwrite: true
 
