@@ -379,6 +379,7 @@ async function installAdditionalCondaPackagesToEnv(
   const channels = condaChannels.map(channel => `-c ${channel}`).join(' ');
   // TODO: remove classic solver. since installing additional packages onto conda-lock
   // generated environments fails with mamba solver, classic is used here.
+  // should be fixed with conda 24.1. https://github.com/conda/conda-libmamba-solver/pull/429
   const installCommand = `conda install -y ${channels} --solver=classic -p ${envPath} ${packages}`;
   console.log(`Installing additional packages: "${packages}"`);
   await runCommandInEnvironment(baseCondaEnvPath, installCommand, callbacks);
@@ -391,7 +392,29 @@ export async function handleEnvActivateCommand(argv: any) {
   } else if (argv.prefix) {
     envPath = path.resolve(argv.prefix);
   } else {
-    envPath = getBundledPythonEnvPath();
+    if (argv._.length === 2) {
+      const envNameOrPath = argv._[1];
+      if (
+        fs.existsSync(envNameOrPath) &&
+        fs.statSync(envNameOrPath).isDirectory()
+      ) {
+        envPath = envNameOrPath;
+      } else {
+        const envPathFromArg = path.join(
+          getPythonEnvsDirectory(),
+          envNameOrPath
+        );
+        if (
+          fs.existsSync(envPathFromArg) &&
+          fs.statSync(envPathFromArg).isDirectory()
+        ) {
+          envPath = envPathFromArg;
+        }
+      }
+    }
+    if (!envPath) {
+      envPath = getBundledPythonEnvPath();
+    }
   }
 
   if (
@@ -474,6 +497,7 @@ export async function createPythonEnvironment(
       if (packages) {
         // TODO: remove classic solver. since installing additional packages onto conda-lock
         // generated environments fails with mamba solver, classic is used here.
+        // should be fixed with conda 24.1. https://github.com/conda/conda-libmamba-solver/pull/429
         const installCommand = `conda install -y ${channels} --solver=classic -p ${envPath} ${packages}`;
         console.log(`Installing additional packages: "${packages}"`);
         await runCommandInEnvironment(
