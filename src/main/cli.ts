@@ -119,7 +119,6 @@ export function parseCLIArgs(argv: string[]) {
             describe: 'Environment / package source type',
             choices: [
               'registry',
-              'bundle',
               'conda-pack',
               'conda-lock-file',
               'conda-env-file'
@@ -444,12 +443,7 @@ export interface ICreatePythonEnvironmentOptions {
   envPath: string;
   envType: string;
   sourceFilePath?: string;
-  sourceType?:
-    | 'registry'
-    | 'bundle'
-    | 'conda-pack'
-    | 'conda-lock-file'
-    | 'conda-env-file';
+  sourceType?: 'registry' | 'conda-pack' | 'conda-lock-file' | 'conda-env-file';
   packageList?: string[];
   condaChannels?: string[];
   callbacks?: ICommandRunCallbacks;

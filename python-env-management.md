@@ -23,9 +23,9 @@ jlab env create
 jlab env create --force
 ```
 
-### `jlab env create [--name=<name>] [--prefix=<path>] [--source=<bundle>] [--source-type=<source-type>] [--channel=<channels>] [--env-type=<env-type>] [--add-jupyterlab-package=<value>] [package list]`
+### `jlab env create [--name=<name>] [--prefix=<path>] [--source=<source>] [--source-type=<source-type>] [--channel=<channels>] [--env-type=<env-type>] [--add-jupyterlab-package=<value>] [package list]`
 
-Create a new Python environment using the bundled installer. If the `--name` argument is set, then the environment is created under Python [environment install directory](troubleshoot.md#Installation-Paths). If the `--prefix` (directory path) argument is provided, then the environment is installed into the specified directory. Created environment is automatically added to app's environments list to allow selection on the UI. If there is an existing installation at the resolved location, `--force` argument can be set to overwrite.
+Create a new Python environment. If the `--name` argument is set, then the environment is created under Python [environment install directory](troubleshoot.md#Installation-Paths). If the `--prefix` (directory path) argument is provided, then the environment is installed into the specified directory. Created environment is automatically added to app's environments list to allow selection on the UI. If there is an existing installation at the resolved location, `--force` argument can be set to overwrite.
 
 Options:
 
@@ -33,53 +33,96 @@ Options:
 
 **--prefix**: Environment installation directory path. If `--name` and `--prefix` are both set `--prefix` is discarded.
 
-**--source**: Installation source. Valid values are `bundle`, `<a-file-path>`, `<a-url>`, `""`. Default is empty string (`""`).
+**--source**: Installation source. Valid values are `bundle`, `<file-path>`, `<url>`, `""`. Default is empty string (`""`).
 
-**--source-type**: Installation source type. Valid values are `bundle`, `conda-pack`, `conda-lock-file`, `conda-env-file`, `registry`. Default is `registry`.
+**--source-type**: Installation source type. Valid values are `conda-pack`, `conda-lock-file`, `conda-env-file`, `registry`. Default is `registry`. When source is set to `bundle` then source-type automatically becomes `conda-pack`.
 
-**--channel**: List of custom conda channels to use when installing new conda packages. By default, conda channels from user settings is used. You can use `jlab env info` to see default conda channels.
+**--channel**: List of custom conda channels to use when installing new conda packages. By default, conda channels from user settings are used. You can use `jlab env info` to see default conda channels.
 
 **--env-type**: Environment type to create. Valid values are `conda`, `venv` and `auto`. Default is `auto`. If it is set to `auto`, `conda` will be used if a conda based --source-type is set or if conda executable is found in the system.
 
-**[package list]**: List of (additional) packages to install to the environment. If source type already contains packages, this package list is installed after the source is installed.
+**--add-jupyterlab-package**: Flag to automatically add `jupyterlab` Python package to the package list. `jupyterlab` package is required for an environment to be compatible with JupyterLab Desktop. Default is `true`. This flag has no effect when source is `bundle` since bundle already contains jupyterlab package.
 
-**--add-jupyterlab-package**: Flag to automatically add `jupyterlab` Python package to package list. `jupyterlab` package is required for an environment to be compatible with JupyterLab Desktop. Default is `true`. This flag has no effect when source-type is `bundle` since bundle already contains jupyterlab package.
+**[package list]**: List of (additional) packages to install to the environment. If the source-type is not registry, this package list is installed after the source is installed.
 
-Examples:
+### Examples:
+
+### Creating new environments using the bundled installer
+
+See [env_installer/jlab_server.yaml](env_installer/jlab_server.yaml) for the list of packages in the bundled installer.
 
 ```bash
-# install to <application-data-dir>/envs/ml-env
-jlab env create --name=ml-env --source=bundle
-# install to /opt/jlab_server
+# install bundled environment to <application-data-dir>/envs/test-env
+jlab env create --name=test-env --source=bundle
+# install bundled environment to /opt/jlab_server
 jlab env create --prefix=/opt/jlab_server --source=bundle
-# install to /opt/jlab_server overwriting any existing installation
+# install bundled environment to /opt/jlab_server overwriting any existing installation
 jlab env create --prefix=/opt/jlab_server --source=bundle --force
+# install bundled environment to <application-data-dir>/envs/test-env and add scikit-learn package
+jlab env create --name=test-env --source=bundle scikit-learn
 ```
 
-### `jlab env create <path> [package list]`
-
-Create a new conda or venv Python environment at the specified path. `jupyterlab` Python package is automatically installed since it is required by the desktop application. You can use `--exclude-jlab` to skip installation of `jupyterlab` package. A conda environment is created by default. If you would like to create venv environment, then add argument `--env-type venv` to the command. If there is an existing installation, `--force` argument can be set to overwrite.
-
-Examples:
+### Creating new environments using packages from registry
 
 ```bash
-# create new conda environment at /opt/jlab_server
-jlab env create /opt/jlab_server
-# create new conda environment at /opt/jlab_server
-jlab env create --path /opt/jlab_server
-# create new venv environment
-jlab env create /opt/jlab_server --env-type venv
-# create new environment with jupyterlab, scikit-learn, pandas, numpy packages
-jlab env create /opt/jlab_server scikit-learn pandas numpy
-# create new environment with only numpy package
-jlab env create /opt/jlab_server --exclude-jlab numpy
-# create new conda environment at /opt/jlab_server overwriting any existing installation
-jlab env create /opt/jlab_server --force
+# create environment with jupyterlab only
+jlab env create -n test-env
+# create environment with scikit-learn and jupyterlab
+jlab env create -n test-env scikit-learn
+# create environment with biocode and jupyterlab, using custom conda channels
+jlab env create -n test-env --channel conda-forge bioconda -- biocode
+# create a venv (using pip) environment with jupyterlab
+jlab env create -n test-env --env-type=venv
+```
+
+### Creating new environments using conda environment files
+
+See [conda documentation](https://docs.conda.io/projects/conda/en/latest/user-guide/tasks/manage-environments.html#create-env-file-manually) for more information on conda environment files.
+
+```bash
+# create environment using local environment file
+jlab env create -n test-env --source=/opt/env.yaml --source-type=conda-env-file
+# create environment using local environment file and add scikit-learn
+jlab env create -n test-env --source=/opt/env.yaml --source-type=conda-env-file scikit-learn
+# create environment using online environment file
+jlab env create -n test-env --source=https://example.org/conda-env/env.yaml --source-type=conda-env-file
+# create environment using online environment file and disable automatically adding jupyterlab package (assuming jupyterlab is already in the yaml)
+jlab env create -n test-env --source=https://example.org/conda-env/env.yaml --source-type=conda-env-file --add-jupyterlab-package=false
+```
+
+### Creating new environments using conda lock files
+
+See [conda-lock documentation](https://conda.github.io/conda-lock/) for more information on conda lock files.
+
+```bash
+# create environment using local conda lock file
+jlab env create -n test-env --source=/opt/env-lock.lock --source-type=conda-lock-file
+# create environment using local conda lock file and add scikit-learn
+jlab env create -n test-env --source=/opt/env-lock.yaml --source-type=conda-lock-file scikit-learn
+# create environment using online conda lock file
+jlab env create -n test-env --source=https://example.org/conda-env/env-lock.lock --source-type=conda-lock-file
+# create environment using online conda lock file and disable automatically adding jupyterlab package (assuming jupyterlab is already in the lock file)
+jlab env create -n test-env --source=https://example.org/conda-env/env-lock.yaml --source-type=conda-lock-file --add-jupyterlab-package=false
+```
+
+### Creating new environments using conda pack bundle files
+
+See [conda-pack documentation](https://conda.github.io/conda-pack/) for more information on conda pack bundles.
+
+```bash
+# create environment using local conda pack file
+jlab env create -n test-env --source=/opt/env.tar.gz --source-type=conda-pack
+# create environment using local conda pack file and add scikit-learn
+jlab env create -n test-env --source=/opt/env.tar.gz --source-type=conda-pack scikit-learn
+# create environment using online conda pack file
+jlab env create -n test-env --source=https://example.org/conda-env/env.tar.gz --source-type=conda-pack
+# create environment using online conda pack file and disable automatically adding jupyterlab package (assuming jupyterlab is already in the bundle)
+jlab env create -n test-env --source=https://example.org/conda-env/env.tar.gz --source-type=conda-pack --add-jupyterlab-package=false
 ```
 
 ### `jlab env activate [--name=<name>] [--prefix=<prefix>]`
 
-Activate a Python environment in system terminal. In order to activate app's default Python environment, skip the path argument. If the path argument is provided, then the environment at the specified directory is activated.
+Activate a Python environment in system terminal. In order to activate app's default Python environment, skip the name and prefix arguments.
 
 Examples:
 
@@ -102,7 +145,7 @@ Make sure to exit the terminal process when you are done with activated environm
 
 ### `jlab env update-registry`
 
-Update discovered and user set Python environments without launching UI. This command resolves the environment details using the paths stored in app's environment registry. This operation is automatically done at app launch but the command can be used to the same without launching the app.
+Update discovered and user set Python environments without launching UI. This command resolves the environment details using the paths stored in app's environment registry. This operation is automatically done at app launch but the command can be used to do the same without launching the app.
 
 ### `jlab env set-python-envs-path <path>`
 
@@ -133,8 +176,8 @@ Set conda channels (separated by space) to use when installing new conda package
 Examples:
 
 ```bash
-# set conda channels to [conda-forge, defaults]
-jlab env set-conda-channels conda-forge defaults
+# set conda channels to [conda-forge, bioconda]
+jlab env set-conda-channels conda-forge bioconda
 ```
 
 ### `jlab env set-system-python-path <path>`
@@ -144,7 +187,7 @@ Set Python executable path to use when creating new venv environments
 Examples:
 
 ```bash
-# set conda channels to /opt/python3.12/bin/python
+# set python path to /opt/python3.12/bin/python
 jlab env set-system-python-path /opt/python3.12/bin/python
 ```
 
