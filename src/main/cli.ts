@@ -30,6 +30,7 @@ import {
   ICommandRunCallbacks,
   runCommandInEnvironment,
   validateCondaPath,
+  validatePythonEnvironmentInstallDirectory,
   validateSystemPythonPath
 } from './env';
 
@@ -166,6 +167,9 @@ export function parseCLIArgs(argv: string[]) {
             break;
           case 'create':
             await handleEnvCreateCommand(argv);
+            break;
+          case 'set-python-envs-path':
+            await handleEnvPythonEnvsPathCommand(argv);
             break;
           case 'set-conda-path':
             await handleEnvSetCondaPathCommand(argv);
@@ -618,11 +622,9 @@ export async function handleEnvCreateCommand(argv: any) {
   const { sourceType } = argv;
   const isCondaPackSource = source === 'bundle' || sourceType === 'conda-pack';
 
-  const addJupyterlabPackage = argv.addJupyterlabPackage === true;
-
   const packageList: string[] = argv._.slice(1);
   // add jupyterlab package unless source is conda pack
-  if (!isCondaPackSource && addJupyterlabPackage) {
+  if (source !== 'bundle' && argv.addJupyterlabPackage === true) {
     packageList.push('jupyterlab');
   }
 
@@ -737,6 +739,27 @@ export async function handleEnvCreateCommand(argv: any) {
   if (sourceIsTempFile) {
     fs.unlinkSync(sourceFilePath);
   }
+}
+
+export async function handleEnvPythonEnvsPathCommand(argv: any) {
+  const dirPath = argv._.length === 2 ? argv._[1] : undefined;
+  if (!dirPath) {
+    console.error('Please set a valid envs directory');
+    return;
+  }
+
+  const res = validatePythonEnvironmentInstallDirectory(dirPath);
+
+  if (!res.valid) {
+    console.error(res.message);
+    return;
+  }
+
+  console.log(
+    `Setting "${dirPath}" as the Python environment install directory`
+  );
+  userSettings.setValue(SettingType.pythonEnvsPath, dirPath);
+  userSettings.save();
 }
 
 export async function handleEnvSetCondaPathCommand(argv: any) {

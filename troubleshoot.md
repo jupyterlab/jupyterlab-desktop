@@ -135,6 +135,12 @@ Bundled Python environment is installed to:
 - On macOS: `~/Library/jupyterlab-desktop/jlab_server`
 - On Linux: `~/.config/jupyterlab-desktop/jlab_server`
 
+New Python environment install paths:
+
+- On Windows: `%APPDATA%\jupyterlab-desktop\envs`
+- On macOS: `~/Library/jupyterlab-desktop/envs`
+- On Linux: `~/.config/jupyterlab-desktop/envs`
+
 ## After JupyterLab Desktop update, why there is still the old JupyterLab Web Application version?
 
 Updating JLD application doesn't automatically update the Python environment previously used by the application, for various reasons. However, bundled Python environment installer is updated if the new JLD has a version upgrade other than suffix (`-n`) change. You can compare the versions of JLD application and jupyterlab package versions in the Python environment as described in [versions section above](#jupyterlab-desktop-vs-jupyterlab-web-application-versions).
@@ -142,6 +148,12 @@ Updating JLD application doesn't automatically update the Python environment pre
 JLD provides an easy way to update the bundled Python environment installation. Simply go to `Hamburger Menu` -> `Settings` -> `Server` tab. If your bundled Python environment installation is out-dated then you will see a notification and a button to update the installation.
 
 <img src="media/bundled-env-update.png" alt="Bundled environment update" width=700 />
+
+You can update the bundled Python environment installation by using the CLI command below as well. It will first remove the existing installation and then reinstall the environment.
+
+```bash
+jlab env create --force
+```
 
 ## macOS write permission issues
 
