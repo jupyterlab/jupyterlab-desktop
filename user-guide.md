@@ -20,7 +20,7 @@ JLD supports multiple session windows. Each session window has a corresponding J
 
 # Changing the Python Environment used by JupyterLab Desktop
 
-JupyterLab Desktop comes with a bundled Python environment which has the essential Python packages for scientific computing and data science workflows. For more advanced use cases and specific needs, you can set the Python environment used by JupyterLab Desktop to another `conda`, `venv`, or `pyenv` virtual environment available on your computer.
+JupyterLab Desktop comes with a bundled Python environment which has the essential Python packages for scientific computing and data science workflows. For more advanced use cases and specific needs, you can set the Python environment used by JupyterLab Desktop to another `conda`, `venv`, or `pyenv` virtual environment available on your computer. The environments on your computer are discovered by JLD on app launch. JLD provides UI and CLI features to let you create new Python environments that are compatible with the app. See [Python environment management](python-env-management.md) for more information.
 
 Active Python environment info is shown on the title bar. If you hover on it you will see the details of the environment such as its path and certain package versions, along with the currently running JupyterLab server instance information.
 
@@ -30,11 +30,11 @@ JupyterLab Desktop allows you to change the default Python environment used for 
 
 ### To change the default Python environment:
 
-- Open the settings dialog from the to right menu and go to `Server` tab.
+- Open the Manage Python environments dialog from the to right menu and go to the `Settings` tab.
 
-<img src="media/server-settings-custom-python-env.png" alt="Custom Python environment" width=800 />
+<img src="media/manage-envs-settings.png" alt="Python environment management settings" width=800 />
 
-- In Server tab, select `Custom Python environment` option and either enter the path to Python executable you would like to use or click `Select Python path` to browse for it.
+- In Settings tab, select `Use custom Python environment` option and either enter the path to Python executable you would like to use or click `Select path` to browse for it.
 
 - Environment selection will be applied at the next launch of the application
 
@@ -44,15 +44,11 @@ JupyterLab Desktop allows you to change the default Python environment used for 
 
 <img src="media/python-env-select.png" alt="Python environment popup" width=700 />
 
-- You can choose from one of the Python paths listed on the menu or click the browse button on top right to browse and select any other Python paths existing on your computer.
-
-- If you are browsing for a Python path, select the Python executable (`python.exe` on Windows and `python` on macOS & Linux) of the custom environment you would like to use. Python executable can be found at the root directory of the virtual environment on Windows and in the `bin` directory of the environment on macOS & Linux.
-
-- You can also paste a Python path from the clipboard into the input field and hit `Enter` key to select it.
+- You can choose from one of the Python paths listed on the menu. You can type in the input field to filter the Python paths in the menu. See [Python environment management](python-env-management.md) for information on adding or creating new Python environments.
 
 - Once you select a new environment, JupyterLab server will be restarted using the new environment without restarting the application.
 
-- Another way to set project specific Python environment is by using the CLI. You can set the `--python-path` CLI parameter (e.g. `jlab --python-path /Users/username/custom_env/bin/python .`) and then the application will launch in the specified project directory with the Python environment set. The setting will be saved to project settings and restored at next launch via CLI or UI.
+- Another way to set project specific Python environment is by using the CLI. You can set the `--python-path` CLI parameter (e.g. `jlab --python-path /Users/username/custom_env/bin/python .`) and then the application will launch in the specified project directory with the Python environment set.
 
 Python environment selections are saved in user settings or project settings and restored at launch. See the [Configuration and data files](#Configuration-and-data-files) section for more information about the settings storage. Python environment is stored with `pythonPath` key in those files. Setting the value to empty string or removing the key will reset the change.
 
@@ -251,7 +247,7 @@ rm -rf ~/Library/Logs/jupyterlab-desktop
 
 On Windows, JupyterLab Desktop is installed in two parts, one for the python environment and another for the application itself. Go to `Windows Apps & Features` dialog using `Start Menu` -> `Settings` -> `Apps` and make sure to uninstall the components in the following order:
 
-- First uninstall JupyterLab Desktop python environment
+- First uninstall JupyterLab Desktop python environment (if applicable, for version v4.0.1-1 and older)
 
 <img src="media/uninstall-windows-python-environment.png" alt="Uninstall Python environment" height=200 />
 
