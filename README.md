@@ -2,20 +2,18 @@
 
 JupyterLab Desktop is the cross-platform desktop application for [JupyterLab](https://github.com/jupyterlab/jupyterlab). It is the quickest and easiest way to get started with Jupyter notebooks on your personal computer, with the flexibility for advanced use cases.
 
+
 ![JupyterLab Desktop](media/jupyterlab-desktop.png)
 
-## Installation
+## Who is it for?
 
-If you have an existing JupyterLab Desktop installation, please uninstall it first by following the [uninstall instructions](user-guide.md#uninstalling-jupyterlab-desktop).
+- less technical users.  Install Jupyter with one download and run it with a single click, no messing with environments and the command line. [Less technical user guide](./to-be-written)
+- Sysadmins/IT.  Do you have to setup this jupyter thing for data scientists at your organization? [Sysadmin docs](./to-be-written)
+- Advanced users.  Do you want a one-click way to manage your multiple jupyter lab servers running on your machine.  Do you want to know about all of the advanced features and config [Advanced user guide](./to-be-written)
 
-- [Debian, Ubuntu Linux Installer](https://github.com/jupyterlab/jupyterlab-desktop/releases/latest/download/JupyterLab-Setup-Debian.deb)
-- [Red Hat, Fedora, SUSE Linux Installer](https://github.com/jupyterlab/jupyterlab-desktop/releases/latest/download/JupyterLab-Setup-Fedora.rpm)
-- [macOS Intel Installer](https://github.com/jupyterlab/jupyterlab-desktop/releases/latest/download/JupyterLab-Setup-macOS-x64.dmg), [macOS Apple silicon Installer](https://github.com/jupyterlab/jupyterlab-desktop/releases/latest/download/JupyterLab-Setup-macOS-arm64.dmg)
-- [Windows Installer](https://github.com/jupyterlab/jupyterlab-desktop/releases/latest/download/JupyterLab-Setup-Windows.exe)
+## Auto-configured-quick-install page
 
-Additionally, JupyterLab Desktop can be installed on Windows via winget: `winget install jupyterlab`.
-
-Please check out the [Python Environment Customization Guide](user-guide.md#Customizing-the-Bundled-Python-Environment) if you plan to customize the Python environment to add new packages.
+[Click here to install Jupyterlab Desktop](./externally-hosted-page-to-be-written)
 
 ## Launching JupyterLab Desktop
 
