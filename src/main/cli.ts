@@ -168,7 +168,7 @@ export function parseCLIArgs(argv: string[]) {
             await handleEnvCreateCommand(argv);
             break;
           case 'set-python-envs-path':
-            await handleEnvPythonEnvsPathCommand(argv);
+            await handleEnvSetPythonEnvsPathCommand(argv);
             break;
           case 'set-conda-path':
             await handleEnvSetCondaPathCommand(argv);
@@ -748,7 +748,7 @@ export async function handleEnvCreateCommand(argv: any) {
   }
 }
 
-export async function handleEnvPythonEnvsPathCommand(argv: any) {
+export async function handleEnvSetPythonEnvsPathCommand(argv: any) {
   const dirPath = argv._.length === 2 ? argv._[1] : undefined;
   if (!dirPath) {
     console.error('Please set a valid envs directory');
