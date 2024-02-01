@@ -369,14 +369,22 @@ async function installAdditionalCondaPackagesToEnv(
   callbacks?: ICommandRunCallbacks
 ) {
   const baseCondaPath = getCondaPath();
-  const baseCondaEnvPath = condaEnvPathForCondaExePath(baseCondaPath);
-  const condaBaseEnvExists = isBaseCondaEnv(baseCondaEnvPath);
+  const baseCondaEnvPath = baseCondaPath
+    ? condaEnvPathForCondaExePath(baseCondaPath)
+    : '';
+  const condaBaseEnvExists = baseCondaEnvPath
+    ? isBaseCondaEnv(baseCondaEnvPath)
+    : false;
 
   if (!condaBaseEnvExists) {
     throw new Error(`Base conda path not found "${baseCondaEnvPath}".`);
   }
 
-  const packages = packageList.join();
+  if (packageList.length === 0) {
+    throw new Error('No package specified.');
+  }
+
+  const packages = packageList.join(' ');
   const condaChannels =
     channelList?.length > 0 ? channelList : getCondaChannels();
   const channels = condaChannels.map(channel => `-c ${channel}`).join(' ');
@@ -816,7 +824,9 @@ export async function launchCLIinEnvironment(
     envPath = envPath || getBundledPythonEnvPath();
 
     const baseCondaPath = getCondaPath();
-    const baseCondaEnvPath = condaEnvPathForCondaExePath(baseCondaPath);
+    const baseCondaEnvPath = baseCondaPath
+      ? condaEnvPathForCondaExePath(baseCondaPath)
+      : '';
     const activateCommand = createCommandScriptInEnv(envPath, baseCondaEnvPath);
     const ext = isWin ? 'bat' : 'sh';
     const activateFilePath = createTempFile(`activate.${ext}`, activateCommand);
