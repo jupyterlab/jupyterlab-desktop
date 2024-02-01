@@ -71,8 +71,12 @@ For additional CLI options run `jlab --help` in command line.
 
 JupyterLab Desktop currently supports user-friendly [prebuilt](https://jupyterlab.readthedocs.io/en/stable/extension/extension_dev.html#overview-of-extensions) extensions. Source extensions which require rebuilding are not supported.
 
-### See [user guide](user-guide.md) for configuration options
+### Guides and Help
 
-### See [troubleshooting guide](troubleshoot.md) for troubleshooting issues
+- See [user guide](user-guide.md) for configuration options
 
-### For contributing, see [developer documentation](dev.md)
+- [Python environment management](python-env-management.md) guide for managing Python environments on your system using JupyterLab Desktop
+
+- See [troubleshooting guide](troubleshoot.md) for troubleshooting issues
+
+- For contributing, see [developer documentation](dev.md)

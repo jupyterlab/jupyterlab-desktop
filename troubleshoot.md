@@ -20,6 +20,8 @@ Below are detailed information on topics which commonly come up in questions and
 - [Detecting if an issue is specific to JupyterLab Desktop or not](#Detecting-if-an-issue-is-specific-to-JupyterLab-Desktop-or-not)
 - [Debugging application launch issues](#Debugging-application-launch-issues)
 - [Reverting to an older version and disabling auto-update](#Reverting-to-an-older-version-and-disabling-auto-update)
+- [`Delete` environment menu item availability in Manage Python environments dialog](#delete-environment-menu-item-availability-in-manage-python-environments-dialog)
+- [Additional resources on JupyterLab Desktop](#additional-resources-on-jupyterlab-desktop)
 
 ## JupyterLab Desktop vs JupyterLab Web Application versions
 
@@ -135,13 +137,25 @@ Bundled Python environment is installed to:
 - On macOS: `~/Library/jupyterlab-desktop/jlab_server`
 - On Linux: `~/.config/jupyterlab-desktop/jlab_server`
 
+New Python environment install paths:
+
+- On Windows: `%APPDATA%\jupyterlab-desktop\envs`
+- On macOS: `~/Library/jupyterlab-desktop/envs`
+- On Linux: `~/.config/jupyterlab-desktop/envs`
+
 ## After JupyterLab Desktop update, why there is still the old JupyterLab Web Application version?
 
 Updating JLD application doesn't automatically update the Python environment previously used by the application, for various reasons. However, bundled Python environment installer is updated if the new JLD has a version upgrade other than suffix (`-n`) change. You can compare the versions of JLD application and jupyterlab package versions in the Python environment as described in [versions section above](#jupyterlab-desktop-vs-jupyterlab-web-application-versions).
 
-JLD provides an easy way to update the bundled Python environment installation. Simply go to `Hamburger Menu` -> `Settings` -> `Server` tab. If your bundled Python environment installation is out-dated then you will see a notification and a button to update the installation.
+JLD provides an easy way to update the bundled Python environment installation. Simply go to `Hamburger Menu` -> `Manage Python environments` -> `Settings` tab. If your bundled Python environment installation is out-dated then you will see a notification and a button to update the installation.
 
 <img src="media/bundled-env-update.png" alt="Bundled environment update" width=700 />
+
+You can update the bundled Python environment installation by using the CLI command below as well. It will first remove the existing installation and then reinstall the environment. Make sure to stop all running JLD instances before running the command.
+
+```bash
+jlab env create --force
+```
 
 ## macOS write permission issues
 
@@ -212,3 +226,15 @@ JupyterLab Desktop automatically downloads and installs new versions on some pla
    ```
 
 3. Install older version of JupyterLab Desktop from the [Releases](https://github.com/jupyterlab/jupyterlab-desktop/releases/) page.
+
+## `Delete` environment menu item availability in Manage Python environments dialog
+
+In Manage Python environments dialog all the environments discovered by JLD are listed. However, only the environments installed by JLD can be deleted from this dialog and if they are not currently in use by a JupyterLab session. That's why some of the environments will not have the `Delete` environment menu available.
+
+## Additional resources on JupyterLab Desktop
+
+This repo contains the most up to date documentation on JupyterLab Desktop. However you can refer to the Jupyter blog posts on JLD for more context and information on the application. Below are the links to the blog posts.
+
+- [Introducing the new JupyterLab Desktop! (02/09/2023)](https://blog.jupyter.org/introducing-the-new-jupyterlab-desktop-bca1982bdb23)
+- [JupyterLab Desktop — 2022 recap (12/13/2022)](https://blog.jupyter.org/jupyterlab-desktop-2022-recap-28bdf00205c6)
+- [JupyterLab Desktop App now available! (09/22/2021)](https://blog.jupyter.org/jupyterlab-desktop-app-now-available-b8b661b17e9a)

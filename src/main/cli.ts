@@ -30,6 +30,7 @@ import {
   ICommandRunCallbacks,
   runCommandInEnvironment,
   validateCondaPath,
+  validatePythonEnvironmentInstallDirectory,
   validateSystemPythonPath
 } from './env';
 
@@ -118,7 +119,6 @@ export function parseCLIArgs(argv: string[]) {
             describe: 'Environment / package source type',
             choices: [
               'registry',
-              'bundle',
               'conda-pack',
               'conda-lock-file',
               'conda-env-file'
@@ -166,6 +166,9 @@ export function parseCLIArgs(argv: string[]) {
             break;
           case 'create':
             await handleEnvCreateCommand(argv);
+            break;
+          case 'set-python-envs-path':
+            await handleEnvSetPythonEnvsPathCommand(argv);
             break;
           case 'set-conda-path':
             await handleEnvSetCondaPathCommand(argv);
@@ -366,14 +369,22 @@ async function installAdditionalCondaPackagesToEnv(
   callbacks?: ICommandRunCallbacks
 ) {
   const baseCondaPath = getCondaPath();
-  const baseCondaEnvPath = condaEnvPathForCondaExePath(baseCondaPath);
-  const condaBaseEnvExists = isBaseCondaEnv(baseCondaEnvPath);
+  const baseCondaEnvPath = baseCondaPath
+    ? condaEnvPathForCondaExePath(baseCondaPath)
+    : '';
+  const condaBaseEnvExists = baseCondaEnvPath
+    ? isBaseCondaEnv(baseCondaEnvPath)
+    : false;
 
   if (!condaBaseEnvExists) {
     throw new Error(`Base conda path not found "${baseCondaEnvPath}".`);
   }
 
-  const packages = packageList.join();
+  if (packageList.length === 0) {
+    throw new Error('No package specified.');
+  }
+
+  const packages = packageList.join(' ');
   const condaChannels =
     channelList?.length > 0 ? channelList : getCondaChannels();
   const channels = condaChannels.map(channel => `-c ${channel}`).join(' ');
@@ -440,12 +451,7 @@ export interface ICreatePythonEnvironmentOptions {
   envPath: string;
   envType: string;
   sourceFilePath?: string;
-  sourceType?:
-    | 'registry'
-    | 'bundle'
-    | 'conda-pack'
-    | 'conda-lock-file'
-    | 'conda-env-file';
+  sourceType?: 'registry' | 'conda-pack' | 'conda-lock-file' | 'conda-env-file';
   packageList?: string[];
   condaChannels?: string[];
   callbacks?: ICommandRunCallbacks;
@@ -464,8 +470,13 @@ export async function createPythonEnvironment(
   } = options;
   const isConda = envType === 'conda';
   const baseCondaPath = getCondaPath();
-  const baseCondaEnvPath = condaEnvPathForCondaExePath(baseCondaPath);
-  const condaBaseEnvExists = isBaseCondaEnv(baseCondaEnvPath);
+  const baseCondaEnvPath = baseCondaPath
+    ? condaEnvPathForCondaExePath(baseCondaPath)
+    : '';
+  const condaBaseEnvExists = baseCondaEnvPath
+    ? isBaseCondaEnv(baseCondaEnvPath)
+    : false;
+
   const packages = packageList ? packageList.join(' ') : '';
 
   if (isConda) {
@@ -618,11 +629,9 @@ export async function handleEnvCreateCommand(argv: any) {
   const { sourceType } = argv;
   const isCondaPackSource = source === 'bundle' || sourceType === 'conda-pack';
 
-  const addJupyterlabPackage = argv.addJupyterlabPackage === true;
-
   const packageList: string[] = argv._.slice(1);
   // add jupyterlab package unless source is conda pack
-  if (!isCondaPackSource && addJupyterlabPackage) {
+  if (source !== 'bundle' && argv.addJupyterlabPackage === true) {
     packageList.push('jupyterlab');
   }
 
@@ -739,6 +748,27 @@ export async function handleEnvCreateCommand(argv: any) {
   }
 }
 
+export async function handleEnvSetPythonEnvsPathCommand(argv: any) {
+  const dirPath = argv._.length === 2 ? argv._[1] : undefined;
+  if (!dirPath) {
+    console.error('Please set a valid envs directory');
+    return;
+  }
+
+  const res = validatePythonEnvironmentInstallDirectory(dirPath);
+
+  if (!res.valid) {
+    console.error(res.message);
+    return;
+  }
+
+  console.log(
+    `Setting "${dirPath}" as the Python environment install directory`
+  );
+  userSettings.setValue(SettingType.pythonEnvsPath, dirPath);
+  userSettings.save();
+}
+
 export async function handleEnvSetCondaPathCommand(argv: any) {
   const condaPath = argv._.length === 2 ? argv._[1] : undefined;
   if (!condaPath) {
@@ -794,7 +824,9 @@ export async function launchCLIinEnvironment(
     envPath = envPath || getBundledPythonEnvPath();
 
     const baseCondaPath = getCondaPath();
-    const baseCondaEnvPath = condaEnvPathForCondaExePath(baseCondaPath);
+    const baseCondaEnvPath = baseCondaPath
+      ? condaEnvPathForCondaExePath(baseCondaPath)
+      : '';
     const activateCommand = createCommandScriptInEnv(envPath, baseCondaEnvPath);
     const ext = isWin ? 'bat' : 'sh';
     const activateFilePath = createTempFile(`activate.${ext}`, activateCommand);
