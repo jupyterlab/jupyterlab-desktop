@@ -462,8 +462,13 @@ export async function createPythonEnvironment(
   } = options;
   const isConda = envType === 'conda';
   const baseCondaPath = getCondaPath();
-  const baseCondaEnvPath = condaEnvPathForCondaExePath(baseCondaPath);
-  const condaBaseEnvExists = isBaseCondaEnv(baseCondaEnvPath);
+  const baseCondaEnvPath = baseCondaPath
+    ? condaEnvPathForCondaExePath(baseCondaPath)
+    : '';
+  const condaBaseEnvExists = baseCondaEnvPath
+    ? isBaseCondaEnv(baseCondaEnvPath)
+    : false;
+
   const packages = packageList ? packageList.join(' ') : '';
 
   if (isConda) {
