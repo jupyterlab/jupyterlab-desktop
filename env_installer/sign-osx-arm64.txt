@@ -100,16 +100,17 @@ lib/libbrotlidec.1.1.0.dylib
 lib/libbrotlienc.1.1.0.dylib
 lib/libbz2.1.0.8.dylib
 lib/libc++.1.0.dylib
-lib/libcares.2.10.1.dylib
+lib/libcares.2.11.0.dylib
 lib/libcharset.1.dylib
 lib/libcom_err.3.0.dylib
 lib/libcrypto.3.dylib
+lib/libcrypto.dylib
 lib/libcurl.4.dylib
 lib/libdeflate.0.dylib
 lib/libedit.0.dylib
 lib/libev.4.dylib
 lib/libffi.8.dylib
-lib/libfmt.10.1.1.dylib
+lib/libfmt.10.2.1.dylib
 lib/libform.6.dylib
 lib/libformw.6.dylib
 lib/libfreetype.6.dylib
@@ -162,6 +163,7 @@ lib/libsolvext.1.dylib
 lib/libsqlite3.0.dylib
 lib/libssh2.1.0.1.dylib
 lib/libssl.3.dylib
+lib/libssl.dylib
 lib/libtcl8.6.dylib
 lib/libtiff.6.dylib
 lib/libtiffxx.6.dylib
