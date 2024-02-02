@@ -537,7 +537,7 @@ export async function createPythonEnvironment(
   } else {
     const systemPythonPath = getSystemPythonPath();
     if (condaBaseEnvExists) {
-      const createCommand = `python -m venv create ${envPath}`;
+      const createCommand = `python -m venv ${envPath}`;
       await runCommandInEnvironment(baseCondaEnvPath, createCommand, callbacks);
     } else if (fs.existsSync(systemPythonPath)) {
       execFileSync(systemPythonPath, ['-m', 'venv', 'create', envPath]);
