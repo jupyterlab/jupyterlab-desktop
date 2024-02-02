@@ -540,7 +540,7 @@ export async function createPythonEnvironment(
       const createCommand = `python -m venv ${envPath}`;
       await runCommandInEnvironment(baseCondaEnvPath, createCommand, callbacks);
     } else if (fs.existsSync(systemPythonPath)) {
-      execFileSync(systemPythonPath, ['-m', 'venv', 'create', envPath]);
+      execFileSync(systemPythonPath, ['-m', 'venv', envPath]);
     } else {
       throw new Error(
         'Failed to create Python environment. Python executable not found.'
