@@ -962,7 +962,7 @@ export class ManagePythonEnvironmentDialog {
             createCommandPreview.value = \`conda create -p \$\{getEnvInstallPath()\} \$\{getCondaChannels()\}\ \$\{getPackageList()\}\`;
           } else {
             const envPath = getEnvInstallPath();
-            createCommandPreview.value = \`python -m venv create \$\{envPath\}\n\$\{envPath\}\$\{pathSeparator\}${activateRelPath.replace(
+            createCommandPreview.value = \`python -m venv \$\{envPath\}\n\$\{envPath\}\$\{pathSeparator\}${activateRelPath.replace(
               '\\',
               '\\\\'
             )}\npython -m pip install \$\{getPackageList()\}\`;
