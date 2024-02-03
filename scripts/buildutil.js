@@ -188,7 +188,7 @@ if (cli.flags.copyExtrasToBundledEnv) {
   const envExtrasDir = path.resolve('env_installer', 'extras');
   const envInstallerDir = path.resolve('env_installer', 'jlab_server');
 
-  fs.cpSync(envExtrasDir, envInstallerDir, { recursive: true });
+  fs.copySync(envExtrasDir, envInstallerDir, { recursive: true });
 
   console.log(
     `Finished copying from \n\t"${envExtrasDir}" to \n\t"${envInstallerDir}"`
