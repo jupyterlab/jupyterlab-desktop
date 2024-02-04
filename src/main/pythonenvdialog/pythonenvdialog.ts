@@ -391,13 +391,18 @@ export class ManagePythonEnvironmentDialog {
         background: var(--neutral-layer-4);
       }
       jp-menu-item::part(content) {
+        text-overflow: ellipsis;
+        overflow: hidden;
+        white-space: nowrap;
+        margin-left: 10px;
+      }
+      jp-menu-item::part(start) {
         width: 100%;
         text-overflow: ellipsis;
         overflow: hidden;
         white-space: nowrap;
-      }
-      jp-menu-item::part(end) {
         margin-left: 10px;
+        justify-content: left;
       }
       .env-right-content {
         display: flex;
