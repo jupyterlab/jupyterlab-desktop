@@ -150,6 +150,7 @@ lib/libopenblas.0.dylib
 lib/libopenjp2.2.5.0.dylib
 lib/libpanel.6.dylib
 lib/libpanelw.6.dylib
+lib/libpng.dylib
 lib/libpng16.16.dylib
 lib/libpython3.8.dylib
 lib/libquadmath.0.dylib
