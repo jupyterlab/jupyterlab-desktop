@@ -798,7 +798,7 @@ export class JupyterApplication implements IApplication, IDisposable {
           type: 'warning',
           message: 'Update bundled environment',
           detail:
-            'App will restart and the existing environment installation will be deleted before update. Would you like to continue?',
+            'App will restart and the existing environment installation will be deleted before the update. Would you like to continue?',
           buttons: ['Update', 'Cancel'],
           defaultId: 1,
           cancelId: 1
