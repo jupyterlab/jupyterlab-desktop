@@ -387,10 +387,18 @@ async function updateBundledPythonEnvInstallation() {
             }, 2000);
           }
           break;
+        case EnvironmentInstallStatus.Failure:
+          setStatusMessage('Failed to update! See logs for more details.');
+          setTimeout(() => {
+            statusDialog.close();
+          }, 3000);
+          break;
       }
     },
     get forceOverwrite() {
       return true;
     }
+  }).catch(reason => {
+    log.error('Failed to update the bundled environment!', reason);
   });
 }
