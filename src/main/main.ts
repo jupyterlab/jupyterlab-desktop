@@ -310,9 +310,9 @@ async function needToUpdateBundledPythonEnvInstallation(): Promise<boolean> {
       semver.compare(
         versionWithoutSuffix(jlabVersionInAppData),
         versionWithoutSuffix(appVersion)
-      ) === -1
+      ) >= 0
     ) {
-      return true;
+      return false;
     }
   }
 

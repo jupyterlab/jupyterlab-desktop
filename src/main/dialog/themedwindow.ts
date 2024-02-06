@@ -9,6 +9,7 @@ import { DarkThemeBGColor, LightThemeBGColor } from '../utils';
 export class ThemedWindow {
   constructor(options: ThemedWindow.IOptions) {
     this._isDarkTheme = options.isDarkTheme;
+    this._closable = options.closable !== false;
     this._window = new BrowserWindow({
       parent: options.parent,
       modal: options.modal,
@@ -16,7 +17,7 @@ export class ThemedWindow {
       width: options.width,
       height: options.height,
       show: false,
-      closable: options.closable !== false,
+      closable: this._closable,
       resizable: options.resizable !== false,
       titleBarStyle: 'hidden',
       frame: process.platform === 'darwin',
@@ -120,7 +121,7 @@ export class ThemedWindow {
           <div class="page-container">
             <jlab-dialog-titlebar id="title-bar" data-title="${
               this._window.title
-            }" data-closable="${this._window.closable.toString()}" class="${
+            }" data-closable="${this._closable.toString()}" class="${
       this._isDarkTheme ? 'app-ui-dark' : ''
     }"></jlab-dialog-titlebar>
             <div id="jlab-dialog-body" class="jlab-dialog-body">
@@ -136,6 +137,7 @@ export class ThemedWindow {
   }
 
   private _isDarkTheme: boolean;
+  private _closable: boolean;
   private _window: BrowserWindow;
 }
 
