@@ -75,7 +75,7 @@ export class PythonEnvironmentSelectPopup {
           white-space: nowrap;
           overflow: hidden;
           text-overflow: ellipsis;
-          max-width: 370px;
+          max-width: 345px;
           margin-left: 5px;
         }
         #popup-title {
