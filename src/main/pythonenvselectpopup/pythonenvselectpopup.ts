@@ -37,6 +37,10 @@ export class PythonEnvironmentSelectPopup {
       path.join(__dirname, '../../../app-assets/xmark.svg')
     );
 
+    const serverIconSrc = fs.readFileSync(
+      path.join(__dirname, '../../../app-assets/server-icon.svg')
+    );
+
     const template = `
       <style>
         body {
@@ -71,7 +75,7 @@ export class PythonEnvironmentSelectPopup {
           white-space: nowrap;
           overflow: hidden;
           text-overflow: ellipsis;
-          max-width: 370px;
+          max-width: 345px;
           margin-left: 5px;
         }
         #popup-title {
@@ -100,6 +104,12 @@ export class PythonEnvironmentSelectPopup {
         }
         #header .toolbar-button:active svg path {
           fill: var(--accent-foreground-active);
+        }
+        #update-bundled-env-button {
+          display: none;
+        }
+        #header #update-bundled-env-button svg path {
+          fill: #ff8c4e;
         }
         #close-button {
           margin-left: 5px;
@@ -172,6 +182,9 @@ export class PythonEnvironmentSelectPopup {
             <div class="toolbar-button" id="copy-button" onclick='handleCopySessionInfo();' title="Copy session info to clipboard">
               ${copyIconSrc}
             </div>
+            <div class="toolbar-button" id="update-bundled-env-button" onclick='handleUpdateBundledEnv();' title="Update available for Python environment. Click to install.">
+              ${serverIconSrc}
+            </div>
           </div>
           <div class="toolbar-button" id="close-button" onclick='window.electronAPI.hideEnvSelectPopup();' title="Close menu">
             ${xMarkIconSrc}
@@ -199,6 +212,7 @@ export class PythonEnvironmentSelectPopup {
         let currentPythonPath = <%- JSON.stringify(currentPythonPath) %>;
         let currentPythonPathRelative = <%- JSON.stringify(currentPythonPathRelative) %>;
         const currentPythonPathLabel = document.getElementById('current-python-path-label');
+        const updateBundledEnvButton = document.getElementById('update-bundled-env-button');
         const pythonPathInput = document.getElementById('python-path');
         const envListMenu = document.getElementById('env-list');
         let envs = <%- JSON.stringify(envs) %>;
@@ -276,6 +290,11 @@ export class PythonEnvironmentSelectPopup {
           window.electronAPI.copySessionInfo();
         }
 
+        function handleUpdateBundledEnv() {
+          window.electronAPI.hideEnvSelectPopup();
+          window.electronAPI.updateBundledPythonEnv();
+        }
+
         window.electronAPI.onResetPythonEnvSelectPopup(() => {
           pythonPathInput.value = '';
           activeIndex = 0;
@@ -301,6 +320,10 @@ export class PythonEnvironmentSelectPopup {
           envPaths = envs.map(env => env.path);
           pythonPathInput.value = '';
           updateMenu();
+        });
+
+        window.electronAPI.onShowUpdateBundledEnvAction((show) => {
+          updateBundledEnvButton.style.display = show ? 'block' : 'none';
         });
 
         function onMenuItemClicked(el) {
@@ -431,6 +454,13 @@ export class PythonEnvironmentSelectPopup {
       EventTypeRenderer.SetCurrentPythonPath,
       currentPythonPath,
       relativePath || currentPythonPath
+    );
+  }
+
+  showUpdateBundledEnvAction(show: boolean) {
+    this._view.view.webContents.send(
+      EventTypeRenderer.ShowUpdateBundledEnvAction,
+      show
     );
   }
 

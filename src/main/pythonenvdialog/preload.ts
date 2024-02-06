@@ -73,7 +73,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.send(EventTypeMain.InstallBundledPythonEnv, envPath);
   },
   updateBundledPythonEnv: () => {
-    ipcRenderer.send(EventTypeMain.InstallBundledPythonEnv);
+    ipcRenderer.send(EventTypeMain.UpdateBundledPythonEnv);
   },
   onInstallBundledPythonEnvStatus: (
     callback: InstallBundledPythonEnvStatusListener

@@ -40,6 +40,8 @@ export type KeyValueMap = { [key: string]: string };
 export enum SettingType {
   checkForUpdatesAutomatically = 'checkForUpdatesAutomatically',
   installUpdatesAutomatically = 'installUpdatesAutomatically',
+  notifyOnBundledEnvUpdates = 'notifyOnBundledEnvUpdates',
+  updateBundledEnvAutomatically = 'updateBundledEnvAutomatically',
 
   theme = 'theme',
   syncJupyterLabTheme = 'syncJupyterLabTheme',
@@ -124,6 +126,8 @@ export class UserSettings {
     this._settings = {
       checkForUpdatesAutomatically: new Setting<boolean>(true),
       installUpdatesAutomatically: new Setting<boolean>(true),
+      notifyOnBundledEnvUpdates: new Setting<boolean>(true),
+      updateBundledEnvAutomatically: new Setting<boolean>(false),
       showNewsFeed: new Setting<boolean>(true),
 
       /* making themes workspace overridable is not feasible.

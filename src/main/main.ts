@@ -1,14 +1,28 @@
 import { app, Menu, MenuItem } from 'electron';
 import log, { LevelOption } from 'electron-log';
 import * as fs from 'fs';
-import { getAppDir, isDevMode, waitForFunction } from './utils';
+import * as semver from 'semver';
+import {
+  bundledEnvironmentIsInstalled,
+  EnvironmentInstallStatus,
+  getAppDir,
+  getBundledPythonEnvPath,
+  getBundledPythonPath,
+  installBundledEnvironment,
+  isDevMode,
+  versionWithoutSuffix,
+  waitForDuration,
+  waitForFunction
+} from './utils';
 import { execSync } from 'child_process';
 import { JupyterApplication } from './app';
 import { ICLIArguments } from './tokens';
 import { SessionConfig } from './config/sessionconfig';
 import { SettingType, userSettings } from './config/settings';
 import { parseCLIArgs } from './cli';
-import { getPythonEnvsDirectory } from './env';
+import { getPythonEnvsDirectory, runCommandInEnvironment } from './env';
+import { ThemedWindow } from './dialog/themedwindow';
+import { appData } from './config/appdata';
 
 let jupyterApp: JupyterApplication;
 let fileToOpenInMainInstance = '';
@@ -192,6 +206,7 @@ app.on('ready', async () => {
 
   try {
     await handleMultipleAppInstances();
+    await updateBundledPythonEnvInstallation();
     redirectConsoleToLog();
     setApplicationMenu();
     setupJLabCommand();
@@ -257,5 +272,133 @@ function handleMultipleAppInstances(): Promise<void> {
       // is second instance
       reject('Handling request in the main instance.');
     }
+  });
+}
+
+async function needToUpdateBundledPythonEnvInstallation(): Promise<boolean> {
+  // update on restart requested
+  if (appData.updateBundledEnvOnRestart) {
+    return true;
+  }
+
+  // update if auto update is
+  if (
+    !(
+      userSettings.getValue(SettingType.updateBundledEnvAutomatically) &&
+      bundledEnvironmentIsInstalled()
+    )
+  ) {
+    return false;
+  }
+
+  const appDataEnvironments = [
+    ...appData.discoveredPythonEnvs,
+    ...appData.userSetPythonEnvs
+  ];
+  const bundledPythonPath = getBundledPythonPath();
+  const bundledEnvInAppData = appDataEnvironments.find(
+    env => bundledPythonPath === env.path
+  );
+
+  const appVersion = app.getVersion();
+
+  try {
+    // if the version in appData is latest, then assume it is latest
+    if (bundledEnvInAppData) {
+      const jlabVersionInAppData = bundledEnvInAppData.versions['jupyterlab'];
+
+      if (
+        semver.compare(
+          versionWithoutSuffix(jlabVersionInAppData),
+          versionWithoutSuffix(appVersion)
+        ) >= 0
+      ) {
+        return false;
+      }
+    }
+
+    // if not latest in appData check the active jupyterlab version
+    // in case appData is outdated
+    let outputVersion = '';
+    if (
+      await runCommandInEnvironment(
+        getBundledPythonEnvPath(),
+        `python -c "import jupyterlab; print(jupyterlab.__version__)"`,
+        {
+          stdout: msg => {
+            outputVersion += msg;
+          }
+        }
+      )
+    ) {
+      if (
+        semver.compare(
+          versionWithoutSuffix(outputVersion.trim()),
+          versionWithoutSuffix(appVersion)
+        ) === -1
+      ) {
+        return true;
+      }
+    }
+  } catch (error) {
+    log.error('Failed to check for env update need.', error);
+  }
+
+  return false;
+}
+
+async function updateBundledPythonEnvInstallation() {
+  if (!(await needToUpdateBundledPythonEnvInstallation())) {
+    return;
+  }
+
+  const statusDialog = new ThemedWindow({
+    isDarkTheme: true,
+    title: 'Updating bundled environment installation',
+    width: 400,
+    height: 150,
+    closable: false
+  });
+
+  const setStatusMessage = (message: string) => {
+    statusDialog.loadDialogContent(message);
+    waitForDuration(100);
+  };
+
+  setStatusMessage('Reinstalling environment.');
+
+  const installPath = getBundledPythonEnvPath();
+  await installBundledEnvironment(installPath, {
+    onInstallStatus: (status, message) => {
+      log.info(`Bundled env install status: ${status}, message ${message}`);
+      switch (status) {
+        case EnvironmentInstallStatus.RemovingExistingInstallation:
+          setStatusMessage('Removing existing installation...');
+          break;
+        case EnvironmentInstallStatus.Started:
+          setStatusMessage('Installing new version...');
+          break;
+        case EnvironmentInstallStatus.Success:
+          {
+            appData.updateBundledEnvOnRestart = false;
+            setStatusMessage('Finished updating.');
+            setTimeout(() => {
+              statusDialog.close();
+            }, 2000);
+          }
+          break;
+        case EnvironmentInstallStatus.Failure:
+          setStatusMessage('Failed to update! See logs for more details.');
+          setTimeout(() => {
+            statusDialog.close();
+          }, 3000);
+          break;
+      }
+    },
+    get forceOverwrite() {
+      return true;
+    }
+  }).catch(reason => {
+    log.error('Failed to update the bundled environment!', reason);
   });
 }

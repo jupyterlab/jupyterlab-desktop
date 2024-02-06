@@ -10,11 +10,13 @@ type CurrentPythonPathSetListener = (
 type ResetPythonEnvSelectPopupListener = () => void;
 type CustomPythonPathSelectedListener = (path: string) => void;
 type SetPythonEnvironmentListListener = (envs: IPythonEnvironment[]) => void;
+type ShowUpdateBundledEnvActionListener = (show: boolean) => void;
 
 let onCustomPythonPathSelectedListener: CustomPythonPathSelectedListener;
 let onCurrentPythonPathSetListener: CurrentPythonPathSetListener;
 let onResetPythonEnvSelectPopupListener: ResetPythonEnvSelectPopupListener;
 let onSetPythonEnvironmentListListener: SetPythonEnvironmentListListener;
+let onShowUpdateBundledEnvActionListener: ShowUpdateBundledEnvActionListener;
 
 contextBridge.exposeInMainWorld('electronAPI', {
   getAppConfig: () => {
@@ -56,6 +58,14 @@ contextBridge.exposeInMainWorld('electronAPI', {
   },
   copySessionInfo: () => {
     ipcRenderer.send(EventTypeMain.CopySessionInfoToClipboard);
+  },
+  updateBundledPythonEnv: () => {
+    ipcRenderer.send(EventTypeMain.UpdateBundledPythonEnv);
+  },
+  onShowUpdateBundledEnvAction: (
+    callback: ShowUpdateBundledEnvActionListener
+  ) => {
+    onShowUpdateBundledEnvActionListener = callback;
   }
 });
 
@@ -83,6 +93,12 @@ ipcRenderer.on(EventTypeRenderer.CustomPythonPathSelected, (event, path) => {
 ipcRenderer.on(EventTypeRenderer.SetPythonEnvironmentList, (event, envs) => {
   if (onSetPythonEnvironmentListListener) {
     onSetPythonEnvironmentListListener(envs);
+  }
+});
+
+ipcRenderer.on(EventTypeRenderer.ShowUpdateBundledEnvAction, (event, show) => {
+  if (onShowUpdateBundledEnvActionListener) {
+    onShowUpdateBundledEnvActionListener(show);
   }
 });
 

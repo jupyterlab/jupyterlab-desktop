@@ -169,6 +169,10 @@ export class ApplicationData {
         });
       }
     }
+
+    if ('updateBundledEnvOnRestart' in jsonData) {
+      this.updateBundledEnvOnRestart = jsonData.updateBundledEnvOnRestart;
+    }
   }
 
   save() {
@@ -243,6 +247,10 @@ export class ApplicationData {
         title: newsItem.title,
         link: newsItem.link
       });
+    }
+
+    if (this.updateBundledEnvOnRestart) {
+      appDataJSON.updateBundledEnvOnRestart = true;
     }
 
     fs.writeFileSync(appDataPath, JSON.stringify(appDataJSON, null, 2));
@@ -395,6 +403,8 @@ export class ApplicationData {
 
   discoveredPythonEnvs: IPythonEnvironment[] = [];
   userSetPythonEnvs: IPythonEnvironment[] = [];
+
+  updateBundledEnvOnRestart: boolean = false;
 
   private _recentSessionsChanged = new Signal<this, void>(this);
 }

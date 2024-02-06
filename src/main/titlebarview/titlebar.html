@@ -76,6 +76,18 @@ Distributed under the terms of the Modified BSD License.
       #server-icon {
         margin-right: 0;
       }
+      #server-notification-badge {
+        display: none;
+        position: absolute;
+        z-index: 20;
+        border-radius: 50%;
+        background-color: #ff0000;
+        width: 10px;
+        height: 10px;
+        top: 3px;
+        margin-left: -7px;
+        opacity: 0.8;
+      }
       #menu-button svg {
         padding-top: 4px;
         width: 20px;
@@ -157,6 +169,7 @@ Distributed under the terms of the Modified BSD License.
         <div id="server-button">
           <div id="server-icon">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Pro 6.2.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license (Commercial License) Copyright 2022 Fonticons, Inc. --><path d="M64 32C28.7 32 0 60.7 0 96v64c0 35.3 28.7 64 64 64H448c35.3 0 64-28.7 64-64V96c0-35.3-28.7-64-64-64H64zM344 152c-13.3 0-24-10.7-24-24s10.7-24 24-24s24 10.7 24 24s-10.7 24-24 24zm96-24c0 13.3-10.7 24-24 24s-24-10.7-24-24s10.7-24 24-24s24 10.7 24 24zM64 288c-35.3 0-64 28.7-64 64v64c0 35.3 28.7 64 64 64H448c35.3 0 64-28.7 64-64V352c0-35.3-28.7-64-64-64H64zM344 408c-13.3 0-24-10.7-24-24s10.7-24 24-24s24 10.7 24 24s-10.7 24-24 24zm104-24c0 13.3-10.7 24-24 24s-24-10.7-24-24s10.7-24 24-24s24 10.7 24 24z"/></svg>
+            <div id="server-notification-badge"></div>
           </div>
           <div id="server-label"></div>
         </div>
@@ -196,6 +209,7 @@ Distributed under the terms of the Modified BSD License.
     <script>
       const appTitle = document.getElementById('app-title');
       const serverButton = document.getElementById('server-button');
+      const serverNotificationBadge = document.getElementById('server-notification-badge');
       const serverIcon = document.getElementById('server-icon');
       const serverLabel = document.getElementById('server-label');
       const menuButton = document.getElementById('menu-button');
@@ -222,6 +236,10 @@ Distributed under the terms of the Modified BSD License.
         if (show) {
           updateServerStatus();
         }
+      });
+
+      window.electronAPI.onShowServerNotificationBadge((show) => {
+        serverNotificationBadge.style.display = show ? 'inline-block' : 'none';
       });
 
       menuButton.onclick = (ev) => {

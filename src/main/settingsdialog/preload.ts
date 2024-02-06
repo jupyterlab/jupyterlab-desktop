@@ -75,6 +75,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   },
   setCtrlWBehavior: (behavior: string) => {
     ipcRenderer.send(EventTypeMain.SetCtrlWBehavior, behavior);
+  },
+  setSettings: (settings: { [key: string]: any }) => {
+    ipcRenderer.send(EventTypeMain.SetSettings, settings);
   }
 });
 

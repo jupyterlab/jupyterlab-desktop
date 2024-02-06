@@ -253,6 +253,15 @@ export interface ICondaPackEnvironmentInstallListener {
   confirmOverwrite?: () => Promise<boolean>;
 }
 
+export function bundledEnvironmentIsInstalled(): boolean {
+  const bundledPythonEnvPath = getBundledPythonEnvPath();
+
+  return (
+    fs.existsSync(bundledPythonEnvPath) &&
+    fs.statSync(bundledPythonEnvPath).isDirectory()
+  );
+}
+
 export async function installBundledEnvironment(
   installPath: string,
   listener?: ICondaPackEnvironmentInstallListener

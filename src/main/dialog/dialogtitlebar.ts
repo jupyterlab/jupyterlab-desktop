@@ -15,13 +15,17 @@ class JupyterLabDialogTitleBar extends HTMLElement {
     const titleEl = document.createElement('div');
     titleEl.setAttribute('class', 'dialog-title');
 
-    const closeButton = document.createElement('div');
-    closeButton.setAttribute('class', 'close-button');
-    closeButton.innerHTML = `<svg viewBox='0 0 10 10'><polygon points='10.2,0.7 9.5,0 5.1,4.4 0.7,0 0,0.7 4.4,5.1 0,9.5 0.7,10.2 5.1,5.8 9.5,10.2 10.2,9.5 5.8,5.1'/></svg>`;
-    closeButton.title = 'Close';
-    closeButton.onclick = () => {
-      window.close();
-    };
+    const closable = this.getAttribute('data-closable') !== 'false';
+    let closeButton = null;
+    if (closable) {
+      closeButton = document.createElement('div');
+      closeButton.setAttribute('class', 'close-button');
+      closeButton.innerHTML = `<svg viewBox='0 0 10 10'><polygon points='10.2,0.7 9.5,0 5.1,4.4 0.7,0 0,0.7 4.4,5.1 0,9.5 0.7,10.2 5.1,5.8 9.5,10.2 10.2,9.5 5.8,5.1'/></svg>`;
+      closeButton.title = 'Close';
+      closeButton.onclick = () => {
+        window.close();
+      };
+    }
 
     const title = this.getAttribute('data-title');
     titleEl.textContent = title;
@@ -85,7 +89,9 @@ class JupyterLabDialogTitleBar extends HTMLElement {
     shadow.appendChild(style);
     shadow.appendChild(wrapper);
     wrapper.appendChild(titleEl);
-    wrapper.appendChild(closeButton);
+    if (closeButton) {
+      wrapper.appendChild(closeButton);
+    }
   }
 }
 
