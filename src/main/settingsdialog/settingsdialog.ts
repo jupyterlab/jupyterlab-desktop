@@ -4,6 +4,7 @@
 import * as ejs from 'ejs';
 import { BrowserWindow } from 'electron';
 import * as path from 'path';
+import * as fs from 'fs';
 import { ThemedWindow } from '../dialog/themedwindow';
 import {
   CtrlWBehavior,
@@ -22,7 +23,7 @@ export class SettingsDialog {
       isDarkTheme: options.isDarkTheme,
       title: 'Settings',
       width: 700,
-      height: 400,
+      height: 450,
       preload: path.join(__dirname, './preload.js')
     });
 
@@ -32,6 +33,8 @@ export class SettingsDialog {
       syncJupyterLabTheme,
       showNewsFeed,
       checkForUpdatesAutomatically,
+      notifyOnBundledEnvUpdates,
+      updateBundledEnvAutomatically,
       defaultWorkingDirectory,
       logLevel,
       serverArgs,
@@ -51,6 +54,10 @@ export class SettingsDialog {
     }
 
     const ctrlWLabel = process.platform === 'darwin' ? 'Cmd + W' : 'Ctrl + W';
+
+    const infoIconSrc = fs.readFileSync(
+      path.join(__dirname, '../../../app-assets/info-icon.svg')
+    );
 
     const template = `
       <style>
@@ -122,6 +129,13 @@ export class SettingsDialog {
       }
       #additional-server-env-vars.invalid::part(control) {
         border-color: red;
+      }
+      .info-icon {
+        display: inline-block;
+        margin-top: -10px;
+      }
+      .info-icon svg path {
+        fill: var(--neutral-stroke-hover);
       }
       </style>
       <div id="container">
@@ -347,6 +361,12 @@ export class SettingsDialog {
                   <jp-checkbox id='checkbox-update-install' type='checkbox' <%= installUpdatesAutomatically ? 'checked' : '' %> <%= installUpdatesAutomaticallyEnabled ? '' : 'disabled' %>>Download and install updates automatically</jp-checkbox>
                 </div>
                 <div class="row">
+                  <jp-checkbox id='notify-on-bundled-env-updates' type='checkbox' <%= notifyOnBundledEnvUpdates ? 'checked' : '' %> onchange='handleAutoCheckForUpdates(this);'>Show bundled environment update notifications</jp-checkbox><div class="info-icon" title="Show notification badge on session title bar and update action button on session environment selection popup.">${infoIconSrc}</div>
+                </div>
+                <div class="row">
+                  <jp-checkbox id='update-bundled-env-automatically' type='checkbox' <%= updateBundledEnvAutomatically ? 'checked' : '' %>>Update bundled environment automatically when app is updated</jp-checkbox><div class="info-icon" title="This will delete the existing bundled environment installation and install the newer version whenever app is updated.">${infoIconSrc}</div>
+                </div>
+                <div class="row">
                   <jp-button onclick='handleCheckForUpdates(this);'>Check for updates now</jp-button>
                 </div>
               </div>
@@ -354,6 +374,8 @@ export class SettingsDialog {
               <script>
                 const autoUpdateCheckCheckbox = document.getElementById('checkbox-update-check');
                 const autoInstallCheckbox = document.getElementById('checkbox-update-install');
+                const notifyOnBundledEnvUpdatesCheckbox = document.getElementById('notify-on-bundled-env-updates');
+                const updateBundledEnvAutomaticallyCheckbox = document.getElementById('update-bundled-env-automatically');
 
                 function handleAutoCheckForUpdates(el) {
                   updateAutoInstallCheckboxState();
@@ -415,6 +437,10 @@ export class SettingsDialog {
           window.electronAPI.setShowNewsFeed(showNewsFeedCheckbox.checked);
           window.electronAPI.setCheckForUpdatesAutomatically(autoUpdateCheckCheckbox.checked);
           window.electronAPI.setInstallUpdatesAutomatically(autoInstallCheckbox.checked);
+          window.electronAPI.setSettings({
+            notifyOnBundledEnvUpdates: notifyOnBundledEnvUpdatesCheckbox.checked,
+            updateBundledEnvAutomatically: updateBundledEnvAutomaticallyCheckbox.checked,
+          });
 
           window.electronAPI.setDefaultWorkingDirectory(workingDirectoryInput.value);
 
@@ -447,6 +473,8 @@ export class SettingsDialog {
       checkForUpdatesAutomatically,
       installUpdatesAutomaticallyEnabled,
       installUpdatesAutomatically,
+      notifyOnBundledEnvUpdates,
+      updateBundledEnvAutomatically,
       defaultWorkingDirectory,
       logLevel,
       serverArgs,
@@ -483,6 +511,8 @@ export namespace SettingsDialog {
     showNewsFeed: boolean;
     checkForUpdatesAutomatically: boolean;
     installUpdatesAutomatically: boolean;
+    notifyOnBundledEnvUpdates: boolean;
+    updateBundledEnvAutomatically: boolean;
     defaultWorkingDirectory: string;
     activateTab?: Tab;
     logLevel: LogLevel;

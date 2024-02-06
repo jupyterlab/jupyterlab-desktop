@@ -17,6 +17,7 @@ import {
   DEFAULT_WIN_HEIGHT,
   DEFAULT_WIN_WIDTH,
   SettingType,
+  userSettings,
   WorkspaceSettings
 } from '../config/settings';
 import { TitleBarView } from '../titlebarview/titlebarview';
@@ -401,6 +402,23 @@ export class SessionWindow implements IDisposable {
       this._labView.labUIReady.then(() => {
         this._titleBarView.showServerStatus(true);
       });
+    }
+
+    if (userSettings.getValue(SettingType.notifyOnBundledEnvUpdates)) {
+      let showServerNotificationBadge = false;
+      const serverInfo = this.getServerInfo();
+      if (
+        serverInfo &&
+        serverInfo.type === 'local' &&
+        serverInfo.environment?.path === getBundledPythonPath()
+      ) {
+        if (!this._registry.bundledEnvironmentIsLatest()) {
+          showServerNotificationBadge = true;
+        }
+      }
+      this._titleBarView.showServerNotificationBadge(
+        showServerNotificationBadge
+      );
     }
   }
 
@@ -1220,6 +1238,22 @@ export class SessionWindow implements IDisposable {
     this._envSelectPopupVisible = true;
     this._resizeEnvSelectPopup();
     this._envSelectPopup.view.view.webContents.focus();
+
+    if (userSettings.getValue(SettingType.notifyOnBundledEnvUpdates)) {
+      let showUpdateBundledEnvAction = false;
+      if (
+        serverInfo &&
+        serverInfo.type === 'local' &&
+        serverInfo.environment?.path === getBundledPythonPath()
+      ) {
+        if (!this._registry.bundledEnvironmentIsLatest()) {
+          showUpdateBundledEnvAction = true;
+        }
+      }
+      this._envSelectPopup.showUpdateBundledEnvAction(
+        showUpdateBundledEnvAction
+      );
+    }
   }
 
   private _resizeEnvSelectPopup() {

@@ -3,7 +3,6 @@
 
 import * as ejs from 'ejs';
 import {
-  app,
   BrowserWindow,
   clipboard,
   dialog,
@@ -22,7 +21,6 @@ import {
   isEnvInstalledByDesktopApp,
   launchTerminalInDirectory,
   openDirectoryInExplorer,
-  versionWithoutSuffix,
   waitForDuration
 } from '../utils';
 import { EventManager } from '../eventmanager';
@@ -54,36 +52,13 @@ export class ManagePythonEnvironmentDialog {
     if (defaultPythonPath === '') {
       defaultPythonPath = bundledPythonPath;
     }
-    let bundledEnvInstallationExists = false;
-    try {
-      bundledEnvInstallationExists = fs.existsSync(bundledPythonPath);
-    } catch (error) {
-      console.error('Failed to check for bundled Python path', error);
-    }
+    const bundledEnvInstallationExists = options.bundledEnvInstallationExists;
 
     const selectBundledPythonPath =
       (defaultPythonPath === '' || defaultPythonPath === bundledPythonPath) &&
       bundledEnvInstallationExists;
 
-    let bundledEnvInstallationLatest = true;
-
-    if (bundledEnvInstallationExists) {
-      try {
-        const bundledEnv = this._app.registry.getEnvironmentByPath(
-          bundledPythonPath
-        );
-        const jlabVersion = bundledEnv.versions['jupyterlab'];
-        const appVersion = app.getVersion();
-
-        if (
-          versionWithoutSuffix(jlabVersion) !== versionWithoutSuffix(appVersion)
-        ) {
-          bundledEnvInstallationLatest = false;
-        }
-      } catch (error) {
-        console.error('Failed to check bundled environment update', error);
-      }
-    }
+    const bundledEnvInstallationLatest = options.bundledEnvInstallationLatest;
 
     const infoIconSrc = fs.readFileSync(
       path.join(__dirname, '../../../app-assets/info-icon.svg')
@@ -804,8 +779,6 @@ export class ManagePythonEnvironmentDialog {
         }
 
         function handleUpdateBundledEv() {
-          installingJupyterLabServerEnv = true;
-          showBundledEnvInstallProgress('Updating environment', true);
           window.electronAPI.updateBundledPythonEnv();
         }
 
@@ -1399,5 +1372,7 @@ export namespace ManagePythonEnvironmentDialog {
     envs: IPythonEnvironment[];
     defaultPythonPath: string;
     activateTab?: Tab;
+    bundledEnvInstallationExists: boolean;
+    bundledEnvInstallationLatest: boolean;
   }
 }

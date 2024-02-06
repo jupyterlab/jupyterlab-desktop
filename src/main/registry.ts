@@ -1,6 +1,7 @@
 import { basename, join, normalize } from 'path';
 import * as path from 'path';
 import * as fs from 'fs';
+import * as semver from 'semver';
 import log from 'electron-log';
 const which = require('which');
 const WinRegistry = require('winreg');
@@ -24,7 +25,8 @@ import {
   isCondaEnv,
   isPortInUse,
   pythonPathForEnvPath,
-  runCommand
+  runCommand,
+  versionWithoutSuffix
 } from './utils';
 import { SettingType, userSettings } from './config/settings';
 import { appData } from './config/appdata';
@@ -41,6 +43,7 @@ import {
   updateDiscoveredPythonPaths,
   validatePythonPath
 } from './env';
+import { app } from 'electron';
 
 export interface IRegistry {
   getDefaultEnvironment: () => Promise<IPythonEnvironment>;
@@ -60,6 +63,7 @@ export interface IRegistry {
   dispose(): Promise<void>;
   environmentListUpdated: ISignal<this, void>;
   clearUserSetPythonEnvs(): void;
+  bundledEnvironmentIsLatest(): boolean;
 }
 
 export const SERVER_TOKEN_PREFIX = 'jlab:srvr:';
@@ -642,6 +646,35 @@ export class Registry implements IRegistry, IDisposable {
         resolve([]);
       }
     });
+  }
+
+  bundledEnvironmentIsLatest(): boolean {
+    const bundledPythonPath = getBundledPythonPath();
+
+    let bundledEnvInstallationLatest = false;
+
+    try {
+      const bundledEnv = this.getEnvironmentByPath(bundledPythonPath);
+      if (!bundledEnv) {
+        return false;
+      }
+
+      const jlabVersion = bundledEnv.versions['jupyterlab'];
+      const appVersion = app.getVersion();
+
+      if (
+        semver.compare(
+          versionWithoutSuffix(jlabVersion),
+          versionWithoutSuffix(appVersion)
+        ) > -1
+      ) {
+        bundledEnvInstallationLatest = true;
+      }
+    } catch (error) {
+      log.error('Failed to check bundled environment update', error);
+    }
+
+    return bundledEnvInstallationLatest;
   }
 
   private _updateEnvironments() {

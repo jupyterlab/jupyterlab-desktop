@@ -39,6 +39,7 @@ export enum EventTypeMain {
   SetDefaultWorkingDirectory = 'set-default-working-directory',
   SelectPythonPath = 'select-python-path',
   InstallBundledPythonEnv = 'install-bundled-python-env',
+  UpdateBundledPythonEnv = 'update-bundled-python-env',
   ValidatePythonPath = 'validate-python-path',
   ValidateRemoteServerUrl = 'validate-remote-server-url',
   SetDefaultPythonPath = 'set-default-python-path',
@@ -79,7 +80,8 @@ export enum EventTypeMain {
   ValidateSystemPythonPath = 'validate-system-python-path',
   SetSystemPythonPath = 'set-system-python-path',
   CopySessionInfoToClipboard = 'copy-session-info-to-clipboard',
-  RestartSession = 'restart-session'
+  RestartSession = 'restart-session',
+  SetSettings = 'set-settings'
 }
 
 // events sent to Renderer process
@@ -94,6 +96,7 @@ export enum EventTypeRenderer {
   SetTitle = 'set-title',
   SetActive = 'set-active',
   ShowServerStatus = 'show-server-status',
+  ShowServerNotificationBadge = 'show-server-notification-badge',
   SetRecentSessionList = 'set-recent-session-list',
   SetNewsList = 'set-news-list',
   SetNotificationMessage = 'set-notification-message',
@@ -101,5 +104,6 @@ export enum EventTypeRenderer {
   SetDefaultWorkingDirectoryResult = 'set-default-working-directory-result',
   ResetPythonEnvSelectPopup = 'reset-python-env-select-popup',
   SetPythonEnvironmentList = 'set-python-environment-list',
-  SetEnvironmentListUpdateStatus = 'set-environment-list-update-status'
+  SetEnvironmentListUpdateStatus = 'set-environment-list-update-status',
+  ShowUpdateBundledEnvAction = 'show-bundled-env-action'
 }

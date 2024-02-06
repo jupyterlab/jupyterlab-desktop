@@ -16,6 +16,7 @@ import * as yaml from 'js-yaml';
 import * as semver from 'semver';
 import * as fs from 'fs';
 import {
+  bundledEnvironmentIsInstalled,
   clearSession,
   EnvironmentInstallStatus,
   getBundledPythonEnvPath,
@@ -392,6 +393,12 @@ export class JupyterApplication implements IApplication, IDisposable {
         installUpdatesAutomatically: settings.getValue(
           SettingType.installUpdatesAutomatically
         ),
+        notifyOnBundledEnvUpdates: settings.getValue(
+          SettingType.notifyOnBundledEnvUpdates
+        ),
+        updateBundledEnvAutomatically: settings.getValue(
+          SettingType.updateBundledEnvAutomatically
+        ),
         defaultWorkingDirectory: userSettings.getValue(
           SettingType.defaultWorkingDirectory
         ),
@@ -429,7 +436,9 @@ export class JupyterApplication implements IApplication, IDisposable {
       isDarkTheme: this._isDarkTheme,
       defaultPythonPath: userSettings.getValue(SettingType.pythonPath),
       app: this,
-      activateTab
+      activateTab,
+      bundledEnvInstallationExists: bundledEnvironmentIsInstalled(),
+      bundledEnvInstallationLatest: this._registry.bundledEnvironmentIsLatest()
     });
 
     this._managePythonEnvDialog = dialog;
@@ -529,7 +538,16 @@ export class JupyterApplication implements IApplication, IDisposable {
       };
 
       dialog.showMessageBox(dialogOpts).then(returnValue => {
-        if (returnValue.response === 0) autoUpdater.quitAndInstall();
+        if (returnValue.response === 0) {
+          if (
+            userSettings.getValue(SettingType.updateBundledEnvAutomatically) &&
+            bundledEnvironmentIsInstalled()
+          ) {
+            appData.updateBundledEnvOnRestart = true;
+            appData.save();
+          }
+          autoUpdater.quitAndInstall();
+        }
       });
     });
 
@@ -770,6 +788,27 @@ export class JupyterApplication implements IApplication, IDisposable {
             });
           }
         });
+      }
+    );
+
+    this._evm.registerEventHandler(
+      EventTypeMain.UpdateBundledPythonEnv,
+      async event => {
+        const choice = dialog.showMessageBoxSync({
+          type: 'warning',
+          message: 'Update bundled environment',
+          detail:
+            'App will restart and the existing environment installation will be deleted before update. Would you like to continue?',
+          buttons: ['Update', 'Cancel'],
+          defaultId: 1,
+          cancelId: 1
+        });
+
+        if (choice === 0) {
+          appData.updateBundledEnvOnRestart = true;
+          app.relaunch();
+          app.quit();
+        }
       }
     );
 
@@ -1087,6 +1126,15 @@ export class JupyterApplication implements IApplication, IDisposable {
             EventTypeRenderer.InstallPythonEnvStatus,
             EnvironmentInstallStatus.Failure
           );
+        }
+      }
+    );
+
+    this._evm.registerEventHandler(
+      EventTypeMain.SetSettings,
+      (_event, settings: { [key: string]: any }) => {
+        for (const key in settings) {
+          userSettings.setValue(key as SettingType, settings[key]);
         }
       }
     );

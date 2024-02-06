@@ -16,6 +16,7 @@ export class ThemedWindow {
       width: options.width,
       height: options.height,
       show: false,
+      closable: options.closable !== false,
       resizable: options.resizable !== false,
       titleBarStyle: 'hidden',
       frame: process.platform === 'darwin',
@@ -38,6 +39,11 @@ export class ThemedWindow {
 
   get window(): BrowserWindow {
     return this._window;
+  }
+
+  close() {
+    this._window.closable = true;
+    this._window.close();
   }
 
   loadDialogContent(bodyHtml: string) {
@@ -114,7 +120,7 @@ export class ThemedWindow {
           <div class="page-container">
             <jlab-dialog-titlebar id="title-bar" data-title="${
               this._window.title
-            }" class="${
+            }" data-closable="${this._window.closable.toString()}" class="${
       this._isDarkTheme ? 'app-ui-dark' : ''
     }"></jlab-dialog-titlebar>
             <div id="jlab-dialog-body" class="jlab-dialog-body">
@@ -141,6 +147,7 @@ export namespace ThemedWindow {
     title: string;
     width: number;
     height: number;
+    closable?: boolean;
     resizable?: boolean;
     preload?: string;
   }
