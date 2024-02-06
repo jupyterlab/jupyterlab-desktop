@@ -323,7 +323,7 @@ async function needToUpdateBundledPythonEnvInstallation(): Promise<boolean> {
     if (
       await runCommandInEnvironment(
         getBundledPythonEnvPath(),
-        "python -c 'import jupyterlab; print(jupyterlab.__version__)'",
+        `python -c "import jupyterlab; print(jupyterlab.__version__)"`,
         {
           stdout: msg => {
             outputVersion += msg;
