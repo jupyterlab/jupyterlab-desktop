@@ -302,42 +302,46 @@ async function needToUpdateBundledPythonEnvInstallation(): Promise<boolean> {
 
   const appVersion = app.getVersion();
 
-  // if the version in appData is latest, then assume it is latest
-  if (bundledEnvInAppData) {
-    const jlabVersionInAppData = bundledEnvInAppData.versions['jupyterlab'];
+  try {
+    // if the version in appData is latest, then assume it is latest
+    if (bundledEnvInAppData) {
+      const jlabVersionInAppData = bundledEnvInAppData.versions['jupyterlab'];
 
-    if (
-      semver.compare(
-        versionWithoutSuffix(jlabVersionInAppData),
-        versionWithoutSuffix(appVersion)
-      ) >= 0
-    ) {
-      return false;
-    }
-  }
-
-  // if not latest in appData check the active jupyterlab version
-  // in case appData is outdated
-  let outputVersion = '';
-  if (
-    await runCommandInEnvironment(
-      getBundledPythonEnvPath(),
-      "python -c 'import jupyterlab; print(jupyterlab.__version__)'",
-      {
-        stdout: msg => {
-          outputVersion += msg;
-        }
+      if (
+        semver.compare(
+          versionWithoutSuffix(jlabVersionInAppData),
+          versionWithoutSuffix(appVersion)
+        ) >= 0
+      ) {
+        return false;
       }
-    )
-  ) {
-    if (
-      semver.compare(
-        versionWithoutSuffix(outputVersion.trim()),
-        versionWithoutSuffix(appVersion)
-      ) === -1
-    ) {
-      return true;
     }
+
+    // if not latest in appData check the active jupyterlab version
+    // in case appData is outdated
+    let outputVersion = '';
+    if (
+      await runCommandInEnvironment(
+        getBundledPythonEnvPath(),
+        "python -c 'import jupyterlab; print(jupyterlab.__version__)'",
+        {
+          stdout: msg => {
+            outputVersion += msg;
+          }
+        }
+      )
+    ) {
+      if (
+        semver.compare(
+          versionWithoutSuffix(outputVersion.trim()),
+          versionWithoutSuffix(appVersion)
+        ) === -1
+      ) {
+        return true;
+      }
+    }
+  } catch (error) {
+    log.error('Failed to check for env update need.', error);
   }
 
   return false;
