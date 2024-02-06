@@ -121,7 +121,7 @@ export class ThemedWindow {
           <div class="page-container">
             <jlab-dialog-titlebar id="title-bar" data-title="${
               this._window.title
-            }" data-closable="${this._closable.toString()}" class="${
+            }" data-closable="${this._closable ? 'true' : 'false'}" class="${
       this._isDarkTheme ? 'app-ui-dark' : ''
     }"></jlab-dialog-titlebar>
             <div id="jlab-dialog-body" class="jlab-dialog-body">
