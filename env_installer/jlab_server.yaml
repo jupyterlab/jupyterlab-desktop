@@ -10,7 +10,7 @@ dependencies:
   - numpy
   - pandas
   - pip
-  - python 3.8*
+  - python 3.12*
   - scipy
 platforms:
   - linux-64

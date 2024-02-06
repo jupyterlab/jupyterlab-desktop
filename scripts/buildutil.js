@@ -191,7 +191,7 @@ if (cli.flags.copyExtrasToBundledEnv) {
   fs.copySync(envExtrasDir, envInstallerDir, { recursive: true });
 
   console.log(
-    `Finished copying from \n\t"${envExtrasDir}" to \n\t"${envInstallerDir}"`
+    `Finished copying env extras from \n\t"${envExtrasDir}" to \n\t"${envInstallerDir}"`
   );
 
   process.exit(0);
