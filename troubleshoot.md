@@ -147,11 +147,19 @@ New Python environment install paths:
 
 Updating JLD application doesn't automatically update the Python environment previously used by the application, for various reasons. However, bundled Python environment installer is updated if the new JLD has a version upgrade other than suffix (`-n`) change. You can compare the versions of JLD application and jupyterlab package versions in the Python environment as described in [versions section above](#jupyterlab-desktop-vs-jupyterlab-web-application-versions).
 
-JLD provides an easy way to update the bundled Python environment installation. Simply go to `Hamburger Menu` -> `Manage Python environments` -> `Settings` tab. If your bundled Python environment installation is out-dated then you will see a notification and a button to update the installation.
+JLD shows a notification badge on the title bar as shown below when there is an update available for the bundled environment installation. Clicking on the session info button will open up the environment selection popup and there will be an orange server button to let you update the bundled environment installation with one click.
+
+<img src="media/bundled-env-update-notification.png" alt="Bundled environment update" width=300 /> <img src="media/bundled-env-update-action.png" alt="Bundled environment update" width=600 />
+
+You can customize the update settings in the `Settings` dialog -> `Advanced` tab. You can configure JLD to update the bundled environment installation automatically when a new version of JLD is installed. Simply check the `Update bundled environment automatically when app is updated` option in the settings. Note that this will delete the existing bundled environment installation and then install a fresh new version.
+
+<img src="media/bundled-env-update-settings.png" alt="Bundled environment update" width=700 />
+
+You can update the bundled Python environment installation also on Python environment management dialog manually. Go to `Hamburger Menu` -> `Manage Python environments` -> `Settings` tab. If your bundled Python environment installation is out-dated then you will see a notification and a button to update the installation.
 
 <img src="media/bundled-env-update.png" alt="Bundled environment update" width=700 />
 
-You can update the bundled Python environment installation by using the CLI command below as well. It will first remove the existing installation and then reinstall the environment. Make sure to stop all running JLD instances before running the command.
+Another way to update the bundled Python environment installation by using the CLI command below as well. Make sure to stop all running JLD instances before running the command. It will first remove the existing installation and then reinstall the environment.
 
 ```bash
 jlab env create --force
