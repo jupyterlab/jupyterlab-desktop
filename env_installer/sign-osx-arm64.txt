@@ -163,6 +163,7 @@ lib/libsodium.23.dylib
 lib/libsolv.1.dylib
 lib/libsolvext.1.dylib
 lib/libsqlite3.0.dylib
+lib/libsqlite3.dylib
 lib/libssh2.1.0.1.dylib
 lib/libssl.3.dylib
 lib/libssl.dylib
@@ -306,9 +307,6 @@ lib/python3.12/site-packages/_cffi_backend.cpython-312-darwin.so
 lib/python3.12/site-packages/_ruamel_yaml.cpython-312-darwin.so
 lib/python3.12/site-packages/contourpy/_contourpy.cpython-312-darwin.so
 lib/python3.12/site-packages/debugpy/_vendored/pydevd/pydevd_attach_to_process/attach_linux_amd64.dylib
-lib/python3.12/site-packages/debugpy/_vendored/pydevd/tests_python/resources/_pydev_coverage_cyrillic_encoding_py2.py
-lib/python3.12/site-packages/debugpy/_vendored/pydevd/tests_python/resources/_pydev_coverage_cyrillic_encoding_py3.py
-lib/python3.12/site-packages/debugpy/_vendored/pydevd/tests_python/resources/_pydev_coverage_syntax_error.py
 lib/python3.12/site-packages/fontTools/cu2qu/cu2qu.cpython-312-darwin.so
 lib/python3.12/site-packages/fontTools/feaLib/lexer.cpython-312-darwin.so
 lib/python3.12/site-packages/fontTools/misc/bezierTools.cpython-312-darwin.so
