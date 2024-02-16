@@ -167,7 +167,6 @@ export class Registry implements IRegistry, IDisposable {
     }
 
     // discover environments on system
-    // TODO: rediscover environments in app's envs directory
     const pathEnvironments = this._loadPathEnvironments();
     const condaEnvironments = this._loadCondaEnvironments();
     const allEnvironments = [pathEnvironments, condaEnvironments];
@@ -284,9 +283,7 @@ export class Registry implements IRegistry, IDisposable {
     sort?: boolean
   ): Promise<IPythonEnvironment[]> {
     let filteredEnvs = envs.filter(env => this._pathExistsSync(env.path));
-    const uniqueEnvs = this._getUniqueObjects(filteredEnvs, env => {
-      return fs.realpathSync(env.path);
-    });
+    const uniqueEnvs = this._getUniqueObjects(filteredEnvs);
     const resolvedEnvs = await Promise.all(
       uniqueEnvs.map(async env => await this._resolveEnvironment(env.path))
     );
