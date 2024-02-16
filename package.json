@@ -101,7 +101,8 @@
           "from": "dist-resources/win/jlab.cmd",
           "to": "jlab.cmd"
         }
-      ]
+      ],
+      "icon": "dist-resources/icons/icon.ico"
     },
     "rpm": {
       "depends": [
