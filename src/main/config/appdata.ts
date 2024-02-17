@@ -54,7 +54,7 @@ export class ApplicationData {
   }
 
   read() {
-    const appDataPath = this._getAppDataPath();
+    const appDataPath = ApplicationData.getAppDataPath();
     if (!fs.existsSync(appDataPath)) {
       return;
     }
@@ -176,7 +176,7 @@ export class ApplicationData {
   }
 
   save() {
-    const appDataPath = this._getAppDataPath();
+    const appDataPath = ApplicationData.getAppDataPath();
     const appDataJSON: { [key: string]: any } = {};
 
     if (this.pythonPath !== '') {
@@ -373,7 +373,7 @@ export class ApplicationData {
     return this._recentSessionsChanged;
   }
 
-  private _getAppDataPath(): string {
+  static getAppDataPath(): string {
     const userDataDir = getUserDataDir();
     return path.join(userDataDir, 'app-data.json');
   }

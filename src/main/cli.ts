@@ -7,6 +7,7 @@ import {
   getBundledEnvInstallerPath,
   getBundledPythonEnvPath,
   getBundledPythonPath,
+  getLogFilePath,
   installCondaPackEnvironment,
   isBaseCondaEnv,
   isEnvInstalledByDesktopApp,
@@ -16,11 +17,16 @@ import {
 import yargs from 'yargs/yargs';
 import * as fs from 'fs';
 import * as path from 'path';
-import { appData } from './config/appdata';
+import { appData, ApplicationData } from './config/appdata';
 import { IEnvironmentType, IPythonEnvironment } from './tokens';
-import { SettingType, userSettings } from './config/settings';
+import {
+  SettingType,
+  UserSettings,
+  userSettings,
+  WorkspaceSettings
+} from './config/settings';
 import { Registry } from './registry';
-import { app } from 'electron';
+import { app, shell } from 'electron';
 import {
   condaEnvPathForCondaExePath,
   getCondaChannels,
@@ -184,6 +190,97 @@ export function parseCLIArgs(argv: string[]) {
             break;
           default:
             console.log('Invalid input for "env" command.');
+            break;
+        }
+      }
+    )
+    .command(
+      'config <action>',
+      'Manage JupyterLab Desktop settings',
+      yargs => {
+        yargs
+          .positional('action', {
+            describe: 'Setting action',
+            choices: ['list', 'set', 'unset'],
+            default: 'list'
+          })
+          .option('project', {
+            describe: 'Set config for project at current working directory',
+            type: 'boolean',
+            default: false
+          })
+          .option('project-path', {
+            describe: 'Set / list config for project at specified path',
+            type: 'string'
+          });
+      },
+      async argv => {
+        console.log('Note: This is an experimental feature.');
+
+        const action = argv.action;
+        switch (action) {
+          case 'list':
+            handleConfigListCommand(argv);
+            break;
+          case 'set':
+            handleConfigSetCommand(argv);
+            break;
+          case 'unset':
+            handleConfigUnsetCommand(argv);
+            break;
+          default:
+            console.log('Invalid input for "config" command.');
+            break;
+        }
+      }
+    )
+    .command(
+      'appdata <action>',
+      'Manage JupyterLab Desktop app data',
+      yargs => {
+        yargs.positional('action', {
+          describe: 'App data action',
+          choices: ['list'],
+          default: 'list'
+        });
+      },
+      async argv => {
+        console.log('Note: This is an experimental feature.');
+
+        const action = argv.action;
+        switch (action) {
+          case 'list':
+            handleAppDataListCommand(argv);
+            break;
+          default:
+            console.log('Invalid input for "appdata" command.');
+            break;
+        }
+      }
+    )
+    .command(
+      'logs <action>',
+      'Manage JupyterLab Desktop logs',
+      yargs => {
+        yargs.positional('action', {
+          describe: 'Logs action',
+          choices: ['show', 'open'],
+          default: 'show'
+        });
+      },
+      async argv => {
+        console.log('Note: This is an experimental feature.');
+
+        const action = argv.action;
+        switch (action) {
+          case 'show':
+            handleLogsShowCommand(argv);
+            break;
+          case 'open':
+            handleLogsOpenCommand(argv);
+            break;
+          default:
+            console.log('Invalid input for "logs" command.');
             break;
         }
       }
@@ -814,6 +911,225 @@ export async function handleEnvSetSystemPythonPathCommand(argv: any) {
   console.log(`Setting "${systemPythonPath}" as the system Python path`);
   userSettings.setValue(SettingType.systemPythonPath, systemPythonPath);
   userSettings.save();
+}
+
+function handleConfigListCommand(argv: any) {
+  const listLines: string[] = [];
+
+  let projectPath = argv.projectPath
+    ? path.resolve(argv.projectPath)
+    : process.cwd();
+
+  listLines.push('Project / Workspace settings');
+  listLines.push('============================');
+  listLines.push(`[Project path: ${projectPath}]`);
+  listLines.push(
+    `[Source file: ${WorkspaceSettings.getWorkspaceSettingsPath(projectPath)}]`
+  );
+  listLines.push('\nSettings');
+  listLines.push('========');
+
+  const wsSettings = new WorkspaceSettings(projectPath).settings;
+  const wsSettingKeys = Object.keys(wsSettings).sort();
+  if (wsSettingKeys.length > 0) {
+    for (let key of wsSettingKeys) {
+      const value = wsSettings[key].value;
+      listLines.push(`${key}: ${JSON.stringify(value)}`);
+    }
+  } else {
+    listLines.push('No setting overrides found in project directory.');
+  }
+  listLines.push('\n');
+
+  listLines.push('Global settings');
+  listLines.push('===============');
+  listLines.push(`[Source file: ${UserSettings.getUserSettingsPath()}]`);
+  listLines.push('\nSettings');
+  listLines.push('========');
+
+  const settingKeys = Object.values(SettingType).sort();
+  const settings = userSettings.settings;
+
+  for (let key of settingKeys) {
+    const setting = settings[key];
+    listLines.push(
+      `${key}: ${JSON.stringify(setting.value)} [${
+        setting.differentThanDefault ? 'modified' : 'set to default'
+      }${setting.wsOverridable ? ', project overridable' : ''}]`
+    );
+  }
+
+  console.log(listLines.join('\n'));
+}
+
+function handleConfigSetCommand(argv: any) {
+  const parseSetting = (): { key: string; value: string } => {
+    if (argv._.length !== 3) {
+      console.error(`Invalid setting. Use "set settingKey value" format.`);
+      return { key: undefined, value: undefined };
+    }
+
+    return { key: argv._[1], value: JSON.parse(argv._[2]) };
+  };
+
+  let projectPath = '';
+  let isProjectSetting = false;
+
+  if (argv.project || argv.projectPath) {
+    projectPath = argv.projectPath
+      ? path.resolve(argv.projectPath)
+      : process.cwd();
+    if (
+      argv.projectPath &&
+      !(fs.existsSync(projectPath) && fs.statSync(projectPath).isFile())
+    ) {
+      console.error(`Invalid project path! "${projectPath}"`);
+      return;
+    }
+
+    isProjectSetting = true;
+  }
+
+  let key, value;
+  try {
+    const keyVal = parseSetting();
+    key = keyVal.key;
+    value = keyVal.value;
+  } catch (error) {
+    console.error('Failed to parse setting!');
+    return;
+  }
+
+  if (!(key && value)) {
+    return;
+  }
+
+  if (!(key in SettingType)) {
+    console.error(`Invalid setting key! "${key}"`);
+    return;
+  }
+
+  if (isProjectSetting) {
+    const setting = userSettings.settings[key];
+    if (!setting.wsOverridable) {
+      console.error(`Setting "${key}" is not overridable by project.`);
+      return;
+    }
+
+    const wsSettings = new WorkspaceSettings(projectPath);
+    wsSettings.setValue(key as SettingType, value);
+    wsSettings.save();
+  } else {
+    userSettings.setValue(key as SettingType, value);
+    userSettings.save();
+  }
+
+  console.log(
+    `${
+      isProjectSetting ? 'Project' : 'Global'
+    } setting "${key}" set to "${value}" successfully.`
+  );
+}
+
+function handleConfigUnsetCommand(argv: any) {
+  const parseKey = (): string => {
+    if (argv._.length !== 2) {
+      console.error(`Invalid setting. Use "set settingKey value" format.`);
+      return undefined;
+    }
+
+    return argv._[1];
+  };
+
+  let projectPath = '';
+  let isProjectSetting = false;
+
+  if (argv.project || argv.projectPath) {
+    projectPath = argv.projectPath
+      ? path.resolve(argv.projectPath)
+      : process.cwd();
+    if (
+      argv.projectPath &&
+      !(fs.existsSync(projectPath) && fs.statSync(projectPath).isFile())
+    ) {
+      console.error(`Invalid project path! "${projectPath}"`);
+      return;
+    }
+
+    isProjectSetting = true;
+  }
+
+  let key = parseKey();
+
+  if (!key) {
+    return;
+  }
+
+  if (!(key in SettingType)) {
+    console.error(`Invalid setting key! "${key}"`);
+    return;
+  }
+
+  if (isProjectSetting) {
+    const setting = userSettings.settings[key];
+    if (!setting.wsOverridable) {
+      console.error(`Setting "${key}" is not overridable by project.`);
+      return;
+    }
+
+    const wsSettings = new WorkspaceSettings(projectPath);
+    wsSettings.unsetValue(key as SettingType);
+    wsSettings.save();
+  } else {
+    userSettings.unsetValue(key as SettingType);
+    userSettings.save();
+  }
+
+  console.log(
+    `${isProjectSetting ? 'Project' : 'Global'} setting "${key}" reset to ${
+      isProjectSetting ? 'global ' : ''
+    }default successfully.`
+  );
+}
+
+function handleAppDataListCommand(argv: any) {
+  const listLines: string[] = [];
+
+  listLines.push('Application data');
+  listLines.push('================');
+  listLines.push(`[Source file: ${ApplicationData.getAppDataPath()}]`);
+  listLines.push('\nData');
+  listLines.push('====');
+
+  const skippedKeys = new Set(['newsList']);
+  const appDataKeys = Object.keys(appData).sort();
+
+  for (let key of appDataKeys) {
+    if (key.startsWith('_') || skippedKeys.has(key)) {
+      continue;
+    }
+    const data = (appData as any)[key];
+    listLines.push(`${key}: ${JSON.stringify(data)}`);
+  }
+
+  console.log(listLines.join('\n'));
+}
+
+function handleLogsShowCommand(argv: any) {
+  const logFilePath = getLogFilePath();
+  console.log(`Log file path: ${logFilePath}`);
+
+  if (!(fs.existsSync(logFilePath) && fs.statSync(logFilePath).isFile())) {
+    console.log('Log file does not exist!');
+    return;
+  }
+
+  const logs = fs.readFileSync(logFilePath);
+  console.log(logs.toString());
+}
+
+function handleLogsOpenCommand(argv: any) {
+  shell.openPath(getLogFilePath());
 }
 
 export async function launchCLIinEnvironment(
