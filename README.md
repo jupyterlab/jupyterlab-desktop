@@ -65,7 +65,7 @@ Previously opened sessions are stored as part of application data and they are l
 - Connect to existing JupyterLab server
   - `jlab https://example.org/lab?token=abcde`
 
-For additional CLI options run `jlab --help` in command line.
+See [CLI documentation](cli.md) for more CLI commands and options.
 
 ### JupyterLab Extension support
 
@@ -76,6 +76,8 @@ JupyterLab Desktop currently supports user-friendly [prebuilt](https://jupyterla
 - See [user guide](user-guide.md) for configuration options
 
 - [Python environment management](python-env-management.md) guide for managing Python environments on your system using JupyterLab Desktop
+
+- See [CLI documentation](cli.md) for CLI commands and options
 
 - See [troubleshooting guide](troubleshoot.md) for troubleshooting issues
 
