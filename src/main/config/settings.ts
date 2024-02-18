@@ -102,11 +102,15 @@ export class Setting<T> {
   }
 
   get differentThanDefault(): boolean {
-    return this.value !== this._defaultValue;
+    return JSON.stringify(this.value) !== JSON.stringify(this._defaultValue);
   }
 
   get wsOverridable(): boolean {
     return this?._options?.wsOverridable;
+  }
+
+  setToDefault() {
+    this._value = this._defaultValue;
   }
 
   private _defaultValue: T;
@@ -163,6 +167,15 @@ export class UserSettings {
     }
   }
 
+  static getUserSettingsPath(): string {
+    const userDataDir = getUserDataDir();
+    return path.join(userDataDir, 'settings.json');
+  }
+
+  get settings() {
+    return this._settings;
+  }
+
   getValue(setting: SettingType) {
     return this._settings[setting].value;
   }
@@ -171,8 +184,12 @@ export class UserSettings {
     this._settings[setting].value = value;
   }
 
+  unsetValue(setting: SettingType) {
+    this._settings[setting].setToDefault();
+  }
+
   read() {
-    const userSettingsPath = this._getUserSettingsPath();
+    const userSettingsPath = UserSettings.getUserSettingsPath();
     if (!fs.existsSync(userSettingsPath)) {
       return;
     }
@@ -188,7 +205,7 @@ export class UserSettings {
   }
 
   save() {
-    const userSettingsPath = this._getUserSettingsPath();
+    const userSettingsPath = UserSettings.getUserSettingsPath();
     const userSettings: { [key: string]: any } = {};
 
     for (let key in SettingType) {
@@ -207,11 +224,6 @@ export class UserSettings {
     );
   }
 
-  private _getUserSettingsPath(): string {
-    const userDataDir = getUserDataDir();
-    return path.join(userDataDir, 'settings.json');
-  }
-
   protected _settings: { [key: string]: Setting<any> };
 }
 
@@ -221,6 +233,10 @@ export class WorkspaceSettings extends UserSettings {
 
     this._workingDirectory = resolveWorkingDirectory(workingDirectory);
     this.read();
+  }
+
+  get settings() {
+    return this._wsSettings;
   }
 
   getValue(setting: SettingType) {
@@ -239,10 +255,16 @@ export class WorkspaceSettings extends UserSettings {
     this._wsSettings[setting].value = value;
   }
 
+  unsetValue(setting: SettingType) {
+    delete this._wsSettings[setting];
+  }
+
   read() {
     super.read();
 
-    const wsSettingsPath = this._getWorkspaceSettingsPath();
+    const wsSettingsPath = WorkspaceSettings.getWorkspaceSettingsPath(
+      this._workingDirectory
+    );
     if (!fs.existsSync(wsSettingsPath)) {
       return;
     }
@@ -261,7 +283,9 @@ export class WorkspaceSettings extends UserSettings {
   }
 
   save() {
-    const wsSettingsPath = this._getWorkspaceSettingsPath();
+    const wsSettingsPath = WorkspaceSettings.getWorkspaceSettingsPath(
+      this._workingDirectory
+    );
     const wsSettings: { [key: string]: any } = {};
 
     for (let key in SettingType) {
@@ -299,12 +323,8 @@ export class WorkspaceSettings extends UserSettings {
     return false;
   }
 
-  private _getWorkspaceSettingsPath(): string {
-    return path.join(
-      this._workingDirectory,
-      '.jupyter',
-      'desktop-settings.json'
-    );
+  static getWorkspaceSettingsPath(workingDirectory: string): string {
+    return path.join(workingDirectory, '.jupyter', 'desktop-settings.json');
   }
 
   private _workingDirectory: string;
