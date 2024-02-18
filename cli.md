@@ -14,8 +14,6 @@ JupyterLab Desktop installers for Windows and Linux create `jlab` CLI command as
 - [`jlab appdata` _Access application cache data_](#jlab-appdata-options)
 - [`jlab logs` _Access application logs_](#jlab-logs-options)
 
-## Application launch `jlab`
-
 ### `jlab <options>`
 
 - Open directories using relative or absolute path
