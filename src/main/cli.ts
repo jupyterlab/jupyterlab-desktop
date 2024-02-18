@@ -201,7 +201,7 @@ export function parseCLIArgs(argv: string[]) {
         yargs
           .positional('action', {
             describe: 'Setting action',
-            choices: ['list', 'set', 'unset'],
+            choices: ['list', 'set', 'unset', 'open-file'],
             default: 'list'
           })
           .option('project', {
@@ -228,6 +228,9 @@ export function parseCLIArgs(argv: string[]) {
           case 'unset':
             handleConfigUnsetCommand(argv);
             break;
+          case 'open-file':
+            handleConfigOpenFileCommand(argv);
+            break;
           default:
             console.log('Invalid input for "config" command.');
             break;
@@ -240,7 +243,7 @@ export function parseCLIArgs(argv: string[]) {
       yargs => {
         yargs.positional('action', {
           describe: 'App data action',
-          choices: ['list'],
+          choices: ['list', 'open-file'],
           default: 'list'
         });
       },
@@ -251,6 +254,9 @@ export function parseCLIArgs(argv: string[]) {
         switch (action) {
           case 'list':
             handleAppDataListCommand(argv);
+            break;
+          case 'open-file':
+            handleAppDataOpenFileCommand(argv);
             break;
           default:
             console.log('Invalid input for "appdata" command.');
@@ -264,7 +270,7 @@ export function parseCLIArgs(argv: string[]) {
       yargs => {
         yargs.positional('action', {
           describe: 'Logs action',
-          choices: ['show', 'open'],
+          choices: ['show', 'open-file'],
           default: 'show'
         });
       },
@@ -276,8 +282,8 @@ export function parseCLIArgs(argv: string[]) {
           case 'show':
             handleLogsShowCommand(argv);
             break;
-          case 'open':
-            handleLogsOpenCommand(argv);
+          case 'open-file':
+            handleLogsOpenFileCommand(argv);
             break;
           default:
             console.log('Invalid input for "logs" command.');
@@ -913,10 +919,28 @@ export async function handleEnvSetSystemPythonPathCommand(argv: any) {
   userSettings.save();
 }
 
+function getProjectPathForConfigCommand(argv: any): string | undefined {
+  let projectPath = undefined;
+  if (argv.project || argv.projectPath) {
+    projectPath = argv.projectPath
+      ? path.resolve(argv.projectPath)
+      : process.cwd();
+    if (
+      argv.projectPath &&
+      !(fs.existsSync(projectPath) && fs.statSync(projectPath).isDirectory())
+    ) {
+      console.error(`Invalid project path! "${projectPath}"`);
+      process.exit(1);
+    }
+  }
+
+  return projectPath;
+}
+
 function handleConfigListCommand(argv: any) {
   const listLines: string[] = [];
 
-  let projectPath = argv.projectPath
+  const projectPath = argv.projectPath
     ? path.resolve(argv.projectPath)
     : process.cwd();
 
@@ -986,23 +1010,7 @@ function handleConfigSetCommand(argv: any) {
     return { key: argv._[1], value: value };
   };
 
-  let projectPath = '';
-  let isProjectSetting = false;
-
-  if (argv.project || argv.projectPath) {
-    projectPath = argv.projectPath
-      ? path.resolve(argv.projectPath)
-      : process.cwd();
-    if (
-      argv.projectPath &&
-      !(fs.existsSync(projectPath) && fs.statSync(projectPath).isDirectory())
-    ) {
-      console.error(`Invalid project path! "${projectPath}"`);
-      return;
-    }
-
-    isProjectSetting = true;
-  }
+  const projectPath = getProjectPathForConfigCommand(argv);
 
   let key, value;
   try {
@@ -1024,7 +1032,7 @@ function handleConfigSetCommand(argv: any) {
     return;
   }
 
-  if (isProjectSetting) {
+  if (projectPath) {
     const setting = userSettings.settings[key];
     if (!setting.wsOverridable) {
       console.error(`Setting "${key}" is not overridable by project.`);
@@ -1041,7 +1049,7 @@ function handleConfigSetCommand(argv: any) {
 
   console.log(
     `${
-      isProjectSetting ? 'Project' : 'Global'
+      projectPath ? 'Project' : 'Global'
     } setting "${key}" set to "${value}" successfully.`
   );
 }
@@ -1056,23 +1064,7 @@ function handleConfigUnsetCommand(argv: any) {
     return argv._[1];
   };
 
-  let projectPath = '';
-  let isProjectSetting = false;
-
-  if (argv.project || argv.projectPath) {
-    projectPath = argv.projectPath
-      ? path.resolve(argv.projectPath)
-      : process.cwd();
-    if (
-      argv.projectPath &&
-      !(fs.existsSync(projectPath) && fs.statSync(projectPath).isDirectory())
-    ) {
-      console.error(`Invalid project path! "${projectPath}"`);
-      return;
-    }
-
-    isProjectSetting = true;
-  }
+  const projectPath = getProjectPathForConfigCommand(argv);
 
   let key = parseKey();
 
@@ -1085,7 +1077,7 @@ function handleConfigUnsetCommand(argv: any) {
     return;
   }
 
-  if (isProjectSetting) {
+  if (projectPath) {
     const setting = userSettings.settings[key];
     if (!setting.wsOverridable) {
       console.error(`Setting "${key}" is not overridable by project.`);
@@ -1101,10 +1093,28 @@ function handleConfigUnsetCommand(argv: any) {
   }
 
   console.log(
-    `${isProjectSetting ? 'Project' : 'Global'} setting "${key}" reset to ${
-      isProjectSetting ? 'global ' : ''
+    `${projectPath ? 'Project' : 'Global'} setting "${key}" reset to ${
+      projectPath ? 'global ' : ''
     }default successfully.`
   );
+}
+
+function handleConfigOpenFileCommand(argv: any) {
+  const projectPath = getProjectPathForConfigCommand(argv);
+  const settingsFilePath = projectPath
+    ? WorkspaceSettings.getWorkspaceSettingsPath(projectPath)
+    : UserSettings.getUserSettingsPath();
+
+  console.log(`Settings file path: ${settingsFilePath}`);
+
+  if (
+    !(fs.existsSync(settingsFilePath) && fs.statSync(settingsFilePath).isFile())
+  ) {
+    console.log('Settings file does not exist!');
+    return;
+  }
+
+  shell.openPath(settingsFilePath);
 }
 
 function handleAppDataListCommand(argv: any) {
@@ -1130,6 +1140,20 @@ function handleAppDataListCommand(argv: any) {
   console.log(listLines.join('\n'));
 }
 
+function handleAppDataOpenFileCommand(argv: any) {
+  const appDataFilePath = ApplicationData.getAppDataPath();
+  console.log(`App data file path: ${appDataFilePath}`);
+
+  if (
+    !(fs.existsSync(appDataFilePath) && fs.statSync(appDataFilePath).isFile())
+  ) {
+    console.log('App data file does not exist!');
+    return;
+  }
+
+  shell.openPath(appDataFilePath);
+}
+
 function handleLogsShowCommand(argv: any) {
   const logFilePath = getLogFilePath();
   console.log(`Log file path: ${logFilePath}`);
@@ -1143,8 +1167,16 @@ function handleLogsShowCommand(argv: any) {
   console.log(logs.toString());
 }
 
-function handleLogsOpenCommand(argv: any) {
-  shell.openPath(getLogFilePath());
+function handleLogsOpenFileCommand(argv: any) {
+  const logFilePath = getLogFilePath();
+  console.log(`Log file path: ${logFilePath}`);
+
+  if (!(fs.existsSync(logFilePath) && fs.statSync(logFilePath).isFile())) {
+    console.log('Log file does not exist!');
+    return;
+  }
+
+  shell.openPath(logFilePath);
 }
 
 export async function launchCLIinEnvironment(
