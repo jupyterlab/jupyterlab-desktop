@@ -1,6 +1,6 @@
 # Python environment management
 
-JupyterLab Desktop (JLD) lets you manage Python environments on your system with a simple and user-friendly UI. You can launch the Python environment management dialog by using the `Hamburger Menu` on top right -> `Manage Python environments` or by clicking the gear icon on session environment selection popup. (Note: You can also manage Python environments usin JLD CLI (jlab), which comes with additional environment create options. See [this section](#python-environment-management-using-cli) for CLI commands to manage environments.)
+JupyterLab Desktop (JLD) lets you manage Python environments on your system with a simple and user-friendly UI. You can launch the Python environment management dialog by using the `Hamburger Menu` on top right -> `Manage Python environments` or by clicking the gear icon on session environment selection popup. (Note: You can also manage Python environments using JLD CLI (jlab), which comes with additional environment create options. See [this section](#python-environment-management-using-cli) for CLI commands to manage environments.)
 
 <img src="media/env-select-popup-gear-hilited.png" alt="Environment select popup gear" width=700 />
 <img src="media/manage-python-envs-menu.png" alt="Manage Python environments menu" width=300 />
