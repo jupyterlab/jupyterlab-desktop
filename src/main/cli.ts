@@ -965,11 +965,25 @@ function handleConfigListCommand(argv: any) {
 function handleConfigSetCommand(argv: any) {
   const parseSetting = (): { key: string; value: string } => {
     if (argv._.length !== 3) {
-      console.error(`Invalid setting. Use "set settingKey value" format.`);
+      console.error(`Invalid setting. Use "set <settingKey> <value>" format.`);
       return { key: undefined, value: undefined };
     }
 
-    return { key: argv._[1], value: JSON.parse(argv._[2]) };
+    let value;
+
+    // boolean, arrays, objects
+    try {
+      value = JSON.parse(argv._[2]);
+    } catch (error) {
+      try {
+        // string without quotes
+        value = JSON.parse(`"${argv._[2]}"`);
+      } catch (error) {
+        console.error(error.message);
+      }
+    }
+
+    return { key: argv._[1], value: value };
   };
 
   let projectPath = '';
@@ -981,7 +995,7 @@ function handleConfigSetCommand(argv: any) {
       : process.cwd();
     if (
       argv.projectPath &&
-      !(fs.existsSync(projectPath) && fs.statSync(projectPath).isFile())
+      !(fs.existsSync(projectPath) && fs.statSync(projectPath).isDirectory())
     ) {
       console.error(`Invalid project path! "${projectPath}"`);
       return;
@@ -1000,7 +1014,8 @@ function handleConfigSetCommand(argv: any) {
     return;
   }
 
-  if (!(key && value)) {
+  if (key === undefined || value === undefined) {
+    console.error('Failed to parse key value pair!');
     return;
   }
 
@@ -1034,7 +1049,7 @@ function handleConfigSetCommand(argv: any) {
 function handleConfigUnsetCommand(argv: any) {
   const parseKey = (): string => {
     if (argv._.length !== 2) {
-      console.error(`Invalid setting. Use "set settingKey value" format.`);
+      console.error(`Invalid setting. Use "unset <settingKey>" format.`);
       return undefined;
     }
 
@@ -1050,7 +1065,7 @@ function handleConfigUnsetCommand(argv: any) {
       : process.cwd();
     if (
       argv.projectPath &&
-      !(fs.existsSync(projectPath) && fs.statSync(projectPath).isFile())
+      !(fs.existsSync(projectPath) && fs.statSync(projectPath).isDirectory())
     ) {
       console.error(`Invalid project path! "${projectPath}"`);
       return;
