@@ -283,8 +283,8 @@ lib/python3.12/lib-dynload/xxlimited.cpython-312-darwin.so
 lib/python3.12/lib-dynload/xxlimited_35.cpython-312-darwin.so
 lib/python3.12/lib-dynload/xxsubtype.cpython-312-darwin.so
 lib/python3.12/lib-dynload/zlib.cpython-312-darwin.so
-lib/python3.12/lib2to3/Grammar3.12.1.final.0.pickle
-lib/python3.12/lib2to3/PatternGrammar3.12.1.final.0.pickle
+lib/python3.12/lib2to3/Grammar3.12.2.final.0.pickle
+lib/python3.12/lib2to3/PatternGrammar3.12.2.final.0.pickle
 lib/python3.12/site-packages/AppKit/_AppKit.cpython-312-darwin.so
 lib/python3.12/site-packages/AppKit/_inlines.cpython-312-darwin.so
 lib/python3.12/site-packages/CoreFoundation/_CoreFoundation.cpython-312-darwin.so
