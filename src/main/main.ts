@@ -5,16 +5,16 @@ import * as semver from 'semver';
 import {
   bundledEnvironmentIsInstalled,
   EnvironmentInstallStatus,
-  getAppDir,
   getBundledPythonEnvPath,
   getBundledPythonPath,
   installBundledEnvironment,
   isDevMode,
+  jlabCLICommandIsSetup,
+  setupJlabCommandWithUserRights,
   versionWithoutSuffix,
   waitForDuration,
   waitForFunction
 } from './utils';
-import { execSync } from 'child_process';
 import { JupyterApplication } from './app';
 import { ICLIArguments } from './tokens';
 import { SessionConfig } from './config/sessionconfig';
@@ -130,25 +130,11 @@ function setupJLabCommand() {
     return;
   }
 
-  const symlinkPath = '/usr/local/bin/jlab';
-  const targetPath = `${getAppDir()}/app/jlab`;
-
-  if (!fs.existsSync(targetPath)) {
+  if (jlabCLICommandIsSetup()) {
     return;
   }
 
-  try {
-    if (!fs.existsSync(symlinkPath)) {
-      const cmd = `ln -s ${targetPath} ${symlinkPath}`;
-      execSync(cmd, { shell: '/bin/bash' });
-      fs.chmodSync(symlinkPath, 0o755);
-    }
-
-    // after a DMG install, mode resets
-    fs.chmodSync(targetPath, 0o755);
-  } catch (error) {
-    log.error(error);
-  }
+  setupJlabCommandWithUserRights();
 }
 
 function createPythonEnvsDirectory() {

@@ -16,6 +16,7 @@ import {
   ThemeType
 } from '../config/settings';
 import { IRegistry } from '../registry';
+import { jlabCLICommandIsSetup } from '../utils';
 
 export class SettingsDialog {
   constructor(options: SettingsDialog.IOptions, registry: IRegistry) {
@@ -23,7 +24,7 @@ export class SettingsDialog {
       isDarkTheme: options.isDarkTheme,
       title: 'Settings',
       width: 700,
-      height: 450,
+      height: 500,
       preload: path.join(__dirname, './preload.js')
     });
 
@@ -45,6 +46,7 @@ export class SettingsDialog {
     const installUpdatesAutomaticallyEnabled = process.platform === 'darwin';
     const installUpdatesAutomatically =
       installUpdatesAutomaticallyEnabled && options.installUpdatesAutomatically;
+    const cliCommandIsSetup = jlabCLICommandIsSetup();
 
     let strServerEnvVars = '';
     if (Object.keys(serverEnvVars).length > 0) {
@@ -338,6 +340,19 @@ export class SettingsDialog {
 
               <div class="row setting-section">
                 <div class="row">
+                  <label>jlab CLI</label>
+                </div>
+
+                <div class="row">
+                  <div id="setup-cli-command-button">
+                    <jp-button onclick='handleSetupCLICommand(this);'>Setup CLI</jp-button>
+                  </div>
+                  <div id="setup-cli-command-label" style="flex-grow: 1"></div>
+                </div>
+              </div>
+
+              <div class="row setting-section">
+                <div class="row">
                   <label for="log-level">Log level</label>
                 </div>
 
@@ -376,6 +391,9 @@ export class SettingsDialog {
                 const autoInstallCheckbox = document.getElementById('checkbox-update-install');
                 const notifyOnBundledEnvUpdatesCheckbox = document.getElementById('notify-on-bundled-env-updates');
                 const updateBundledEnvAutomaticallyCheckbox = document.getElementById('update-bundled-env-automatically');
+                const setupCLICommandButton = document.getElementById('setup-cli-command-button');
+                const setupCLICommandLabel = document.getElementById('setup-cli-command-label');
+                let cliCommandIsSetup = <%= cliCommandIsSetup %>;
 
                 function handleAutoCheckForUpdates(el) {
                   updateAutoInstallCheckboxState();
@@ -398,11 +416,29 @@ export class SettingsDialog {
                   window.electronAPI.showLogs();
                 }
 
+                function handleSetupCLICommand(el) {
+                  window.electronAPI.setupCLICommand().then(result => {
+                    cliCommandIsSetup = result;
+                    updateCLICommandSetupStatus();
+                  });
+                }
+
+                function updateCLICommandSetupStatus() {
+                  if (cliCommandIsSetup) {
+                    setupCLICommandButton.style.display = 'none';
+                    setupCLICommandLabel.innerHTML = '<b>jlab</b> CLI command is ready to use in your system terminal!';
+                  } else {
+                    setupCLICommandButton.style.display = 'block';
+                    setupCLICommandLabel.innerHTML = 'CLI command is not set up yet. Click to set up now. This requires elevated permissions.';
+                  }
+                }
+
                 function onLogLevelChanged(el) {
                   window.electronAPI.setLogLevel(el.value);
                 }
 
                 document.addEventListener("DOMContentLoaded", () => {
+                  updateCLICommandSetupStatus();
                   updateAutoInstallCheckboxState();
                 });
               </script>
@@ -480,7 +516,8 @@ export class SettingsDialog {
       serverArgs,
       overrideDefaultServerArgs,
       serverEnvVars: strServerEnvVars,
-      ctrlWBehavior
+      ctrlWBehavior,
+      cliCommandIsSetup
     });
   }
 

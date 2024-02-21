@@ -24,6 +24,7 @@ import {
   installBundledEnvironment,
   isDarkTheme,
   pythonPathForEnvPath,
+  setupJlabCLICommandWithElevatedRights,
   waitForDuration
 } from './utils';
 import { IServerFactory, JupyterServerFactory } from './server';
@@ -1199,6 +1200,29 @@ export class JupyterApplication implements IApplication, IDisposable {
         }
 
         return true;
+      }
+    );
+
+    this._evm.registerSyncEventHandler(
+      EventTypeMain.SetupCLICommandWithElevatedRights,
+      async event => {
+        const showSetupErrorMessage = () => {
+          dialog.showErrorBox(
+            'CLI setup error',
+            'Failed to setup jlab CLI command! Please see logs for details.'
+          );
+        };
+
+        try {
+          const succeeded = await setupJlabCLICommandWithElevatedRights();
+          if (!succeeded) {
+            showSetupErrorMessage();
+          }
+          return succeeded;
+        } catch (error) {
+          showSetupErrorMessage();
+          return false;
+        }
       }
     );
   }

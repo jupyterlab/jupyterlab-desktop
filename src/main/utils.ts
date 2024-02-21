@@ -10,7 +10,13 @@ import log from 'electron-log';
 import { AddressInfo, createServer, Socket } from 'net';
 import { app, nativeTheme } from 'electron';
 import { IPythonEnvironment } from './tokens';
-import { exec, execFile, ExecFileOptions, execFileSync } from 'child_process';
+import {
+  exec,
+  execFile,
+  ExecFileOptions,
+  execFileSync,
+  execSync
+} from 'child_process';
 
 export const DarkThemeBGColor = '#212121';
 export const LightThemeBGColor = '#ffffff';
@@ -708,5 +714,119 @@ export function launchTerminalInDirectory(
       callCommands = ` -- bash -c "${commands}; exec bash"`;
     }
     exec(`gnome-terminal --working-directory="${dirPath}"${callCommands}`);
+  }
+}
+
+export function getJlabCLICommandSymlinkPath(): string {
+  if (process.platform === 'darwin') {
+    return '/usr/local/bin/jlab';
+  }
+}
+
+export function getJlabCLICommandTargetPath(): string {
+  if (process.platform === 'darwin') {
+    return `${getAppDir()}/app/jlab`;
+  }
+}
+
+export function jlabCLICommandIsSetup(): boolean {
+  if (process.platform !== 'darwin') {
+    return true;
+  }
+
+  const symlinkPath = getJlabCLICommandSymlinkPath();
+  const targetPath = getJlabCLICommandTargetPath();
+
+  if (!fs.existsSync(symlinkPath)) {
+    return false;
+  }
+
+  const stats = fs.lstatSync(symlinkPath);
+  if (!stats.isSymbolicLink()) {
+    return false;
+  }
+
+  try {
+    fs.accessSync(targetPath, fs.constants.X_OK);
+  } catch (error) {
+    log.error('App CLI is not executable', error);
+    return false;
+  }
+
+  return fs.readlinkSync(symlinkPath) === targetPath;
+}
+
+export async function setupJlabCLICommandWithElevatedRights(): Promise<
+  boolean
+> {
+  if (process.platform !== 'darwin') {
+    return false;
+  }
+
+  const symlinkPath = getJlabCLICommandSymlinkPath();
+  const targetPath = getJlabCLICommandTargetPath();
+
+  if (!fs.existsSync(targetPath)) {
+    log.error(`Target path "${targetPath}" does not exist! `);
+    return false;
+  }
+
+  const shellCommands: string[] = [];
+  const symlinkParentDir = path.dirname(symlinkPath);
+
+  // create parent directory
+  if (!fs.existsSync(symlinkParentDir)) {
+    shellCommands.push(`mkdir -p ${symlinkParentDir}`);
+  }
+
+  // create symlink
+  shellCommands.push(`ln -f -s \\"${targetPath}\\" \\"${symlinkPath}\\"`);
+
+  // make files executable
+  shellCommands.push(`chmod 755 \\"${symlinkPath}\\"`);
+  shellCommands.push(`chmod 755 \\"${targetPath}\\"`);
+
+  const command = `do shell script "${shellCommands.join(
+    ' && '
+  )}" with administrator privileges`;
+
+  return new Promise<boolean>((resolve, reject) => {
+    const cliSetupProc = exec(`osascript -e '${command}'`);
+
+    cliSetupProc.on('exit', (exitCode: number) => {
+      if (exitCode === 0) {
+        resolve(true);
+      } else {
+        log.error(`Failed to setup CLI with exit code ${exitCode}`);
+        reject();
+      }
+    });
+
+    cliSetupProc.on('error', (err: Error) => {
+      log.error(err);
+      reject();
+    });
+  });
+}
+
+export async function setupJlabCommandWithUserRights() {
+  const symlinkPath = getJlabCLICommandSymlinkPath();
+  const targetPath = getJlabCLICommandTargetPath();
+
+  if (!fs.existsSync(targetPath)) {
+    return;
+  }
+
+  try {
+    if (!fs.existsSync(symlinkPath)) {
+      const cmd = `ln -s ${targetPath} ${symlinkPath}`;
+      execSync(cmd, { shell: '/bin/bash' });
+      fs.chmodSync(symlinkPath, 0o755);
+    }
+
+    // after a DMG install, mode resets
+    fs.chmodSync(targetPath, 0o755);
+  } catch (error) {
+    log.error(error);
   }
 }
