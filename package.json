@@ -22,6 +22,7 @@
     "dist:osx-64": "yarn dist:osx",
     "dist:osx-arm64": "yarn dist:osx",
     "dist:osx-dev": "yarn build && CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --macos --publish never",
+    "dist:osx-arm64-dev": "yarn build && CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --macos --arm64 --publish never",
     "dist:win-64": "yarn build && electron-builder --win --publish never",
     "dist:win-arm64": "yarn build && yarn electron-builder --arm64 --publish never",
     "update_workflow_conda_lock": "cd workflow_env && rimraf *.lock && conda-lock --kind explicit -f publish_env.yaml && cd -",

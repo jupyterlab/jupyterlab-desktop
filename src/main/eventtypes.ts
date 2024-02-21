@@ -81,7 +81,8 @@ export enum EventTypeMain {
   SetSystemPythonPath = 'set-system-python-path',
   CopySessionInfoToClipboard = 'copy-session-info-to-clipboard',
   RestartSession = 'restart-session',
-  SetSettings = 'set-settings'
+  SetSettings = 'set-settings',
+  SetupCLICommandWithElevatedRights = 'setup-cli-command'
 }
 
 // events sent to Renderer process

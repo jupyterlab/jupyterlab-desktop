@@ -78,6 +78,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   },
   setSettings: (settings: { [key: string]: any }) => {
     ipcRenderer.send(EventTypeMain.SetSettings, settings);
+  },
+  setupCLICommand: () => {
+    return ipcRenderer.invoke(EventTypeMain.SetupCLICommandWithElevatedRights);
   }
 });
 
