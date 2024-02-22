@@ -5,10 +5,12 @@ const { contextBridge, ipcRenderer } = require('electron');
 type SetTitleListener = (title: string) => void;
 type SetActiveListener = (active: boolean) => void;
 type ShowServerStatusListener = (show: boolean) => void;
+type ShowServerNotificationBadgeListener = (show: boolean) => void;
 
 let onSetTitleListener: SetTitleListener;
 let onSetActiveListener: SetActiveListener;
 let onShowServerStatusListener: ShowServerStatusListener;
+let onShowServerNotificationBadgeListener: ShowServerNotificationBadgeListener;
 
 contextBridge.exposeInMainWorld('electronAPI', {
   getAppConfig: () => {
@@ -51,6 +53,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
   },
   onShowServerStatus: (callback: ShowServerStatusListener) => {
     onShowServerStatusListener = callback;
+  },
+  onShowServerNotificationBadge: (
+    callback: ShowServerNotificationBadgeListener
+  ) => {
+    onShowServerNotificationBadgeListener = callback;
   }
 });
 
@@ -69,6 +76,12 @@ ipcRenderer.on(EventTypeRenderer.SetActive, (event, active) => {
 ipcRenderer.on(EventTypeRenderer.ShowServerStatus, (event, show) => {
   if (onShowServerStatusListener) {
     onShowServerStatusListener(show);
+  }
+});
+
+ipcRenderer.on(EventTypeRenderer.ShowServerNotificationBadge, (event, show) => {
+  if (onShowServerNotificationBadgeListener) {
+    onShowServerNotificationBadgeListener(show);
   }
 });
 

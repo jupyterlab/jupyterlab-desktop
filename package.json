@@ -1,6 +1,6 @@
 {
   "name": "jupyterlab-desktop",
-  "version": "4.0.11-1",
+  "version": "4.1.2-1",
   "description": "JupyterLab Desktop",
   "main": "./build/out/main/main.js",
   "scripts": {
@@ -16,20 +16,24 @@
     "extract": "node scripts/extract.js",
     "pack": "yarn build && electron-builder --dir",
     "dist": "yarn build && electron-builder",
-    "dist:linux": "yarn build && electron-builder --linux --publish never",
+    "dist:linux-64": "yarn build && electron-builder --linux --publish never",
+    "dist:linux-aarch64": "yarn build && electron-builder --linux --arm64 --publish never",
     "dist:osx": "yarn build && electron-builder --macos --publish never",
     "dist:osx-64": "yarn dist:osx",
     "dist:osx-arm64": "yarn dist:osx",
     "dist:osx-dev": "yarn build && CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --macos --publish never",
-    "dist:win": "yarn build && electron-builder --win --publish never",
+    "dist:osx-arm64-dev": "yarn build && CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --macos --arm64 --publish never",
+    "dist:win-64": "yarn build && electron-builder --win --publish never",
     "dist:win-arm64": "yarn build && yarn electron-builder --arm64 --publish never",
     "update_workflow_conda_lock": "cd workflow_env && rimraf *.lock && conda-lock --kind explicit -f publish_env.yaml && cd -",
     "update_conda_lock": "cd env_installer && rimraf *.lock && conda-lock --kind explicit -f jlab_server.yaml && cd -",
     "clean_env_installer": "rimraf ./env_installer/jlab_server.tar.gz && rimraf ./env_installer/jlab_server",
-    "create_env_installer:linux": "yarn clean_env_installer && conda-lock install --prefix ./env_installer/jlab_server ./env_installer/conda-linux-64.lock && conda pack -p ./env_installer/jlab_server -o ./env_installer/jlab_server.tar.gz",
-    "create_env_installer:osx-64": "yarn clean_env_installer && conda-lock install --prefix ./env_installer/jlab_server ./env_installer/conda-osx-64.lock && conda pack -p ./env_installer/jlab_server -o ./env_installer/jlab_server.tar.gz",
-    "create_env_installer:osx-arm64": "yarn clean_env_installer && conda-lock install --no-validate-platform --prefix ./env_installer/jlab_server ./env_installer/conda-osx-arm64.lock && conda pack -p ./env_installer/jlab_server -o ./env_installer/jlab_server.tar.gz",
-    "create_env_installer:win": "yarn clean_env_installer && conda-lock install --prefix ./env_installer/jlab_server ./env_installer/conda-win-64.lock && conda pack -p ./env_installer/jlab_server -o ./env_installer/jlab_server.tar.gz",
+    "create_env_installer": "yarn clean_env_installer && conda-lock install --no-validate-platform --prefix ./env_installer/jlab_server ./env_installer/conda-${ENV_PLATFORM}.lock && yarn copy_extras_to_bundled_env && conda pack -p ./env_installer/jlab_server -o ./env_installer/jlab_server.tar.gz",
+    "create_env_installer:linux-64": "ENV_PLATFORM=linux-64 yarn create_env_installer",
+    "create_env_installer:linux-aarch64": "ENV_PLATFORM=linux-aarch64 yarn create_env_installer",
+    "create_env_installer:osx-64": "ENV_PLATFORM=osx-64 yarn create_env_installer",
+    "create_env_installer:osx-arm64": "ENV_PLATFORM=osx-arm64 yarn create_env_installer",
+    "create_env_installer:win-64": "yarn clean_env_installer && conda-lock install --no-validate-platform --prefix ./env_installer/jlab_server ./env_installer/conda-win-64.lock && yarn copy_extras_to_bundled_env && conda pack -p ./env_installer/jlab_server -o ./env_installer/jlab_server.tar.gz",
     "extract_env_installer:osx": "cd ./env_installer && rimraf jlab_server_extracted && mkdir jlab_server_extracted && tar -xzf jlab_server.tar.gz -C jlab_server_extracted && cd -",
     "extract_env_installer:osx-64": "yarn extract_env_installer:osx",
     "extract_env_installer:osx-arm64": "yarn extract_env_installer:osx",
@@ -38,6 +42,7 @@
     "compress_env_installer:osx-arm64": "yarn compress_env_installer:osx",
     "check_version_match": "node scripts/buildutil.js --check-version-match",
     "update_binary_sign_list": "node scripts/buildutil.js --update-binary-sign-list",
+    "copy_extras_to_bundled_env": "node scripts/buildutil.js --copy-extras-to-bundled-env",
     "eslint": "eslint --ext .js,.jsx,.ts,.tsx --cache --fix .",
     "eslint:check": "eslint --ext .js,.jsx,.ts,.tsx --cache .",
     "eslint:check:typed": "eslint --config .eslintrc.typecheck.js --ext .js,.jsx,.ts,.tsx .",
@@ -47,7 +52,8 @@
     "prettier": "prettier --write \"**/*{.ts,.tsx,.js,.jsx,.css,.json,.md}\"",
     "prettier:check": "prettier --check \"**/*{.ts,.tsx,.js,.jsx,.css,.json,.md}\"",
     "stylelint": "yarn stylelint:check --fix",
-    "stylelint:check": "stylelint \"**/*.css\""
+    "stylelint:check": "stylelint \"**/*.css\"",
+    "update-ufuzzy": "shx cp node_modules/@leeoniya/ufuzzy/dist/uFuzzy.iife.min.js src/assets/"
   },
   "build": {
     "appId": "org.jupyter.jupyterlab-desktop",
@@ -113,7 +119,8 @@
           "from": "dist-resources/win/jlab.cmd",
           "to": "jlab.cmd"
         }
-      ]
+      ],
+      "icon": "dist-resources/icons/icon.ico"
     },
     "nsis": {
       "oneClick": "false",
@@ -185,8 +192,9 @@
     "@types/yargs": "^17.0.18",
     "@typescript-eslint/eslint-plugin": "~5.28.0",
     "@typescript-eslint/parser": "~5.28.0",
+    "@leeoniya/ufuzzy": "1.0.14",
     "electron": "^27.0.2",
-    "electron-builder": "^24.6.4",
+    "electron-builder": "^24.9.1",
     "electron-notarize": "^1.2.2",
     "eslint": "~8.17.0",
     "eslint-config-prettier": "~8.5.0",
@@ -200,6 +208,7 @@
     "prettier": "~2.1.1",
     "read-package-tree": "^5.1.6",
     "rimraf": "~3.0.0",
+    "shx": "^0.3.4",
     "stylelint": "^15.10.1",
     "stylelint-config-prettier": "^9.0.3",
     "stylelint-config-recommended": "^6.0.0",

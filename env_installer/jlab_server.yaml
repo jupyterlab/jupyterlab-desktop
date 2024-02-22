@@ -4,16 +4,17 @@ channels:
 dependencies:
   - conda
   - ipywidgets >= 8.0.1
-  - jupyterlab 4.0.11
+  - jupyterlab 4.1.2
   - ipympl >= 0.8.2
   - matplotlib-base
   - numpy
   - pandas
   - pip
-  - python 3.8*
+  - python 3.12*
   - scipy
 platforms:
   - linux-64
+  - linux-aarch64
   - osx-64
   - osx-arm64
   - win-64

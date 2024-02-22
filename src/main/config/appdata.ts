@@ -4,9 +4,8 @@
 import * as path from 'path';
 import * as fs from 'fs';
 import { clearSession, getUserDataDir } from '../utils';
-import { IEnvironmentType, IPythonEnvironment } from '../tokens';
+import { IPythonEnvironment } from '../tokens';
 import { SessionConfig } from './sessionconfig';
-import { getOldSettings } from './settings';
 import { session as electronSession } from 'electron';
 import { ISignal, Signal } from '@lumino/signaling';
 
@@ -55,17 +54,31 @@ export class ApplicationData {
   }
 
   read() {
-    const appDataPath = this._getAppDataPath();
+    const appDataPath = ApplicationData.getAppDataPath();
     if (!fs.existsSync(appDataPath)) {
-      // TODO: remove after 07/2023
-      this._migrateFromOldSettings();
       return;
     }
     const data = fs.readFileSync(appDataPath);
     const jsonData = JSON.parse(data.toString());
 
+    if ('pythonPath' in jsonData) {
+      this.pythonPath = jsonData.pythonPath;
+    }
+
+    // TODO: remove after 1/1/2025
     if ('condaRootPath' in jsonData) {
-      this.condaRootPath = jsonData.condaRootPath;
+      // copied to prevent circular import
+      const condaExePathForEnvPath = (envPath: string) => {
+        if (process.platform === 'win32') {
+          return path.join(envPath, 'Scripts', 'conda.exe');
+        } else {
+          return path.join(envPath, 'bin', 'conda');
+        }
+      };
+      this.condaPath = condaExePathForEnvPath(jsonData.condaRootPath);
+    }
+    if ('condaPath' in jsonData) {
+      this.condaPath = jsonData.condaPath;
     }
 
     if ('systemPythonPath' in jsonData) {
@@ -156,37 +169,22 @@ export class ApplicationData {
         });
       }
     }
-  }
 
-  private _migrateFromOldSettings() {
-    const oldSettings = getOldSettings();
-
-    if (oldSettings.condaRootPath) {
-      this.condaRootPath = oldSettings.condaRootPath;
-    }
-    if (oldSettings.pythonPath) {
-      this.userSetPythonEnvs.push({
-        path: oldSettings.pythonPath,
-        name: 'env',
-        type: IEnvironmentType.Path,
-        versions: {},
-        defaultKernel: 'python3'
-      });
-    }
-    if (oldSettings.remoteURL) {
-      this.recentRemoteURLs.push({
-        url: oldSettings.remoteURL,
-        date: new Date()
-      });
+    if ('updateBundledEnvOnRestart' in jsonData) {
+      this.updateBundledEnvOnRestart = jsonData.updateBundledEnvOnRestart;
     }
   }
 
   save() {
-    const appDataPath = this._getAppDataPath();
+    const appDataPath = ApplicationData.getAppDataPath();
     const appDataJSON: { [key: string]: any } = {};
 
-    if (this.condaRootPath !== '') {
-      appDataJSON.condaRootPath = this.condaRootPath;
+    if (this.pythonPath !== '') {
+      appDataJSON.pythonPath = this.pythonPath;
+    }
+
+    if (this.condaPath !== '') {
+      appDataJSON.condaPath = this.condaPath;
     }
 
     if (this.systemPythonPath !== '') {
@@ -249,6 +247,10 @@ export class ApplicationData {
         title: newsItem.title,
         link: newsItem.link
       });
+    }
+
+    if (this.updateBundledEnvOnRestart) {
+      appDataJSON.updateBundledEnvOnRestart = true;
     }
 
     fs.writeFileSync(appDataPath, JSON.stringify(appDataJSON, null, 2));
@@ -371,7 +373,7 @@ export class ApplicationData {
     return this._recentSessionsChanged;
   }
 
-  private _getAppDataPath(): string {
+  static getAppDataPath(): string {
     const userDataDir = getUserDataDir();
     return path.join(userDataDir, 'app-data.json');
   }
@@ -383,7 +385,17 @@ export class ApplicationData {
   }
 
   newsList: INewsItem[] = [];
-  condaRootPath: string = '';
+  /**
+   * discovered pythonPath (for JupyterLab server)
+   */
+  pythonPath: string = '';
+  /**
+   * discovered condaPath
+   */
+  condaPath: string = '';
+  /**
+   * discovered Python path
+   */
   systemPythonPath: string = '';
   sessions: SessionConfig[] = [];
   recentRemoteURLs: IRecentRemoteURL[] = [];
@@ -391,6 +403,8 @@ export class ApplicationData {
 
   discoveredPythonEnvs: IPythonEnvironment[] = [];
   userSetPythonEnvs: IPythonEnvironment[] = [];
+
+  updateBundledEnvOnRestart: boolean = false;
 
   private _recentSessionsChanged = new Signal<this, void>(this);
 }

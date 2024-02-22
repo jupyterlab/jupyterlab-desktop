@@ -17,6 +17,7 @@ import {
   DEFAULT_WIN_HEIGHT,
   DEFAULT_WIN_WIDTH,
   SettingType,
+  userSettings,
   WorkspaceSettings
 } from '../config/settings';
 import { TitleBarView } from '../titlebarview/titlebarview';
@@ -48,7 +49,7 @@ import { SessionConfig } from '../config/sessionconfig';
 import { ISignal, Signal } from '@lumino/signaling';
 import { EventTypeMain } from '../eventtypes';
 import { EventManager } from '../eventmanager';
-import { runCommandInEnvironment } from '../cli';
+import { runCommandInEnvironment } from '../env';
 
 export enum ContentViewType {
   Welcome = 'welcome',
@@ -71,7 +72,7 @@ export interface IServerInfo {
 }
 
 const titleBarHeight = 29;
-const defaultEnvSelectPopupHeight = 300;
+const defaultEnvSelectPopupHeight = 330;
 
 export class SessionWindow implements IDisposable {
   constructor(options: SessionWindow.IOptions) {
@@ -285,10 +286,6 @@ export class SessionWindow implements IDisposable {
         this._recentSessionsChangedHandler,
         this
       );
-      this._registry.environmentListUpdated.disconnect(
-        this._onEnvironmentListUpdated,
-        this
-      );
 
       this._disposeSession().then(() => {
         this._disposePromise = null;
@@ -406,6 +403,23 @@ export class SessionWindow implements IDisposable {
         this._titleBarView.showServerStatus(true);
       });
     }
+
+    if (userSettings.getValue(SettingType.notifyOnBundledEnvUpdates)) {
+      let showServerNotificationBadge = false;
+      const serverInfo = this.getServerInfo();
+      if (
+        serverInfo &&
+        serverInfo.type === 'local' &&
+        serverInfo.environment?.path === getBundledPythonPath()
+      ) {
+        if (!this._registry.bundledEnvironmentIsLatest()) {
+          showServerNotificationBadge = true;
+        }
+      }
+      this._titleBarView.showServerNotificationBadge(
+        showServerNotificationBadge
+      );
+    }
   }
 
   get titleBarView(): TitleBarView {
@@ -450,11 +464,6 @@ export class SessionWindow implements IDisposable {
   private _registerListeners() {
     appData.recentSessionsChanged.connect(
       this._recentSessionsChangedHandler,
-      this
-    );
-
-    this._registry.environmentListUpdated.connect(
-      this._onEnvironmentListUpdated,
       this
     );
 
@@ -540,7 +549,7 @@ export class SessionWindow implements IDisposable {
               <a href="javascript:void(0);" onclick="sendMessageToMain('${EventTypeMain.InstallBundledPythonEnv}')">Install / update Python environment using the bundled installer</a>
             </div>
             <div class="message-row">
-              <a href="javascript:void(0);" onclick="sendMessageToMain('${EventTypeMain.ShowServerSettings}')">Change the default Python environment</a>
+              <a href="javascript:void(0);" onclick="sendMessageToMain('${EventTypeMain.ShowManagePythonEnvironmentsDialog}', 'settings')">Change the default Python environment</a>
             </div>
           `,
             false
@@ -780,7 +789,7 @@ export class SessionWindow implements IDisposable {
     });
 
     this._evm.registerEventHandler(
-      EventTypeMain.SetPythonPath,
+      EventTypeMain.SetSessionPythonPath,
       async (event, path) => {
         if (event.sender !== this._envSelectPopup?.view?.view?.webContents) {
           return;
@@ -869,6 +878,12 @@ export class SessionWindow implements IDisposable {
           }
         },
         {
+          label: 'Manage Python environments',
+          click: () => {
+            this._app.showManagePythonEnvsDialog();
+          }
+        },
+        {
           label: 'Check for updates…',
           click: () => {
             this._app.checkForUpdates('always');
@@ -948,6 +963,70 @@ export class SessionWindow implements IDisposable {
         }
       }
     );
+
+    this._evm.registerEventHandler(
+      EventTypeMain.RestartSession,
+      async event => {
+        if (event.sender !== this._envSelectPopup?.view?.view?.webContents) {
+          return;
+        }
+
+        let currentPythonPath = this._wsSettings.getValue(
+          SettingType.pythonPath
+        );
+        if (!currentPythonPath) {
+          const defaultEnv = await this.registry.getDefaultEnvironment();
+          if (defaultEnv) {
+            currentPythonPath = defaultEnv.path;
+          }
+        }
+
+        if (!currentPythonPath) {
+          return;
+        }
+
+        this._hideEnvSelectPopup();
+        this._restartServerInPythonEnvironment(currentPythonPath);
+      }
+    );
+
+    this._evm.registerEventHandler(
+      EventTypeMain.CopySessionInfoToClipboard,
+      event => {
+        if (event.sender !== this._envSelectPopup?.view?.view?.webContents) {
+          return;
+        }
+
+        const serverInfo = this.getServerInfo();
+
+        let content = '';
+
+        if (serverInfo.type === 'local') {
+          content = [
+            'type: local server',
+            `url: ${serverInfo.url}`,
+            `server root: ${serverInfo.workingDirectory}`,
+            `env name: ${serverInfo.environment.name}`,
+            `env Python path: ${serverInfo.environment.path}`,
+            `versions: ${JSON.stringify(serverInfo.environment.versions)}`
+          ].join('\n');
+        } else {
+          const url = new URL(serverInfo.url);
+          const isLocalUrl =
+            url.hostname === 'localhost' || url.hostname === '127.0.0.1';
+
+          content = [
+            `type: ${isLocalUrl ? 'local' : 'remote'} connection`,
+            `url: ${serverInfo.url}`,
+            `session data: ${
+              serverInfo.persistSessionData ? '' : 'not '
+            }persisted`
+          ].join('\n');
+        }
+
+        clipboard.writeText(content);
+      }
+    );
   }
 
   private _restartServerInPythonEnvironment(pythonPath: string) {
@@ -979,7 +1058,7 @@ export class SessionWindow implements IDisposable {
     }
   }
 
-  async getServerInfo(): Promise<IServerInfo> {
+  getServerInfo(): IServerInfo {
     if (this._contentViewType !== ContentViewType.Lab) {
       return null;
     }
@@ -1116,15 +1195,31 @@ export class SessionWindow implements IDisposable {
   }
 
   private async _createEnvSelectPopup() {
-    const envs = await this.registry.getEnvironmentList(false);
-    const defaultEnv = await this._registry.getDefaultEnvironment();
+    let defaultEnv: IPythonEnvironment;
+    try {
+      defaultEnv = await this._registry.getDefaultEnvironment();
+    } catch (error) {
+      //
+    }
+
     const defaultPythonPath = defaultEnv ? defaultEnv.path : '';
 
     this._envSelectPopup = new PythonEnvironmentSelectPopup({
+      app: this._app,
       isDarkTheme: this._isDarkTheme,
-      envs,
+      envs: [], // start with empty list, populate later
       bundledPythonPath: getBundledPythonPath(),
       defaultPythonPath
+    });
+
+    const listPromise = this.registry.getEnvironmentList(false);
+
+    this._envSelectPopup.view.view.webContents.on('did-finish-load', () => {
+      listPromise.then(envs => {
+        this._envSelectPopup.setPythonEnvironmentList(envs);
+        this._resizeEnvSelectPopup();
+        this._envSelectPopup.resetView();
+      });
     });
 
     this._envSelectPopup.load();
@@ -1135,20 +1230,30 @@ export class SessionWindow implements IDisposable {
       return;
     }
 
-    let currentPythonPath = this._wsSettings.getValue(SettingType.pythonPath);
-    if (!currentPythonPath) {
-      const defaultEnv = await this.registry.getDefaultEnvironment();
-      if (defaultEnv) {
-        currentPythonPath = defaultEnv.path;
-      }
-    }
-
-    this._envSelectPopup.setCurrentPythonPath(currentPythonPath);
+    const serverInfo = this.getServerInfo();
+    this._envSelectPopup.setCurrentPythonPath(serverInfo?.environment?.path);
+    this._envSelectPopup.resetView();
 
     this._window.addBrowserView(this._envSelectPopup.view.view);
     this._envSelectPopupVisible = true;
     this._resizeEnvSelectPopup();
     this._envSelectPopup.view.view.webContents.focus();
+
+    if (userSettings.getValue(SettingType.notifyOnBundledEnvUpdates)) {
+      let showUpdateBundledEnvAction = false;
+      if (
+        serverInfo &&
+        serverInfo.type === 'local' &&
+        serverInfo.environment?.path === getBundledPythonPath()
+      ) {
+        if (!this._registry.bundledEnvironmentIsLatest()) {
+          showUpdateBundledEnvAction = true;
+        }
+      }
+      this._envSelectPopup.showUpdateBundledEnvAction(
+        showUpdateBundledEnvAction
+      );
+    }
   }
 
   private _resizeEnvSelectPopup() {
@@ -1508,13 +1613,6 @@ export class SessionWindow implements IDisposable {
     if (filePaths.length > 0) {
       this.handleOpenFilesOrFolders(filePaths);
     }
-  }
-
-  private _onEnvironmentListUpdated() {
-    // TODO: add ability to update popup's env list
-    // recreate env select popup to have newly added env listed
-    this._hideEnvSelectPopup();
-    this._createEnvSelectPopup();
   }
 
   private _wsSettings: WorkspaceSettings;

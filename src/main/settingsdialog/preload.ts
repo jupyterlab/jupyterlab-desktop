@@ -2,12 +2,8 @@ import { EventTypeMain, EventTypeRenderer } from '../eventtypes';
 
 const { contextBridge, ipcRenderer } = require('electron');
 
-type InstallBundledPythonEnvStatusListener = (status: string) => void;
-type CustomPythonPathSelectedListener = (path: string) => void;
 type WorkingDirectorySelectedListener = (path: string) => void;
 
-let onInstallBundledPythonEnvStatusListener: InstallBundledPythonEnvStatusListener;
-let onCustomPythonPathSelectedListener: CustomPythonPathSelectedListener;
 let onWorkingDirectorySelectedListener: WorkingDirectorySelectedListener;
 
 contextBridge.exposeInMainWorld('electronAPI', {
@@ -58,32 +54,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
   setDefaultWorkingDirectory: (path: string) => {
     ipcRenderer.send(EventTypeMain.SetDefaultWorkingDirectory, path);
   },
-  installBundledPythonEnv: () => {
-    ipcRenderer.send(EventTypeMain.InstallBundledPythonEnv);
-  },
-  updateBundledPythonEnv: () => {
-    ipcRenderer.send(EventTypeMain.InstallBundledPythonEnv);
-  },
-  onInstallBundledPythonEnvStatus: (
-    callback: InstallBundledPythonEnvStatusListener
-  ) => {
-    onInstallBundledPythonEnvStatusListener = callback;
-  },
-  selectPythonPath: () => {
-    ipcRenderer.send(EventTypeMain.SelectPythonPath);
-  },
-  onCustomPythonPathSelected: (callback: CustomPythonPathSelectedListener) => {
-    onCustomPythonPathSelectedListener = callback;
-  },
-  setDefaultPythonPath: (path: string) => {
-    ipcRenderer.send(EventTypeMain.SetDefaultPythonPath, path);
-  },
-  validatePythonPath: (path: string) => {
-    return ipcRenderer.invoke(EventTypeMain.ValidatePythonPath, path);
-  },
-  showInvalidPythonPathMessage: (path: string) => {
-    ipcRenderer.send(EventTypeMain.ShowInvalidPythonPathMessage, path);
-  },
   clearHistory: (options: any) => {
     return ipcRenderer.invoke(EventTypeMain.ClearHistory, options);
   },
@@ -105,27 +75,18 @@ contextBridge.exposeInMainWorld('electronAPI', {
   },
   setCtrlWBehavior: (behavior: string) => {
     ipcRenderer.send(EventTypeMain.SetCtrlWBehavior, behavior);
+  },
+  setSettings: (settings: { [key: string]: any }) => {
+    ipcRenderer.send(EventTypeMain.SetSettings, settings);
+  },
+  setupCLICommand: () => {
+    return ipcRenderer.invoke(EventTypeMain.SetupCLICommandWithElevatedRights);
   }
 });
 
 ipcRenderer.on(EventTypeRenderer.WorkingDirectorySelected, (event, path) => {
   if (onWorkingDirectorySelectedListener) {
     onWorkingDirectorySelectedListener(path);
-  }
-});
-
-ipcRenderer.on(
-  EventTypeRenderer.InstallBundledPythonEnvStatus,
-  (event, result) => {
-    if (onInstallBundledPythonEnvStatusListener) {
-      onInstallBundledPythonEnvStatusListener(result);
-    }
-  }
-);
-
-ipcRenderer.on(EventTypeRenderer.CustomPythonPathSelected, (event, path) => {
-  if (onCustomPythonPathSelectedListener) {
-    onCustomPythonPathSelectedListener(path);
   }
 });
 

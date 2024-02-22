@@ -2,7 +2,7 @@
 // Distributed under the terms of the Modified BSD License.
 
 import * as ejs from 'ejs';
-import { app, BrowserWindow } from 'electron';
+import { BrowserWindow } from 'electron';
 import * as path from 'path';
 import * as fs from 'fs';
 import { ThemedWindow } from '../dialog/themedwindow';
@@ -15,8 +15,8 @@ import {
   StartupMode,
   ThemeType
 } from '../config/settings';
-import { getBundledPythonPath, versionWithoutSuffix } from '../utils';
 import { IRegistry } from '../registry';
+import { jlabCLICommandIsSetup } from '../utils';
 
 export class SettingsDialog {
   constructor(options: SettingsDialog.IOptions, registry: IRegistry) {
@@ -24,7 +24,7 @@ export class SettingsDialog {
       isDarkTheme: options.isDarkTheme,
       title: 'Settings',
       width: 700,
-      height: 400,
+      height: 500,
       preload: path.join(__dirname, './preload.js')
     });
 
@@ -34,6 +34,8 @@ export class SettingsDialog {
       syncJupyterLabTheme,
       showNewsFeed,
       checkForUpdatesAutomatically,
+      notifyOnBundledEnvUpdates,
+      updateBundledEnvAutomatically,
       defaultWorkingDirectory,
       logLevel,
       serverArgs,
@@ -44,40 +46,7 @@ export class SettingsDialog {
     const installUpdatesAutomaticallyEnabled = process.platform === 'darwin';
     const installUpdatesAutomatically =
       installUpdatesAutomaticallyEnabled && options.installUpdatesAutomatically;
-    let defaultPythonPath = options.defaultPythonPath;
-    const bundledPythonPath = getBundledPythonPath();
-
-    if (defaultPythonPath === '') {
-      defaultPythonPath = bundledPythonPath;
-    }
-    let bundledEnvInstallationExists = false;
-    try {
-      bundledEnvInstallationExists = fs.existsSync(bundledPythonPath);
-    } catch (error) {
-      console.error('Failed to check for bundled Python path', error);
-    }
-
-    const selectBundledPythonPath =
-      (defaultPythonPath === '' || defaultPythonPath === bundledPythonPath) &&
-      bundledEnvInstallationExists;
-
-    let bundledEnvInstallationLatest = true;
-
-    if (bundledEnvInstallationExists) {
-      try {
-        const bundledEnv = registry.getEnvironmentByPath(bundledPythonPath);
-        const jlabVersion = bundledEnv.versions['jupyterlab'];
-        const appVersion = app.getVersion();
-
-        if (
-          versionWithoutSuffix(jlabVersion) !== versionWithoutSuffix(appVersion)
-        ) {
-          bundledEnvInstallationLatest = false;
-        }
-      } catch (error) {
-        console.error('Failed to check bundled environment update', error);
-      }
-    }
+    const cliCommandIsSetup = jlabCLICommandIsSetup();
 
     let strServerEnvVars = '';
     if (Object.keys(serverEnvVars).length > 0) {
@@ -87,6 +56,10 @@ export class SettingsDialog {
     }
 
     const ctrlWLabel = process.platform === 'darwin' ? 'Cmd + W' : 'Ctrl + W';
+
+    const infoIconSrc = fs.readFileSync(
+      path.join(__dirname, '../../../app-assets/info-icon.svg')
+    );
 
     const template = `
       <style>
@@ -102,46 +75,11 @@ export class SettingsDialog {
         flex-grow: 1;
         overflow-y: auto;
       }
-      #categories {
-        width: 200px;
-      }
-      #category-content-container {
-        flex-grow: 1;
-      }
-      .category-content {
-        display: flex;
-        flex-direction: column;
-      }
       #footer {
         text-align: right;
       }
-      #category-jupyterlab jp-divider {
-        margin: 15px 0;
-      }
-      #server-config-section {
-        display: flex;
-        flex-direction: column;
-        align-items: flex-start;
-      }
-      jp-tab-panel #tab-updates {
-        display: flex;
-        align-items: flex-start;
-      }
       #category-tabs {
         width: 100%;
-      }
-      #bundled-env-warning {
-        display: none;
-        align-items: center;
-      }
-      #bundled-env-warning.warning {
-        color: orange;
-      }
-      #install-bundled-env {
-        display: none;
-      }
-      #update-bundled-env {
-        display: none;
       }
       .row {
         display: flex;
@@ -194,6 +132,13 @@ export class SettingsDialog {
       #additional-server-env-vars.invalid::part(control) {
         border-color: red;
       }
+      .info-icon {
+        display: inline-block;
+        margin-top: -10px;
+      }
+      .info-icon svg path {
+        fill: var(--neutral-stroke-hover);
+      }
       </style>
       <div id="container">
         <div id="content-area">
@@ -242,28 +187,6 @@ export class SettingsDialog {
                 </div>
               </div>
 
-              <div id="content-local-server" class="server-type-content">
-                <div class="row" style="line-height: 30px;">
-                  <label>Default Python environment</label>
-                </div>
-                <div style="display: flex; flex-direction: column; row-gap: 5px;">
-                  <div id="bundled-env-warning"><span id="bundled-env-warning-message"></span><jp-button id='install-bundled-env' onclick='handleInstallBundledEv(this);'>Install</jp-button><jp-button id='update-bundled-env' onclick='handleUpdateBundledEv(this);'>Update</jp-button></div>
-                  <jp-radio-group orientation="vertical">
-                    <jp-radio type="radio" id="bundled-env" name="env_type" value="bundled-env" <%= selectBundledPythonPath ? 'checked' : '' %> <%= !bundledEnvInstallationExists ? 'disabled' : '' %> onchange="handleEnvTypeChange(this);">Bundled Python environment</jp-radio>
-                    <jp-radio type="radio" id="custom-env" name="env_type" value="custom-env" <%= !selectBundledPythonPath ? 'checked' : '' %> onchange="handleEnvTypeChange(this);">Custom Python environment</jp-radio>
-                  </jp-radio-group>
-
-                  <div class="row">
-                    <div style="flex-grow: 1;">
-                      <jp-text-field type="text" id="python-path" value="<%= defaultPythonPath %>" style="width: 100%;" spellcheck="false"></jp-text-field>
-                    </div>
-                    <div>
-                      <jp-button id='select-python-path' onclick='handleSelectPythonPath(this);'>Select Python path</jp-button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
               <div class="row">
                 <jp-text-area id='additional-server-args' appearance="outline" resize="vertical" rows="2" value="<%= serverArgs %>" oninput='handleAdditionalServerArgsInput(this);' spellcheck="false" placeholder="Enter additional server launch args separated by space">
                 Additional JupyterLab Server launch args
@@ -285,15 +208,6 @@ export class SettingsDialog {
 
               <script>
               const workingDirectoryInput = document.getElementById('working-directory');
-              const bundledEnvRadio = document.getElementById('bundled-env');
-              const customEnvRadio = document.getElementById('custom-env');
-              const pythonPathInput = document.getElementById('python-path');
-              const selectPythonPathButton = document.getElementById('select-python-path');
-              const bundledEnvWarningContainer = document.getElementById('bundled-env-warning');
-              const bundledEnvWarningMessage = document.getElementById('bundled-env-warning-message');
-              const installBundledEnvButton = document.getElementById('install-bundled-env');
-              const updateBundledEnvButton = document.getElementById('update-bundled-env');
-
               const additionalServerArgs = document.getElementById('additional-server-args');
               const overrideDefaultServerArgs = document.getElementById('override-default-server-args');
               const serverLaunchCommandPreview  = document.getElementById('server-launch-command-preview');
@@ -301,51 +215,6 @@ export class SettingsDialog {
 
               function handleSelectWorkingDirectory(el) {
                 window.electronAPI.selectWorkingDirectory();
-              }
-
-              function handleEnvTypeChange() {
-                defaultPythonEnvChanged = true;
-                const useBundledEnv = bundledEnvRadio.checked;
-                if (useBundledEnv) {
-                  pythonPathInput.setAttribute('disabled', 'disabled');
-                  selectPythonPathButton.setAttribute('disabled', 'disabled');
-                } else {
-                  pythonPathInput.removeAttribute('disabled');
-                  selectPythonPathButton.removeAttribute('disabled');
-                }
-              }
-
-              function handleSelectPythonPath(el) {
-                window.electronAPI.selectPythonPath();
-              }
-
-              function showBundledEnvWarning(type) {
-                if (type === 'does-not-exist') {
-                  bundledEnvWarningMessage.innerText = 'Bundled environment not found';
-                  installBundledEnvButton.style.display = 'block';
-                  bundledEnvWarningContainer.classList.add('warning');
-                } else {
-                  bundledEnvWarningMessage.innerText = 'Updates available for the bundled environment';
-                  updateBundledEnvButton.style.display = 'block';
-                  bundledEnvWarningContainer.classList.add('warning');
-                }
-                bundledEnvWarningContainer.style.display = 'flex';
-              }
-
-              function hideBundledEnvWarning() {
-                bundledEnvWarningContainer.style.display = 'none';
-              }
-
-              function handleInstallBundledEv() {
-                applyButton.setAttribute('disabled', 'disabled');
-                installBundledEnvButton.setAttribute('disabled', 'disabled');
-                window.electronAPI.installBundledPythonEnv();
-              }
-
-              function handleUpdateBundledEv() {
-                showProgress('Updating environment', true);
-                applyButton.setAttribute('disabled', 'disabled');
-                window.electronAPI.updateBundledPythonEnv();
               }
 
               function handleAdditionalServerArgsInput(el) {
@@ -417,42 +286,9 @@ export class SettingsDialog {
                 updateServerEnvVarsValidity();
               });
 
-              window.electronAPI.onInstallBundledPythonEnvStatus((status) => {
-                const message = status === 'REMOVING_EXISTING_INSTALLATION' ?
-                  'Removing the existing installation' :
-                  status === 'STARTED' ?
-                  'Installing Python environment' :
-                  status === 'CANCELLED' ?
-                  'Installation cancelled!' :
-                  status === 'FAILURE' ?
-                    'Failed to install the environment!' :
-                  status === 'SUCCESS' ? 'Installation succeeded' : '';
-                
-                const animate = status === 'REMOVING_EXISTING_INSTALLATION'
-                  || status === 'STARTED';
-
-                showProgress(message, animate);
-
-                if (status === 'SUCCESS') {
-                  bundledEnvRadio.removeAttribute('disabled');
-                  hideBundledEnvWarning();
-                }
-
-                installBundledEnvButton.removeAttribute('disabled');
-                applyButton.removeAttribute('disabled');
-              });
-
               window.electronAPI.onWorkingDirectorySelected((path) => {
                 workingDirectoryInput.value = path;
               });
-
-              window.electronAPI.onCustomPythonPathSelected((path) => {
-                pythonPathInput.value = path;
-              });
-
-              handleEnvTypeChange();
-              <%- !bundledEnvInstallationExists ? 'showBundledEnvWarning("does-not-exist");' : '' %> 
-              <%- (bundledEnvInstallationExists && !bundledEnvInstallationLatest) ? 'showBundledEnvWarning("not-latest");' : '' %>
               </script>
             </jp-tab-panel>
 
@@ -504,6 +340,19 @@ export class SettingsDialog {
 
               <div class="row setting-section">
                 <div class="row">
+                  <label>jlab CLI</label>
+                </div>
+
+                <div class="row">
+                  <div id="setup-cli-command-button">
+                    <jp-button onclick='handleSetupCLICommand(this);'>Setup CLI</jp-button>
+                  </div>
+                  <div id="setup-cli-command-label" style="flex-grow: 1"></div>
+                </div>
+              </div>
+
+              <div class="row setting-section">
+                <div class="row">
                   <label for="log-level">Log level</label>
                 </div>
 
@@ -527,6 +376,12 @@ export class SettingsDialog {
                   <jp-checkbox id='checkbox-update-install' type='checkbox' <%= installUpdatesAutomatically ? 'checked' : '' %> <%= installUpdatesAutomaticallyEnabled ? '' : 'disabled' %>>Download and install updates automatically</jp-checkbox>
                 </div>
                 <div class="row">
+                  <jp-checkbox id='notify-on-bundled-env-updates' type='checkbox' <%= notifyOnBundledEnvUpdates ? 'checked' : '' %> onchange='handleAutoCheckForUpdates(this);'>Show bundled environment update notifications</jp-checkbox><div class="info-icon" title="Show notification badge on session title bar and update action button on session environment selection popup.">${infoIconSrc}</div>
+                </div>
+                <div class="row">
+                  <jp-checkbox id='update-bundled-env-automatically' type='checkbox' <%= updateBundledEnvAutomatically ? 'checked' : '' %>>Update bundled environment automatically when app is updated</jp-checkbox><div class="info-icon" title="This will delete the existing bundled environment installation and install the newer version whenever app is updated.">${infoIconSrc}</div>
+                </div>
+                <div class="row">
                   <jp-button onclick='handleCheckForUpdates(this);'>Check for updates now</jp-button>
                 </div>
               </div>
@@ -534,6 +389,11 @@ export class SettingsDialog {
               <script>
                 const autoUpdateCheckCheckbox = document.getElementById('checkbox-update-check');
                 const autoInstallCheckbox = document.getElementById('checkbox-update-install');
+                const notifyOnBundledEnvUpdatesCheckbox = document.getElementById('notify-on-bundled-env-updates');
+                const updateBundledEnvAutomaticallyCheckbox = document.getElementById('update-bundled-env-automatically');
+                const setupCLICommandButton = document.getElementById('setup-cli-command-button');
+                const setupCLICommandLabel = document.getElementById('setup-cli-command-label');
+                let cliCommandIsSetup = <%= cliCommandIsSetup %>;
 
                 function handleAutoCheckForUpdates(el) {
                   updateAutoInstallCheckboxState();
@@ -556,11 +416,29 @@ export class SettingsDialog {
                   window.electronAPI.showLogs();
                 }
 
+                function handleSetupCLICommand(el) {
+                  window.electronAPI.setupCLICommand().then(result => {
+                    cliCommandIsSetup = result;
+                    updateCLICommandSetupStatus();
+                  });
+                }
+
+                function updateCLICommandSetupStatus() {
+                  if (cliCommandIsSetup) {
+                    setupCLICommandButton.style.display = 'none';
+                    setupCLICommandLabel.innerHTML = '<b>jlab</b> CLI command is ready to use in your system terminal!';
+                  } else {
+                    setupCLICommandButton.style.display = 'block';
+                    setupCLICommandLabel.innerHTML = 'CLI command is not set up yet. Click to set up now. This requires elevated permissions.';
+                  }
+                }
+
                 function onLogLevelChanged(el) {
                   window.electronAPI.setLogLevel(el.value);
                 }
 
                 document.addEventListener("DOMContentLoaded", () => {
+                  updateCLICommandSetupStatus();
                   updateAutoInstallCheckboxState();
                 });
               </script>
@@ -595,6 +473,10 @@ export class SettingsDialog {
           window.electronAPI.setShowNewsFeed(showNewsFeedCheckbox.checked);
           window.electronAPI.setCheckForUpdatesAutomatically(autoUpdateCheckCheckbox.checked);
           window.electronAPI.setInstallUpdatesAutomatically(autoInstallCheckbox.checked);
+          window.electronAPI.setSettings({
+            notifyOnBundledEnvUpdates: notifyOnBundledEnvUpdatesCheckbox.checked,
+            updateBundledEnvAutomatically: updateBundledEnvAutomaticallyCheckbox.checked,
+          });
 
           window.electronAPI.setDefaultWorkingDirectory(workingDirectoryInput.value);
 
@@ -603,20 +485,6 @@ export class SettingsDialog {
 
           const ctrlWBehavior = document.querySelector('jp-radio[name="ctrl-w-behavior"].checked').value;
           window.electronAPI.setCtrlWBehavior(ctrlWBehavior);
-
-          if (defaultPythonEnvChanged) {
-            if (bundledEnvRadio.checked) {
-              window.electronAPI.setDefaultPythonPath('');
-            } else {
-              window.electronAPI.validatePythonPath(pythonPathInput.value).then((valid) => {
-                if (valid) {
-                  window.electronAPI.setDefaultPythonPath(pythonPathInput.value);
-                } else {
-                  window.electronAPI.showInvalidPythonPathMessage(pythonPathInput.value);
-                }
-              });
-            }
-          }
 
           window.electronAPI.restartApp();
         }
@@ -641,16 +509,15 @@ export class SettingsDialog {
       checkForUpdatesAutomatically,
       installUpdatesAutomaticallyEnabled,
       installUpdatesAutomatically,
+      notifyOnBundledEnvUpdates,
+      updateBundledEnvAutomatically,
       defaultWorkingDirectory,
-      defaultPythonPath,
-      selectBundledPythonPath,
-      bundledEnvInstallationExists,
-      bundledEnvInstallationLatest,
       logLevel,
       serverArgs,
       overrideDefaultServerArgs,
       serverEnvVars: strServerEnvVars,
-      ctrlWBehavior
+      ctrlWBehavior,
+      cliCommandIsSetup
     });
   }
 
@@ -681,8 +548,9 @@ export namespace SettingsDialog {
     showNewsFeed: boolean;
     checkForUpdatesAutomatically: boolean;
     installUpdatesAutomatically: boolean;
+    notifyOnBundledEnvUpdates: boolean;
+    updateBundledEnvAutomatically: boolean;
     defaultWorkingDirectory: string;
-    defaultPythonPath: string;
     activateTab?: Tab;
     logLevel: LogLevel;
     serverArgs: string;

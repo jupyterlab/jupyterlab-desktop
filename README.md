@@ -8,10 +8,10 @@ JupyterLab Desktop is the cross-platform desktop application for [JupyterLab](ht
 
 If you have an existing JupyterLab Desktop installation, please uninstall it first by following the [uninstall instructions](user-guide.md#uninstalling-jupyterlab-desktop).
 
-- [Debian, Ubuntu Linux Installer](https://github.com/jupyterlab/jupyterlab-desktop/releases/latest/download/JupyterLab-Setup-Debian.deb)
-- [Red Hat, Fedora, SUSE Linux Installer](https://github.com/jupyterlab/jupyterlab-desktop/releases/latest/download/JupyterLab-Setup-Fedora.rpm)
+- [Debian, Ubuntu Linux Installer](https://github.com/jupyterlab/jupyterlab-desktop/releases/latest/download/JupyterLab-Setup-Debian-x64.deb)
+- [Red Hat, Fedora, SUSE Linux Installer](https://github.com/jupyterlab/jupyterlab-desktop/releases/latest/download/JupyterLab-Setup-Fedora-x64.rpm)
 - [macOS Intel Installer](https://github.com/jupyterlab/jupyterlab-desktop/releases/latest/download/JupyterLab-Setup-macOS-x64.dmg), [macOS Apple silicon Installer](https://github.com/jupyterlab/jupyterlab-desktop/releases/latest/download/JupyterLab-Setup-macOS-arm64.dmg)
-- [Windows Installer](https://github.com/jupyterlab/jupyterlab-desktop/releases/latest/download/JupyterLab-Setup-Windows.exe)
+- [Windows Installer](https://github.com/jupyterlab/jupyterlab-desktop/releases/latest/download/JupyterLab-Setup-Windows-x64.exe)
 
 Additionally, JupyterLab Desktop can be installed on Windows via winget: `winget install jupyterlab`.
 
@@ -65,14 +65,20 @@ Previously opened sessions are stored as part of application data and they are l
 - Connect to existing JupyterLab server
   - `jlab https://example.org/lab?token=abcde`
 
-For additional CLI options run `jlab --help` in command line.
+See [CLI documentation](cli.md) for more CLI commands and options.
 
 ### JupyterLab Extension support
 
 JupyterLab Desktop currently supports user-friendly [prebuilt](https://jupyterlab.readthedocs.io/en/stable/extension/extension_dev.html#overview-of-extensions) extensions. Source extensions which require rebuilding are not supported.
 
-### See [user guide](user-guide.md) for configuration options
+### Guides and Help
 
-### See [troubleshooting guide](troubleshoot.md) for troubleshooting issues
+- See [user guide](user-guide.md) for configuration options
 
-### For contributing, see [developer documentation](dev.md)
+- [Python environment management](python-env-management.md) guide for managing Python environments on your system using JupyterLab Desktop
+
+- See [CLI documentation](cli.md) for CLI commands and options
+
+- See [troubleshooting guide](troubleshoot.md) for troubleshooting issues
+
+- For contributing, see [developer documentation](dev.md)

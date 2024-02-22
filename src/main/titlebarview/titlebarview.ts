@@ -66,6 +66,13 @@ export class TitleBarView {
     this._view.webContents.send(EventTypeRenderer.ShowServerStatus, show);
   }
 
+  showServerNotificationBadge(show: boolean) {
+    this._view.webContents.send(
+      EventTypeRenderer.ShowServerNotificationBadge,
+      show
+    );
+  }
+
   private _view: BrowserView;
   private _isDarkTheme: boolean;
 }

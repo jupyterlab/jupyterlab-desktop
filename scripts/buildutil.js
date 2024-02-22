@@ -12,13 +12,14 @@ const cli = meow(
       $ node buildutil <options>
 
     Options
-      --check-version-match      check for JupyterLab version match
-      --update-binary-sign-list  update binary list to sign for macOS
-      --platform                 platform for --update-binary-sign-list. osx-64 or osx-arm64
+      --check-version-match         check for JupyterLab version match
+      --update-binary-sign-list     update binary list to sign for macOS
+      --copy-extras-to-bundled-env  copy extra files from extras to bundled environment installer
+      --platform                    platform for --update-binary-sign-list. osx-64 or osx-arm64
 
     Other options:
-      --help                     show usage information
-      --version                  show version information
+      --help                        show usage information
+      --version                     show version information
 
     Examples
       $ node buildutil --check-version-match
@@ -179,6 +180,19 @@ if (cli.flags.updateBinarySignList) {
   fs.writeFileSync(signListFile, `${fileContent}\n`);
 
   console.log(`Saved binary sign list to ${signListFile}`);
+
+  process.exit(0);
+}
+
+if (cli.flags.copyExtrasToBundledEnv) {
+  const envExtrasDir = path.resolve('env_installer', 'extras');
+  const envInstallerDir = path.resolve('env_installer', 'jlab_server');
+
+  fs.copySync(envExtrasDir, envInstallerDir, { recursive: true });
+
+  console.log(
+    `Finished copying env extras from \n\t"${envExtrasDir}" to \n\t"${envInstallerDir}"`
+  );
 
   process.exit(0);
 }

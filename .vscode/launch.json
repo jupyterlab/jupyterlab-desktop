@@ -25,6 +25,19 @@
         "env": {
           "NODE_ENV": "development"
         }
+      },
+      {
+        "name": "Debug CLI",
+        "type": "node",
+        "request": "launch",
+        "cwd": "${workspaceFolder}",
+        "runtimeExecutable": "${workspaceFolder}/node_modules/.bin/electron",
+        "args" : [".", "env", "list"],
+        "outputCapture": "std",
+        "preLaunchTask": "npm: build",
+        "env": {
+            "NODE_ENV": "development"
+        }
       }
     ]
   }
