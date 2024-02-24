@@ -37,6 +37,6 @@ jobs:
         with:
           token: ${{ secrets.JLAB_APP_TOKEN }}
           body: '## JupyterLab Desktop v${{ steps.package-info.outputs.version}}'
-          draft: true
+          draft: false
           prerelease: true
           tag_name: 'v${{ steps.package-info.outputs.version}}'
