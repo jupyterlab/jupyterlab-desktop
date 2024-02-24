@@ -22,6 +22,7 @@ __pycache__
 *.map
 .idea/
 *.log
+!auto-release.log
 
 env_installer/jlab_server/
 env_installer/jlab_server.tar.gz
