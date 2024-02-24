@@ -78,7 +78,8 @@
     "linux": {
       "target": [
         "deb",
-        "rpm"
+        "rpm",
+        "snap"
       ],
       "category": "Science;Development;",
       "extraResources": [
@@ -93,6 +94,22 @@
         "--after-install=build/linux_after_install.sh"
       ]
     },
+    "rpm": {
+      "depends": [
+        "libXScrnSaver"
+      ],
+      "fpm": [
+        "--after-install=build/linux_after_install.sh"
+      ]
+    },
+    "snap": {
+      "confinement": "classic",
+      "base": "core22",
+      "environment": {
+        "SHELL": "/bin/bash",
+        "GTK_USE_PORTAL":"1"
+      }
+    },
     "win": {
       "target": [
         "nsis"
@@ -104,14 +121,6 @@
         }
       ],
       "icon": "dist-resources/icons/icon.ico"
-    },
-    "rpm": {
-      "depends": [
-        "libXScrnSaver"
-      ],
-      "fpm": [
-        "--after-install=build/linux_after_install.sh"
-      ]
     },
     "nsis": {
       "oneClick": "false",
