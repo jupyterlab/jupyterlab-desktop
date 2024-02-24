@@ -139,7 +139,7 @@ jobs:
             dist/JupyterLab.rpm
       
       - name: Upload Snap Installer
-        if: matrix.cfg.platform == 'linux'
+        if: matrix.cfg.platform == 'linux-64'
         uses: actions/upload-artifact@v4
         id: snap-artifact
         with:
@@ -252,7 +252,7 @@ jobs:
           overwrite: true
           
       - name: Upload snap installer as Release asset
-        if: matrix.cfg.platform == 'linux' && steps.release-exists.outputs.result == 'true'
+        if: matrix.cfg.platform == 'linux-64' && steps.release-exists.outputs.result == 'true'
         uses: svenstaro/upload-release-action@v2
         with:
           repo_token: ${{ secrets.JLAB_APP_TOKEN }}
@@ -262,7 +262,7 @@ jobs:
           overwrite: true
       
       - name: Publish snap to the latest/edge channel in Snap Store
-        if: matrix.cfg.platform == 'linux'
+        if: matrix.cfg.platform == 'linux-64'
         uses: snapcore/action-publish@v1
         env:
           SNAPCRAFT_STORE_CREDENTIALS: ${{ secrets.SNAPCRAFT_STORE_CREDENTIALS }}
@@ -271,7 +271,7 @@ jobs:
           release: edge
           
       - name: Publish snap to the latest/stable channel in Snap Store
-        if: matrix.cfg.platform == 'linux' && steps.release-exists.outputs.result == 'true'
+        if: matrix.cfg.platform == 'linux-64' && steps.release-exists.outputs.result == 'true'
         uses: snapcore/action-publish@v1
         env:
           SNAPCRAFT_STORE_CREDENTIALS: ${{ secrets.SNAPCRAFT_STORE_CREDENTIALS }}
