@@ -33,7 +33,7 @@ jobs:
 
       - name: Make changes to pull request
         if: steps.pre-release-exists.outputs.result == 'true'
-        run: date +%s > auto-release-log.txt
+        run: date +%s > auto-release.log
 
       - name: Create Release pull request
         if: steps.pre-release-exists.outputs.result == 'true'
