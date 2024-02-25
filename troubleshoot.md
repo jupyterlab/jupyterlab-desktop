@@ -21,6 +21,8 @@ Below are detailed information on topics which commonly come up in questions and
 - [Debugging application launch issues](#Debugging-application-launch-issues)
 - [Reverting to an older version and disabling auto-update](#Reverting-to-an-older-version-and-disabling-auto-update)
 - [`Delete` environment menu item availability in Manage Python environments dialog](#delete-environment-menu-item-availability-in-manage-python-environments-dialog)
+- [Recommended ways to install additional Python packages](#recommended-ways-to-install-additional-python-packages)
+- [Why a setting change on Settings dialog is not applied to a project?](#why-a-setting-change-on-settings-dialog-is-not-applied-to-a-project)
 - [Additional resources on JupyterLab Desktop](#additional-resources-on-jupyterlab-desktop)
 
 ## JupyterLab Desktop vs JupyterLab Web Application versions
@@ -106,12 +108,20 @@ Another way to debug server launch errors is by trying to launch JupyterLab by u
 
 ### Launching JupyterLab Server manually
 
+You can launch JupyterLab web app using the same Python environment by following the steps below.
+
+1. Go to Manage Python environments dialog and open the environment menu by clicking the button on the right end of the row.
+2. Click `Launch Terminal` menu item. This will open a system terminal and activate the Python environment.
+3. Run `jupyter lab` command in the terminal. This will launch JupyterLab web app and open it on your default browser. Check the terminal output for errors and/or warnings.
+
+If you would like to launch the web app with the same parameters as the desktop app then follow the steps below.
+
 1. Go to Settings dialog in desktop app and open the `Server` tab.
 2. Server tab shows `Server launch command preview` as shown below. Copy the command to clipboard.
 
 <img src="media/server-launch-command-preview.png" alt="Launch command preview" width=800 />
 
-3. Open a system Terminal and activate the custom Python environment you would like to debug.
+3. Activate the custom Python environment you would like to debug on a system terminal. You can use the Manage Python environments dialog as described above.
 4. Run the command copied from the preview after replacing `{port}` with a value like `8888` and `{token}` with a value like `abcde`.
 5. Check the Terminal output for errors and/or warnings.
 
@@ -169,9 +179,19 @@ jlab env create --force
 
 On macOS, bundled Python environment is installed into a non user data directory (`~/Library/jupyterlab-desktop/jlab_server`) due to conda environment path limitations. Make sure that you have write permissions to `~/Library` directory. If you are having issues with bundled Python environment in macOS, check that environment is properly installed in there. If `~/Library/jupyterlab-desktop/jlab_server/bin/python` file exists and you can manually launch Python by using this path on a macOS Terminal, then your bundled Python environment installation was successful.
 
-JLD installers for Windows and Linux create `jlab` CLI command as part of the installation process. However, macOS application creates this command at first launch and after updates. This command creation might sometimes fail if the user doesn't have the right permissions. This command is created as a symlink at `/usr/local/bin/jlab`. The symlink points to `/Applications/JupyterLab.app/Contents/Resources/app/jlab` script that launches the desktop application. If you are having issues with running `jlab` command on macOS. Try these:
+JLD installers for Windows and Linux create `jlab` CLI command as part of the installation process. However, macOS application creates this command at first launch and after updates. This command creation might sometimes fail if the user doesn't have the right permissions. This command is created as a symlink at `/usr/local/bin/jlab`. The symlink points to `/Applications/JupyterLab.app/Contents/Resources/app/jlab` script that launches the desktop application. If you are having issues with running `jlab` command on macOS, you can try these steps to setup the CLI:
 
-- Make sure you can launch JLD from desktop launcher links
+1. Go to Settings dialog from hamburger menu on top right and open the `Advanced` tab.
+2. In this tab you will see a section titled `jlab CLI` and the CLI setup status. You can click on the `Setup CLI` button to properly setup the CLI. Clicking the button will run a script to setup the jlab symlink as mentioned above. This action requires admin rights and you may be required to enter your password to continue. The password is required by macOS and not received by the app.
+
+<img src="media/jlab-cli-setup-button.png" alt="jlab CLI setup" width=700 /> <img src="media/jlab-cli-permission-message-box.png" alt="jlab CLI setup message box" width=350 />
+
+If jlab CLI is setup properly you will see the status below on the Settings dialog.
+
+<img src="media/jlab-cli-ready.png" alt="jlab CLI ready" width=700 />
+
+If you are still having issues setting up the CLI with the steps recommended above, try the following:
+
 - Make sure you have write access to `/usr/local/bin/` directory
 - If you are still having issues make sure `/Applications/JupyterLab.app/Contents/Resources/app/jlab` is executable. You can run the command below to enable execution.
 
@@ -239,10 +259,39 @@ JupyterLab Desktop automatically downloads and installs new versions on some pla
 
 In Manage Python environments dialog all the environments discovered by JLD are listed. However, only the environments installed by JLD can be deleted from this dialog and if they are not currently in use by a JupyterLab session. That's why some of the environments will not have the `Delete` environment menu available.
 
+## Recommended ways to install additional Python packages
+
+You can install additional Python packages to any Python environment used by the app. If the environment is a conda environment then you should prefer `conda install` command and if it is a venv environment then you need to use `pip install` command. You can install the package on a notebook using cell magics or from a terminal using CLI commands.
+
+### Installing using cell magics in a notebook
+
+Run the following in a notebook code cell.
+
+- for conda environments
+  - `%conda install <package-name> -c conda-forge`. example: `%conda install scikit-learn -c conda-forge`
+- for venv environments
+  - `%pip install <package-name>`. example: `pip install scikit-learn`
+
+### Installing using system terminal
+
+Go to Manage Python environments dialog and open the environment menu by clicking the button on the right end of the row. Click `Launch Terminal` menu item. This will open a system terminal and activate the Python environment. Run the following commands in the terminal.
+
+- for conda environments
+  - `conda install <package-name> -c conda-forge --solver=classic`. example: `conda install scikit-learn -c conda-forge --solver=classic`. Note that classic solver is required due to a bug in conda and the requirement will be removed soon.
+- for venv environments
+  - `pip install <package-name>`. example: `pip install scikit-learn`
+
+## Why a setting change on Settings dialog is not applied to a project?
+
+JupyterLab Desktop provides user settings which are configurable from the UI using the Settings dialog. However, a subset of these settings can be overridden by the projects (session working directories). The overridden settings are currently not shown in the UI. If you have project overrides to settings then changes on Settings dialog would not be reflected since project overrides have precedence.
+
+You can use the CLI commands to list and change project setting overrides. See [jlab config commands](cli.md#jlab-config-options) to learn more about CLI commands for project settings. Also see [configuration and data files section in User Guide](user-guide.md#Configuration-and-data-files) for the list of project overridable settings and more details on the app settings.
+
 ## Additional resources on JupyterLab Desktop
 
 This repo contains the most up to date documentation on JupyterLab Desktop. However you can refer to the Jupyter blog posts on JLD for more context and information on the application. Below are the links to the blog posts.
 
+- [Python environment management in JupyterLab Desktop (02/20/2024)](https://blog.jupyter.org/python-environment-management-in-jupyterlab-desktop-3b119c5811d9)
 - [Introducing the new JupyterLab Desktop! (02/09/2023)](https://blog.jupyter.org/introducing-the-new-jupyterlab-desktop-bca1982bdb23)
 - [JupyterLab Desktop — 2022 recap (12/13/2022)](https://blog.jupyter.org/jupyterlab-desktop-2022-recap-28bdf00205c6)
 - [JupyterLab Desktop App now available! (09/22/2021)](https://blog.jupyter.org/jupyterlab-desktop-app-now-available-b8b661b17e9a)
