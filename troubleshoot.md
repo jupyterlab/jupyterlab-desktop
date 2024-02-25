@@ -21,6 +21,8 @@ Below are detailed information on topics which commonly come up in questions and
 - [Debugging application launch issues](#Debugging-application-launch-issues)
 - [Reverting to an older version and disabling auto-update](#Reverting-to-an-older-version-and-disabling-auto-update)
 - [`Delete` environment menu item availability in Manage Python environments dialog](#delete-environment-menu-item-availability-in-manage-python-environments-dialog)
+- [Recommended ways to install additional Python packages](#recommended-ways-to-install-additional-python-packages)
+- [Why a setting change on Settings dialog is not applied to a project?](#why-a-setting-change-on-settings-dialog-is-not-applied-to-a-project)
 - [Additional resources on JupyterLab Desktop](#additional-resources-on-jupyterlab-desktop)
 
 ## JupyterLab Desktop vs JupyterLab Web Application versions
@@ -106,12 +108,20 @@ Another way to debug server launch errors is by trying to launch JupyterLab by u
 
 ### Launching JupyterLab Server manually
 
+You can launch JupyterLab web app using the same Python environment by following the steps below.
+
+1. Go to Manage Python environments dialog and open the environment menu by clicking the button on the right end of the row.
+2. Click `Launch Terminal` menu item. This will open a system terminal and activate the Python environment.
+3. Run `jupyter lab` command in the terminal. This will launch JupyterLab web app and open it on your default browser. Check the terminal output for errors and/or warnings.
+
+If you would like to launch the web app with the same parameters as the desktop app then follow the steps below.
+
 1. Go to Settings dialog in desktop app and open the `Server` tab.
 2. Server tab shows `Server launch command preview` as shown below. Copy the command to clipboard.
 
 <img src="media/server-launch-command-preview.png" alt="Launch command preview" width=800 />
 
-3. Open a system Terminal and activate the custom Python environment you would like to debug.
+3. Activate the custom Python environment you would like to debug on a system terminal. You can use the Manage Python environments dialog as described above.
 4. Run the command copied from the preview after replacing `{port}` with a value like `8888` and `{token}` with a value like `abcde`.
 5. Check the Terminal output for errors and/or warnings.
 
@@ -248,6 +258,34 @@ JupyterLab Desktop automatically downloads and installs new versions on some pla
 ## `Delete` environment menu item availability in Manage Python environments dialog
 
 In Manage Python environments dialog all the environments discovered by JLD are listed. However, only the environments installed by JLD can be deleted from this dialog and if they are not currently in use by a JupyterLab session. That's why some of the environments will not have the `Delete` environment menu available.
+
+## Recommended ways to install additional Python packages
+
+You can install additional Python packages to any Python environment used by the app. If the environment is a conda environment then you should prefer `conda install` command and if it is a venv environment then you need to use `pip install` command. You can install the package on a notebook using cell magics or from a terminal using CLI commands.
+
+### Installing using cell magics in a notebook
+
+Run the following in a notebook code cell.
+
+- for conda environments
+  - `%conda install <package-name> -c conda-forge`. example: `%conda install scikit-learn -c conda-forge`
+- for venv environments
+  - `%pip install <package-name>`. example: `pip install scikit-learn`
+
+### Installing using system terminal
+
+Go to Manage Python environments dialog and open the environment menu by clicking the button on the right end of the row. Click `Launch Terminal` menu item. This will open a system terminal and activate the Python environment. Run the following commands in the terminal.
+
+- for conda environments
+  - `conda install <package-name> -c conda-forge --solver=classic`. example: `conda install scikit-learn -c conda-forge --solver=classic`. Note that classic solver is required due to a bug in conda and the requirement will be removed soon.
+- for venv environments
+  - `pip install <package-name>`. example: `pip install scikit-learn`
+
+## Why a setting change on Settings dialog is not applied to a project?
+
+JupyterLab Desktop provides user settings which are configurable from the UI using the Settings dialog. However, a subset of these settings can be overridden by the projects (session working directories). The overridden settings are currently not shown in the UI. If you have project overrides to settings then changes on Settings dialog would not be reflected since project overrides have precedence.
+
+You can use the CLI commands to list and change project setting overrides. See [jlab config commands](cli.md#jlab-config-options) to learn more about CLI commands for project settings. Also see [configuration and data files section in User Guide](user-guide.md#Configuration-and-data-files) for the list of project overridable settings and more details on the app settings.
 
 ## Additional resources on JupyterLab Desktop
 
