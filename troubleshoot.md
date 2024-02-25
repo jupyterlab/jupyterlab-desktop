@@ -169,9 +169,19 @@ jlab env create --force
 
 On macOS, bundled Python environment is installed into a non user data directory (`~/Library/jupyterlab-desktop/jlab_server`) due to conda environment path limitations. Make sure that you have write permissions to `~/Library` directory. If you are having issues with bundled Python environment in macOS, check that environment is properly installed in there. If `~/Library/jupyterlab-desktop/jlab_server/bin/python` file exists and you can manually launch Python by using this path on a macOS Terminal, then your bundled Python environment installation was successful.
 
-JLD installers for Windows and Linux create `jlab` CLI command as part of the installation process. However, macOS application creates this command at first launch and after updates. This command creation might sometimes fail if the user doesn't have the right permissions. This command is created as a symlink at `/usr/local/bin/jlab`. The symlink points to `/Applications/JupyterLab.app/Contents/Resources/app/jlab` script that launches the desktop application. If you are having issues with running `jlab` command on macOS. Try these:
+JLD installers for Windows and Linux create `jlab` CLI command as part of the installation process. However, macOS application creates this command at first launch and after updates. This command creation might sometimes fail if the user doesn't have the right permissions. This command is created as a symlink at `/usr/local/bin/jlab`. The symlink points to `/Applications/JupyterLab.app/Contents/Resources/app/jlab` script that launches the desktop application. If you are having issues with running `jlab` command on macOS, you can try these steps to setup the CLI:
 
-- Make sure you can launch JLD from desktop launcher links
+1. Go to Settings dialog from hamburger menu on top right and open the `Advanced` tab.
+2. In this tab you will see a section titled `jlab CLI` and the CLI setup status. You can click on the `Setup CLI` button to properly setup the CLI. Clicking the button will run a script to setup the jlab symlink as mentioned above. This action requires admin rights and you may be required to enter your password to continue. The password is required by macOS and not received by the app.
+
+<img src="media/jlab-cli-setup-button.png" alt="jlab CLI setup" width=700 /> <img src="media/jlab-cli-permission-message-box.png" alt="jlab CLI setup message box" width=350 />
+
+If jlab CLI is setup properly you will see the status below on the Settings dialog.
+
+<img src="media/jlab-cli-ready.png" alt="jlab CLI ready" width=700 />
+
+If you are still having issues setting up the CLI with the steps recommended above, try the following:
+
 - Make sure you have write access to `/usr/local/bin/` directory
 - If you are still having issues make sure `/Applications/JupyterLab.app/Contents/Resources/app/jlab` is executable. You can run the command below to enable execution.
 
@@ -243,6 +253,7 @@ In Manage Python environments dialog all the environments discovered by JLD are 
 
 This repo contains the most up to date documentation on JupyterLab Desktop. However you can refer to the Jupyter blog posts on JLD for more context and information on the application. Below are the links to the blog posts.
 
+- [Python environment management in JupyterLab Desktop (02/20/2024)](https://blog.jupyter.org/python-environment-management-in-jupyterlab-desktop-3b119c5811d9)
 - [Introducing the new JupyterLab Desktop! (02/09/2023)](https://blog.jupyter.org/introducing-the-new-jupyterlab-desktop-bca1982bdb23)
 - [JupyterLab Desktop — 2022 recap (12/13/2022)](https://blog.jupyter.org/jupyterlab-desktop-2022-recap-28bdf00205c6)
 - [JupyterLab Desktop App now available! (09/22/2021)](https://blog.jupyter.org/jupyterlab-desktop-app-now-available-b8b661b17e9a)
