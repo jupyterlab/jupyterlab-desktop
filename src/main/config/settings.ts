@@ -35,6 +35,13 @@ export enum CtrlWBehavior {
   DoNotClose = 'do-not-close'
 }
 
+export enum UIMode {
+  Custom = 'custom',
+  MultiDocument = 'multi-document',
+  SingleDocument = 'single-document',
+  SingleDocumentZen = 'single-document-zen'
+}
+
 export type KeyValueMap = { [key: string]: string };
 
 export enum SettingType {
@@ -62,7 +69,9 @@ export enum SettingType {
   condaPath = 'condaPath',
   systemPythonPath = 'systemPythonPath',
   pythonEnvsPath = 'pythonEnvsPath',
-  condaChannels = 'condaChannels'
+  condaChannels = 'condaChannels',
+
+  uiMode = 'uiMode'
 }
 
 export const serverLaunchArgsFixed = [
@@ -159,7 +168,9 @@ export class UserSettings {
       condaPath: new Setting<string>(''),
       systemPythonPath: new Setting<string>(''),
       pythonEnvsPath: new Setting<string>(''),
-      condaChannels: new Setting<string[]>(['conda-forge'])
+      condaChannels: new Setting<string[]>(['conda-forge']),
+
+      uiMode: new Setting<UIMode>(UIMode.MultiDocument, { wsOverridable: true })
     };
 
     if (readSettings) {

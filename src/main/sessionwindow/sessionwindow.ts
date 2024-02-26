@@ -17,6 +17,7 @@ import {
   DEFAULT_WIN_HEIGHT,
   DEFAULT_WIN_WIDTH,
   SettingType,
+  UIMode,
   userSettings,
   WorkspaceSettings
 } from '../config/settings';
@@ -420,6 +421,8 @@ export class SessionWindow implements IDisposable {
         showServerNotificationBadge
       );
     }
+
+    this._setUIMode(this._wsSettings.getValue(SettingType.uiMode));
   }
 
   get titleBarView(): TitleBarView {
@@ -861,6 +864,56 @@ export class SessionWindow implements IDisposable {
             this._newWindow();
           }
         },
+        {
+          label: 'UI Mode',
+          visible:
+            this._contentViewType === ContentViewType.Lab &&
+            !this._progressViewVisible,
+          type: 'submenu',
+          submenu: [
+            {
+              label: 'Zen Mode',
+              click: () => {
+                this._setUIMode(UIMode.SingleDocumentZen);
+              },
+              type: 'checkbox',
+              checked:
+                this._contentViewType === ContentViewType.Lab &&
+                this._labView.uiMode === UIMode.SingleDocumentZen
+            },
+            {
+              label: 'Single document IDE',
+              click: () => {
+                this._setUIMode(UIMode.SingleDocument);
+              },
+              type: 'checkbox',
+              checked:
+                this._contentViewType === ContentViewType.Lab &&
+                this._labView.uiMode === UIMode.SingleDocument
+            },
+            {
+              label: 'Multi document IDE',
+              click: () => {
+                this._setUIMode(UIMode.MultiDocument);
+              },
+              type: 'checkbox',
+              checked:
+                this._contentViewType === ContentViewType.Lab &&
+                this._labView.uiMode === UIMode.MultiDocument
+            },
+            {
+              label: 'Custom',
+              click: () => {
+                this._setUIMode(UIMode.Custom);
+              },
+              type: 'checkbox',
+              checked:
+                this._contentViewType === ContentViewType.Lab &&
+                this._labView.uiMode === UIMode.Custom
+            }
+          ]
+        },
+        { type: 'separator' },
         {
           label: 'Close Session',
           visible:
@@ -1562,6 +1615,13 @@ export class SessionWindow implements IDisposable {
 
     this._contentViewType = ContentViewType.Welcome;
     this._updateContentView();
+  }
+
+  private async _setUIMode(uiMode: UIMode) {
+    await this._labView.labUIReady;
+    this._wsSettings.setValue(SettingType.uiMode, uiMode);
+    this._wsSettings.save();
+    this._labView.setUIMode(uiMode);
   }
 
   private _newWindow() {

@@ -21,6 +21,7 @@ import { SessionWindow } from '../sessionwindow/sessionwindow';
 import {
   CtrlWBehavior,
   SettingType,
+  UIMode,
   userSettings,
   WorkspaceSettings
 } from '../config/settings';
@@ -222,6 +223,87 @@ export class LabView implements IDisposable {
     }
   }
 
+  get uiMode(): UIMode {
+    return this._uiMode;
+  }
+
+  async setUIMode(uiMode: UIMode) {
+    if (uiMode === UIMode.Custom) {
+      this._uiMode = uiMode;
+      return;
+    }
+
+    await this._setUIMode(uiMode);
+  }
+
+  async _setUIMode(uiMode: UIMode) {
+    this._uiMode = uiMode;
+
+    await this._view.webContents.executeJavaScript(`
+    executeJSResult_currentLayout = {};
+    {
+      const lab = window.jupyterapp || window.jupyterlab;
+
+      if (lab) {
+        const labShell = lab.shell;
+        const statusBar = labShell.widgets('bottom').find(widget => widget.id === 'jp-main-statusbar');
+        const currentState = {
+          leftTabBarVisible: labShell.isSideTabBarVisible('left'),
+          leftCollapsed: labShell.leftCollapsed,
+          rightTabBarVisible: labShell.isSideTabBarVisible('right'),
+          rightCollapsed: labShell.rightCollapsed,
+          isSimpleInterface: labShell.mode === 'single-document',
+          statusBarVisible: statusBar && statusBar.isVisible,
+        };
+
+        console.log('CURRENT STATE', currentState);
+
+        if ('${this._uiMode}' === '${UIMode.MultiDocument}' || '${this._uiMode}' === '${UIMode.SingleDocument}') {
+          console.log('UI MODE', '${this._uiMode}');
+          labShell.mode = '${this._uiMode}' === '${UIMode.MultiDocument}' ? 'multiple-document' : 'single-document';
+          if (currentState.leftCollapsed) {
+            labShell.expandLeft();
+          }
+          if (!currentState.leftTabBarVisible) {
+            labShell.toggleSideTabBarVisibility('left');
+          }
+          if (!currentState.rightCollapsed) {
+            labShell.collapseRight();
+          }
+          if (!currentState.rightTabBarVisible) {
+            labShell.toggleSideTabBarVisibility('right');
+          }
+          if (statusBar) {
+            statusBar.setHidden(false);
+          }
+        } else if ('${this._uiMode}' === '${UIMode.SingleDocumentZen}') {
+          if (!currentState.leftCollapsed) {
+            labShell.collapseLeft();
+          }
+          if (currentState.leftTabBarVisible) {
+            labShell.toggleSideTabBarVisibility('left');
+          }
+          if (!currentState.rightCollapsed) {
+            labShell.collapseRight();
+          }
+          if (currentState.rightTabBarVisible) {
+            labShell.toggleSideTabBarVisibility('right');
+          }
+          if (!currentState.isSimpleInterface) {
+            labShell.mode = 'single-document';
+          }
+          if (currentState.statusBarVisible) {
+            if (statusBar) {
+              statusBar.setHidden(true);
+            }
+          }
+        }
+        executeJSResult_currentLayout = currentState;
+      }
+    }
+  `);
+  }
+
   get labUIReady(): Promise<boolean> {
     return new Promise<boolean>(resolve => {
       const checkIfReady = () => {
@@ -410,6 +492,7 @@ export class LabView implements IDisposable {
   private _wsSettings: WorkspaceSettings;
   private _labUIReady = false;
   private _evm = new EventManager();
+  private _uiMode: UIMode = UIMode.Custom;
 }
 
 export namespace LabView {
