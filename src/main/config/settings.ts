@@ -71,7 +71,8 @@ export enum SettingType {
   pythonEnvsPath = 'pythonEnvsPath',
   condaChannels = 'condaChannels',
 
-  uiMode = 'uiMode'
+  uiMode = 'uiMode',
+  uiModeForSingleFileOpen = 'uiModeForSingleFileOpen'
 }
 
 export const serverLaunchArgsFixed = [
@@ -170,7 +171,8 @@ export class UserSettings {
       pythonEnvsPath: new Setting<string>(''),
       condaChannels: new Setting<string[]>(['conda-forge']),
 
-      uiMode: new Setting<UIMode>(UIMode.MultiDocument, { wsOverridable: true })
+      uiMode: new Setting<UIMode>(UIMode.Custom, { wsOverridable: true }),
+      uiModeForSingleFileOpen: new Setting<UIMode>(UIMode.SingleDocumentZen)
     };
 
     if (readSettings) {
