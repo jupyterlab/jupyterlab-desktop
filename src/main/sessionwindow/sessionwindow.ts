@@ -874,12 +874,12 @@ export class SessionWindow implements IDisposable {
             {
               label: 'Zen Mode',
               click: () => {
-                this._setUIMode(UIMode.SingleDocumentZen);
+                this._setUIMode(UIMode.Zen);
               },
               type: 'checkbox',
               checked:
                 this._contentViewType === ContentViewType.Lab &&
-                this._labView.uiMode === UIMode.SingleDocumentZen
+                this._labView.uiMode === UIMode.Zen
             },
             {
               label: 'Single document IDE',

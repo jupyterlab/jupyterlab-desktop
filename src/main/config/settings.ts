@@ -39,7 +39,7 @@ export enum UIMode {
   Custom = 'custom',
   MultiDocument = 'multi-document',
   SingleDocument = 'single-document',
-  SingleDocumentZen = 'single-document-zen'
+  Zen = 'zen'
 }
 
 export type KeyValueMap = { [key: string]: string };
@@ -172,7 +172,7 @@ export class UserSettings {
       condaChannels: new Setting<string[]>(['conda-forge']),
 
       uiMode: new Setting<UIMode>(UIMode.Custom, { wsOverridable: true }),
-      uiModeForSingleFileOpen: new Setting<UIMode>(UIMode.SingleDocumentZen)
+      uiModeForSingleFileOpen: new Setting<UIMode>(UIMode.Zen)
     };
 
     if (readSettings) {

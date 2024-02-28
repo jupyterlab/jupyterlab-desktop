@@ -181,7 +181,9 @@ export class LabView implements IDisposable {
 
   async openFiles() {
     if (this._willOpenSingleFile()) {
-      this._setUIMode(UIMode.SingleDocumentZen);
+      this._setUIMode(
+        userSettings.getValue(SettingType.uiModeForSingleFileOpen)
+      );
     }
 
     const filesToOpen = this._sessionConfig.filesToOpen;
@@ -474,7 +476,7 @@ export class LabView implements IDisposable {
             if (statusBar) {
               statusBar.setHidden(false);
             }
-          } else if (uiMode === '${UIMode.SingleDocumentZen}') {
+          } else if (uiMode === '${UIMode.Zen}') {
             if (!currentState.leftCollapsed) {
               labShell.collapseLeft();
             }
@@ -501,7 +503,9 @@ export class LabView implements IDisposable {
         jlabDesktop_getLab().then((lab) => {
           ${
             openingSingleFile
-              ? `jlabDesktop_setUIMode('${UIMode.SingleDocumentZen}');`
+              ? `jlabDesktop_setUIMode('${userSettings.getValue(
+                  SettingType.uiModeForSingleFileOpen
+                )}');`
               : ''
           }
           lab.restored.then(() => {
