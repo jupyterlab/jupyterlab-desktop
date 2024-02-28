@@ -857,13 +857,12 @@ export class SessionWindow implements IDisposable {
         return;
       }
 
-      const template: MenuItemConstructorOptions[] = [
-        {
-          label: 'New Window',
-          click: () => {
-            this._newWindow();
-          }
-        },
+      const inSession =
+        this._contentViewType === ContentViewType.Lab &&
+        !this._progressViewVisible;
+      const inLocalSession = inSession && !this._sessionConfig?.remoteURL;
+
+      const uiModeSubmenu: MenuItemConstructorOptions[] = [
         {
           label: 'UI Mode',
           visible:
@@ -912,18 +911,29 @@ export class SessionWindow implements IDisposable {
                 this._labView.uiMode === UIMode.Custom
             }
           ]
-        },
-        { type: 'separator' },
+        }
+      ];
+
+      const closeSessionMenuItem: MenuItemConstructorOptions[] = [
         {
           label: 'Close Session',
-          visible:
-            this._contentViewType === ContentViewType.Lab &&
-            !this._progressViewVisible,
           click: () => {
             this._closeSession();
           }
         },
+        { type: 'separator' }
+      ];
+
+      const template: MenuItemConstructorOptions[] = [
+        {
+          label: 'New Window',
+          click: () => {
+            this._newWindow();
+          }
+        },
+        ...(inLocalSession ? uiModeSubmenu : []),
         { type: 'separator' },
+        ...(inSession ? closeSessionMenuItem : []),
         {
           label: 'Settings',
           click: () => {
