@@ -919,7 +919,7 @@ export class SessionWindow implements IDisposable {
             {
               label: 'Reset to session default',
               click: () => {
-                this._setUIMode(UIMode.Default);
+                this._resetUIModeToSessionDefault();
               }
             }
           ]
@@ -1639,24 +1639,27 @@ export class SessionWindow implements IDisposable {
     this._updateContentView();
   }
 
+  private async _resetUIModeToSessionDefault() {
+    await this._labView.labUIReady;
+
+    this._wsSettings.unsetValue(SettingType.uiMode);
+    this._wsSettings.save();
+
+    const defaultUIMode = userSettings.getValue(
+      this._labView.shouldSetToSingleFileUIMode()
+        ? SettingType.uiModeForSingleFileOpen
+        : SettingType.uiMode
+    );
+    this._labView.setUIMode(defaultUIMode);
+  }
+
   private async _setUIMode(uiMode: UIMode, save: boolean = true) {
     await this._labView.labUIReady;
-    if (uiMode === UIMode.Default) {
-      this._wsSettings.unsetValue(SettingType.uiMode);
+    if (save) {
+      this._wsSettings.setValue(SettingType.uiMode, uiMode);
       this._wsSettings.save();
-      let defaultUIMode = userSettings.getValue(
-        this._labView.shouldSetToSingleFileUIMode()
-          ? SettingType.uiModeForSingleFileOpen
-          : SettingType.uiMode
-      );
-      this._labView.setUIMode(defaultUIMode);
-    } else {
-      if (save) {
-        this._wsSettings.setValue(SettingType.uiMode, uiMode);
-        this._wsSettings.save();
-      }
-      this._labView.setUIMode(uiMode);
     }
+    this._labView.setUIMode(uiMode);
   }
 
   private _newWindow() {

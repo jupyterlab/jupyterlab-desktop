@@ -36,7 +36,6 @@ export enum CtrlWBehavior {
 }
 
 export enum UIMode {
-  Default = 'default', // Desktop app defaults for new session or single file
   MultiDocument = 'multi-document',
   SingleDocument = 'single-document',
   Zen = 'zen',

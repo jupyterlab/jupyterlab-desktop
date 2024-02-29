@@ -169,18 +169,14 @@ export class LabView implements IDisposable {
    * if opening a single file and no workspace setting exists
    */
   shouldSetToSingleFileUIMode(): boolean {
-    let setToSingleFileUIMode = false;
     this._reloadWSSettings();
-    const wsUIModeSet = this._wsSettings.hasValue(SettingType.uiMode);
-    // if UI mode not specified for project directory, or set to Default
-    if (
-      !wsUIModeSet ||
-      this._wsSettings.getValue(SettingType.uiMode) === UIMode.Default
-    ) {
-      setToSingleFileUIMode = this._willOpenSingleFile();
+
+    // if UI mode not specified for project directory
+    if (!this._wsSettings.hasValue(SettingType.uiMode)) {
+      return this._willOpenSingleFile();
     }
 
-    return setToSingleFileUIMode;
+    return false;
   }
 
   private _reloadWSSettings() {
@@ -548,7 +544,7 @@ export class LabView implements IDisposable {
   private _wsSettings: WorkspaceSettings;
   private _labUIReady = false;
   private _evm = new EventManager();
-  private _uiMode: UIMode = UIMode.Default;
+  private _uiMode: UIMode = UIMode.ManagedByWebApp;
 }
 
 export namespace LabView {
