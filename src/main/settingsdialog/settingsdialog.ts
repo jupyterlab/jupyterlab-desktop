@@ -175,7 +175,7 @@ export class SettingsDialog {
                         <jp-option value="zen">Zen Mode</jp-option>
                         <jp-option value="single-document">Single document IDE</jp-option>
                         <jp-option value="multi-document">Multi document IDE</jp-option>
-                        <jp-option value="custom">Custom</jp-option>
+                        <jp-option value="managed-by-web-app">Managed by web app</jp-option>
                       </jp-select>
                     </div>
                   </div>
@@ -187,10 +187,10 @@ export class SettingsDialog {
 
                     <div class="row">
                       <jp-select id="ui-mode-for-single-file-open" name="ui-mode-for-single-file-open" value="<%= uiModeForSingleFileOpen %>" position="below">
-                      <jp-option value="zen">Zen Mode</jp-option>
-                      <jp-option value="single-document">Single document IDE</jp-option>
-                      <jp-option value="multi-document">Multi document IDE</jp-option>
-                      <jp-option value="custom">Custom</jp-option>
+                        <jp-option value="zen">Zen Mode</jp-option>
+                        <jp-option value="single-document">Single document IDE</jp-option>
+                        <jp-option value="multi-document">Multi document IDE</jp-option>
+                        <jp-option value="managed-by-web-app">Managed by web app</jp-option>
                       </jp-select>
                     </div>
                   </div>

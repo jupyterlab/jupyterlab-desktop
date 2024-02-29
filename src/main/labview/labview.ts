@@ -165,6 +165,30 @@ export class LabView implements IDisposable {
     return path.normalize(path.join(__dirname, '../../../'));
   }
 
+  /**
+   * if opening a single file and no workspace setting exists
+   */
+  shouldSetToSingleFileUIMode(): boolean {
+    let setToSingleFileUIMode = false;
+    this._reloadWSSettings();
+    const wsUIModeSet = this._wsSettings.hasValue(SettingType.uiMode);
+    // if UI mode not specified for project directory, or set to Default
+    if (
+      !wsUIModeSet ||
+      this._wsSettings.getValue(SettingType.uiMode) === UIMode.Default
+    ) {
+      setToSingleFileUIMode = this._willOpenSingleFile();
+    }
+
+    return setToSingleFileUIMode;
+  }
+
+  private _reloadWSSettings() {
+    this._wsSettings = new WorkspaceSettings(
+      this._sessionConfig.workingDirectory
+    );
+  }
+
   private _willOpenSingleFile(): boolean {
     const labDir = this._sessionConfig.resolvedWorkingDirectory;
 
@@ -180,7 +204,7 @@ export class LabView implements IDisposable {
   }
 
   async openFiles() {
-    if (this._willOpenSingleFile()) {
+    if (this.shouldSetToSingleFileUIMode()) {
       this._setUIMode(
         userSettings.getValue(SettingType.uiModeForSingleFileOpen)
       );
@@ -248,8 +272,9 @@ export class LabView implements IDisposable {
   }
 
   async setUIMode(uiMode: UIMode) {
-    if (uiMode === UIMode.Custom) {
+    if (uiMode === UIMode.ManagedByWebApp) {
       this._uiMode = uiMode;
+      // let web app control the layout
       return;
     }
 
@@ -412,7 +437,7 @@ export class LabView implements IDisposable {
 
   private _registerWebAppFrontEndHandlers() {
     this._view.webContents.on('dom-ready', () => {
-      const openingSingleFile = this._willOpenSingleFile();
+      const setToSingleFileUIMode = this.shouldSetToSingleFileUIMode();
 
       this._view.webContents.executeJavaScript(`
         // disable splash animation
@@ -502,7 +527,7 @@ export class LabView implements IDisposable {
 
         jlabDesktop_getLab().then((lab) => {
           ${
-            openingSingleFile
+            setToSingleFileUIMode
               ? `jlabDesktop_setUIMode('${userSettings.getValue(
                   SettingType.uiModeForSingleFileOpen
                 )}');`
@@ -523,7 +548,7 @@ export class LabView implements IDisposable {
   private _wsSettings: WorkspaceSettings;
   private _labUIReady = false;
   private _evm = new EventManager();
-  private _uiMode: UIMode = UIMode.Custom;
+  private _uiMode: UIMode = UIMode.Default;
 }
 
 export namespace LabView {

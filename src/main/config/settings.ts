@@ -36,10 +36,11 @@ export enum CtrlWBehavior {
 }
 
 export enum UIMode {
-  Custom = 'custom',
+  Default = 'default', // Desktop app defaults for new session or single file
   MultiDocument = 'multi-document',
   SingleDocument = 'single-document',
-  Zen = 'zen'
+  Zen = 'zen',
+  ManagedByWebApp = 'managed-by-web-app' // let JupyterLab web app manage the layout
 }
 
 export type KeyValueMap = { [key: string]: string };
@@ -171,7 +172,9 @@ export class UserSettings {
       pythonEnvsPath: new Setting<string>(''),
       condaChannels: new Setting<string[]>(['conda-forge']),
 
-      uiMode: new Setting<UIMode>(UIMode.Custom, { wsOverridable: true }),
+      uiMode: new Setting<UIMode>(UIMode.ManagedByWebApp, {
+        wsOverridable: true
+      }),
       uiModeForSingleFileOpen: new Setting<UIMode>(UIMode.Zen)
     };
 
@@ -252,6 +255,10 @@ export class WorkspaceSettings extends UserSettings {
     return this._wsSettings;
   }
 
+  hasValue(setting: SettingType) {
+    return setting in this._wsSettings;
+  }
+
   getValue(setting: SettingType) {
     if (setting in this._wsSettings) {
       return this._wsSettings[setting].value;
@@ -301,12 +308,15 @@ export class WorkspaceSettings extends UserSettings {
     );
     const wsSettings: { [key: string]: any } = {};
 
+    // uiMode needs special handling, it needs to be saved even if same as global default.
+    // this is due to automatically setting uiMode to Zen for default for opening single file
     for (let key in SettingType) {
       const setting = this._wsSettings[key];
       if (
         setting &&
         this._settings[key].wsOverridable &&
-        this._isDifferentThanUserSetting(key as SettingType)
+        (key === SettingType.uiMode ||
+          this._isDifferentThanUserSetting(key as SettingType))
       ) {
         wsSettings[key] = setting.value;
       }

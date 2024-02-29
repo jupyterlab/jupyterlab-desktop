@@ -422,7 +422,12 @@ export class SessionWindow implements IDisposable {
       );
     }
 
-    this._setUIMode(this._wsSettings.getValue(SettingType.uiMode));
+    // initialize UI mode to workspace default or app default
+    const uiMode = this._labView.shouldSetToSingleFileUIMode()
+      ? userSettings.getValue(SettingType.uiModeForSingleFileOpen)
+      : this._wsSettings.getValue(SettingType.uiMode);
+
+    this._setUIMode(uiMode, false);
   }
 
   get titleBarView(): TitleBarView {
@@ -901,14 +906,21 @@ export class SessionWindow implements IDisposable {
                 this._labView.uiMode === UIMode.MultiDocument
             },
             {
-              label: 'Custom',
+              label: 'Managed by web app',
               click: () => {
-                this._setUIMode(UIMode.Custom);
+                this._setUIMode(UIMode.ManagedByWebApp);
               },
               type: 'checkbox',
               checked:
                 this._contentViewType === ContentViewType.Lab &&
-                this._labView.uiMode === UIMode.Custom
+                this._labView.uiMode === UIMode.ManagedByWebApp
+            },
+            { type: 'separator' },
+            {
+              label: 'Reset to session default',
+              click: () => {
+                this._setUIMode(UIMode.Default);
+              }
             }
           ]
         }
@@ -1627,11 +1639,24 @@ export class SessionWindow implements IDisposable {
     this._updateContentView();
   }
 
-  private async _setUIMode(uiMode: UIMode) {
+  private async _setUIMode(uiMode: UIMode, save: boolean = true) {
     await this._labView.labUIReady;
-    this._wsSettings.setValue(SettingType.uiMode, uiMode);
-    this._wsSettings.save();
-    this._labView.setUIMode(uiMode);
+    if (uiMode === UIMode.Default) {
+      this._wsSettings.unsetValue(SettingType.uiMode);
+      this._wsSettings.save();
+      let defaultUIMode = userSettings.getValue(
+        this._labView.shouldSetToSingleFileUIMode()
+          ? SettingType.uiModeForSingleFileOpen
+          : SettingType.uiMode
+      );
+      this._labView.setUIMode(defaultUIMode);
+    } else {
+      if (save) {
+        this._wsSettings.setValue(SettingType.uiMode, uiMode);
+        this._wsSettings.save();
+      }
+      this._labView.setUIMode(uiMode);
+    }
   }
 
   private _newWindow() {
