@@ -17,6 +17,7 @@ import {
   DEFAULT_WIN_HEIGHT,
   DEFAULT_WIN_WIDTH,
   SettingType,
+  UIMode,
   userSettings,
   WorkspaceSettings
 } from '../config/settings';
@@ -420,6 +421,13 @@ export class SessionWindow implements IDisposable {
         showServerNotificationBadge
       );
     }
+
+    // initialize UI mode to workspace default or app default
+    const uiMode = this._labView.shouldSetToSingleFileUIMode()
+      ? userSettings.getValue(SettingType.uiModeForSingleFileOpen)
+      : this._wsSettings.getValue(SettingType.uiMode);
+
+    this._setUIMode(uiMode, false);
   }
 
   get titleBarView(): TitleBarView {
@@ -854,6 +862,80 @@ export class SessionWindow implements IDisposable {
         return;
       }
 
+      const inSession =
+        this._contentViewType === ContentViewType.Lab &&
+        !this._progressViewVisible;
+      const inLocalSession = inSession && !this._sessionConfig?.remoteURL;
+
+      const uiModeSubmenu: MenuItemConstructorOptions[] = [
+        {
+          label: 'UI Mode',
+          visible:
+            this._contentViewType === ContentViewType.Lab &&
+            !this._progressViewVisible,
+          type: 'submenu',
+          submenu: [
+            {
+              label: 'Zen Mode',
+              click: () => {
+                this._setUIMode(UIMode.Zen);
+              },
+              type: 'checkbox',
+              checked:
+                this._contentViewType === ContentViewType.Lab &&
+                this._labView.uiMode === UIMode.Zen
+            },
+            {
+              label: 'Single document IDE',
+              click: () => {
+                this._setUIMode(UIMode.SingleDocument);
+              },
+              type: 'checkbox',
+              checked:
+                this._contentViewType === ContentViewType.Lab &&
+                this._labView.uiMode === UIMode.SingleDocument
+            },
+            {
+              label: 'Multi document IDE',
+              click: () => {
+                this._setUIMode(UIMode.MultiDocument);
+              },
+              type: 'checkbox',
+              checked:
+                this._contentViewType === ContentViewType.Lab &&
+                this._labView.uiMode === UIMode.MultiDocument
+            },
+            {
+              label: 'Managed by web app',
+              click: () => {
+                this._setUIMode(UIMode.ManagedByWebApp);
+              },
+              type: 'checkbox',
+              checked:
+                this._contentViewType === ContentViewType.Lab &&
+                this._labView.uiMode === UIMode.ManagedByWebApp
+            },
+            { type: 'separator' },
+            {
+              label: 'Reset to session default',
+              click: () => {
+                this._resetUIModeToSessionDefault();
+              }
+            }
+          ]
+        }
+      ];
+
+      const closeSessionMenuItem: MenuItemConstructorOptions[] = [
+        {
+          label: 'Close Session',
+          click: () => {
+            this._closeSession();
+          }
+        },
+        { type: 'separator' }
+      ];
+
       const template: MenuItemConstructorOptions[] = [
         {
           label: 'New Window',
@@ -861,16 +943,9 @@ export class SessionWindow implements IDisposable {
             this._newWindow();
           }
         },
-        {
-          label: 'Close Session',
-          visible:
-            this._contentViewType === ContentViewType.Lab &&
-            !this._progressViewVisible,
-          click: () => {
-            this._closeSession();
-          }
-        },
+        ...(inLocalSession ? uiModeSubmenu : []),
         { type: 'separator' },
+        ...(inSession ? closeSessionMenuItem : []),
         {
           label: 'Settings',
           click: () => {
@@ -1562,6 +1637,29 @@ export class SessionWindow implements IDisposable {
 
     this._contentViewType = ContentViewType.Welcome;
     this._updateContentView();
+  }
+
+  private async _resetUIModeToSessionDefault() {
+    await this._labView.labUIReady;
+
+    this._wsSettings.unsetValue(SettingType.uiMode);
+    this._wsSettings.save();
+
+    const defaultUIMode = userSettings.getValue(
+      this._labView.shouldSetToSingleFileUIMode()
+        ? SettingType.uiModeForSingleFileOpen
+        : SettingType.uiMode
+    );
+    this._labView.setUIMode(defaultUIMode);
+  }
+
+  private async _setUIMode(uiMode: UIMode, save: boolean = true) {
+    await this._labView.labUIReady;
+    if (save) {
+      this._wsSettings.setValue(SettingType.uiMode, uiMode);
+      this._wsSettings.save();
+    }
+    this._labView.setUIMode(uiMode);
   }
 
   private _newWindow() {

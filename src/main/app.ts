@@ -410,7 +410,11 @@ export class JupyterApplication implements IApplication, IDisposable {
           SettingType.overrideDefaultServerArgs
         ),
         serverEnvVars: userSettings.getValue(SettingType.serverEnvVars),
-        ctrlWBehavior: userSettings.getValue(SettingType.ctrlWBehavior)
+        ctrlWBehavior: userSettings.getValue(SettingType.ctrlWBehavior),
+        uiMode: userSettings.getValue(SettingType.uiMode),
+        uiModeForSingleFileOpen: userSettings.getValue(
+          SettingType.uiModeForSingleFileOpen
+        )
       },
       this._registry
     );

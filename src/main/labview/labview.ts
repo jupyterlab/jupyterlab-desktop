@@ -21,6 +21,7 @@ import { SessionWindow } from '../sessionwindow/sessionwindow';
 import {
   CtrlWBehavior,
   SettingType,
+  UIMode,
   userSettings,
   WorkspaceSettings
 } from '../config/settings';
@@ -164,7 +165,47 @@ export class LabView implements IDisposable {
     return path.normalize(path.join(__dirname, '../../../'));
   }
 
+  /**
+   * if opening a single file and no workspace setting exists
+   */
+  shouldSetToSingleFileUIMode(): boolean {
+    this._reloadWSSettings();
+
+    // if UI mode not specified for project directory
+    if (!this._wsSettings.hasValue(SettingType.uiMode)) {
+      return this._willOpenSingleFile();
+    }
+
+    return false;
+  }
+
+  private _reloadWSSettings() {
+    this._wsSettings = new WorkspaceSettings(
+      this._sessionConfig.workingDirectory
+    );
+  }
+
+  private _willOpenSingleFile(): boolean {
+    const labDir = this._sessionConfig.resolvedWorkingDirectory;
+
+    const filesToOpen = this._sessionConfig.filesToOpen;
+    if (filesToOpen.length === 1) {
+      const filePath = path.resolve(labDir, this._sessionConfig.filesToOpen[0]);
+      if (fs.lstatSync(filePath)?.isFile()) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
   async openFiles() {
+    if (this.shouldSetToSingleFileUIMode()) {
+      this._setUIMode(
+        userSettings.getValue(SettingType.uiModeForSingleFileOpen)
+      );
+    }
+
     const filesToOpen = this._sessionConfig.filesToOpen;
     filesToOpen.forEach(async (relPath: string) => {
       if (relPath === '') {
@@ -220,6 +261,30 @@ export class LabView implements IDisposable {
     } catch (error) {
       log.error(`Failed to create new notebook. Error: `, error);
     }
+  }
+
+  get uiMode(): UIMode {
+    return this._uiMode;
+  }
+
+  async setUIMode(uiMode: UIMode) {
+    if (uiMode === UIMode.ManagedByWebApp) {
+      this._uiMode = uiMode;
+      // let web app control the layout
+      return;
+    }
+
+    await this._setUIMode(uiMode);
+  }
+
+  async _setUIMode(uiMode: UIMode) {
+    this._uiMode = uiMode;
+
+    await this._view.webContents.executeJavaScript(`
+    {
+      jlabDesktop_setUIMode('${this._uiMode}');
+    }
+  `);
   }
 
   get labUIReady(): Promise<boolean> {
@@ -368,13 +433,17 @@ export class LabView implements IDisposable {
 
   private _registerWebAppFrontEndHandlers() {
     this._view.webContents.on('dom-ready', () => {
+      const setToSingleFileUIMode = this.shouldSetToSingleFileUIMode();
+
       this._view.webContents.executeJavaScript(`
         // disable splash animation
-        const style = document.createElement('style');
-        style.textContent = '#jupyterlab-splash { display: none !important; }';
-        document.head.append(style);
+        {
+          const style = document.createElement('style');
+          style.textContent = '#jupyterlab-splash * { display: none; }';
+          document.head.append(style);
+        }
 
-        async function getLab() {
+        async function jlabDesktop_getLab() {
           return new Promise((resolve) => {
             const checkLab = () => {
               return window.jupyterapp || window.jupyterlab;
@@ -394,7 +463,72 @@ export class LabView implements IDisposable {
           });
         }
 
-        getLab().then((lab) => {
+        async function jlabDesktop_setUIMode(uiMode) {
+          const lab = await jlabDesktop_getLab();
+          const labShell = lab.shell;
+          const statusBar = labShell.widgets('bottom').find(widget => widget.id === 'jp-main-statusbar');
+          const currentState = {
+            leftTabBarVisible: labShell.isSideTabBarVisible('left'),
+            leftCollapsed: labShell.leftCollapsed,
+            rightTabBarVisible: labShell.isSideTabBarVisible('right'),
+            rightCollapsed: labShell.rightCollapsed,
+            isSimpleInterface: labShell.mode === 'single-document',
+            statusBarVisible: statusBar && statusBar.isVisible,
+          };
+  
+          if (uiMode === '${UIMode.MultiDocument}' || uiMode === '${
+        UIMode.SingleDocument
+      }') {
+            labShell.mode = uiMode === '${
+              UIMode.MultiDocument
+            }' ? 'multiple-document' : 'single-document';
+            if (currentState.leftCollapsed) {
+              labShell.expandLeft();
+            }
+            if (!currentState.leftTabBarVisible) {
+              labShell.toggleSideTabBarVisibility('left');
+            }
+            if (!currentState.rightCollapsed) {
+              labShell.collapseRight();
+            }
+            if (!currentState.rightTabBarVisible) {
+              labShell.toggleSideTabBarVisibility('right');
+            }
+            if (statusBar) {
+              statusBar.setHidden(false);
+            }
+          } else if (uiMode === '${UIMode.Zen}') {
+            if (!currentState.leftCollapsed) {
+              labShell.collapseLeft();
+            }
+            if (currentState.leftTabBarVisible) {
+              labShell.toggleSideTabBarVisibility('left');
+            }
+            if (!currentState.rightCollapsed) {
+              labShell.collapseRight();
+            }
+            if (currentState.rightTabBarVisible) {
+              labShell.toggleSideTabBarVisibility('right');
+            }
+            if (!currentState.isSimpleInterface) {
+              labShell.mode = 'single-document';
+            }
+            if (currentState.statusBarVisible) {
+              if (statusBar) {
+                statusBar.setHidden(true);
+              }
+            }
+          }
+        }
+
+        jlabDesktop_getLab().then((lab) => {
+          ${
+            setToSingleFileUIMode
+              ? `jlabDesktop_setUIMode('${userSettings.getValue(
+                  SettingType.uiModeForSingleFileOpen
+                )}');`
+              : ''
+          }
           lab.restored.then(() => {
             window.electronAPI.broadcastLabUIReady();
           });
@@ -410,6 +544,7 @@ export class LabView implements IDisposable {
   private _wsSettings: WorkspaceSettings;
   private _labUIReady = false;
   private _evm = new EventManager();
+  private _uiMode: UIMode = UIMode.ManagedByWebApp;
 }
 
 export namespace LabView {

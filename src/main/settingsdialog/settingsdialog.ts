@@ -13,7 +13,8 @@ import {
   serverLaunchArgsDefault,
   serverLaunchArgsFixed,
   StartupMode,
-  ThemeType
+  ThemeType,
+  UIMode
 } from '../config/settings';
 import { IRegistry } from '../registry';
 import { jlabCLICommandIsSetup } from '../utils';
@@ -41,7 +42,9 @@ export class SettingsDialog {
       serverArgs,
       overrideDefaultServerArgs,
       serverEnvVars,
-      ctrlWBehavior
+      ctrlWBehavior,
+      uiMode,
+      uiModeForSingleFileOpen
     } = options;
     const installUpdatesAutomaticallyEnabled = process.platform === 'darwin';
     const installUpdatesAutomatically =
@@ -93,6 +96,10 @@ export class SettingsDialog {
         flex-direction: row;
         justify-content: flex-end;
         align-items: center;
+      }
+      .column {
+        display: flex;
+        flex-direction: column;
       }
       .progress-message {
         margin-right: 5px; line-height: 24px; visibility: hidden;
@@ -155,6 +162,40 @@ export class SettingsDialog {
                 <jp-radio name="startup-mode" value="new-local-session" <%= startupMode === 'new-local-session' ? 'checked' : '' %>>Start new session</jp-radio>
                 <jp-radio name="startup-mode" value="restore-sessions" <%= startupMode === 'restore-sessions' ? 'checked' : '' %>>Restore last sessions</jp-radio>
               </jp-radio-group>
+
+              <div class="row setting-section">
+                <div class="row" style="gap: 20px">
+                  <div class="column" style="gap: 5px">
+                    <div class="row">
+                      <label>UI Mode</label>
+                    </div>
+
+                    <div class="row">
+                      <jp-select id="ui-mode" name="ui-mode" value="<%= uiMode %>" position="below">
+                        <jp-option value="zen">Zen Mode</jp-option>
+                        <jp-option value="single-document">Single document IDE</jp-option>
+                        <jp-option value="multi-document">Multi document IDE</jp-option>
+                        <jp-option value="managed-by-web-app">Managed by web app</jp-option>
+                      </jp-select>
+                    </div>
+                  </div>
+
+                  <div class="column" style="gap: 5px">
+                    <div class="row">
+                      <label>UI Mode for opening a single file</label>
+                    </div>
+
+                    <div class="row">
+                      <jp-select id="ui-mode-for-single-file-open" name="ui-mode-for-single-file-open" value="<%= uiModeForSingleFileOpen %>" position="below">
+                        <jp-option value="zen">Zen Mode</jp-option>
+                        <jp-option value="single-document">Single document IDE</jp-option>
+                        <jp-option value="multi-document">Multi document IDE</jp-option>
+                        <jp-option value="managed-by-web-app">Managed by web app</jp-option>
+                      </jp-select>
+                    </div>
+                  </div>
+                </div>
+              </div>
               
               <jp-radio-group orientation="horizontal">
                 <label slot="label">Theme</label>
@@ -476,6 +517,8 @@ export class SettingsDialog {
           window.electronAPI.setSettings({
             notifyOnBundledEnvUpdates: notifyOnBundledEnvUpdatesCheckbox.checked,
             updateBundledEnvAutomatically: updateBundledEnvAutomaticallyCheckbox.checked,
+            uiMode: document.getElementById('ui-mode').value,
+            uiModeForSingleFileOpen: document.getElementById('ui-mode-for-single-file-open').value,
           });
 
           window.electronAPI.setDefaultWorkingDirectory(workingDirectoryInput.value);
@@ -517,7 +560,9 @@ export class SettingsDialog {
       overrideDefaultServerArgs,
       serverEnvVars: strServerEnvVars,
       ctrlWBehavior,
-      cliCommandIsSetup
+      cliCommandIsSetup,
+      uiMode,
+      uiModeForSingleFileOpen
     });
   }
 
@@ -557,5 +602,7 @@ export namespace SettingsDialog {
     overrideDefaultServerArgs: boolean;
     serverEnvVars: KeyValueMap;
     ctrlWBehavior: CtrlWBehavior;
+    uiMode: UIMode;
+    uiModeForSingleFileOpen: UIMode;
   }
 }
