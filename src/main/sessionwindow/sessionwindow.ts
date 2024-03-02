@@ -570,8 +570,12 @@ export class SessionWindow implements IDisposable {
         this._sessionConfigChanged.emit();
 
         if (type === 'notebook') {
-          this.labView.labUIReady.then(() => {
-            this.labView.newNotebook();
+          this.labView.labUIReady.then(async () => {
+            await this.labView.newNotebook();
+            this._setUIMode(
+              userSettings.getValue(SettingType.uiModeForSingleFileOpen),
+              false
+            );
             this._hideProgressView();
           });
         } else {

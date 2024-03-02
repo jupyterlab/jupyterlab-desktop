@@ -191,7 +191,7 @@ jlab env set-python-envs-path /opt/python_envs
 
 ### `jlab env set-conda-path <path>`
 
-Set base conda executable path. Base conda executable is used to when creating new conda environments, and running conda commands.
+Set base conda executable path. Base conda executable is used when creating new conda environments, and running conda commands.
 
 Examples:
 

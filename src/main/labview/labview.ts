@@ -277,7 +277,7 @@ export class LabView implements IDisposable {
     await this._setUIMode(uiMode);
   }
 
-  async _setUIMode(uiMode: UIMode) {
+  private async _setUIMode(uiMode: UIMode) {
     this._uiMode = uiMode;
 
     await this._view.webContents.executeJavaScript(`
