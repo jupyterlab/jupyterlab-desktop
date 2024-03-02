@@ -198,6 +198,18 @@ You can transfer settings from previous JupyterLab installations into JupyterLab
 
 **Warning**: If you copy over settings from an older major version of JupyterLab (e.g. 2.x) those might cause an error on startup. Similarly, if you copy settings from a newer (major or minor) version you may see errors.
 
+# UI Modes
+
+JupyterLab Desktop provides a convenient way to configure the JupyterLab UI layout. It lets you change the layout using `UI Mode` menu to pre-defined options and the selection is persisted per project.
+
+<img src="media/ui-modes-menu.png" alt="UI Modes menu" width=600 />
+
+`Multi document IDE` is equivalent to default UI layout mode of web app and `Single document IDE` mode corresponds to Simple Interface. `Zen Mode` is a newly introduced mode in desktop app which simplifies Simple Interface further by hiding side panels and status bar. Zen Mode is great for focusing on a notebook document. It is the new default mode for opening a single notebook or creating a new notebook. `Managed by web app` option leaves the layout configuration to web app. `Reset to session default` option sets the UI mode to either to default of `UI Mode for opening a single file` or `UI Mode` as defined in the settings dialog (shown below) based on the number of files opened by the session.
+
+Defaults for sessions and for opening a single notebook can be customized from the Settings dialog as shown below.
+
+<img src="media/ui-mode-settings.png" alt="UI Mode settings" width=700 />
+
 # Theming
 
 JupyterLab Desktop supports light and dark themes for the application interface. In the settings dialog you can choose `Light`, `Dark` or `System` options to set the desired theme as shown below. `System` option detects the theme used by your OS and sets that as the app theme.
