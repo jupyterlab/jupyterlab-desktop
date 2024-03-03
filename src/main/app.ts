@@ -532,29 +532,34 @@ export class JupyterApplication implements IApplication, IDisposable {
   }
 
   private _setupAutoUpdater() {
-    autoUpdater.on('update-downloaded', (event, releaseNotes, releaseName) => {
-      const dialogOpts: Electron.MessageBoxOptions = {
-        type: 'info',
-        buttons: ['Restart', 'Later'],
-        title: 'Application Update',
-        message: process.platform === 'win32' ? releaseNotes : releaseName,
-        detail:
-          'A new version has been downloaded. Restart the application to apply the updates.'
-      };
+    autoUpdater.once(
+      'update-downloaded',
+      (event, releaseNotes, releaseName) => {
+        const dialogOpts: Electron.MessageBoxOptions = {
+          type: 'info',
+          buttons: ['Restart', 'Later'],
+          title: 'Application Update',
+          message: process.platform === 'win32' ? releaseNotes : releaseName,
+          detail:
+            'A new version has been downloaded. Restart the application to apply the updates.'
+        };
 
-      dialog.showMessageBox(dialogOpts).then(returnValue => {
-        if (returnValue.response === 0) {
-          if (
-            userSettings.getValue(SettingType.updateBundledEnvAutomatically) &&
-            bundledEnvironmentIsInstalled()
-          ) {
-            appData.updateBundledEnvOnRestart = true;
-            appData.save();
+        dialog.showMessageBox(dialogOpts).then(returnValue => {
+          if (returnValue.response === 0) {
+            if (
+              userSettings.getValue(
+                SettingType.updateBundledEnvAutomatically
+              ) &&
+              bundledEnvironmentIsInstalled()
+            ) {
+              appData.updateBundledEnvOnRestart = true;
+              appData.save();
+            }
+            autoUpdater.quitAndInstall();
           }
-          autoUpdater.quitAndInstall();
-        }
-      });
-    });
+        });
+      }
+    );
 
     autoUpdater.on('error', message => {
       log.error('There was a problem updating the application');
