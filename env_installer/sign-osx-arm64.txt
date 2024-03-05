@@ -100,7 +100,7 @@ lib/libbrotlidec.1.1.0.dylib
 lib/libbrotlienc.1.1.0.dylib
 lib/libbz2.1.0.8.dylib
 lib/libc++.1.0.dylib
-lib/libcares.2.11.0.dylib
+lib/libcares.2.12.0.dylib
 lib/libcharset.1.dylib
 lib/libcom_err.3.0.dylib
 lib/libcrypto.3.dylib
@@ -148,7 +148,7 @@ lib/libnghttp2.14.dylib
 lib/libnghttp2.dylib
 lib/libomp.dylib
 lib/libopenblas.0.dylib
-lib/libopenjp2.2.5.0.dylib
+lib/libopenjp2.2.5.2.dylib
 lib/libpanel.6.dylib
 lib/libpanelw.6.dylib
 lib/libpng.dylib
