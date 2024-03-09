@@ -270,3 +270,11 @@ jobs:
           snap: dist/JupyterLab.snap
           release: edge
 
+      - name: Publish snap to the latest/candidate channel in Snap Store
+        if: matrix.cfg.platform == 'linux-64' && steps.release-exists.outputs.result == 'true'
+        uses: snapcore/action-publish@v1
+        env:
+          SNAPCRAFT_STORE_CREDENTIALS: ${{ secrets.SNAPCRAFT_STORE_CREDENTIALS }}
+        with:
+          snap: dist/JupyterLab.snap
+          release: candidate
