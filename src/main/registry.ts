@@ -283,7 +283,7 @@ export class Registry implements IRegistry, IDisposable {
     sort?: boolean
   ): Promise<IPythonEnvironment[]> {
     let filteredEnvs = envs.filter(env => this._pathExistsSync(env.path));
-    const uniqueEnvs = this._getUniqueObjects(filteredEnvs);
+    const uniqueEnvs = this._getUniqueEnvs(filteredEnvs);
     const resolvedEnvs = await Promise.all(
       uniqueEnvs.map(async env => await this._resolveEnvironment(env.path))
     );
@@ -820,7 +820,7 @@ export class Registry implements IRegistry, IDisposable {
       [],
       allCondas
     );
-    const uniqueCondaRoots = this._getUniqueObjects(flattenedCondaRoots);
+    const uniqueCondaRoots = this._getUniquePythonPaths(flattenedCondaRoots);
 
     return uniqueCondaRoots.map(condaRootEnvPath => {
       const path = pythonPathForEnvPath(condaRootEnvPath, true);
@@ -1110,29 +1110,30 @@ export class Registry implements IRegistry, IDisposable {
     }
   }
 
-  // Probably pretty slow, luckily won't ever be used on many values
-  private _getUniqueObjects<T, V>(arr: T[], keyFunction?: (value: T) => V) {
-    if (keyFunction) {
-      let mappedIndices = arr.map(keyFunction).map((keyValue, index, self) => {
-        return self.indexOf(keyValue);
-      });
+  private _getUniquePythonPaths(pythonPaths: string[]): string[] {
+    const uniquePythonPaths = new Set<string>();
 
-      let filteredIndices = mappedIndices.filter(
-        (mappedIndex, actualIndex, self) => {
-          return mappedIndex === actualIndex;
-        }
-      );
+    return pythonPaths.filter(pythonPath => {
+      if (!uniquePythonPaths.has(pythonPath)) {
+        uniquePythonPaths.add(pythonPath);
+        return true;
+      }
 
-      let filteredValues = filteredIndices.map(index => {
-        return arr[index];
-      });
+      return false;
+    });
+  }
 
-      return filteredValues;
-    } else {
-      return arr.filter((value, index, self) => {
-        return self.indexOf(value) === index;
-      });
-    }
+  private _getUniqueEnvs(envs: IPythonEnvironment[]): IPythonEnvironment[] {
+    const uniquePythonPaths = new Set<string>();
+
+    return envs.filter(env => {
+      if (!uniquePythonPaths.has(env.path)) {
+        uniquePythonPaths.add(env.path);
+        return true;
+      }
+
+      return false;
+    });
   }
 
   get ready(): Promise<void> {
