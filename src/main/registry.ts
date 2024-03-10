@@ -675,10 +675,10 @@ export class Registry implements IRegistry, IDisposable {
   }
 
   private _updateEnvironments() {
-    this._environments = [
+    this._environments = this._getUniqueEnvs([
       ...this._userSetEnvironments,
       ...this._discoveredEnvironments
-    ];
+    ]);
     appData.discoveredPythonEnvs = JSON.parse(
       JSON.stringify(this._discoveredEnvironments)
     );
