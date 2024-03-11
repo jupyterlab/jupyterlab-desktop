@@ -32,7 +32,7 @@ jobs:
           result-encoding: string
 
       - name: Create pre-release
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
         if: steps.release-exists.outputs.result == 'false'
         with:
           token: ${{ secrets.JLAB_APP_TOKEN }}
