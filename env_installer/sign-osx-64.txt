@@ -108,7 +108,7 @@ lib/libcurl.4.dylib
 lib/libdeflate.0.dylib
 lib/libedit.0.dylib
 lib/libev.4.dylib
-lib/libexpat.1.9.1.dylib
+lib/libexpat.1.9.2.dylib
 lib/libffi.8.dylib
 lib/libfmt.10.2.1.dylib
 lib/libform.6.dylib
