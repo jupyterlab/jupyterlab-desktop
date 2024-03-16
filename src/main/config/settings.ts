@@ -72,7 +72,8 @@ export enum SettingType {
   condaChannels = 'condaChannels',
 
   uiMode = 'uiMode',
-  uiModeForSingleFileOpen = 'uiModeForSingleFileOpen'
+  uiModeForSingleFileOpen = 'uiModeForSingleFileOpen',
+  showTOCInZenMode = 'showTOCInZenMode'
 }
 
 export const serverLaunchArgsFixed = [
@@ -174,7 +175,8 @@ export class UserSettings {
       uiMode: new Setting<UIMode>(UIMode.ManagedByWebApp, {
         wsOverridable: true
       }),
-      uiModeForSingleFileOpen: new Setting<UIMode>(UIMode.Zen)
+      uiModeForSingleFileOpen: new Setting<UIMode>(UIMode.Zen),
+      showTOCInZenMode: new Setting<boolean>(false)
     };
 
     if (readSettings) {

@@ -282,7 +282,9 @@ export class LabView implements IDisposable {
 
     await this._view.webContents.executeJavaScript(`
     {
-      jlabDesktop_setUIMode('${this._uiMode}');
+      jlabDesktop_setUIMode('${this._uiMode}', ${userSettings.getValue(
+      SettingType.showTOCInZenMode
+    )});
     }
   `);
   }
@@ -463,7 +465,7 @@ export class LabView implements IDisposable {
           });
         }
 
-        async function jlabDesktop_setUIMode(uiMode) {
+        async function jlabDesktop_setUIMode(uiMode, showTOCInZenMode) {
           const lab = await jlabDesktop_getLab();
           const labShell = lab.shell;
           const statusBar = labShell.widgets('bottom').find(widget => widget.id === 'jp-main-statusbar');
@@ -518,6 +520,9 @@ export class LabView implements IDisposable {
                 statusBar.setHidden(true);
               }
             }
+            if (showTOCInZenMode) {
+              labShell.activateById('table-of-contents');
+            }
           }
         }
 
@@ -526,7 +531,7 @@ export class LabView implements IDisposable {
             setToSingleFileUIMode
               ? `jlabDesktop_setUIMode('${userSettings.getValue(
                   SettingType.uiModeForSingleFileOpen
-                )}');`
+                )}', ${userSettings.getValue(SettingType.showTOCInZenMode)});`
               : ''
           }
           lab.restored.then(() => {
