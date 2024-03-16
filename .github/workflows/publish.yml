@@ -262,7 +262,7 @@ jobs:
           overwrite: true
       
       - name: Publish snap to the latest/edge channel in Snap Store
-        if: matrix.cfg.platform == 'linux-64' && github.event.pull_request.head.repo.full_name == github.repository
+        if: matrix.cfg.platform == 'linux-64' && github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]'
         uses: snapcore/action-publish@v1
         env:
           SNAPCRAFT_STORE_CREDENTIALS: ${{ secrets.SNAPCRAFT_STORE_CREDENTIALS }}
