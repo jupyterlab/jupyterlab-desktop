@@ -414,7 +414,8 @@ export class JupyterApplication implements IApplication, IDisposable {
         uiMode: userSettings.getValue(SettingType.uiMode),
         uiModeForSingleFileOpen: userSettings.getValue(
           SettingType.uiModeForSingleFileOpen
-        )
+        ),
+        showTOCInZenMode: userSettings.getValue(SettingType.showTOCInZenMode)
       },
       this._registry
     );

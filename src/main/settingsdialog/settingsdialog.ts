@@ -44,7 +44,8 @@ export class SettingsDialog {
       serverEnvVars,
       ctrlWBehavior,
       uiMode,
-      uiModeForSingleFileOpen
+      uiModeForSingleFileOpen,
+      showTOCInZenMode
     } = options;
     const installUpdatesAutomaticallyEnabled = process.platform === 'darwin';
     const installUpdatesAutomatically =
@@ -194,6 +195,10 @@ export class SettingsDialog {
                       </jp-select>
                     </div>
                   </div>
+                </div>
+                
+                <div class="row">
+                  <jp-checkbox id='checkbox-show-toc-in-zen-mode' type='checkbox' <%= showTOCInZenMode ? 'checked' : '' %>>Show Table of Contents in Zen Mode</jp-checkbox>
                 </div>
               </div>
               
@@ -519,6 +524,7 @@ export class SettingsDialog {
             updateBundledEnvAutomatically: updateBundledEnvAutomaticallyCheckbox.checked,
             uiMode: document.getElementById('ui-mode').value,
             uiModeForSingleFileOpen: document.getElementById('ui-mode-for-single-file-open').value,
+            showTOCInZenMode: document.getElementById('checkbox-show-toc-in-zen-mode').checked
           });
 
           window.electronAPI.setDefaultWorkingDirectory(workingDirectoryInput.value);
@@ -562,7 +568,8 @@ export class SettingsDialog {
       ctrlWBehavior,
       cliCommandIsSetup,
       uiMode,
-      uiModeForSingleFileOpen
+      uiModeForSingleFileOpen,
+      showTOCInZenMode
     });
   }
 
@@ -604,5 +611,6 @@ export namespace SettingsDialog {
     ctrlWBehavior: CtrlWBehavior;
     uiMode: UIMode;
     uiModeForSingleFileOpen: UIMode;
+    showTOCInZenMode: boolean;
   }
 }
