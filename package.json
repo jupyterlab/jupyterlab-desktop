@@ -108,7 +108,8 @@
       "environment": {
         "SHELL": "/bin/bash",
         "GTK_USE_PORTAL":"1"
-      }
+      },
+      "hooks": "build/snap-hooks"
     },
     "win": {
       "target": [

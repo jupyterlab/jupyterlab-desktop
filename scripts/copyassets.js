@@ -99,6 +99,13 @@ function copyAssests() {
       ),
       path.join(buildDir, 'linux_after_install.sh')
     );
+    fs.copySync(
+      path.join(path.resolve('./'), 'electron-builder-scripts', 'snap-hooks'),
+      path.join(buildDir, 'snap-hooks'),
+      {
+        recursive: true
+      }
+    );
   }
 
   console.log('done');
