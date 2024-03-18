@@ -9,12 +9,19 @@ import {
   getBundledPythonPath,
   installBundledEnvironment,
   isDevMode,
+  isSnap,
   jlabCLICommandIsSetup,
   setupJlabCommandWithUserRights,
   versionWithoutSuffix,
   waitForDuration,
   waitForFunction
 } from './utils';
+
+if (isSnap()) {
+  app.setPath('home', process.env.HOME);
+  app.setPath('userData', `${process.env.HOME}/.config/${app.getName()}`);
+}
+
 import { JupyterApplication } from './app';
 import { ICLIArguments } from './tokens';
 import { SessionConfig } from './config/sessionconfig';

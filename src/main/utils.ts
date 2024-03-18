@@ -30,6 +30,10 @@ export function isDevMode(): boolean {
   return require.main.filename.indexOf('app.asar') === -1;
 }
 
+export function isSnap(): boolean {
+  return process.platform === 'linux' && process.env.SNAP !== undefined;
+}
+
 export function getAppDir(): string {
   let appDir = app.getAppPath();
   if (!isDevMode()) {
