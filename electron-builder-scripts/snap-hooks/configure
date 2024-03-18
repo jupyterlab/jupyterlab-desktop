@@ -1,0 +1,4 @@
+#!/bin/sh -e
+
+APP_PATH=$SNAP/jupyterlab-desktop
+ln -s "$APP_PATH" /usr/bin/jlab
