@@ -291,6 +291,7 @@ You can use the CLI commands to list and change project setting overrides. See [
 
 This repo contains the most up to date documentation on JupyterLab Desktop. However you can refer to the Jupyter blog posts on JLD for more context and information on the application. Below are the links to the blog posts.
 
+- [JupyterLab Desktop UI Modes (03/11/2024)](https://blog.jupyter.org/jupyterlab-desktop-ui-modes-cec528d5e460)
 - [Python environment management using JupyterLab Desktop CLI (03/01/2024)](https://blog.jupyter.org/python-environment-management-using-jupyterlab-desktop-cli-e57485c9287c)
 - [Python environment management in JupyterLab Desktop (02/20/2024)](https://blog.jupyter.org/python-environment-management-in-jupyterlab-desktop-3b119c5811d9)
 - [Introducing the new JupyterLab Desktop! (02/09/2023)](https://blog.jupyter.org/introducing-the-new-jupyterlab-desktop-bca1982bdb23)
