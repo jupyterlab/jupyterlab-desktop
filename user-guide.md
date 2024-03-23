@@ -206,7 +206,7 @@ JupyterLab Desktop provides a convenient way to configure the JupyterLab UI layo
 
 `Multi document IDE` is equivalent to default UI layout mode of web app and `Single document IDE` mode corresponds to Simple Interface. `Zen Mode` is a newly introduced mode in desktop app which simplifies Simple Interface further by hiding side panels and status bar. Zen Mode is great for focusing on a notebook document. It is the new default mode for opening a single notebook or creating a new notebook. `Managed by web app` option leaves the layout configuration to web app. `Reset to session default` option sets the UI mode to either to default of `UI Mode for opening a single file` or `UI Mode` as defined in the settings dialog (shown below) based on the number of files opened by the session.
 
-Defaults for sessions and for opening a single notebook can be customized from the Settings dialog as shown below.
+Defaults for sessions and for opening a single notebook can be customized from the Settings dialog as shown below. You can also toggle the visibility of `Table of Contents` panel in Zen Mode. Table of Contents panel allows easy navigation between sections in notebook.
 
 <img src="media/ui-mode-settings.png" alt="UI Mode settings" width=700 />
 
