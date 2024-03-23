@@ -116,6 +116,7 @@ jobs:
           CSC_FOR_PULL_REQUEST: true
           APPLEID: ${{ secrets.APPLEID }}
           APPLEIDPASS: ${{ secrets.APPLEIDPASS }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
           CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
           CSC_LINK: ${{ secrets.CSC_LINK }}
         run: |
@@ -270,11 +271,11 @@ jobs:
           snap: dist/JupyterLab.snap
           release: edge
 
-      - name: Publish snap to the latest/candidate channel in Snap Store
-        if: matrix.cfg.platform == 'linux-64' && steps.release-exists.outputs.result == 'true'
-        uses: snapcore/action-publish@v1
-        env:
-          SNAPCRAFT_STORE_CREDENTIALS: ${{ secrets.SNAPCRAFT_STORE_CREDENTIALS }}
-        with:
-          snap: dist/JupyterLab.snap
-          release: candidate
+      # - name: Publish snap to the latest/candidate channel in Snap Store
+      #   if: matrix.cfg.platform == 'linux-64' && steps.release-exists.outputs.result == 'true'
+      #   uses: snapcore/action-publish@v1
+      #   env:
+      #     SNAPCRAFT_STORE_CREDENTIALS: ${{ secrets.SNAPCRAFT_STORE_CREDENTIALS }}
+      #   with:
+      #     snap: dist/JupyterLab.snap
+      #     release: candidate
