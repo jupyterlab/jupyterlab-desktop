@@ -12,3 +12,4 @@ jobs:
         with:
           identifier: ProjectJupyter.JupyterLab
           token: ${{ secrets.WINGET_TOKEN }}
+          fork-user: mbektas
