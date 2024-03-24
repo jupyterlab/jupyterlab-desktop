@@ -2,6 +2,10 @@ name: Publish to WinGet
 
 on:
   workflow_dispatch:
+    inputs:
+      version:
+        description: Version to release
+        required: true
 
 jobs:
   publish:
@@ -14,3 +18,4 @@ jobs:
           identifier: ProjectJupyter.JupyterLab
           token: ${{ secrets.WINGET_TOKEN }}
           fork-user: mbektas
+          release-tag: ${{ inputs.version }}
