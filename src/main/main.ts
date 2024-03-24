@@ -1,5 +1,9 @@
 import { app, Menu, MenuItem } from 'electron';
-import log, { LevelOption } from 'electron-log';
+
+// Update paths to prevent Snap saving persistent data to version specific paths.
+// (Must be called before any other initialization)
+updatePathsForSnap();
+
 import * as fs from 'fs';
 import * as semver from 'semver';
 import {
@@ -15,6 +19,8 @@ import {
   waitForDuration,
   waitForFunction
 } from './utils';
+
+import log, { LevelOption } from 'electron-log';
 import { JupyterApplication } from './app';
 import { ICLIArguments } from './tokens';
 import { SessionConfig } from './config/sessionconfig';
@@ -44,6 +50,32 @@ async function appReady(): Promise<boolean> {
  * This package fixes the PATH variable
  */
 require('fix-path')();
+
+/**
+ * Update app home, appData, userData and logs paths to prevent
+ * Snap to save Python environments and logs in version specific locations
+ */
+function updatePathsForSnap() {
+  const isSnap = (): boolean => {
+    return process.platform === 'linux' && process.env.SNAP !== undefined;
+  };
+
+  if (!isSnap()) {
+    return;
+  }
+
+  const userHome = process.env.HOME;
+  process.env.XDG_CONFIG_HOME = `${userHome}/.config`;
+  // Jupyter uses this path (.local/share)
+  process.env.XDG_DATA_HOME = `${userHome}/.local/share`;
+  const appDataDir = process.env.XDG_CONFIG_HOME;
+  const userDataDir = `${appDataDir}/${app.getName()}`;
+
+  app.setPath('home', userHome);
+  app.setPath('appData', appDataDir);
+  app.setPath('userData', userDataDir);
+  app.setAppLogsPath(`${userDataDir}/logs`);
+}
 
 function getLogLevel(): LevelOption {
   if (isDevMode()) {
