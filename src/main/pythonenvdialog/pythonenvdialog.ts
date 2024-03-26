@@ -131,10 +131,15 @@ export class ManagePythonEnvironmentDialog {
               const condaEnvPath = condaEnvPathForCondaExePath(condaPath);
               const activateCommand = createCommandScriptInEnv(
                 envPath,
-                condaEnvPath
+                condaEnvPath,
+                { quoteChar: "'" }
               );
 
-              launchTerminalInDirectory(envPath, activateCommand);
+              launchTerminalInDirectory({
+                dirPath: envPath,
+                commands: activateCommand,
+                interactive: true
+              });
             }
           },
           {
@@ -162,10 +167,18 @@ export class ManagePythonEnvironmentDialog {
               let launchCommand = createCommandScriptInEnv(
                 envPath,
                 condaEnvPath,
-                `jupyter lab --notebook-dir="${workingDir}"`
+                {
+                  command: `jupyter lab --notebook-dir='${workingDir}'`,
+                  quoteChar: "'",
+                  joinStr: ' && '
+                }
               );
 
-              launchTerminalInDirectory(envPath, launchCommand);
+              launchTerminalInDirectory({
+                dirPath: envPath,
+                commands: launchCommand,
+                interactive: false
+              });
             }
           },
           {

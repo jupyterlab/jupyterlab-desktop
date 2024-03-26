@@ -171,12 +171,10 @@ export async function runCommandInEnvironment(
   const isWin = process.platform === 'win32';
   const baseCondaPath = getCondaPath();
   const condaEnvPath = condaEnvPathForCondaExePath(baseCondaPath);
-  const commandScript = createCommandScriptInEnv(
-    envPath,
-    condaEnvPath,
+  const commandScript = createCommandScriptInEnv(envPath, condaEnvPath, {
     command,
-    ' && '
-  );
+    joinStr: ' && '
+  });
 
   // TODO: implement timeout. in case there is network issues
 
