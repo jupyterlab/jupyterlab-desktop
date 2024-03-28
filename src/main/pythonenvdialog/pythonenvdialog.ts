@@ -131,10 +131,54 @@ export class ManagePythonEnvironmentDialog {
               const condaEnvPath = condaEnvPathForCondaExePath(condaPath);
               const activateCommand = createCommandScriptInEnv(
                 envPath,
-                condaEnvPath
+                condaEnvPath,
+                { quoteChar: "'" }
               );
 
-              launchTerminalInDirectory(envPath, activateCommand);
+              launchTerminalInDirectory({
+                dirPath: envPath,
+                commands: activateCommand,
+                interactive: true
+              });
+            }
+          },
+          {
+            label: 'Launch JupyterLab Web App',
+            click: async () => {
+              const { filePaths } = await dialog.showOpenDialog({
+                title: 'Choose working directory',
+                properties: [
+                  'showHiddenFiles',
+                  'noResolveAliases',
+                  'openDirectory',
+                  'createDirectory'
+                ],
+                buttonLabel: 'Launch'
+              });
+
+              if (filePaths.length === 0) {
+                return;
+              }
+
+              const workingDir = filePaths[0];
+
+              const condaPath = getCondaPath() || '';
+              const condaEnvPath = condaEnvPathForCondaExePath(condaPath);
+              let launchCommand = createCommandScriptInEnv(
+                envPath,
+                condaEnvPath,
+                {
+                  command: `jupyter lab --notebook-dir='${workingDir}'`,
+                  quoteChar: "'",
+                  joinStr: ' && '
+                }
+              );
+
+              launchTerminalInDirectory({
+                dirPath: envPath,
+                commands: launchCommand,
+                interactive: false
+              });
             }
           },
           {

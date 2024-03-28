@@ -499,8 +499,11 @@ export function isBaseCondaEnv(envPath: string): boolean {
 export function createCommandScriptInEnv(
   envPath: string,
   baseCondaEnvPath: string,
-  command?: string,
-  joinStr?: string
+  options?: {
+    command?: string;
+    quoteChar?: string;
+    joinStr?: string;
+  }
 ): string {
   try {
     const stat = fs.lstatSync(envPath);
@@ -511,9 +514,9 @@ export function createCommandScriptInEnv(
     //
   }
 
-  if (joinStr === undefined) {
-    joinStr = '\n';
-  }
+  const quoteChar = options?.quoteChar || '"';
+  const joinStr = options?.joinStr || '\n';
+  let command = options?.command;
   const isWin = process.platform === 'win32';
 
   let activatePath = activatePathForEnvPath(envPath);
@@ -555,11 +558,11 @@ export function createCommandScriptInEnv(
       scriptLines.push(`CALL ${command}`);
     }
   } else {
-    scriptLines.push(`source "${activatePath}"`);
+    scriptLines.push(`source ${quoteChar}${activatePath}${quoteChar}`);
     if (isConda && isBaseCondaActivate) {
-      scriptLines.push(`source "${condaSourcePath}"`);
+      scriptLines.push(`source ${quoteChar}${condaSourcePath}${quoteChar}`);
       if (!isCondaCommand) {
-        scriptLines.push(`conda activate "${envPath}"`);
+        scriptLines.push(`conda activate ${quoteChar}${envPath}${quoteChar}`);
       }
     }
     if (command) {
@@ -668,15 +671,19 @@ export function openDirectoryInExplorer(dirPath: string): boolean {
   return true;
 }
 
-export function launchTerminalInDirectory(
-  dirPath: string,
-  commands?: string
-): boolean {
+export function launchTerminalInDirectory(options: {
+  dirPath: string;
+  interactive: boolean;
+  commands?: string;
+}): boolean {
+  const { dirPath, interactive } = options;
   if (!(fs.existsSync(dirPath) && fs.statSync(dirPath).isDirectory())) {
     return false;
   }
 
   const { platform } = process;
+  let commands = options.commands;
+
   if (platform === 'darwin') {
     let callCommands = '';
     if (commands) {
@@ -711,7 +718,11 @@ export function launchTerminalInDirectory(
   } else {
     let callCommands = '';
     if (commands) {
-      callCommands = ` -- bash -c "${commands}; exec bash"`;
+      // note that calling "exec bash" at the end will cause .bashrc to be reloaded,
+      // which could possibly override python path (e.g. base conda initialization)
+      callCommands = ` -- bash -c "${commands}${
+        interactive ? '; exec bash' : ''
+      }"`;
     }
     exec(`gnome-terminal --working-directory="${dirPath}"${callCommands}`);
   }
