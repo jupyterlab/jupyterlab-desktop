@@ -261,21 +261,12 @@ jobs:
           asset_name: JupyterLab-Setup.snap
           tag: v${{ steps.package-info.outputs.version}}
           overwrite: true
-      
-      - name: Publish snap to the latest/edge channel in Snap Store
-        if: matrix.cfg.platform == 'linux-64' && github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]'
+
+      - name: Publish snap to the latest/candidate channel in Snap Store
+        if: matrix.cfg.platform == 'linux-64' && steps.release-exists.outputs.result == 'true'
         uses: snapcore/action-publish@v1
         env:
           SNAPCRAFT_STORE_CREDENTIALS: ${{ secrets.SNAPCRAFT_STORE_CREDENTIALS }}
         with:
           snap: dist/JupyterLab.snap
-          release: edge
-
-      # - name: Publish snap to the latest/candidate channel in Snap Store
-      #   if: matrix.cfg.platform == 'linux-64' && steps.release-exists.outputs.result == 'true'
-      #   uses: snapcore/action-publish@v1
-      #   env:
-      #     SNAPCRAFT_STORE_CREDENTIALS: ${{ secrets.SNAPCRAFT_STORE_CREDENTIALS }}
-      #   with:
-      #     snap: dist/JupyterLab.snap
-      #     release: candidate
+          release: candidate
