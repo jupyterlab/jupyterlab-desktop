@@ -72,9 +72,9 @@ jobs:
 
       - run: |
           conda info
-          conda list
-          conda config --show-sources
-          conda config --show
+          conda list conda-lock
+          which conda-lock
+          conda-lock --version
 
       - name: Create Application Server Installer
         run: |
