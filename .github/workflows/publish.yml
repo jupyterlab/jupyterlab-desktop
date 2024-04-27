@@ -73,6 +73,7 @@ jobs:
       - run: |
           conda info
           conda list conda-lock
+          ls -al /usr/share/miniconda/bin
           which conda-lock
           conda-lock --version
 
