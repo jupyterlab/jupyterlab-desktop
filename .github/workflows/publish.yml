@@ -71,6 +71,7 @@ jobs:
           result-encoding: string
 
       - run: |
+          conda activate
           conda info
           conda list conda-lock
           ls -al /usr/share/miniconda/bin
