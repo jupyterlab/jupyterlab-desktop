@@ -228,7 +228,7 @@
     "js-yaml": "^4.1.0",
     "node-fetch": "^2.6.7",
     "semver": "^7.5.4",
-    "tar": "^6.2.0",
+    "tar": "^6.2.1",
     "update-electron-app": "^2.0.1",
     "which": "^2.0.2",
     "winreg": "^1.2.4",
