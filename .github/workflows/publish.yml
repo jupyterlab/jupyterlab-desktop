@@ -70,6 +70,12 @@ jobs:
             return releaseWithTag ? 'true' : 'false'
           result-encoding: string
 
+      - run: |
+          conda info
+          conda list
+          conda config --show-sources
+          conda config --show
+
       - name: Create Application Server Installer
         run: |
           yarn create_env_installer:${{ matrix.cfg.platform }}
