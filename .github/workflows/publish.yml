@@ -24,7 +24,10 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-      - uses: s-weigand/setup-conda@v1
+      - uses: conda-incubator/setup-miniconda@v3
+        with:
+          auto-update-conda: true
+          auto-activate-base: true
       - run: conda install --file ./workflow_env/conda-${{ matrix.cfg.build_platform }}.lock -y
 
       - name: Install node
