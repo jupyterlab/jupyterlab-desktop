@@ -21,6 +21,9 @@ jobs:
 
     name: '${{ matrix.cfg.platform_name }} installer'
     runs-on: ${{ matrix.cfg.os }}
+    defaults:
+      run:
+        shell: bash -el {0}
 
     steps:
       - uses: actions/checkout@v4
@@ -72,7 +75,6 @@ jobs:
           result-encoding: string
 
       - name: test conda
-        shell: bash -el {0}
         run: |
           # conda activate
           conda info
