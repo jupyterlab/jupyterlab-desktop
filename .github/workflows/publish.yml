@@ -71,7 +71,9 @@ jobs:
             return releaseWithTag ? 'true' : 'false'
           result-encoding: string
 
-      - run: |
+      - name: test conda
+        shell: bash -el {0}
+        run: |
           # conda activate
           conda info
           conda list conda-lock
