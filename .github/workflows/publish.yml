@@ -28,6 +28,7 @@ jobs:
         with:
           auto-update-conda: true
           auto-activate-base: true
+          activate-environment: ""
       - run: conda install --file ./workflow_env/conda-${{ matrix.cfg.build_platform }}.lock -y
 
       - name: Install node
@@ -71,7 +72,7 @@ jobs:
           result-encoding: string
 
       - run: |
-          conda activate
+          # conda activate
           conda info
           conda list conda-lock
           ls -al /usr/share/miniconda/bin
