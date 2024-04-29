@@ -74,14 +74,14 @@ jobs:
             return releaseWithTag ? 'true' : 'false'
           result-encoding: string
 
-      - name: test conda
-        run: |
-          # conda activate
-          conda info
-          conda list conda-lock
-          ls -al /usr/share/miniconda/bin
-          which conda-lock
-          conda-lock --version
+      # - name: test conda
+      #   run: |
+      #     # conda activate
+      #     conda info
+      #     conda list conda-lock
+      #     ls -al /usr/share/miniconda/bin
+      #     which conda-lock
+      #     conda-lock --version
 
       - name: Create Application Server Installer
         run: |
