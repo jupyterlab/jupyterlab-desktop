@@ -12,6 +12,10 @@ permissions:
 jobs:
   check_for_lab_updates:
     runs-on: macos-latest
+    defaults:
+      run:
+        # needed for conda to work
+        shell: bash -el {0}
 
     steps:
       - uses: actions/checkout@v4
@@ -29,11 +33,25 @@ jobs:
         run: |
           python -m pip install tbump
 
+      - name: 'Get latest JupyterLab version'
+        uses: actions/github-script@v7
+        id: get-latest-jupyterlab-version
+        with:
+          github-token: ${{ secrets.JLAB_APP_TOKEN }}
+          script: |
+            const releases = await github.rest.repos.listReleases({
+              owner: "jupyterlab",
+              repo: "jupyterlab"
+            })
+            const latestRelease = releases.data.find(release => release.tag_name.startsWith('v') && !(release.draft || release.prerelease))
+            return latestRelease ? latestRelease.tag_name.substring(1) : ''
+          result-encoding: string
+
       - name: Check for new releases
         shell: bash
         run: |
           set -eux
-          export LATEST=$(python scripts/get_latest_lab_version.py)
+          export LATEST=${{ steps.get-latest-jupyterlab-version.outputs.result }}
           echo "latest=${LATEST}" >> $GITHUB_ENV
           tbump --only-patch ${LATEST}-1 --non-interactive
           if [[ ! -z "$(git status --porcelain package.json)" ]]; then
@@ -44,7 +62,7 @@ jobs:
         if: env.update_available == 'true'
         uses: actions/setup-node@v4
         with:
-          node-version: '14.x'
+          node-version: '20.x'
       
       - name: Install npm dependencies
         if: env.update_available == 'true'
@@ -52,9 +70,13 @@ jobs:
           npm install --global yarn
           yarn install
 
-      - name: Install conda
+      - uses: conda-incubator/setup-miniconda@v3
         if: env.update_available == 'true'
-        uses: s-weigand/setup-conda@v1
+        with:
+          auto-update-conda: true
+          auto-activate-base: true
+          activate-environment: ""
+          channels: conda-forge
 
       - name: Install conda dependencies
         if: env.update_available == 'true'
@@ -67,7 +89,7 @@ jobs:
       - name: Update binary sign list osx-64
         if: env.update_available == 'true'
         run: |
-          yarn clean_env_installer && conda-lock install --prefix ./env_installer/jlab_server ./env_installer/conda-osx-64.lock
+          yarn clean_env_installer && conda-lock install --no-validate-platform --prefix ./env_installer/jlab_server ./env_installer/conda-osx-64.lock
           yarn update_binary_sign_list --platform osx-64
 
       - name: Update binary sign list osx-arm64
