@@ -21,16 +21,26 @@ jobs:
 
     name: '${{ matrix.cfg.platform_name }} installer'
     runs-on: ${{ matrix.cfg.os }}
+    defaults:
+      run:
+        # needed for conda to work
+        shell: bash -el {0}
 
     steps:
       - uses: actions/checkout@v4
-      - uses: s-weigand/setup-conda@v1
+      - uses: conda-incubator/setup-miniconda@v3
+        with:
+          auto-update-conda: true
+          auto-activate-base: true
+          activate-environment: ""
+          channels: conda-forge
+
       - run: conda install --file ./workflow_env/conda-${{ matrix.cfg.build_platform }}.lock -y
 
       - name: Install node
         uses: actions/setup-node@v4
         with:
-          node-version: '14.x'
+          node-version: '20.x'
           cache: 'yarn'
 
       - name: Install dependencies
