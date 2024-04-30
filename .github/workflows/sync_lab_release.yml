@@ -12,6 +12,10 @@ permissions:
 jobs:
   check_for_lab_updates:
     runs-on: macos-latest
+    defaults:
+      run:
+        # needed for conda to work
+        shell: bash -el {0}
 
     steps:
       - uses: actions/checkout@v4
@@ -66,9 +70,13 @@ jobs:
           npm install --global yarn
           yarn install
 
-      - name: Install conda
+      - uses: conda-incubator/setup-miniconda@v3
         if: env.update_available == 'true'
-        uses: s-weigand/setup-conda@v1
+        with:
+          auto-update-conda: true
+          auto-activate-base: true
+          activate-environment: ""
+          channels: conda-forge
 
       - name: Install conda dependencies
         if: env.update_available == 'true'
