@@ -23,6 +23,7 @@ jobs:
     runs-on: ${{ matrix.cfg.os }}
     defaults:
       run:
+        # needed for conda to work
         shell: bash -el {0}
 
     steps:
@@ -32,6 +33,8 @@ jobs:
           auto-update-conda: true
           auto-activate-base: true
           activate-environment: ""
+          channels: conda-forge
+
       - run: conda install --file ./workflow_env/conda-${{ matrix.cfg.build_platform }}.lock -y
 
       - name: Install node
@@ -73,15 +76,6 @@ jobs:
             const releaseWithTag = releases.data.find(release => release.tag_name === tagName && (release.draft || release.prerelease))
             return releaseWithTag ? 'true' : 'false'
           result-encoding: string
-
-      # - name: test conda
-      #   run: |
-      #     # conda activate
-      #     conda info
-      #     conda list conda-lock
-      #     ls -al /usr/share/miniconda/bin
-      #     which conda-lock
-      #     conda-lock --version
 
       - name: Create Application Server Installer
         run: |
