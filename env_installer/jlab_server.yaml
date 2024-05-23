@@ -4,7 +4,7 @@ channels:
 dependencies:
   - conda
   - ipywidgets >= 8.0.1
-  - jupyterlab 4.2.0
+  - jupyterlab 4.2.1
   - ipympl >= 0.8.2
   - matplotlib-base
   - numpy
