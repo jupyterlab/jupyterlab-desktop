@@ -202,7 +202,7 @@ lib/libxcb.1.dylib
 lib/libxml2.2.dylib
 lib/libyaml-0.2.dylib
 lib/libyaml-cpp.0.8.0.dylib
-lib/libz.1.2.13.dylib
+lib/libz.1.3.1.dylib
 lib/libzmq.5.dylib
 lib/libzstd.1.5.5.dylib
 lib/python3.12/config-3.12-darwin/python.o
