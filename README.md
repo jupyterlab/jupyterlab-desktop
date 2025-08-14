@@ -1,5 +1,9 @@
 # JupyterLab Desktop
 
+> [!CAUTION]
+> As of August 2025, JupyterLab Desktop is not actively maintained and does not receive security bug fixes. Using JupyterLab Desktop for sensitive data, or with untrusted notebooks/extensions is not recommended.
+> If you would like to contribute and help with maintenance, please get in touch by leaving a comment on the [issue discussing project archival](https://github.com/jupyterlab/jupyterlab-desktop/issues/890).
+
 JupyterLab Desktop is the cross-platform desktop application for [JupyterLab](https://github.com/jupyterlab/jupyterlab). It is the quickest and easiest way to get started with Jupyter notebooks on your personal computer, with the flexibility for advanced use cases.
 
 ![JupyterLab Desktop](media/jupyterlab-desktop.png)
