@@ -12,6 +12,9 @@ permissions:
 jobs:
   check_for_lab_updates:
     runs-on: macos-latest
+    environment: sync
+    permissions:
+      id-token: write
     defaults:
       run:
         # needed for conda to work
