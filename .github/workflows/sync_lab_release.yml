@@ -2,128 +2,279 @@ name: Check for new JupyterLab releases
 
 on:
   schedule:
-    - cron: 30 17 * * *
+    - cron: 30 17 * * *   # daily at 17:30 UTC
   workflow_dispatch:
 
+# Minimal repo-level permissions: enough for content updates + PR operations.
 permissions:
   contents: write
   pull-requests: write
+  id-token: write
 
 jobs:
   check_for_lab_updates:
-    runs-on: macos-latest
+    runs-on: macos-15
     environment: sync
-    permissions:
-      id-token: write
+
     defaults:
       run:
-        # needed for conda to work
+        # Conda/mamba workflows benefit from a login shell (conda init hooks).
         shell: bash -el {0}
 
     steps:
-      - uses: actions/create-github-app-token@v2
+      # -----------------------------------------------------------------------
+      # 1) Try to obtain a GitHub App token (Desktop Bot).
+      #    In forks this will likely fail; we continue and fall back to GITHUB_TOKEN.
+      # -----------------------------------------------------------------------
+      - name: Create Desktop Bot app token (if available)
         id: app-token
+        uses: actions/create-github-app-token@v2
+        continue-on-error: true
         with:
           app-id: ${{ vars.APP_ID }}
           private-key: ${{ secrets.APP_PRIVATE_KEY }}
-    
-      - uses: actions/checkout@v4
 
-      - name: Install hub
+      - name: Note token source
         run: |
-          brew install hub
+          if [ -n "${{ steps.app-token.outputs.token }}" ]; then
+            echo "::notice title=Auth::Using Desktop Bot (GitHub App) token for pushes."
+          else
+            echo "::notice title=Auth::Using default GITHUB_TOKEN (github-actions[bot]) for pushes."
+          fi
 
-      - name: Set up Python
+      # -----------------------------------------------------------------------
+      # 2) Checkout without persisting credentials so we control which token
+      #    is used for pushes (App token if present, else default GITHUB_TOKEN).
+      # -----------------------------------------------------------------------
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          token: ${{ github.token }}
+
+      # -----------------------------------------------------------------------
+      # 3) Bind 'origin' to the chosen token and set an explicit committer.
+      # -----------------------------------------------------------------------
+      - name: Configure git auth for pushes/PRs
+        run: |
+          set -eux
+          TOKEN="${{ steps.app-token.outputs.token || github.token }}"
+          if [ -n "${{ steps.app-token.outputs.token }}" ]; then
+            echo "::notice title=Auth::Using Desktop Bot (GitHub App) token for pushes."
+          else
+            echo "::notice title=Auth::Using default GITHUB_TOKEN (github-actions[bot]) for pushes."
+          fi
+          git config user.name  "JupyterLab Desktop Bot"
+          git config user.email "jupyterlab-bot@users.noreply.github.com"
+          git remote set-url origin "https://x-access-token:${TOKEN}@github.com/${{ github.repository }}.git"
+
+      # gh is preinstalled on macOS runners; ensure it's available just in case.
+      - name: Ensure GitHub CLI is available
+        run: |
+          set -eux
+          command -v gh >/dev/null 2>&1 || brew install gh
+
+      # -----------------------------------------------------------------------
+      # 4) Host tooling: Python + tbump (keeps our version bump trivial).
+      # -----------------------------------------------------------------------
+      - name: Set up Python (host tooling)
         uses: actions/setup-python@v5
         with:
-          python-version: '3.9'
+          python-version: '3.13'
 
-      - name: Install Python dependencies
-        run: |
-          python -m pip install tbump
+      - name: Install Python tooling
+        run: python -m pip install --upgrade pip tbump
 
-      - name: 'Get latest JupyterLab version'
-        uses: actions/github-script@v7
-        id: get-latest-jupyterlab-version
+      # -----------------------------------------------------------------------
+      # 5) Node with Yarn cache enabled (setup-node caches Yarn’s cache dir).
+      #    We do NOT cache node_modules to reduce cache churn.
+      # -----------------------------------------------------------------------
+      - name: Set up Node (with Yarn cache)
+        uses: actions/setup-node@v4
         with:
-          github-token: ${{ steps.app-token.outputs.token }}
+          node-version: '20'
+          cache: 'yarn'
+          cache-dependency-path: '**/yarn.lock'
+
+      # -----------------------------------------------------------------------
+      # 6) Discover the latest stable JupyterLab release.
+      #    Prefer the App token for upstream API calls if present.
+      # -----------------------------------------------------------------------
+      - name: Get latest JupyterLab version
+        id: get-latest-jupyterlab-version
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ steps.app-token.outputs.token || github.token }}
           script: |
             const releases = await github.rest.repos.listReleases({
               owner: "jupyterlab",
               repo: "jupyterlab"
-            })
-            const latestRelease = releases.data.find(release => release.tag_name.startsWith('v') && !(release.draft || release.prerelease))
-            return latestRelease ? latestRelease.tag_name.substring(1) : ''
+            });
+            const latest = releases.data.find(
+              r => r.tag_name?.startsWith('v') && !(r.draft || r.prerelease)
+            );
+            return latest ? latest.tag_name.substring(1) : '';
           result-encoding: string
 
-      - name: Check for new releases
-        shell: bash
+      # Early exit if we failed to resolve a latest version (e.g. API flake).
+      - name: Guard – ensure latest version was discovered
         run: |
-          set -eux
-          export LATEST=${{ steps.get-latest-jupyterlab-version.outputs.result }}
-          echo "latest=${LATEST}" >> $GITHUB_ENV
-          tbump --only-patch ${LATEST}-1 --non-interactive
-          if [[ ! -z "$(git status --porcelain package.json)" ]]; then
-            echo "update_available=true" >> $GITHUB_ENV
+          set -e
+          if [ -z "${{ steps.get-latest-jupyterlab-version.outputs.result }}" ]; then
+            echo "::notice title=No release found::Skipping – could not determine latest JupyterLab version."
+            exit 0
           fi
 
-      - name: Install Node
-        if: env.update_available == 'true'
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20.x'
-      
-      - name: Install npm dependencies
+      # -----------------------------------------------------------------------
+      # 7) If the remote update branch already exists, start from it
+      #    so the bump compares against the most recent bot state.
+      # -----------------------------------------------------------------------
+      - name: Prepare update branch if it already exists
+        run: |
+          set -eux
+          LATEST='${{ steps.get-latest-jupyterlab-version.outputs.result }}'
+          BRANCH="update-to-v${LATEST}"
+          git fetch origin "${BRANCH}" || true
+          if git ls-remote --exit-code --heads origin "${BRANCH}" >/dev/null 2>&1; then
+            git checkout -B "${BRANCH}" "origin/${BRANCH}"
+          else
+            echo "Remote branch ${BRANCH} not found; will create it later."
+          fi
+
+      # Bump to X.Y.Z-1 and detect whether anything changed.
+      # If package.json changed, we consider that "update available".
+      - name: Bump version and detect changes
+        run: |
+          set -eux
+          LATEST='${{ steps.get-latest-jupyterlab-version.outputs.result }}'
+          echo "latest=${LATEST}" >> "$GITHUB_ENV"
+          tbump --only-patch "${LATEST}-1" --non-interactive
+          if [[ -n "$(git status --porcelain package.json)" ]]; then
+            echo "update_available=true" >> "$GITHUB_ENV"
+          fi
+
+      # -----------------------------------------------------------------------
+      # 8) Install JS deps only when an update is needed.
+      #    No --frozen-lockfile: allow Yarn to refresh yarn.lock when required.
+      # -----------------------------------------------------------------------
+      - name: Install npm dependencies (Yarn)
         if: env.update_available == 'true'
         run: |
+          set -eux
           npm install --global yarn
           yarn install
 
-      - uses: conda-incubator/setup-miniconda@v3
+      # -----------------------------------------------------------------------
+      # 9) Micromamba (fast conda). Use conda-forge only; cache downloads.
+      #    Install conda-lock in base so the CLI is available to the job.
+      # -----------------------------------------------------------------------
+      - name: Set up micromamba (conda-forge only)
         if: env.update_available == 'true'
+        uses: mamba-org/setup-micromamba@v1
         with:
-          auto-update-conda: true
-          auto-activate-base: true
-          activate-environment: ""
-          channels: conda-forge
+          micromamba-version: latest
+          init-shell: bash
+          condarc: |
+            channel_priority: strict
+            channels:
+              - conda-forge
+          cache-downloads: true
+          cache-downloads-key: micromamba-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('env_installer/conda-*.lock') }}
+          cache-environment: false
 
-      - name: Install conda dependencies
+      - name: Install conda-lock CLI
         if: env.update_available == 'true'
-        run: conda install -c conda-forge conda conda-lock -y
+        run: micromamba install -y -n base -c conda-forge conda-lock
 
+      - name: Add micromamba bin to PATH
+        if: env.update_available == 'true'
+        run: echo "$MAMBA_ROOT_PREFIX/bin" >> "$GITHUB_PATH"
+
+      # -----------------------------------------------------------------------
+      # 10) Update the conda lock files and refresh the binary sign lists.
+      #     Use --mamba so conda-lock drives micromamba, not classic conda.
+      # -----------------------------------------------------------------------
       - name: Update conda lock files
         if: env.update_available == 'true'
         run: yarn update_conda_lock
-      
+
       - name: Update binary sign list osx-64
         if: env.update_available == 'true'
         run: |
-          yarn clean_env_installer && conda-lock install --no-validate-platform --prefix ./env_installer/jlab_server ./env_installer/conda-osx-64.lock
+          set -eux
+          yarn clean_env_installer
+          conda-lock install --mamba --no-validate-platform \
+            --prefix ./env_installer/jlab_server \
+            ./env_installer/conda-osx-64.lock
           yarn update_binary_sign_list --platform osx-64
 
       - name: Update binary sign list osx-arm64
         if: env.update_available == 'true'
         run: |
-          yarn clean_env_installer && conda-lock install --no-validate-platform --prefix ./env_installer/jlab_server ./env_installer/conda-osx-arm64.lock
+          set -eux
+          yarn clean_env_installer
+          conda-lock install --mamba --no-validate-platform \
+            --prefix ./env_installer/jlab_server \
+            ./env_installer/conda-osx-arm64.lock
           yarn update_binary_sign_list --platform osx-arm64
 
-      - name: Create a PR for the new version
+      # -----------------------------------------------------------------------
+      # 11) Create or update the PR (idempotent).
+      #     - No changes → all prior steps were skipped; nothing to do.
+      #     - If PR exists for the branch → push updates and comment.
+      #     - Else → create a new PR with gh CLI.
+      #
+      #     Includes "hardening" to avoid pushing a repo left in rebase state:
+      #       * Try pull --rebase if remote branch exists.
+      #       * On rebase failure, abort & hard reset to clean HEAD.
+      #       * If unmerged files remain, abort & reset again.
+      # -----------------------------------------------------------------------
+      - name: Open or update PR
         if: env.update_available == 'true'
-        shell: bash
         env:
-          GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
+          GITHUB_TOKEN: ${{ steps.app-token.outputs.token || github.token }}
         run: |
           set -eux
-          export LATEST=${{ env.latest }}
-          export BRANCH_NAME=update-to-v${LATEST}
-          # this will fail if the branch already exists which means we won't have duplicate PRs
-          git checkout -b "${BRANCH_NAME}"
-          git config user.name "JupyterLab Desktop Bot"
-          git config user.email 'jupyterlab-bot@users.noreply.github.com'
+          LATEST='${{ env.latest }}'
+          BRANCH="update-to-v${LATEST}"
 
-          git commit . -m "Update to JupyterLab v${LATEST}"
+          # 1) Work on a local branch from current HEAD (create or reuse).
+          git fetch origin "${BRANCH}" || true
+          git checkout -B "${BRANCH}"
 
-          git push --set-upstream origin "${BRANCH_NAME}"            
-          hub pull-request -m "Update to JupyterLab v${LATEST}" \
-              -m "New JupyterLab release [v${LATEST}](https://github.com/jupyterlab/jupyterlab/releases/tag/v${LATEST}) is available. Please review the lock file carefully.".
+          # 2) Commit only if there are staged changes (locks, yaml, package.json…)
+          git add -A
+          if git diff --cached --quiet; then
+            echo "No staged changes; nothing to commit."
+          else
+            git commit -m "Update to JupyterLab v${LATEST}"
+          fi
 
+          # 3) Hardening: rebase onto remote if it exists; if it fails, abort & clean.
+          if git ls-remote --exit-code --heads origin "${BRANCH}" >/dev/null 2>&1; then
+            if ! git pull --rebase origin "${BRANCH}"; then
+              git rebase --abort || true
+              git reset --hard HEAD
+            fi
+          fi
+          # Extra safety: if there are unmerged paths, abort & clean before pushing.
+          if [ -n "$(git diff --name-only --diff-filter=U)" ]; then
+            git rebase --abort || true
+            git reset --hard HEAD
+          fi
+
+          # 4) Safe push for bot-managed branches.
+          git push --force-with-lease --set-upstream origin "${BRANCH}"
+
+          # 5) PR: comment if exists; otherwise create a new one.
+          PR_NUMBER="$(gh pr list --head "${BRANCH}" --state open --json number --jq '.[0].number' || true)"
+          if [ -n "${PR_NUMBER}" ]; then
+            echo "::notice title=PR::Existing PR #${PR_NUMBER} detected; pushing updates only."
+            gh pr comment "${PR_NUMBER}" --body "Automated update: refreshed lock files and metadata." || true
+          else
+            echo "::notice title=PR::Creating a new PR for ${BRANCH}."
+            gh pr create \
+              --title "Update to JupyterLab v${LATEST}" \
+              --body  "New JupyterLab release [v${LATEST}](https://github.com/jupyterlab/jupyterlab/releases/tag/v${LATEST}) is available. Please review the lock files carefully." \
+              --fill
+          fi
