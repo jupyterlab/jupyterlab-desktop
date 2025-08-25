@@ -60,6 +60,16 @@ jobs:
             echo "update_available=false" >> $GITHUB_OUTPUT
           fi
 
+      - name: Upload updated package.json and tbump.toml
+        uses: actions/upload-artifact@v4
+        if: steps.check-update.outputs.update_available == 'true'
+        with:
+          name: updated-version-info
+          path: |
+            tbump.toml
+            package.json
+          if-no-files-found: error
+
   update-files:
     needs: check-latest-version
     if: needs.check-latest-version.outputs.update_available == 'true'
@@ -72,6 +82,12 @@ jobs:
       contents: read
     steps:
       - uses: actions/checkout@v4
+
+      - name: Download updated version info
+        uses: actions/download-artifact@v4
+        with:
+          name: updated-version-info
+          path: .
 
       - name: Install Node
         uses: actions/setup-node@v4
@@ -142,7 +158,7 @@ jobs:
         with:
           token: ${{ steps.app-token.outputs.token }}
 
-      - name: Download updated repo
+      - name: Download updated lock files and sign lists
         uses: actions/download-artifact@v4
         with:
           name: updated-repo
