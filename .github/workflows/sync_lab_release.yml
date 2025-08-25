@@ -109,7 +109,8 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: updated-repo
-          path: .
+          path: |
+            $(git diff --name-only)
 
   push-and-pr:
     needs: [check-latest-version, update-files]
