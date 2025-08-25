@@ -138,6 +138,7 @@ jobs:
       - name: Push changes & open PR
         env:
           LATEST: ${{ needs.check-latest-version.outputs.latest }}
+          GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
         run: |
           set -eux
           # this will fail if the branch already exists which means we won't have duplicate PRs
