@@ -105,20 +105,22 @@ jobs:
           yarn clean_env_installer && conda-lock install --no-validate-platform --prefix ./env_installer/jlab_server ./env_installer/conda-osx-arm64.lock
           yarn update_binary_sign_list --platform osx-arm64
 
-      - name: Get changed files
-        id: changed-files
+      - name: Copy changed files to artifact directory
         run: |
-          git diff --name-only > changed_files.txt
-          echo "files<<EOF" >> $GITHUB_OUTPUT
-          cat changed_files.txt >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
+          mkdir -p changed-files
+          changed_files=$(git diff --name-only)
+          echo "$changed_files" | while read file; do
+            if [ -f "$file" ]; then
+              mkdir -p "changed-files/$(dirname "$file")"
+              cp "$file" "changed-files/$file"
+            fi
+          done
 
       - name: Upload updated repo as artifact
         uses: actions/upload-artifact@v4
         with:
           name: updated-repo
-          path: |
-            ${{ steps.changed-files.outputs.files }}
+          path: changed-files/
           if-no-files-found: error
 
   push-and-pr:
