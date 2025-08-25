@@ -109,8 +109,7 @@ jobs:
         id: changed-files
         run: |
           # Get all changed files (both staged and unstaged)
-          git diff --name-only > changed_files.txt
-          echo "files=$(cat changed_files.txt | tr '\n' ' ')" >> $GITHUB_OUTPUT
+          git diff --name-only >> $GITHUB_OUTPUT
 
       - name: Upload updated repo as artifact
         uses: actions/upload-artifact@v4
