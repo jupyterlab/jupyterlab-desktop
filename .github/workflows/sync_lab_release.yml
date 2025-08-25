@@ -54,7 +54,7 @@ jobs:
           set -eux
           export LATEST=${{ steps.get-latest-jupyterlab-version.outputs.result }}
           tbump --only-patch ${LATEST}-1 --non-interactive
-          if [[ -n "$(git status --porcelain package.json)" ]]; then
+          if [[ ! -z "$(git status --porcelain package.json)" ]]; then
             echo "update_available=true" >> $GITHUB_OUTPUT
           else
             echo "update_available=false" >> $GITHUB_OUTPUT
@@ -97,14 +97,12 @@ jobs:
 
       - name: Update binary sign list osx-64
         run: |
-          yarn clean_env_installer && \
-          conda-lock install --no-validate-platform --prefix ./env_installer/jlab_server ./env_installer/conda-osx-64.lock
+          yarn clean_env_installer && conda-lock install --no-validate-platform --prefix ./env_installer/jlab_server ./env_installer/conda-osx-64.lock
           yarn update_binary_sign_list --platform osx-64
 
       - name: Update binary sign list osx-arm64
         run: |
-          yarn clean_env_installer && \
-          conda-lock install --no-validate-platform --prefix ./env_installer/jlab_server ./env_installer/conda-osx-arm64.lock
+          yarn clean_env_installer && conda-lock install --no-validate-platform --prefix ./env_installer/jlab_server ./env_installer/conda-osx-arm64.lock
           yarn update_binary_sign_list --platform osx-arm64
 
       - name: Upload updated repo as artifact
@@ -139,10 +137,10 @@ jobs:
 
       - name: Push changes & open PR
         env:
-          GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
           LATEST: ${{ needs.check-latest-version.outputs.latest }}
         run: |
           set -eux
+          # this will fail if the branch already exists which means we won't have duplicate PRs
           BRANCH_NAME="update-to-v${LATEST}"
           git checkout -b "${BRANCH_NAME}"
           git config user.name "JupyterLab Desktop Bot"
