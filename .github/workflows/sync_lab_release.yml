@@ -115,6 +115,7 @@ jobs:
     needs: [check-latest-version, update-files]
     if: needs.check-latest-version.outputs.update_available == 'true'
     runs-on: ubuntu-latest
+    environment: sync
     permissions:
       contents: write
       pull-requests: write
