@@ -60,7 +60,7 @@ jobs:
             echo "update_available=false" >> $GITHUB_OUTPUT
           fi
 
-      - name: Upload updated package.json and tbump.toml
+      - name: Upload updated version spec files
         uses: actions/upload-artifact@v4
         if: steps.check-update.outputs.update_available == 'true'
         with:
@@ -68,6 +68,7 @@ jobs:
           path: |
             tbump.toml
             package.json
+            env_installer/jlab_server.yaml
           if-no-files-found: error
 
   update-files:
