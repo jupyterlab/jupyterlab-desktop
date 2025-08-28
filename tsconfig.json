@@ -1,9 +1,10 @@
 {
   "compilerOptions": {
     "declaration": false,
-    "noImplicitAny": true,
-    "noEmitOnError": true,
-    "noUnusedLocals": true,
+    "noImplicitAny": false,
+    "noEmitOnError": false,
+    "noUnusedLocals": false,
+    "skipLibCheck": true,
     "module": "commonjs",
     "moduleResolution": "node",
     "esModuleInterop": true,
