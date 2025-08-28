@@ -23,12 +23,12 @@ export default defineConfig({
     /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
     trace: 'on-first-retry',
     // Increase timeouts for Electron app startup
-    actionTimeout: 30000,
-    navigationTimeout: 30000,
+    actionTimeout: 15000,
+    navigationTimeout: 15000,
   },
 
   /* Global timeout for each test */
-  timeout: 60000,
+  timeout: 20000,
 
   /* Configure projects for Electron */
   projects: [
