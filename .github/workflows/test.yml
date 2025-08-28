@@ -22,6 +22,24 @@ jobs:
           node-version: '20.x'
           cache: 'yarn'
 
+      - name: Setup conda
+        uses: conda-incubator/setup-miniconda@v3
+        with:
+          auto-update-conda: true
+          python-version: '3.12'
+          mamba-version: "*"
+          channels: conda-forge,defaults
+          channel-priority: strict
+
+      - name: Install conda environment for tests
+        shell: bash -l {0}
+        run: |
+          conda env create -f env_installer/jlab_server.yaml
+          conda activate jlab_server
+          which python
+          python --version
+          pip list | grep jupyterlab
+
       - name: Install dependencies
         run: |
           npm install --global yarn --prefer-offline
@@ -32,7 +50,9 @@ jobs:
           yarn build
 
       - name: Run tests
+        shell: bash -l {0}
         run: |
+          conda activate jlab_server
           xvfb-run -a yarn test
         
       - name: Upload test results

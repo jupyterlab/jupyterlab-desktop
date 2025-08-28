@@ -28,7 +28,7 @@ export default defineConfig({
   },
 
   /* Global timeout for each test */
-  timeout: 20000,
+  timeout: 30000,
 
   /* Configure projects for Electron */
   projects: [
