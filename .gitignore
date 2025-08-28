@@ -27,3 +27,10 @@ __pycache__
 env_installer/jlab_server/
 env_installer/jlab_server.tar.gz
 
+# Test artifacts
+test-results/
+tests/snapshots/*.png
+playwright-report/
+/test-results/
+/playwright-report/
+/playwright/.cache/
