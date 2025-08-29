@@ -4,6 +4,7 @@
     "noImplicitAny": true,
     "noEmitOnError": true,
     "noUnusedLocals": true,
+    "skipLibCheck": true,
     "module": "commonjs",
     "moduleResolution": "node",
     "esModuleInterop": true,
