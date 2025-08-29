@@ -11,12 +11,13 @@ async function launchElectronApp() {
       '--disable-dev-shm-usage',
       '--disable-web-security'
     ],
-    executablePath: undefined, // Use system electron
+    executablePath: undefined,
     env: {
       ...process.env,
       NODE_ENV: 'development',
-      DISPLAY: process.env.DISPLAY || ':99'
-      // Let the application use its bundled environment detection instead of overriding
+      DISPLAY: process.env.DISPLAY || ':99',
+      // Set Python path to our conda environment so the welcome page doesn't show warnings
+      JUPYTERLAB_DESKTOP_PYTHON_PATH: process.env.JUPYTERLAB_DESKTOP_PYTHON_PATH || '/usr/share/miniconda/envs/jlab_server/bin/python'
     }
   });
   
@@ -25,119 +26,100 @@ async function launchElectronApp() {
 
 async function getMainWindow(electronApp: any) {
   // Wait for initial window
-  await electronApp.waitForEvent('window', { timeout: 15000 });
+  await electronApp.waitForEvent('window', { timeout: 30000 });
   
-  // Wait a bit longer for additional windows to load
-  try {
-    await electronApp.waitForEvent('window', { timeout: 5000 });
-  } catch (error) {
-    console.log('No additional windows loaded');
-  }
+  // Wait a bit for additional windows 
+  await new Promise(resolve => setTimeout(resolve, 3000));
   
-  let mainWindow = null;
-  
-  // Look through all windows to find the main content window
   const allWindows = electronApp.windows();
   console.log(`Found ${allWindows.length} windows`);
   
+  if (allWindows.length === 0) {
+    throw new Error('No windows found');
+  }
+  
+  // Find the welcome page window by checking content
   for (let i = 0; i < allWindows.length; i++) {
     const window = allWindows[i];
     const title = await window.title();
     const url = window.url();
     
-    // Log window info for debugging
-    const dimensions = await window.evaluate(() => ({
-      width: window.innerWidth,
-      height: window.innerHeight
-    }));
+    console.log(`Window ${i}: title="${title}", url="${url}"`);
     
-    console.log(`Window ${i}: title="${title}", url="${url}", dimensions=${dimensions.width}x${dimensions.height}`);
-    
-    // Look for the welcome window (typically has more height and welcome content)
+    // Check if this window has welcome page content
     const hasWelcomeContent = await window.evaluate(() => {
-      return document.body.innerHTML.toLowerCase().includes('welcome') || 
-             document.body.innerHTML.toLowerCase().includes('new session') ||
-             document.body.innerHTML.toLowerCase().includes('jupyter');
+      return document.body.innerHTML.includes('container') && 
+             document.body.innerHTML.includes('Start') &&
+             !document.body.innerHTML.includes('titlebar');
     });
     
-    const isMainWindow = hasWelcomeContent && dimensions.height > 300;
+    console.log(`Window ${i} has welcome content: ${hasWelcomeContent}`);
     
-    console.log(`Window ${i}: hasWelcomeContent=${hasWelcomeContent}, isMainWindow=${isMainWindow}`);
-    
-    if (isMainWindow) {
-      mainWindow = window;
-      break;
+    if (hasWelcomeContent) {
+      console.log(`Using window ${i} as main window`);
+      return window;
     }
   }
   
-  // Return the main window, or fall back to the first window
-  return mainWindow || electronApp.firstWindow();
+  // If no welcome content found, log all window contents for debugging
+  for (let i = 0; i < allWindows.length; i++) {
+    const window = allWindows[i];
+    const content = await window.evaluate(() => {
+      return {
+        title: document.title,
+        bodyHTML: document.body.innerHTML.substring(0, 500),
+        hasContainer: document.body.innerHTML.includes('container'),
+        hasTitlebar: document.body.innerHTML.includes('titlebar'),
+        hasStart: document.body.innerHTML.includes('Start')
+      };
+    });
+    console.log(`Window ${i} content:`, content);
+  }
+  
+  console.log('No welcome window found, using first window');
+  return allWindows[0];
 }
 
 async function waitForWelcomePageToLoad(page: any) {
-  // Wait for the welcome page to fully load
+  // Wait for the page to be ready
   await page.waitForLoadState('domcontentloaded');
+  await page.waitForSelector('body', { timeout: 30000 });
   
-  // Wait for body to be ready
-  await page.waitForSelector('body', { timeout: 15000 });
+  // Wait a bit more for the UI to be fully ready and JavaScript to load
+  await page.waitForTimeout(8000);
   
-  // Wait for application to be ready - look for common welcome page elements
-  const welcomeSelectors = [
-    '.welcome-view',
-    '.welcome-page', 
-    '.main-content',
-    '.app-container',
-    '[data-testid="welcome"]',
-    '.start-section',
-    '.session-buttons'
-  ];
+  // Log what we have
+  const title = await page.title();
+  console.log('Page title:', title);
   
-  let pageLoaded = false;
-  for (const selector of welcomeSelectors) {
-    try {
-      await page.waitForSelector(selector, { timeout: 3000 });
-      console.log(`Found welcome selector: ${selector}`);
-      pageLoaded = true;
-      break;
-    } catch (error) {
-      // Try next selector
-    }
-  }
+  // Debug: Log all the links and their IDs/text  
+  const linkInfo = await page.evaluate(() => {
+    const links = Array.from(document.querySelectorAll('a'));
+    return links.map(link => ({
+      id: link.id,
+      text: link.textContent?.trim(),
+      href: link.href,
+      className: link.className,
+      onclick: link.onclick ? link.onclick.toString() : null,
+      disabled: link.classList.contains('disabled') || link.hasAttribute('disabled')
+    }));
+  });
   
-  if (!pageLoaded) {
-    console.log('No specific welcome selectors found, waiting for general page load');
-    // Give it some time to load
-    await page.waitForTimeout(3000);
-  }
+  console.log('All links on the page:', JSON.stringify(linkInfo, null, 2));
   
-  // Debug: Log what's actually on the page
-  const content = await page.evaluate(() => {
+  // Also log HTML structure to debug
+  const htmlStructure = await page.evaluate(() => {
+    const body = document.body;
     return {
-      title: document.title,
-      bodyContent: document.body.innerHTML.substring(0, 1000),
-      hasNewSessionText: document.body.innerHTML.toLowerCase().includes('new session'),
-      hasConnectText: document.body.innerHTML.toLowerCase().includes('connect'),
-      hasJupyterText: document.body.innerHTML.toLowerCase().includes('jupyter'),
-      allButtonTexts: Array.from(document.querySelectorAll('button')).map(btn => btn.textContent?.trim()).filter(text => text),
-      allLinkTexts: Array.from(document.querySelectorAll('a')).map(link => link.textContent?.trim()).filter(text => text),
-      allElementsWithText: Array.from(document.querySelectorAll('*')).map(el => {
-        const text = el.textContent?.trim();
-        if (text && text.length > 0 && text.length < 100) {
-          return `${el.tagName.toLowerCase()}: "${text}"`;
-        }
-        return null;
-      }).filter(x => x).slice(0, 20)
+      hasContainer: !!body.querySelector('.container'),
+      hasStartCol: !!body.querySelector('.start-col'),
+      hasStartRecent: !!body.querySelector('.start-recent-col'),
+      bodyClasses: body.className,
+      innerHTML: body.innerHTML.substring(0, 2000)
     };
   });
   
-  console.log('Page title:', content.title);
-  console.log('Has new session text:', content.hasNewSessionText);
-  console.log('Has connect text:', content.hasConnectText);
-  console.log('Has jupyter text:', content.hasJupyterText);
-  console.log('Button texts:', content.allButtonTexts);
-  console.log('Link texts:', content.allLinkTexts);
-  console.log('Elements with text:', content.allElementsWithText);
-  console.log('Body content preview:', content.bodyContent);
+  console.log('HTML structure:', JSON.stringify(htmlStructure, null, 2));
 }
 
 test.describe('Documentation Screenshots', () => {
@@ -156,116 +138,110 @@ test.describe('Documentation Screenshots', () => {
     await electronApp.close();
   });
 
-  test('should capture desktop app frame', async () => {
+  test('should capture new notebook window by clicking New notebook link', async () => {
     const electronApp = await launchElectronApp();
     const page = await getMainWindow(electronApp);
     
     await waitForWelcomePageToLoad(page);
     
-    // Try to start a new JupyterLab session to show the full app frame
+    // Look for the "New notebook..." link and click it
     try {
-      // Wait a bit longer for the environment to be detected
-      await page.waitForTimeout(5000);
+      console.log('Looking for New notebook link...');
       
-      // Look for the actual link elements by ID
-      const newSessionLink = page.locator('#new-session-link');
+      // Wait a bit more for the UI to be ready and Python environment to be detected
+      await page.waitForTimeout(3000);
+      
+      // Look for the new notebook link by ID
       const newNotebookLink = page.locator('#new-notebook-link');
       
-      // Check if links are enabled
-      const isNewSessionEnabled = await newSessionLink.evaluate(el => !el.classList.contains('disabled'));
-      const isNewNotebookEnabled = await newNotebookLink.evaluate(el => !el.classList.contains('disabled'));
+      // Check if the link exists and is enabled
+      const linkExists = await newNotebookLink.count() > 0;
+      console.log(`New notebook link exists: ${linkExists}`);
       
-      console.log(`New session link enabled: ${isNewSessionEnabled}`);
-      console.log(`New notebook link enabled: ${isNewNotebookEnabled}`);
-      
-      if (isNewSessionEnabled) {
-        console.log('Clicking new session link');
-        await newSessionLink.click();
+      if (linkExists) {
+        const isEnabled = await newNotebookLink.evaluate(el => !el.classList.contains('disabled'));
+        console.log(`New notebook link enabled: ${isEnabled}`);
         
-        // Wait for JupyterLab to start
-        await page.waitForTimeout(10000);
-        
-        // Wait for any new windows or content to appear
-        try {
-          await electronApp.waitForEvent('window', { timeout: 5000 });
-        } catch (error) {
-          console.log('No new window opened for JupyterLab session');
+        if (isEnabled) {
+          console.log('Clicking New notebook link...');
+          await newNotebookLink.click();
+          
+          // Wait for new window to open
+          console.log('Waiting for new window...');
+          try {
+            await electronApp.waitForEvent('window', { timeout: 15000 });
+            console.log('New window event received');
+            
+            // Wait a bit more for the window to be ready
+            await page.waitForTimeout(5000);
+            
+            // Get all windows and find the JupyterLab window
+            const allWindows = electronApp.windows();
+            console.log(`Total windows now: ${allWindows.length}`);
+            
+            if (allWindows.length > 1) {
+              // Take screenshot of the new JupyterLab window
+              const jupyterLabWindow = allWindows[allWindows.length - 1];
+              await jupyterLabWindow.screenshot({ 
+                path: 'tests/desktop-app-frame.png',
+                fullPage: true
+              });
+              console.log('Captured JupyterLab window screenshot');
+            } else {
+              console.log('No new window found, taking screenshot of current window');
+              await page.screenshot({ 
+                path: 'tests/desktop-app-frame.png',
+                fullPage: true
+              });
+            }
+          } catch (error) {
+            console.log('Error waiting for new window:', error);
+            await page.screenshot({ 
+              path: 'tests/desktop-app-frame.png',
+              fullPage: true
+            });
+          }
+        } else {
+          console.log('New notebook link is disabled, taking welcome page screenshot');
+          await page.screenshot({ 
+            path: 'tests/desktop-app-frame.png',
+            fullPage: true
+          });
         }
       } else {
-        console.log('New session link is disabled, Python environment not detected properly');
+        console.log('New notebook link not found, taking welcome page screenshot');
+        await page.screenshot({ 
+          path: 'tests/desktop-app-frame.png',
+          fullPage: true
+        });
       }
     } catch (error) {
-      console.log('Could not start JupyterLab session:', error);
+      console.log('Error clicking new notebook link:', error);
+      await page.screenshot({ 
+        path: 'tests/desktop-app-frame.png',
+        fullPage: true
+      });
     }
     
-    // Take screenshot of the application window (might show session or welcome)
+    await electronApp.close();
+  });
+
+  test('should capture start session area', async () => {
+    const electronApp = await launchElectronApp();
+    const page = await getMainWindow(electronApp);
+    
+    await waitForWelcomePageToLoad(page);
+    
+    // Take a screenshot focusing on the start session area
     await page.screenshot({ 
-      path: 'tests/desktop-app-frame.png',
+      path: 'tests/start-session.png',
       fullPage: true
     });
     
     await electronApp.close();
   });
 
-  test('should capture start session interface', async () => {
-    const electronApp = await launchElectronApp();
-    const page = await getMainWindow(electronApp);
-    
-    await waitForWelcomePageToLoad(page);
-    
-    // Look for the start section which contains the session buttons
-    try {
-      // Wait for the start section to be ready
-      await page.waitForTimeout(3000);
-      
-      // Find the start section container
-      const startSectionSelectors = [
-        '.start-col',
-        '.col.start-col',
-        'div:has(#new-notebook-link)',
-        'div:has(#new-session-link)'
-      ];
-      
-      let startSectionFound = false;
-      for (const selector of startSectionSelectors) {
-        try {
-          const element = page.locator(selector);
-          if (await element.isVisible()) {
-            console.log(`Found start section: ${selector}`);
-            await element.screenshot({ path: 'tests/start-session.png' });
-            startSectionFound = true;
-            break;
-          }
-        } catch (error) {
-          // Try next selector
-        }
-      }
-      
-      if (!startSectionFound) {
-        console.log('Start section not found, trying to capture individual links');
-        
-        // Try to capture the area around the session links
-        const sessionLinkContainer = page.locator('#new-notebook-link, #new-session-link').first().locator('xpath=ancestor::div[1]');
-        if (await sessionLinkContainer.isVisible()) {
-          await sessionLinkContainer.screenshot({ path: 'tests/start-session.png' });
-          startSectionFound = true;
-        }
-      }
-      
-      if (!startSectionFound) {
-        console.log('No start section found, taking full page screenshot');
-        await page.screenshot({ path: 'tests/start-session.png' });
-      }
-      
-    } catch (error) {
-      console.log('Error capturing start session interface:', error);
-      await page.screenshot({ path: 'tests/start-session.png' });
-    }
-    
-    await electronApp.close();
-  });
-
-  test('should capture connect to server interface', async () => {
+  test('should capture connect dialog by clicking Connect link', async () => {
     const electronApp = await launchElectronApp();
     const page = await getMainWindow(electronApp);
     
@@ -273,65 +249,51 @@ test.describe('Documentation Screenshots', () => {
     
     // Look for and click the Connect link
     try {
-      await page.waitForTimeout(3000);
+      console.log('Looking for Connect link...');
       
-      // Find the connect link - it doesn't have an ID but has specific onclick
-      const connectLink = page.locator('a:has-text("Connect...")');
+      // Find the connect link 
+      const connectLink = page.locator('a:has-text("Connect")');
       
-      if (await connectLink.isVisible()) {
-        console.log('Found connect link, clicking it');
+      const linkExists = await connectLink.count() > 0;
+      console.log(`Connect link exists: ${linkExists}`);
+      
+      if (linkExists) {
+        console.log('Clicking Connect link...');
         await connectLink.click();
         
-        // Wait for connect dialog to appear
-        try {
-          await page.waitForTimeout(2000);
-          
-          // Check if a new window opened for the connect dialog
-          const allWindows = electronApp.windows();
-          if (allWindows.length > 2) {
-            const connectWindow = allWindows[allWindows.length - 1];
-            await connectWindow.screenshot({ path: 'tests/start-session-connect.png' });
-            console.log('Captured connect dialog from new window');
-          } else {
-            // Look for dialog in the same window
-            const dialogSelectors = [
-              '.dialog',
-              '.modal',
-              '.connect-dialog',
-              '[role="dialog"]'
-            ];
-            
-            let dialogFound = false;
-            for (const selector of dialogSelectors) {
-              try {
-                const dialog = page.locator(selector);
-                if (await dialog.isVisible()) {
-                  await dialog.screenshot({ path: 'tests/start-session-connect.png' });
-                  dialogFound = true;
-                  break;
-                }
-              } catch (error) {
-                // Try next
-              }
-            }
-            
-            if (!dialogFound) {
-              console.log('No dialog found, capturing connect link area');
-              await connectLink.screenshot({ path: 'tests/start-session-connect.png' });
-            }
-          }
-        } catch (error) {
-          console.log('Error waiting for connect dialog:', error);
-          await connectLink.screenshot({ path: 'tests/start-session-connect.png' });
+        // Wait for dialog or new window
+        await page.waitForTimeout(3000);
+        
+        // Check if a new window opened
+        const allWindows = electronApp.windows();
+        if (allWindows.length > 1) {
+          const connectWindow = allWindows[allWindows.length - 1];
+          await connectWindow.screenshot({ 
+            path: 'tests/start-session-connect.png',
+            fullPage: true
+          });
+          console.log('Captured connect dialog from new window');
+        } else {
+          // Take screenshot of current page which might have dialog
+          await page.screenshot({ 
+            path: 'tests/start-session-connect.png',
+            fullPage: true
+          });
+          console.log('Captured connect interface from main window');
         }
       } else {
-        console.log('Connect link not found, taking full page screenshot');
-        await page.screenshot({ path: 'tests/start-session-connect.png' });
+        console.log('Connect link not found, taking welcome page screenshot');
+        await page.screenshot({ 
+          path: 'tests/start-session-connect.png',
+          fullPage: true
+        });
       }
-      
     } catch (error) {
-      console.log('Error capturing connect interface:', error);
-      await page.screenshot({ path: 'tests/start-session-connect.png' });
+      console.log('Error clicking connect link:', error);
+      await page.screenshot({ 
+        path: 'tests/start-session-connect.png',
+        fullPage: true
+      });
     }
     
     await electronApp.close();
@@ -343,143 +305,26 @@ test.describe('Documentation Screenshots', () => {
     
     await waitForWelcomePageToLoad(page);
     
-    // Look for Python environment status - this might be in a notification or title bar
-    try {
-      await page.waitForTimeout(3000);
-      
-      // Look for notification panel that shows environment status
-      const notificationSelectors = [
-        '.notification-panel',
-        '.env-notification',
-        '.python-env-status',
-        '.error-notification',
-        'div:has(svg[style*="orange"])', // Look for warning icon
-        'div:has(use[href="#triangle-exclamation"])', // Warning triangle
-        '.alert',
-        '.warning-message'
-      ];
-      
-      let notificationFound = false;
-      for (const selector of notificationSelectors) {
-        try {
-          const notification = page.locator(selector);
-          if (await notification.isVisible()) {
-            console.log(`Found notification panel: ${selector}`);
-            await notification.screenshot({ path: 'tests/python-env-status.png' });
-            notificationFound = true;
-            break;
-          }
-        } catch (error) {
-          // Try next selector
-        }
-      }
-      
-      if (!notificationFound) {
-        console.log('No notification found, looking for status in page content');
-        
-        // Check if there's any Python-related status text
-        const pythonStatusText = await page.evaluate(() => {
-          const bodyText = document.body.textContent || '';
-          if (bodyText.toLowerCase().includes('python') || 
-              bodyText.toLowerCase().includes('environment') ||
-              bodyText.toLowerCase().includes('install')) {
-            return bodyText.substring(0, 500);
-          }
-          return null;
-        });
-        
-        if (pythonStatusText) {
-          console.log('Found Python status text:', pythonStatusText);
-        }
-        
-        // Take a screenshot of the top portion which might contain status
-        await page.screenshot({ 
-          path: 'tests/python-env-status.png'
-        });
-      }
-      
-    } catch (error) {
-      console.log('Error capturing Python environment status:', error);
-      await page.screenshot({ path: 'tests/python-env-status.png' });
-    }
+    // Take screenshot to show environment status
+    await page.screenshot({ 
+      path: 'tests/python-env-status.png',
+      fullPage: true
+    });
     
     await electronApp.close();
   });
 
-  test('should capture recent sessions interface', async () => {
+  test('should capture recent sessions area', async () => {
     const electronApp = await launchElectronApp();
     const page = await getMainWindow(electronApp);
     
     await waitForWelcomePageToLoad(page);
     
-    // Look for recent sessions area - should be on the right side or in a dedicated section
-    try {
-      await page.waitForTimeout(3000);
-      
-      // Look for recent sessions column or area
-      const recentSessionsSelectors = [
-        '.recent-col',
-        '.col.recent-col',
-        '.recent-sessions',
-        '.session-history',
-        'div:has-text("Recent")',
-        '.recent-session-row',
-        '.sessions-list'
-      ];
-      
-      let recentSessionsFound = false;
-      for (const selector of recentSessionsSelectors) {
-        try {
-          const element = page.locator(selector);
-          if (await element.isVisible()) {
-            console.log(`Found recent sessions: ${selector}`);
-            await element.screenshot({ path: 'tests/recent-sessions.png' });
-            recentSessionsFound = true;
-            break;
-          }
-        } catch (error) {
-          // Try next selector
-        }
-      }
-      
-      if (!recentSessionsFound) {
-        console.log('Recent sessions area not found, looking for news feed area');
-        
-        // The welcome page might have a news feed instead of recent sessions
-        const newsFeedSelectors = [
-          '.news-col',
-          '.col.news-col',
-          '.news-feed',
-          'div:has-text("Jupyter")',
-          'div:has-text("News")'
-        ];
-        
-        for (const selector of newsFeedSelectors) {
-          try {
-            const element = page.locator(selector);
-            if (await element.isVisible()) {
-              console.log(`Found news feed area: ${selector}`);
-              await element.screenshot({ path: 'tests/recent-sessions.png' });
-              recentSessionsFound = true;
-              break;
-            }
-          } catch (error) {
-            // Try next
-          }
-        }
-      }
-      
-      if (!recentSessionsFound) {
-        console.log('No recent sessions or news area found, taking partial screenshot');
-        await page.screenshot({ 
-          path: 'tests/recent-sessions.png'
-        });
-      }
-      
-    } catch (error) {
-      console.log('Error capturing recent sessions interface:', error);
-      await page.screenshot({ path: 'tests/recent-sessions.png' });
-    }
+    // Take screenshot of the recent sessions/news area
+    await page.screenshot({ 
+      path: 'tests/recent-sessions.png',
+      fullPage: true
+    });
     
     await electronApp.close();
   });
