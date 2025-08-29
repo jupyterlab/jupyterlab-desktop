@@ -15,9 +15,8 @@ async function launchElectronApp() {
     env: {
       ...process.env,
       NODE_ENV: 'development',
-      DISPLAY: process.env.DISPLAY || ':99',
-      // Set Python path to our conda environment so the welcome page doesn't show warnings
-      JUPYTERLAB_DESKTOP_PYTHON_PATH: '/usr/share/miniconda/envs/jlab_server/bin/python'
+      DISPLAY: process.env.DISPLAY || ':99'
+      // Let the application use its bundled environment detection instead of overriding
     }
   });
   
@@ -163,50 +162,43 @@ test.describe('Documentation Screenshots', () => {
     
     await waitForWelcomePageToLoad(page);
     
-    // Try to start a new session to show the full app frame
+    // Try to start a new JupyterLab session to show the full app frame
     try {
-      // Look for "New session" or similar button
-      const newSessionSelectors = [
-        'button:has-text("New session")',
-        'button:has-text("New Session")',
-        'button:has-text("New notebook")',
-        'button:has-text("New Notebook")',
-        '.new-session-button',
-        '.start-session-button',
-        '[data-testid="new-session"]'
-      ];
+      // Wait a bit longer for the environment to be detected
+      await page.waitForTimeout(5000);
       
-      let sessionStarted = false;
-      for (const selector of newSessionSelectors) {
+      // Look for the actual link elements by ID
+      const newSessionLink = page.locator('#new-session-link');
+      const newNotebookLink = page.locator('#new-notebook-link');
+      
+      // Check if links are enabled
+      const isNewSessionEnabled = await newSessionLink.evaluate(el => !el.classList.contains('disabled'));
+      const isNewNotebookEnabled = await newNotebookLink.evaluate(el => !el.classList.contains('disabled'));
+      
+      console.log(`New session link enabled: ${isNewSessionEnabled}`);
+      console.log(`New notebook link enabled: ${isNewNotebookEnabled}`);
+      
+      if (isNewSessionEnabled) {
+        console.log('Clicking new session link');
+        await newSessionLink.click();
+        
+        // Wait for JupyterLab to start
+        await page.waitForTimeout(10000);
+        
+        // Wait for any new windows or content to appear
         try {
-          const button = page.locator(selector);
-          if (await button.isVisible()) {
-            console.log(`Clicking button: ${selector}`);
-            await button.click();
-            sessionStarted = true;
-            
-            // Wait for JupyterLab to load
-            await page.waitForFunction(() => {
-              return document.body.innerHTML.includes('JupyterLab') || 
-                     document.querySelector('.jp-MainAreaWidget') !== null ||
-                     document.title.includes('JupyterLab');
-            }, { timeout: 15000 });
-            
-            break;
-          }
+          await electronApp.waitForEvent('window', { timeout: 5000 });
         } catch (error) {
-          console.log(`Button ${selector} not found or not clickable`);
+          console.log('No new window opened for JupyterLab session');
         }
-      }
-      
-      if (!sessionStarted) {
-        console.log('Could not start session, taking welcome page as app frame');
+      } else {
+        console.log('New session link is disabled, Python environment not detected properly');
       }
     } catch (error) {
-      console.log('Could not open session, taking welcome page as app frame:', error);
+      console.log('Could not start JupyterLab session:', error);
     }
     
-    // Take screenshot of the application window
+    // Take screenshot of the application window (might show session or welcome)
     await page.screenshot({ 
       path: 'tests/desktop-app-frame.png',
       fullPage: true
@@ -221,14 +213,17 @@ test.describe('Documentation Screenshots', () => {
     
     await waitForWelcomePageToLoad(page);
     
-    // Look for the start session area/buttons
+    // Look for the start section which contains the session buttons
     try {
+      // Wait for the start section to be ready
+      await page.waitForTimeout(3000);
+      
+      // Find the start section container
       const startSectionSelectors = [
-        '.start-section',
-        '.session-buttons',
-        '.welcome-actions',
-        '.new-session-area',
-        '[data-testid="start-section"]'
+        '.start-col',
+        '.col.start-col',
+        'div:has(#new-notebook-link)',
+        'div:has(#new-session-link)'
       ];
       
       let startSectionFound = false;
@@ -247,31 +242,13 @@ test.describe('Documentation Screenshots', () => {
       }
       
       if (!startSectionFound) {
-        console.log('Start section not found, looking for individual buttons');
+        console.log('Start section not found, trying to capture individual links');
         
-        // Try to find individual buttons and screenshot their container
-        const buttonSelectors = [
-          'button:has-text("New session")',
-          'button:has-text("New notebook")',
-          'button:has-text("Open")',
-          'button:has-text("Connect")'
-        ];
-        
-        for (const selector of buttonSelectors) {
-          try {
-            const button = page.locator(selector);
-            if (await button.isVisible()) {
-              // Get the parent container of the buttons
-              const container = button.locator('xpath=ancestor::div[contains(@class, "start") or contains(@class, "section") or contains(@class, "welcome")][1]');
-              if (await container.isVisible()) {
-                await container.screenshot({ path: 'tests/start-session.png' });
-                startSectionFound = true;
-                break;
-              }
-            }
-          } catch (error) {
-            // Try next selector
-          }
+        // Try to capture the area around the session links
+        const sessionLinkContainer = page.locator('#new-notebook-link, #new-session-link').first().locator('xpath=ancestor::div[1]');
+        if (await sessionLinkContainer.isVisible()) {
+          await sessionLinkContainer.screenshot({ path: 'tests/start-session.png' });
+          startSectionFound = true;
         }
       }
       
@@ -294,59 +271,61 @@ test.describe('Documentation Screenshots', () => {
     
     await waitForWelcomePageToLoad(page);
     
-    // Look for and click the Connect button
+    // Look for and click the Connect link
     try {
-      const connectSelectors = [
-        'button:has-text("Connect")',
-        'button:has-text("Connect...")',
-        'button:has-text("Connect to server")',
-        '.connect-button',
-        '.connect-server-button',
-        '[data-testid="connect"]'
-      ];
+      await page.waitForTimeout(3000);
       
-      let connectDialogOpened = false;
-      for (const selector of connectSelectors) {
+      // Find the connect link - it doesn't have an ID but has specific onclick
+      const connectLink = page.locator('a:has-text("Connect...")');
+      
+      if (await connectLink.isVisible()) {
+        console.log('Found connect link, clicking it');
+        await connectLink.click();
+        
+        // Wait for connect dialog to appear
         try {
-          const button = page.locator(selector);
-          if (await button.isVisible()) {
-            console.log(`Clicking connect button: ${selector}`);
-            await button.click();
+          await page.waitForTimeout(2000);
+          
+          // Check if a new window opened for the connect dialog
+          const allWindows = electronApp.windows();
+          if (allWindows.length > 2) {
+            const connectWindow = allWindows[allWindows.length - 1];
+            await connectWindow.screenshot({ path: 'tests/start-session-connect.png' });
+            console.log('Captured connect dialog from new window');
+          } else {
+            // Look for dialog in the same window
+            const dialogSelectors = [
+              '.dialog',
+              '.modal',
+              '.connect-dialog',
+              '[role="dialog"]'
+            ];
             
-            // Wait for connect dialog to appear
-            await page.waitForSelector('.connect-dialog, .server-connect-dialog, .remote-server-dialog, .modal, .dialog', { timeout: 5000 });
+            let dialogFound = false;
+            for (const selector of dialogSelectors) {
+              try {
+                const dialog = page.locator(selector);
+                if (await dialog.isVisible()) {
+                  await dialog.screenshot({ path: 'tests/start-session-connect.png' });
+                  dialogFound = true;
+                  break;
+                }
+              } catch (error) {
+                // Try next
+              }
+            }
             
-            // Screenshot the dialog
-            const dialogElement = page.locator('.connect-dialog, .server-connect-dialog, .remote-server-dialog, .modal, .dialog').first();
-            await dialogElement.screenshot({ path: 'tests/start-session-connect.png' });
-            connectDialogOpened = true;
-            break;
+            if (!dialogFound) {
+              console.log('No dialog found, capturing connect link area');
+              await connectLink.screenshot({ path: 'tests/start-session-connect.png' });
+            }
           }
         } catch (error) {
-          console.log(`Connect button ${selector} not found or dialog didn't open`);
+          console.log('Error waiting for connect dialog:', error);
+          await connectLink.screenshot({ path: 'tests/start-session-connect.png' });
         }
-      }
-      
-      if (!connectDialogOpened) {
-        console.log('Connect dialog not opened, looking for connect button area');
-        
-        // Try to screenshot the connect button area
-        for (const selector of connectSelectors) {
-          try {
-            const button = page.locator(selector);
-            if (await button.isVisible()) {
-              await button.screenshot({ path: 'tests/start-session-connect.png' });
-              connectDialogOpened = true;
-              break;
-            }
-          } catch (error) {
-            // Try next
-          }
-        }
-      }
-      
-      if (!connectDialogOpened) {
-        console.log('No connect interface found, taking full page screenshot');
+      } else {
+        console.log('Connect link not found, taking full page screenshot');
         await page.screenshot({ path: 'tests/start-session-connect.png' });
       }
       
@@ -364,74 +343,56 @@ test.describe('Documentation Screenshots', () => {
     
     await waitForWelcomePageToLoad(page);
     
-    // Look for Python environment status in title bar or settings
+    // Look for Python environment status - this might be in a notification or title bar
     try {
-      const envStatusSelectors = [
+      await page.waitForTimeout(3000);
+      
+      // Look for notification panel that shows environment status
+      const notificationSelectors = [
+        '.notification-panel',
+        '.env-notification',
         '.python-env-status',
-        '.env-status',
-        '.server-status',
-        '.title-bar .python-info',
-        '.title-bar .env-info',
-        '[data-testid="python-env"]',
-        '.python-version',
-        '.environment-selector'
+        '.error-notification',
+        'div:has(svg[style*="orange"])', // Look for warning icon
+        'div:has(use[href="#triangle-exclamation"])', // Warning triangle
+        '.alert',
+        '.warning-message'
       ];
       
-      let envStatusFound = false;
-      for (const selector of envStatusSelectors) {
+      let notificationFound = false;
+      for (const selector of notificationSelectors) {
         try {
-          const element = page.locator(selector);
-          if (await element.isVisible()) {
-            console.log(`Found Python env status: ${selector}`);
-            await element.click(); // Click to show popup if available
-            
-            // Wait for popup or expanded info
-            try {
-              await page.waitForSelector('.python-env-popup, .env-selector-popup, .python-status-popup, .dropdown, .menu', { timeout: 3000 });
-              const popup = page.locator('.python-env-popup, .env-selector-popup, .python-status-popup, .dropdown, .menu').first();
-              await popup.screenshot({ path: 'tests/python-env-status.png' });
-              envStatusFound = true;
-              break;
-            } catch (popupError) {
-              // No popup, just screenshot the element itself
-              await element.screenshot({ path: 'tests/python-env-status.png' });
-              envStatusFound = true;
-              break;
-            }
+          const notification = page.locator(selector);
+          if (await notification.isVisible()) {
+            console.log(`Found notification panel: ${selector}`);
+            await notification.screenshot({ path: 'tests/python-env-status.png' });
+            notificationFound = true;
+            break;
           }
         } catch (error) {
           // Try next selector
         }
       }
       
-      if (!envStatusFound) {
-        console.log('Python env status not found, looking for title bar area');
+      if (!notificationFound) {
+        console.log('No notification found, looking for status in page content');
         
-        // Try to capture the title bar area which might contain environment info
-        const titleBarSelectors = [
-          '.title-bar',
-          '.titlebar',
-          '.app-header',
-          '.header',
-          'header'
-        ];
-        
-        for (const selector of titleBarSelectors) {
-          try {
-            const titleBar = page.locator(selector);
-            if (await titleBar.isVisible()) {
-              await titleBar.screenshot({ path: 'tests/python-env-status.png' });
-              envStatusFound = true;
-              break;
-            }
-          } catch (error) {
-            // Try next
+        // Check if there's any Python-related status text
+        const pythonStatusText = await page.evaluate(() => {
+          const bodyText = document.body.textContent || '';
+          if (bodyText.toLowerCase().includes('python') || 
+              bodyText.toLowerCase().includes('environment') ||
+              bodyText.toLowerCase().includes('install')) {
+            return bodyText.substring(0, 500);
           }
+          return null;
+        });
+        
+        if (pythonStatusText) {
+          console.log('Found Python status text:', pythonStatusText);
         }
-      }
-      
-      if (!envStatusFound) {
-        console.log('No environment status found, taking partial screenshot');
+        
+        // Take a screenshot of the top portion which might contain status
         await page.screenshot({ 
           path: 'tests/python-env-status.png'
         });
@@ -451,16 +412,19 @@ test.describe('Documentation Screenshots', () => {
     
     await waitForWelcomePageToLoad(page);
     
-    // Look for recent sessions area
+    // Look for recent sessions area - should be on the right side or in a dedicated section
     try {
+      await page.waitForTimeout(3000);
+      
+      // Look for recent sessions column or area
       const recentSessionsSelectors = [
+        '.recent-col',
+        '.col.recent-col',
         '.recent-sessions',
         '.session-history',
-        '.sessions-list',
-        '.recent-projects',
-        '.session-panel',
-        '.welcome-sidebar',
-        '[data-testid="recent-sessions"]'
+        'div:has-text("Recent")',
+        '.recent-session-row',
+        '.sessions-list'
       ];
       
       let recentSessionsFound = false;
@@ -479,22 +443,23 @@ test.describe('Documentation Screenshots', () => {
       }
       
       if (!recentSessionsFound) {
-        console.log('Recent sessions area not found, looking for sidebar or history');
+        console.log('Recent sessions area not found, looking for news feed area');
         
-        // Try to find any sidebar or history area
-        const sidebarSelectors = [
-          '.sidebar',
-          '.side-panel',
-          '.welcome-left',
-          '.welcome-right',
-          '.history-panel'
+        // The welcome page might have a news feed instead of recent sessions
+        const newsFeedSelectors = [
+          '.news-col',
+          '.col.news-col',
+          '.news-feed',
+          'div:has-text("Jupyter")',
+          'div:has-text("News")'
         ];
         
-        for (const selector of sidebarSelectors) {
+        for (const selector of newsFeedSelectors) {
           try {
-            const sidebar = page.locator(selector);
-            if (await sidebar.isVisible()) {
-              await sidebar.screenshot({ path: 'tests/recent-sessions.png' });
+            const element = page.locator(selector);
+            if (await element.isVisible()) {
+              console.log(`Found news feed area: ${selector}`);
+              await element.screenshot({ path: 'tests/recent-sessions.png' });
               recentSessionsFound = true;
               break;
             }
@@ -505,7 +470,7 @@ test.describe('Documentation Screenshots', () => {
       }
       
       if (!recentSessionsFound) {
-        console.log('No recent sessions area found, taking partial screenshot');
+        console.log('No recent sessions or news area found, taking partial screenshot');
         await page.screenshot({ 
           path: 'tests/recent-sessions.png'
         });
