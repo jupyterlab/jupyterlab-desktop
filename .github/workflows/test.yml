@@ -34,6 +34,7 @@ jobs:
       - name: Install conda environment for tests
         shell: bash -l {0}
         run: |
+          set -eux
           conda env create -f env_installer/jlab_server.yaml
           conda activate jlab_server
           which python
@@ -52,7 +53,9 @@ jobs:
       - name: Run tests
         shell: bash -l {0}
         run: |
+          set -eux
           conda activate jlab_server
+          export JUPYTERLAB_DESKTOP_PYTHON_PATH="$(conda info --base)/envs/jlab_server/bin/python"
           xvfb-run -a yarn test
         
       - name: Upload test results
