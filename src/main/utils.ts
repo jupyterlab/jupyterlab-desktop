@@ -741,6 +741,10 @@ export function getJlabCLICommandTargetPath(): string {
 }
 
 export function jlabCLICommandIsSetup(): boolean {
+  if (!app.isPackaged) {
+    return true;
+  }
+
   if (process.platform !== 'darwin') {
     return true;
   }
