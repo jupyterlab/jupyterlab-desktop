@@ -27,7 +27,7 @@ export interface ISaveOptions {
 }
 
 export function isDevMode(): boolean {
-  return require.main.filename.indexOf('app.asar') === -1;
+  return !app.isPackaged;
 }
 
 export function getAppDir(): string {

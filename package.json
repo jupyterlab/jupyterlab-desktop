@@ -107,7 +107,7 @@
       "base": "core22",
       "environment": {
         "SHELL": "/bin/bash",
-        "GTK_USE_PORTAL":"1"
+        "GTK_USE_PORTAL": "1"
       },
       "hooks": "build/snap-hooks"
     },
@@ -182,6 +182,7 @@
   "license": "BSD-3-Clause",
   "devDependencies": {
     "@jupyter-notebook/web-components": "0.9.1",
+    "@leeoniya/ufuzzy": "1.0.14",
     "@types/ejs": "^3.1.0",
     "@types/js-yaml": "^4.0.3",
     "@types/node": "^14.14.31",
@@ -193,9 +194,8 @@
     "@types/yargs": "^17.0.18",
     "@typescript-eslint/eslint-plugin": "~5.28.0",
     "@typescript-eslint/parser": "~5.28.0",
-    "@leeoniya/ufuzzy": "1.0.14",
-    "electron": "^27.0.2",
-    "electron-builder": "^24.9.1",
+    "electron": "^37.4.0",
+    "electron-builder": "^26.0.19",
     "electron-notarize": "^1.2.2",
     "eslint": "~8.17.0",
     "eslint-config-prettier": "~8.5.0",
