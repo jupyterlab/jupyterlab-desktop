@@ -372,24 +372,25 @@ export class LabView implements IDisposable {
   }
 
   private _registerBrowserEventHandlers() {
-	this._view.webContents.on(
-		'console-message', ({ level, message, lineNumber, sourceId }) => {
-			switch (level) {
-				case 'debug':
-				  log.verbose(message);
-				break;
-				case 'info':
-				  log.info(message);
-				  break;
-				case 'warning':
-				  log.warn(message);
-				  break;
-				case 'error':
-				  log.error(message);
-				  break;
-			}
-		}
-	);
+    this._view.webContents.on(
+      'console-message',
+      ({ level, message, lineNumber, sourceId }) => {
+        switch (level) {
+          case 'debug':
+            log.verbose(message);
+            break;
+          case 'info':
+            log.info(message);
+            break;
+          case 'warning':
+            log.warn(message);
+            break;
+          case 'error':
+            log.error(message);
+            break;
+        }
+      }
+    );
 
     if (this._wsSettings.getValue(SettingType.syncJupyterLabTheme)) {
       this._evm.registerEventHandler(EventTypeMain.LabUIReady, event => {
