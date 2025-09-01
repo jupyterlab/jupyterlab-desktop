@@ -6,6 +6,7 @@ const yaml = require('js-yaml');
 const pkgjsonFilePath = path.resolve(__dirname, '../package.json');
 
 (async () => {
+  const { pathToFileURL } = require('url');
   const { default: meow } = await import('meow');
   const cli = meow(
     `
@@ -26,7 +27,6 @@ const pkgjsonFilePath = path.resolve(__dirname, '../package.json');
       $ node buildutil --check-version-match
 `,
     {
-      // meow@13 is ESM-first; in CJS we can provide a dummy importMeta
       importMeta: { url: pathToFileURL(__filename).href },
       flags: {
         checkVersionMatch: {
