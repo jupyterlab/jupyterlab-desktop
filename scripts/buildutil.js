@@ -27,7 +27,7 @@ const pkgjsonFilePath = path.resolve(__dirname, '../package.json');
 `,
     {
       // meow@13 is ESM-first; in CJS we can provide a dummy importMeta
-      importMeta: { url: 'file://' },
+      importMeta: { url: pathToFileURL(__filename).href },
       flags: {
         checkVersionMatch: {
           type: 'boolean',
