@@ -567,7 +567,13 @@ export class JupyterApplication implements IApplication, IDisposable {
       log.error(message);
     });
 
-    require('update-electron-app')();
+    const { updateElectronApp } = require('update-electron-app');
+
+    updateElectronApp({
+      repo: 'jupyterlab/jupyterlab-desktop',
+      updateInterval: '1 week',
+      logger: require('electron-log')
+    });
   }
 
   private _validateRemoteServerUrl(url: string): Promise<IJupyterServerInfo> {

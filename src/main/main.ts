@@ -49,7 +49,10 @@ async function appReady(): Promise<boolean> {
  * contain all the information that is usually set in .bashrc, .bash_profile, etc.
  * This package fixes the PATH variable
  */
-require('fix-path')();
+(async () => {
+  const { default: fixPath } = await import('fix-path');
+  fixPath();
+})();
 
 /**
  * Update app home, appData, userData and logs paths to prevent

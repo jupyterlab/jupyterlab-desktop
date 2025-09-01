@@ -374,18 +374,18 @@ export class LabView implements IDisposable {
   private _registerBrowserEventHandlers() {
     this._view.webContents.on(
       'console-message',
-      (event: Electron.Event, level: number, message: string) => {
+      ({ level, message, lineNumber, sourceId }) => {
         switch (level) {
-          case 0:
+          case 'debug':
             log.verbose(message);
             break;
-          case 1:
+          case 'info':
             log.info(message);
             break;
-          case 2:
+          case 'warning':
             log.warn(message);
             break;
-          case 3:
+          case 'error':
             log.error(message);
             break;
         }

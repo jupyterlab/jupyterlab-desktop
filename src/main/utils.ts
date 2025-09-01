@@ -27,7 +27,7 @@ export interface ISaveOptions {
 }
 
 export function isDevMode(): boolean {
-  return require.main.filename.indexOf('app.asar') === -1;
+  return !app.isPackaged;
 }
 
 export function getAppDir(): string {
@@ -741,6 +741,9 @@ export function getJlabCLICommandTargetPath(): string {
 }
 
 export function jlabCLICommandIsSetup(): boolean {
+  if (!app.isPackaged) {
+    return true;
+  }
   if (process.platform !== 'darwin') {
     return true;
   }
