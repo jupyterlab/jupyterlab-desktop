@@ -27,7 +27,7 @@ rules:
   declaration-colon-newline-after: null
   declaration-empty-line-before: null
   function-url-quotes: null
-  indentation: null
+  indentatxion: null
   keyframes-name-pattern: null
   length-zero-no-unit: null
   max-empty-lines: null
