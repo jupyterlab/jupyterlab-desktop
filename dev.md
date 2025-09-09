@@ -88,6 +88,14 @@ If you prefer manual control:
 
 ## Building for distribution
 
+To build for dev distribution on macos arm64, run the following command:
+
+```bash
+./dev/build-installer.sh
+```
+
+Otherwise, run the following commands locally:
+
 - Build the application
 
   ```bash
@@ -111,3 +119,14 @@ If you prefer manual control:
 ## Release Instructions
 
 For instructions on updating bundled JupyterLab packages and cutting a new release, please follow [Release.md](Release.md) document.
+
+
+# Uninstalling JupyterLab Desktop
+
+To uninstall JupyterLab Desktop, run the following command:
+
+## MacOS
+
+```bash
+./dev/uninstall.sh
+```
