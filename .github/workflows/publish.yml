@@ -149,14 +149,14 @@ jobs:
           path: |
             dist/JupyterLab.rpm
       
-      - name: Upload Snap Installer
-        if: matrix.cfg.platform == 'linux-64'
-        uses: actions/upload-artifact@v4
-        id: snap-artifact
-        with:
-          name: snap-installer
-          path: |
-            dist/JupyterLab.snap
+      # - name: Upload Snap Installer
+      #   if: matrix.cfg.platform == 'linux-64'
+      #   uses: actions/upload-artifact@v4
+      #   id: snap-artifact
+      #   with:
+      #     name: snap-installer
+      #     path: |
+      #       dist/JupyterLab.snap
 
       - name: Upload macOS x64 Installer
         if: matrix.cfg.platform == 'osx-64'
