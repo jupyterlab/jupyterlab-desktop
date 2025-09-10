@@ -50,7 +50,6 @@ export class WelcomeView {
     );
     const openIcon = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Pro 6.2.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license (Commercial License) Copyright 2022 Fonticons, Inc. --><path d="M88.7 223.8L0 375.8V96C0 60.7 28.7 32 64 32H181.5c17 0 33.3 6.7 45.3 18.7l26.5 26.5c12 12 28.3 18.7 45.3 18.7H416c35.3 0 64 28.7 64 64v32H144c-22.8 0-43.8 12.1-55.3 31.8zm27.6 16.1C122.1 230 132.6 224 144 224H544c11.5 0 22 6.1 27.7 16.1s5.7 22.2-.1 32.1l-112 192C453.9 474 443.4 480 432 480H32c-11.5 0-22-6.1-27.7-16.1s-5.7-22.2 .1-32.1l112-192z"/></svg>`;
     const serverIcon = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Pro 6.2.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license (Commercial License) Copyright 2022 Fonticons, Inc. --><path d="M64 32C28.7 32 0 60.7 0 96v64c0 35.3 28.7 64 64 64H448c35.3 0 64-28.7 64-64V96c0-35.3-28.7-64-64-64H64zM344 152c-13.3 0-24-10.7-24-24s10.7-24 24-24s24 10.7 24 24s-10.7 24-24 24zm96-24c0 13.3-10.7 24-24 24s-24-10.7-24-24s10.7-24 24-24s24 10.7 24 24zM64 288c-35.3 0-64 28.7-64 64v64c0 35.3 28.7 64 64 64H448c35.3 0 64-28.7 64-64V352c0-35.3-28.7-64-64-64H64zM344 408c-13.3 0-24-10.7-24-24s10.7-24 24-24s24 10.7 24 24s-10.7 24-24 24zm104-24c0 13.3-10.7 24-24 24s-24-10.7-24-24s10.7-24 24-24s24 10.7 24 24z"/></svg>`;
-    const externalLinkIcon = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Pro 6.2.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license (Commercial License) Copyright 2022 Fonticons, Inc. --><path d="M352 0c-12.9 0-24.6 7.8-29.6 19.8s-2.2 25.7 6.9 34.9L370.7 96 201.4 265.4c-12.5 12.5-12.5 32.8 0 45.3s32.8 12.5 45.3 0L416 141.3l41.4 41.4c9.2 9.2 22.9 11.9 34.9 6.9s19.8-16.6 19.8-29.6V32c0-17.7-14.3-32-32-32H352zM80 32C35.8 32 0 67.8 0 112V432c0 44.2 35.8 80 80 80H400c44.2 0 80-35.8 80-80V320c0-17.7-14.3-32-32-32s-32 14.3-32 32V432c0 8.8-7.2 16-16 16H80c-8.8 0-16-7.2-16-16V112c0-8.8 7.2-16 16-16H192c17.7 0 32-14.3 32-32s-14.3-32-32-32H80z"/></svg>`;
 
     const showNewsFeed = userSettings.getValue(SettingType.showNewsFeed);
     if (showNewsFeed) {
@@ -64,7 +63,7 @@ export class WelcomeView {
         <head>
           <meta charset="utf-8" />
           <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0">
-          <title>Welcome</title>
+          <title>Welcome to Mito</title>
           <style>
             body {
               background: ${LightThemeBGColor};
@@ -396,29 +395,6 @@ export class WelcomeView {
               </div>
 
               <div class="col news-col">
-                <div class="row row-title">
-                  Jupyter News
-                </div>
-
-                <div id="news-list" class="news-list-col">
-                ${
-                  // populate news list from cache
-                  WelcomeView._newsList
-                    .map((news: INewsItem) => {
-                      return `<div class="row">
-                        <a href="javascript:void(0)" onclick=\'handleNewsClick("${news.link}");\' title="${news.title}">${news.title}</a>
-                      </div>`;
-                    })
-                    .join('')
-                }
-                </div>
-
-                <div class="row action-row more-row news-col-footer">
-                  <a href="javascript:void(0)" onclick='handleNewsClick("https://blog.jupyter.org");'>
-                    <span class="action-icon">${externalLinkIcon}</span>
-                    Jupyter Blog
-                  </a>
-                </div>
               </div>
             </div>
           </div>
@@ -433,7 +409,6 @@ export class WelcomeView {
           </div>
 
           <script>
-          const newsListContainer = document.getElementById('news-list');
           const notificationPanel = document.getElementById('notification-panel');
           const notificationPanelMessage = document.getElementById('notification-panel-message');
           const notificationPanelCloseButton = document.getElementById('notification-panel-close');
@@ -499,25 +474,6 @@ export class WelcomeView {
           window.electronAPI.onSetRecentSessionList((recentSessions, resetCollapseState) => {
             updateRecentSessionList(recentSessions, resetCollapseState);
           });
-          
-          window.electronAPI.onSetNewsList((newsList) => {
-            // clear list
-            while (newsListContainer.firstChild) {
-              newsListContainer.firstChild.remove();
-            }
-
-            const fragment = new DocumentFragment();
-            for (const news of newsList) {
-              const newsRow = document.createElement('div');
-              newsRow.innerHTML = \`
-                <div class="row">
-                  <a href="javascript:void(0)" onclick=\'handleNewsClick("\$\{news.link\}");\' title="\$\{news.title\}">\$\{news.title\}</a>
-                </div>\`;
-              fragment.append(newsRow);
-            }
-
-            newsListContainer.append(fragment);
-          });
 
           document.addEventListener('dragover', (event) => {
             event.preventDefault();
@@ -556,10 +512,6 @@ export class WelcomeView {
             }
             const sessionIndex = parseInt(row.dataset.sessionIndex);
             window.electronAPI.deleteRecentSession(sessionIndex);
-          }
-
-          function handleNewsClick(newsLink) {
-            window.electronAPI.openNewsLink(newsLink);
           }
 
           function handleExpandCollapseRecents() {
