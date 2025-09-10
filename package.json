@@ -75,7 +75,7 @@
       "env_installer/jlab_server.tar.gz",
       "env_installer/sign*.txt"
     ],
-    "afterSign": "scripts/notarize.js",
+    "afterSign": "./scripts/notarize.js",
     "linux": {
       "target": [
         "deb",
