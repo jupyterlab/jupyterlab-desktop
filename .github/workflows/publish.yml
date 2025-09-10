@@ -129,6 +129,8 @@ jobs:
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
           CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
           CSC_LINK: ${{ secrets.CSC_LINK }}
+          CSC_NOTARIZE: true
+          CSC_NOTARY_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         run: |
           yarn dist:${{ matrix.cfg.platform }}
         if: steps.release-exists.outputs.result == 'true'
