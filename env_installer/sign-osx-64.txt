@@ -527,7 +527,7 @@ lib/python3.12/site-packages/scipy/stats/_unuran/unuran_wrapper.cpython-312-darw
 lib/python3.12/site-packages/tornado/speedups.abi3.so
 lib/python3.12/site-packages/unicodedata2.cpython-312-darwin.so
 lib/python3.12/site-packages/yaml/_yaml.cpython-312-darwin.so
-lib/python3.12/site-packages/zmq/backend/cython/_zmq.cpython-312-darwin.so
+lib/python3.12/site-packages/zmq/backend/cython/_zmq.abi3.so
 lib/python3.12/site-packages/zstandard/_cffi.cpython-312-darwin.so
 lib/python3.12/site-packages/zstandard/backend_c.cpython-312-darwin.so
 lib/sqlite3.40.0/libsqlite3.40.0.dylib
