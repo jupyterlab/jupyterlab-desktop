@@ -186,7 +186,7 @@ jobs:
         if: matrix.cfg.platform == 'linux-64' && steps.release-exists.outputs.result == 'true'
         uses: svenstaro/upload-release-action@v2
         with:
-          repo_token: ${{ secrets.JLAB_APP_TOKEN }}
+          repo_token: ${{ secrets.REPO_MANAGER_TOKEN }}
           file: dist/JupyterLab.deb
           asset_name: JupyterLab-Setup-Debian-x64.deb
           tag: v${{ steps.package-info.outputs.version}}
@@ -196,7 +196,7 @@ jobs:
         if: matrix.cfg.platform == 'linux-64' && steps.release-exists.outputs.result == 'true'
         uses: svenstaro/upload-release-action@v2
         with:
-          repo_token: ${{ secrets.JLAB_APP_TOKEN }}
+          repo_token: ${{ secrets.REPO_MANAGER_TOKEN }}
           file: dist/JupyterLab.rpm
           asset_name: JupyterLab-Setup-Fedora-x64.rpm
           tag: v${{ steps.package-info.outputs.version}}
@@ -206,7 +206,7 @@ jobs:
         if: matrix.cfg.platform == 'osx-64' && steps.release-exists.outputs.result == 'true'
         uses: svenstaro/upload-release-action@v2
         with:
-          repo_token: ${{ secrets.JLAB_APP_TOKEN }}
+          repo_token: ${{ secrets.REPO_MANAGER_TOKEN }}
           file: dist/JupyterLab-x64.dmg
           asset_name: JupyterLab-Setup-macOS-x64.dmg
           tag: v${{ steps.package-info.outputs.version}}
@@ -216,7 +216,7 @@ jobs:
         if: matrix.cfg.platform == 'osx-arm64' && steps.release-exists.outputs.result == 'true'
         uses: svenstaro/upload-release-action@v2
         with:
-          repo_token: ${{ secrets.JLAB_APP_TOKEN }}
+          repo_token: ${{ secrets.REPO_MANAGER_TOKEN }}
           file: dist/JupyterLab-arm64.dmg
           asset_name: JupyterLab-Setup-macOS-arm64.dmg
           tag: v${{ steps.package-info.outputs.version}}
@@ -226,7 +226,7 @@ jobs:
         if: matrix.cfg.platform == 'osx-64' && steps.release-exists.outputs.result == 'true'
         uses: svenstaro/upload-release-action@v2
         with:
-          repo_token: ${{ secrets.JLAB_APP_TOKEN }}
+          repo_token: ${{ secrets.REPO_MANAGER_TOKEN }}
           file: dist/JupyterLab-x64.zip
           asset_name: JupyterLab-macOS-x64.zip
           tag: v${{ steps.package-info.outputs.version}}
@@ -236,7 +236,7 @@ jobs:
         if: matrix.cfg.platform == 'osx-arm64' && steps.release-exists.outputs.result == 'true'
         uses: svenstaro/upload-release-action@v2
         with:
-          repo_token: ${{ secrets.JLAB_APP_TOKEN }}
+          repo_token: ${{ secrets.REPO_MANAGER_TOKEN }}
           file: dist/JupyterLab-arm64.zip
           asset_name: JupyterLab-macOS-arm64.zip
           tag: v${{ steps.package-info.outputs.version}}
@@ -246,7 +246,7 @@ jobs:
         if: matrix.cfg.platform == 'win-64' && steps.release-exists.outputs.result == 'true'
         uses: svenstaro/upload-release-action@v2
         with:
-          repo_token: ${{ secrets.JLAB_APP_TOKEN }}
+          repo_token: ${{ secrets.REPO_MANAGER_TOKEN }}
           file: dist/JupyterLab-Setup.exe
           asset_name: JupyterLab-Setup-Windows-x64.exe
           tag: v${{ steps.package-info.outputs.version}}
@@ -256,7 +256,7 @@ jobs:
         if: matrix.cfg.platform == 'win-64' && steps.release-exists.outputs.result == 'true'
         uses: svenstaro/upload-release-action@v2
         with:
-          repo_token: ${{ secrets.JLAB_APP_TOKEN }}
+          repo_token: ${{ secrets.REPO_MANAGER_TOKEN }}
           file: dist/latest.yml
           asset_name: latest.yml
           tag: v${{ steps.package-info.outputs.version}}
@@ -266,7 +266,7 @@ jobs:
         if: matrix.cfg.platform == 'linux-64' && steps.release-exists.outputs.result == 'true'
         uses: svenstaro/upload-release-action@v2
         with:
-          repo_token: ${{ secrets.JLAB_APP_TOKEN }}
+          repo_token: ${{ secrets.REPO_MANAGER_TOKEN }}
           file: dist/JupyterLab.snap
           asset_name: JupyterLab-Setup.snap
           tag: v${{ steps.package-info.outputs.version}}

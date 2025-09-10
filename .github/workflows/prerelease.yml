@@ -35,7 +35,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         if: steps.release-exists.outputs.result == 'false'
         with:
-          token: ${{ secrets.JLAB_APP_TOKEN }}
+          token: ${{ secrets.REPO_MANAGER_TOKEN }}
           body: '## JupyterLab Desktop v${{ steps.package-info.outputs.version}}'
           draft: false
           prerelease: true

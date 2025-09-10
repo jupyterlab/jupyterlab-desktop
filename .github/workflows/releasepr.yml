@@ -39,7 +39,7 @@ jobs:
         if: steps.pre-release-exists.outputs.result == 'true'
         uses: peter-evans/create-pull-request@v6
         with:
-          token: ${{ secrets.JLAB_APP_TOKEN }}
+          token: ${{ secrets.REPO_MANAGER_TOKEN }}
           commit-message: Update auto-release logs
           branch: release-v${{ steps.package-info.outputs.version}}
           title: 'Release v${{ steps.package-info.outputs.version}}'
