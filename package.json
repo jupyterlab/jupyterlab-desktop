@@ -164,7 +164,10 @@
           "to": "app/jlab"
         }
       ],
-      "signIgnore": "env_installer/jlab_server.tar.gz"
+      "signIgnore": "env_installer/jlab_server.tar.gz",
+      "notarize": {
+        "teamId": "JJ638MV5FJ"
+      }
     },
     "dmg": {
       "sign": false
