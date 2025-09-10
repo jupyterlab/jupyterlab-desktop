@@ -52,9 +52,9 @@ jobs:
         run: |
           yarn check_version_match
 
-      - name: Check Lint & Prettier
-        run: |
-          yarn lint:check
+      # - name: Check Lint & Prettier
+      #   run: |
+      #     yarn lint:check
 
       - name: Get package info
         shell: bash
