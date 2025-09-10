@@ -5,10 +5,7 @@ import { BrowserView } from 'electron';
 import { DarkThemeBGColor, getUserHomeDir, LightThemeBGColor } from '../utils';
 import * as path from 'path';
 import * as fs from 'fs';
-import fetch from 'node-fetch';
-import { XMLParser } from 'fast-xml-parser';
-import { SettingType, userSettings } from '../config/settings';
-import { appData, INewsItem } from '../config/appdata';
+import { appData } from '../config/appdata';
 import { IRegistry } from '../registry';
 import { EventTypeMain, EventTypeRenderer } from '../eventtypes';
 
@@ -50,12 +47,6 @@ export class WelcomeView {
     );
     const openIcon = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Pro 6.2.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license (Commercial License) Copyright 2022 Fonticons, Inc. --><path d="M88.7 223.8L0 375.8V96C0 60.7 28.7 32 64 32H181.5c17 0 33.3 6.7 45.3 18.7l26.5 26.5c12 12 28.3 18.7 45.3 18.7H416c35.3 0 64 28.7 64 64v32H144c-22.8 0-43.8 12.1-55.3 31.8zm27.6 16.1C122.1 230 132.6 224 144 224H544c11.5 0 22 6.1 27.7 16.1s5.7 22.2-.1 32.1l-112 192C453.9 474 443.4 480 432 480H32c-11.5 0-22-6.1-27.7-16.1s-5.7-22.2 .1-32.1l112-192z"/></svg>`;
     const serverIcon = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Pro 6.2.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license (Commercial License) Copyright 2022 Fonticons, Inc. --><path d="M64 32C28.7 32 0 60.7 0 96v64c0 35.3 28.7 64 64 64H448c35.3 0 64-28.7 64-64V96c0-35.3-28.7-64-64-64H64zM344 152c-13.3 0-24-10.7-24-24s10.7-24 24-24s24 10.7 24 24s-10.7 24-24 24zm96-24c0 13.3-10.7 24-24 24s-24-10.7-24-24s10.7-24 24-24s24 10.7 24 24zM64 288c-35.3 0-64 28.7-64 64v64c0 35.3 28.7 64 64 64H448c35.3 0 64-28.7 64-64V352c0-35.3-28.7-64-64-64H64zM344 408c-13.3 0-24-10.7-24-24s10.7-24 24-24s24 10.7 24 24s-10.7 24-24 24zm104-24c0 13.3-10.7 24-24 24s-24-10.7-24-24s10.7-24 24-24s24 10.7 24 24z"/></svg>`;
-
-    const showNewsFeed = userSettings.getValue(SettingType.showNewsFeed);
-    if (showNewsFeed) {
-      // initalize from app cache
-      WelcomeView._newsList = appData.newsList;
-    }
 
     this._pageSource = `
       <!DOCTYPE html>
@@ -118,10 +109,6 @@ export class WelcomeView {
               flex-basis: 40%;
               flex-grow: 1;
             }
-            .news-list-hidden .start-recent-col {
-              width: 60%;
-              flex-basis: 60%;
-            }
             .start-col {
               margin-bottom: 40px;
               row-gap: 2px;
@@ -146,25 +133,6 @@ export class WelcomeView {
               maxRecentItems + 2
             }).recent-session-row {
               display: none;
-            }
-            .news-col {
-              width: 40%;
-              flex-basis: 40%;
-              flex-grow: 1;
-              row-gap: 5px;
-              padding-left: 10px;
-            }
-            .news-list-hidden .news-col {
-              width: 20%;
-              flex-basis: 20%;
-            }
-            .news-list-col {
-              display: flex;
-              flex-direction: column;
-              row-gap: 5px;
-            }
-            .news-col-footer {
-              margin-top: 5px;
             }
             .row-title {
               font-weight: bold;
@@ -207,7 +175,7 @@ export class WelcomeView {
             .recent-session-detail {
               padding-left: 10px;
             }
-            .recent-session-detail, .news-list-col .row a {
+            .recent-session-detail {
               text-overflow: ellipsis;
               overflow: hidden;
               white-space: nowrap;
@@ -309,9 +277,7 @@ export class WelcomeView {
           </script>
         </head>
       
-        <body class="${this._isDarkTheme ? 'app-ui-dark' : ''} ${
-      showNewsFeed ? '' : 'news-list-hidden'
-    }" title="">
+        <body class="${this._isDarkTheme ? 'app-ui-dark' : ''}" title="">
           <svg class="symbol" style="display: none;">
           <defs>
             <symbol id="circle-xmark" viewBox="0 0 512 512">
@@ -392,9 +358,6 @@ export class WelcomeView {
                     </a>
                   </div>
                 </div>
-              </div>
-
-              <div class="col news-col">
               </div>
             </div>
           </div>
@@ -616,10 +579,6 @@ export class WelcomeView {
 
     this.updateRecentSessionList(true);
 
-    if (userSettings.getValue(SettingType.showNewsFeed)) {
-      this._updateNewsList();
-    }
-
     this._registry.environmentListUpdated.connect(
       this._onEnvironmentListUpdated,
       this
@@ -673,47 +632,6 @@ export class WelcomeView {
         `,
           true
         );
-      });
-  }
-
-  private _updateNewsList() {
-    if (WelcomeView._newsListFetched) {
-      return;
-    }
-
-    const newsFeedUrl = 'https://blog.jupyter.org/feed';
-    const maxNewsToShow = 10;
-
-    fetch(newsFeedUrl)
-      .then(async response => {
-        try {
-          const data = await response.text();
-          const parser = new XMLParser();
-          const feed = parser.parse(data);
-          const newsList: INewsItem[] = [];
-          for (const item of feed.rss.channel.item) {
-            newsList.push({
-              title: item.title,
-              link: encodeURIComponent(item.link)
-            });
-            if (newsList.length === maxNewsToShow) {
-              break;
-            }
-          }
-
-          this._view.webContents.send(EventTypeRenderer.SetNewsList, newsList);
-
-          WelcomeView._newsList = newsList;
-          appData.newsList = [...newsList];
-          if (newsList.length > 0) {
-            WelcomeView._newsListFetched = true;
-          }
-        } catch (error) {
-          console.error('Failed to parse news list:', error);
-        }
-      })
-      .catch(error => {
-        console.error('Failed to fetch news list:', error);
       });
   }
 
@@ -775,8 +693,6 @@ export class WelcomeView {
   private _viewReady: Promise<void>;
   private _registry: IRegistry;
   private _pageSource: string;
-  static _newsList: INewsItem[] = [];
-  static _newsListFetched = false;
 }
 
 export namespace WelcomeView {
