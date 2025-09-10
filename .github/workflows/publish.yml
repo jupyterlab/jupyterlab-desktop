@@ -262,15 +262,16 @@ jobs:
           tag: v${{ steps.package-info.outputs.version}}
           overwrite: true
           
-      - name: Upload snap installer as Release asset
-        if: matrix.cfg.platform == 'linux-64' && steps.release-exists.outputs.result == 'true'
-        uses: svenstaro/upload-release-action@v2
-        with:
-          repo_token: ${{ secrets.REPO_MANAGER_TOKEN }}
-          file: dist/JupyterLab.snap
-          asset_name: JupyterLab-Setup.snap
-          tag: v${{ steps.package-info.outputs.version}}
-          overwrite: true
+      # Skip snap store publishing for now
+      # - name: Upload snap installer as Release asset
+      #   if: matrix.cfg.platform == 'linux-64' && steps.release-exists.outputs.result == 'true'
+      #   uses: svenstaro/upload-release-action@v2
+      #   with:
+      #     repo_token: ${{ secrets.REPO_MANAGER_TOKEN }}
+      #     file: dist/JupyterLab.snap
+      #     asset_name: JupyterLab-Setup.snap
+      #     tag: v${{ steps.package-info.outputs.version}}
+      #     overwrite: true
 
       # Skip snap store publishing for now
       # - name: Publish snap to the latest/candidate channel in Snap Store
