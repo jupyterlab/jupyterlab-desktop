@@ -43,7 +43,7 @@ JupyterLab Desktop bundles JupyterLab front-end and a conda environment as Jupyt
 - Install dependencies
 
   ```bash
-  yarn
+  yarn 
   ```
 
 - Create the JupyterLab Desktop Server installer (one-time setup)

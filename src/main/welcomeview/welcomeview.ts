@@ -5,10 +5,7 @@ import { BrowserView } from 'electron';
 import { DarkThemeBGColor, getUserHomeDir, LightThemeBGColor } from '../utils';
 import * as path from 'path';
 import * as fs from 'fs';
-import fetch from 'node-fetch';
-import { XMLParser } from 'fast-xml-parser';
-import { SettingType, userSettings } from '../config/settings';
-import { appData, INewsItem } from '../config/appdata';
+import { appData } from '../config/appdata';
 import { IRegistry } from '../registry';
 import { EventTypeMain, EventTypeRenderer } from '../eventtypes';
 
@@ -36,8 +33,8 @@ export class WelcomeView {
       this._isDarkTheme ? DarkThemeBGColor : LightThemeBGColor
     );
 
-    const jupyterlabWordmarkSrc = fs.readFileSync(
-      path.join(__dirname, '../../../app-assets/jupyterlab-wordmark.svg')
+    const mitoWordmarkSrc = fs.readFileSync(
+      path.join(__dirname, '../../../app-assets/mito-wordmark.svg')
     );
     const notebookIcon = `<svg xmlns="http://www.w3.org/2000/svg" width="16" viewBox="0 0 22 22">
       <g class="jp-icon-warn0 jp-icon-selectable" fill="#EF6C00">
@@ -45,18 +42,7 @@ export class WelcomeView {
         <path d="M16.5 16.5l-5.4-4.3-5.6 4.3v-11h11z"/>
       </g>
       </svg>`;
-    const labIcon = fs.readFileSync(
-      path.join(__dirname, '../../../app-assets/icon.svg')
-    );
     const openIcon = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Pro 6.2.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license (Commercial License) Copyright 2022 Fonticons, Inc. --><path d="M88.7 223.8L0 375.8V96C0 60.7 28.7 32 64 32H181.5c17 0 33.3 6.7 45.3 18.7l26.5 26.5c12 12 28.3 18.7 45.3 18.7H416c35.3 0 64 28.7 64 64v32H144c-22.8 0-43.8 12.1-55.3 31.8zm27.6 16.1C122.1 230 132.6 224 144 224H544c11.5 0 22 6.1 27.7 16.1s5.7 22.2-.1 32.1l-112 192C453.9 474 443.4 480 432 480H32c-11.5 0-22-6.1-27.7-16.1s-5.7-22.2 .1-32.1l112-192z"/></svg>`;
-    const serverIcon = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Pro 6.2.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license (Commercial License) Copyright 2022 Fonticons, Inc. --><path d="M64 32C28.7 32 0 60.7 0 96v64c0 35.3 28.7 64 64 64H448c35.3 0 64-28.7 64-64V96c0-35.3-28.7-64-64-64H64zM344 152c-13.3 0-24-10.7-24-24s10.7-24 24-24s24 10.7 24 24s-10.7 24-24 24zm96-24c0 13.3-10.7 24-24 24s-24-10.7-24-24s10.7-24 24-24s24 10.7 24 24zM64 288c-35.3 0-64 28.7-64 64v64c0 35.3 28.7 64 64 64H448c35.3 0 64-28.7 64-64V352c0-35.3-28.7-64-64-64H64zM344 408c-13.3 0-24-10.7-24-24s10.7-24 24-24s24 10.7 24 24s-10.7 24-24 24zm104-24c0 13.3-10.7 24-24 24s-24-10.7-24-24s10.7-24 24-24s24 10.7 24 24z"/></svg>`;
-    const externalLinkIcon = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Pro 6.2.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license (Commercial License) Copyright 2022 Fonticons, Inc. --><path d="M352 0c-12.9 0-24.6 7.8-29.6 19.8s-2.2 25.7 6.9 34.9L370.7 96 201.4 265.4c-12.5 12.5-12.5 32.8 0 45.3s32.8 12.5 45.3 0L416 141.3l41.4 41.4c9.2 9.2 22.9 11.9 34.9 6.9s19.8-16.6 19.8-29.6V32c0-17.7-14.3-32-32-32H352zM80 32C35.8 32 0 67.8 0 112V432c0 44.2 35.8 80 80 80H400c44.2 0 80-35.8 80-80V320c0-17.7-14.3-32-32-32s-32 14.3-32 32V432c0 8.8-7.2 16-16 16H80c-8.8 0-16-7.2-16-16V112c0-8.8 7.2-16 16-16H192c17.7 0 32-14.3 32-32s-14.3-32-32-32H80z"/></svg>`;
-
-    const showNewsFeed = userSettings.getValue(SettingType.showNewsFeed);
-    if (showNewsFeed) {
-      // initalize from app cache
-      WelcomeView._newsList = appData.newsList;
-    }
 
     this._pageSource = `
       <!DOCTYPE html>
@@ -67,238 +53,268 @@ export class WelcomeView {
           <title>Welcome to Mito</title>
           <style>
             body {
-              background: ${LightThemeBGColor};
-              color: #000000;
+              background: ${this._isDarkTheme ? '#1a1a1a' : '#ffffff'};
+              color: ${this._isDarkTheme ? '#ffffff' : '#000000'};
               margin: 0;
               overflow: hidden;
               font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica,
                 Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
                 'Segoe UI Symbol';
-              font-size: 13px;
+              font-size: 14px;
               -webkit-user-select: none;
               user-select: none;
             }
-            body.app-ui-dark {
-              background: ${DarkThemeBGColor};
-              color: #ffffff;
-            }
+            
             .container {
-              height: calc(100vh - 100px);
-              padding: 80px 120px 20px 120px;
-              font-size: 16px;
+              height: 100vh;
               display: flex;
               flex-direction: column;
-            }
-            .row {
-              display: flex;
-              flex-direction: row;
-              font-size: 14px;
-              line-height: 18px;
-            }
-            .col {
-              display: flex;
-              flex-direction: column;
-            }
-            .logo svg {
-              width: 80px;
-              height: 80px;
-            }
-            .app-title-row {
               align-items: center;
-              column-gap: 10px;
-              margin-bottom: 80px;
+              justify-content: flex-start;
+              padding: 25vh 40px 40px 40px;
             }
-            .app-title {
-              font-size: 30px;
-            }
-            .content-row {
-              flex-grow: 1;
-            }
-            .start-recent-col {
-              width: 40%;
-              flex-basis: 40%;
-              flex-grow: 1;
-            }
-            .news-list-hidden .start-recent-col {
-              width: 60%;
-              flex-basis: 60%;
-            }
-            .start-col {
+            
+            .header {
+              text-align: center;
               margin-bottom: 40px;
-              row-gap: 2px;
             }
-            .recent-col {
-              row-gap: 5px;
-              max-height: 200px;
-              overflow-y: hidden;
-            }
-            .recent-col.recents-expanded {
-              overflow-y: auto;
-            }
-            .recent-col .row-title {
-              position: sticky;
-              top: 0;
-              background: ${LightThemeBGColor};
-            }
-            .app-ui-dark .recent-col .row-title {
-              background: ${DarkThemeBGColor};
-            }
-            .recent-col.recents-collapsed > div:nth-child(n+${
-              maxRecentItems + 2
-            }).recent-session-row {
-              display: none;
-            }
-            .news-col {
-              width: 40%;
-              flex-basis: 40%;
-              flex-grow: 1;
-              row-gap: 5px;
-              padding-left: 10px;
-            }
-            .news-list-hidden .news-col {
-              width: 20%;
-              flex-basis: 20%;
-            }
-            .news-list-col {
+            
+            .logo-container {
               display: flex;
-              flex-direction: column;
-              row-gap: 5px;
+              align-items: center;
+              justify-content: center;
+              margin-bottom: 20px;
             }
-            .news-col-footer {
-              margin-top: 5px;
+            
+            .logo svg {
+              width: 180px;
             }
-            .row-title {
-              font-weight: bold;
-              margin-bottom: 5px;
+            
+            .subtitle {
               font-size: 16px;
+              color: ${this._isDarkTheme ? '#888888' : '#666666'};
+              margin-top: 8px;
             }
-            a, .recent-session-link {
-              color: #555555;
+            
+            .actions-container {
+              display: flex;
+              gap: 16px;
+              margin-bottom: 20px;
+              flex-wrap: wrap;
+              justify-content: center;
+            }
+            
+            .action-button {
+              display: flex;
+              align-items: center;
+              padding: 16px 24px;
+              background: ${this._isDarkTheme ? '#2a2a2a' : '#f5f5f5'};
+              border: 1px solid ${this._isDarkTheme ? '#404040' : '#e0e0e0'};
+              border-radius: 8px;
               text-decoration: none;
+              color: ${this._isDarkTheme ? '#ffffff' : '#000000'};
+              font-size: 14px;
+              font-weight: 500;
               cursor: pointer;
+              transition: all 0.2s ease;
+              min-width: 160px;
+              justify-content: center;
             }
-            a:hover, .recent-session-link:hover {
-              color: #777777;
+            
+            .action-button:hover {
+              background: ${this._isDarkTheme ? '#3a3a3a' : '#eeeeee'};
+              border-color: ${this._isDarkTheme ? '#555555' : '#d0d0d0'};
+              transform: translateY(-1px);
             }
-            .app-ui-dark a, .app-ui-dark .recent-session-link {
-              color: #cccccc;
+            
+            .action-button:active {
+              transform: translateY(0);
             }
-            .app-ui-dark a:hover, .app-ui-dark .recent-session-link:hover {
-              color: #eeeeee;
-            }
-            .more-row a {
-              color: #202020;
-            }
-            a.disabled, .recent-session-link.disabled {
-              pointer-events: none;
+            
+            .action-button.disabled {
               opacity: 0.5;
+              pointer-events: none;
             }
-            .app-ui-dark .more-row a {
-              color: #f0f0f0;
-            }
-            .jupyterlab-wordmark svg {
-              width: 300px;
-            }
-            .jupyterlab-wordmark .jp-icon2 {
-              fill: #888888;
-            }
-            .recent-session-link {
-              white-space: nowrap;
-            }
-            .recent-session-detail {
-              padding-left: 10px;
-            }
-            .recent-session-detail, .news-list-col .row a {
-              text-overflow: ellipsis;
-              overflow: hidden;
-              white-space: nowrap;
-            }
-            .recent-session-row {
-              align-items: center;
-            }
-            .recent-session-delete {
-              height: 18px;
-              margin-left: 10px;
-              visibility: hidden;
-            }
-            .recent-session-row:hover .recent-session-delete {
-              visibility: visible;
-              transition-delay: 1s;
-              cursor: pointer;
-            }
-            .recent-session-row .delete-button {
-              width: 16px;
-              height: 16px;
-              padding-top: 1px;
-              fill: #555555;
-            }
-            .app-ui-dark .recent-session-row .delete-button {
-              fill: #bcbcbc;
-            }
-            .no-recent-message {
-              color: #777777;
-            }
-            .app-ui-dark .no-recent-message {
-              color: #999999;
-            }
-            .action-row a {
-              display: flex;
-              flex-direction: row;
-              align-items: center;
-            }
-            .action-row span {
-              margin-right: 8px;
-              padding-top: 4px;
-              width: 26px;
-              height: 26px;
-            }
-            .action-row svg {
-              width: 22px;
-              height: 22px;
-              fill: #555555;
-            }
-            .app-ui-dark .action-row svg {
-              fill: #dddddd;
-            }
-            .new-notebook-action-row svg {
-              width: 25px;
-              height: 25px;
-              margin-left: -1px;
-            }
-            .new-session-action-row svg {
-              width: 26px;
-              height: 26px;
-              margin-left: -2px;
-            }
-            #notification-panel {
-              position: sticky;
-              bottom: 0;
-              display: none;
-              height: 50px;
-              padding: 0 20px;
-              background: inherit;
-              border-top: 1px solid #585858;
-              align-items: center;
-            }
-            #notification-panel-message {
-              flex-grow: 1;
+            
+            .action-icon {
+              margin-right: 12px;
               display: flex;
               align-items: center;
             }
-            #notification-panel-message a {
-              margin: 0 4px;
-            }
-            #notification-panel .close-button {
+            
+            .action-icon svg {
               width: 20px;
               height: 20px;
-              fill: #555555;
+              fill: ${this._isDarkTheme ? '#ffffff' : '#000000'};
+            }
+            
+            .content-section {
+              display: flex;
+              width: 100%;
+              max-width: 800px;
+              gap: 60px;
+              justify-content: center;
+            }
+            
+            .recent-section {
+              max-width: 400px;
+              width: 100%;
+            }
+            
+            .section-title {
+              font-size: 14px;
+              font-weight: 500;
+              margin-bottom: 16px;
+              color: ${this._isDarkTheme ? '#ffffff' : '#000000'};
+            }
+            
+            .recent-list {
+              display: flex;
+              flex-direction: column;
+              gap: 6px;
+            }
+            
+            .recent-item {
+              display: flex;
+              align-items: center;
+              justify-content: space-between;
+              padding: 8px 12px;
+              background: ${this._isDarkTheme ? '#2a2a2a' : '#f8f8f8'};
+              border: 1px solid ${this._isDarkTheme ? '#404040' : '#e0e0e0'};
+              border-radius: 6px;
+              cursor: pointer;
+              transition: all 0.2s ease;
+              position: relative;
+            }
+            
+            .recent-item:hover {
+              background: ${this._isDarkTheme ? '#3a3a3a' : '#f0f0f0'};
+            }
+            
+            .recent-item.disabled {
+              opacity: 0.5;
+              pointer-events: none;
+            }
+            
+            .recent-item-content {
+              display: flex;
+              align-items: center;
+              justify-content: space-between;
+              flex: 1;
+              margin-right: 8px;
+            }
+            
+            .recent-item-name {
+              font-weight: 400;
+              color: ${this._isDarkTheme ? '#ffffff' : '#000000'};
+              font-size: 13px;
+            }
+            
+            .recent-item-path {
+              font-size: 11px;
+              color: ${this._isDarkTheme ? '#888888' : '#666666'};
+              margin-left: 12px;
+            }
+            
+            .recent-item-delete {
+              position: absolute;
+              right: 12px;
+              top: 50%;
+              transform: translateY(-50%);
+              width: 20px;
+              height: 20px;
+              opacity: 0;
+              transition: opacity 0.2s ease;
+              cursor: pointer;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+            }
+            
+            .recent-item:hover .recent-item-delete {
+              opacity: 1;
+            }
+            
+            .recent-item-delete svg {
+              width: 14px;
+              height: 14px;
+              fill: ${this._isDarkTheme ? '#888888' : '#666666'};
+            }
+            
+            .recent-item-delete:hover svg {
+              fill: ${this._isDarkTheme ? '#ff6b6b' : '#e74c3c'};
+            }
+            
+            .no-recent-message {
+              color: ${this._isDarkTheme ? '#888888' : '#666666'};
+              font-style: italic;
+              text-align: center;
+              padding: 40px 20px;
+              background: ${this._isDarkTheme ? 'rgba(255, 255, 255, 0.02)' : 'rgba(0, 0, 0, 0.02)'};
+              border: 1px dashed ${this._isDarkTheme ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'};
+              border-radius: 8px;
+              margin: 20px 0;
+            }
+            
+            .view-all-link {
+              color: ${this._isDarkTheme ? '#4a9eff' : '#0066cc'};
+              text-decoration: none;
+              font-size: 12px;
+              margin-top: 8px;
+              display: inline-block;
+            }
+            
+            .view-all-link:hover {
+              text-decoration: underline;
+            }
+            
+            #notification-panel {
+              position: fixed;
+              bottom: 20px;
+              left: 50%;
+              transform: translateX(-50%);
+              display: none;
+              background: ${this._isDarkTheme ? '#2a2a2a' : '#ffffff'};
+              border: 1px solid ${this._isDarkTheme ? '#404040' : '#e0e0e0'};
+              border-radius: 8px;
+              padding: 16px 20px;
+              box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+              align-items: center;
+              gap: 12px;
+              max-width: 500px;
+              z-index: 1000;
+            }
+            
+            #notification-panel-message {
+              flex: 1;
+              color: ${this._isDarkTheme ? '#ffffff' : '#000000'};
+            }
+            
+            #notification-panel .close-button {
+              width: 16px;
+              height: 16px;
+              fill: ${this._isDarkTheme ? '#888888' : '#666666'};
               cursor: pointer;
             }
-            .app-ui-dark #notification-panel .close-button {
-              fill: #bcbcbc;
+            
+            #notification-panel .close-button:hover {
+              fill: ${this._isDarkTheme ? '#ffffff' : '#000000'};
             }
-            .recent-expander-col {
+            
+            .recent-expander {
               display: none;
+              text-align: center;
+              margin-top: 12px;
+            }
+            
+            .recent-expander a {
+              color: ${this._isDarkTheme ? '#4a9eff' : '#0066cc'};
+              text-decoration: none;
+              font-size: 12px;
+            }
+            
+            .recent-expander a:hover {
+              text-decoration: underline;
             }
           </style>
           <script>
@@ -310,121 +326,67 @@ export class WelcomeView {
           </script>
         </head>
       
-        <body class="${this._isDarkTheme ? 'app-ui-dark' : ''} ${
-      showNewsFeed ? '' : 'news-list-hidden'
-    }" title="">
+        <body class="${this._isDarkTheme ? 'app-ui-dark' : ''}" title="">
           <svg class="symbol" style="display: none;">
-          <defs>
-            <symbol id="circle-xmark" viewBox="0 0 512 512">
-              <!--! Font Awesome Pro 6.2.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license (Commercial License) Copyright 2022 Fonticons, Inc. --><path d="M256 512c141.4 0 256-114.6 256-256S397.4 0 256 0S0 114.6 0 256S114.6 512 256 512zM175 175c9.4-9.4 24.6-9.4 33.9 0l47 47 47-47c9.4-9.4 24.6-9.4 33.9 0s9.4 24.6 0 33.9l-47 47 47 47c9.4 9.4 9.4 24.6 0 33.9s-24.6 9.4-33.9 0l-47-47-47 47c-9.4 9.4-24.6 9.4-33.9 0s-9.4-24.6 0-33.9l47-47-47-47c-9.4-9.4-9.4-24.6 0-33.9z"/>
-            </symbol>
-            <symbol id="triangle-exclamation" viewBox="0 0 512 512">
-              <!--! Font Awesome Pro 6.2.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license (Commercial License) Copyright 2022 Fonticons, Inc. --><path d="M256 32c14.2 0 27.3 7.5 34.5 19.8l216 368c7.3 12.4 7.3 27.7 .2 40.1S486.3 480 472 480H40c-14.3 0-27.6-7.7-34.7-20.1s-7-27.8 .2-40.1l216-368C228.7 39.5 241.8 32 256 32zm0 128c-13.3 0-24 10.7-24 24V296c0 13.3 10.7 24 24 24s24-10.7 24-24V184c0-13.3-10.7-24-24-24zm32 224c0-17.7-14.3-32-32-32s-32 14.3-32 32s14.3 32 32 32s32-14.3 32-32z"/></svg>
-            </symbol>
-          </defs>
+            <defs>
+              <symbol id="circle-xmark" viewBox="0 0 512 512">
+                <path d="M256 512c141.4 0 256-114.6 256-256S397.4 0 256 0S0 114.6 0 256S114.6 512 256 512zM175 175c9.4-9.4 24.6-9.4 33.9 0l47 47 47-47c9.4-9.4 24.6-9.4 33.9 0s9.4 24.6 0 33.9l-47 47 47 47c9.4 9.4 9.4 24.6 0 33.9s-24.6 9.4-33.9 0l-47-47-47 47c-9.4 9.4-24.6 9.4-33.9 0s-9.4-24.6 0-33.9l47-47-47-47c-9.4-9.4-9.4-24.6 0-33.9z"/>
+              </symbol>
+              <symbol id="triangle-exclamation" viewBox="0 0 512 512">
+                <path d="M256 32c14.2 0 27.3 7.5 34.5 19.8l216 368c7.3 12.4 7.3 27.7 .2 40.1S486.3 480 472 480H40c-14.3 0-27.6-7.7-34.7-20.1s-7-27.8 .2-40.1l216-368C228.7 39.5 241.8 32 256 32zm0 128c-13.3 0-24 10.7-24 24V296c0 13.3 10.7 24 24 24s24-10.7 24-24V184c0-13.3-10.7-24-24-24zm32 224c0-17.7-14.3-32-32-32s-32 14.3-32 32s14.3 32 32 32s32-14.3 32-32z"/>
+              </symbol>
+            </defs>
           </svg>
+
           <div class="container">
-            <div class="row app-title-row">
-              <div class="app-title">
-                <div class="jupyterlab-wordmark">
-                  ${jupyterlabWordmarkSrc}
+            <div class="header">
+              <div class="logo-container">
+                <div class="logo">
+                  ${mitoWordmarkSrc}
                 </div>
               </div>
+              <p class="subtitle">Data analysis made simple</p>
             </div>
 
-            <div class="row content-row">
-              <div class="col start-recent-col">
-                <div class="col start-col">
-                  <div class="row row-title">
-                    Start
-                  </div>
-                  <div class="row action-row new-notebook-action-row">
-                    <a id="new-notebook-link" href="javascript:void(0)" title="Create new notebook in the default working directory" onclick="handleNewSessionClick('notebook');">
-                      <span class="action-icon">${notebookIcon}</span>
-                      New notebook...
+            <div class="actions-container">
+              <a class="action-button" id="new-notebook-link" href="javascript:void(0)" title="Create new notebook in the default working directory" onclick="handleNewSessionClick('notebook');">
+                <div class="action-icon">${notebookIcon}</div>
+                New notebook
+              </a>
+              ${
+                process.platform === 'darwin'
+                  ? `<a class="action-button" id="open-file-or-folder-link" href="javascript:void(0)" title="Open a notebook or folder in JupyterLab" onclick="handleNewSessionClick('open');">
+                      <div class="action-icon">${openIcon}</div>
+                      Open
+                    </a>`
+                  : `<a class="action-button" id="open-file-link" href="javascript:void(0)" title="Open a notebook or file in JupyterLab" onclick="handleNewSessionClick('open-file');">
+                      <div class="action-icon">${openIcon}</div>
+                      Open File
                     </a>
-                  </div>
-                  <div class="row action-row new-session-action-row">
-                    <a id="new-session-link" href="javascript:void(0)" title="Launch new JupyterLab session in the default working directory" onclick="handleNewSessionClick('blank');">
-                      <span class="action-icon">${labIcon}</span>
-                      New session...
-                    </a>
-                  </div>
-                  ${
-                    process.platform === 'darwin'
-                      ? `<div class="row action-row">
-                      <a id="open-file-or-folder-link" href="javascript:void(0)" title="Open a notebook or folder in JupyterLab" onclick="handleNewSessionClick('open');">
-                        <span class="action-icon">${openIcon}</span>
-                        Open...
-                      </a>
-                    </div>`
-                      : `<div class="row action-row">
-                      <a id="open-file-link" href="javascript:void(0)" title="Open a notebook or file in JupyterLab" onclick="handleNewSessionClick('open-file');">
-                        <span class="action-icon">${openIcon}</span>
-                        Open File...
-                      </a>
-                    </div>
-                    <div class="row action-row">
-                      <a id="open-folder-link" href="javascript:void(0)" title="Open a folder in JupyterLab" onclick="handleNewSessionClick('open-folder');">
-                        <span class="action-icon">${openIcon}</span>
-                        Open Folder...
-                      </a>
-                    </div>`
-                  }
-                  <div class="row action-row">
-                    <a href="javascript:void(0)" title="Connect to an existing local or remote JupyterLab server" onclick="handleNewSessionClick('remote');">
-                      <span class="action-icon">  
-                      ${serverIcon}
-                      </span>
-                      Connect...
-                    </a>
-                  </div>
-                </div>
-                
-                <div id="recent-sessions-col" class="col recent-col">
-                  <div id="recent-sessions-title" class="row row-title">
-                    Recent sessions
-                  </div>
-                </div>
-                <div id="recent-expander-col" class="col recent-expander-col">
-                  <div class="row action-row more-row news-col-footer">
-                    <a id="expand-collapse-recents" href="javascript:void(0)" onclick='handleExpandCollapseRecents();'>
-                      More...
-                    </a>
-                  </div>
-                </div>
-              </div>
+                    <a class="action-button" id="open-folder-link" href="javascript:void(0)" title="Open a folder in JupyterLab" onclick="handleNewSessionClick('open-folder');">
+                      <div class="action-icon">${openIcon}</div>
+                      Open Folder
+                    </a>`
+              }
+            </div>
 
-              <div class="col news-col">
-                <div class="row row-title">
-                  Jupyter News
+            <div class="content-section">
+              <div class="recent-section">
+                <h2 class="section-title">Recent sessions</h2>
+                <div id="recent-sessions-list" class="recent-list">
+                  <!-- Recent sessions will be populated here -->
                 </div>
-
-                <div id="news-list" class="news-list-col">
-                ${
-                  // populate news list from cache
-                  WelcomeView._newsList
-                    .map((news: INewsItem) => {
-                      return `<div class="row">
-                        <a href="javascript:void(0)" onclick=\'handleNewsClick("${news.link}");\' title="${news.title}">${news.title}</a>
-                      </div>`;
-                    })
-                    .join('')
-                }
-                </div>
-
-                <div class="row action-row more-row news-col-footer">
-                  <a href="javascript:void(0)" onclick='handleNewsClick("https://blog.jupyter.org");'>
-                    <span class="action-icon">${externalLinkIcon}</span>
-                    Jupyter Blog
+                <div id="recent-expander" class="recent-expander">
+                  <a href="javascript:void(0)" onclick="handleExpandCollapseRecents();">
+                    <span id="expand-collapse-text">More...</span>
                   </a>
                 </div>
               </div>
             </div>
           </div>
+
           <div id="notification-panel">
-            <div id="notification-panel-message">
-            </div>
+            <div id="notification-panel-message"></div>
             <div id="notification-panel-close" title="Close" onclick="closeNotificationPanel(event)">
               <svg class="close-button" version="2.0">
                 <use href="#circle-xmark" />
@@ -433,90 +395,83 @@ export class WelcomeView {
           </div>
 
           <script>
-          const newsListContainer = document.getElementById('news-list');
           const notificationPanel = document.getElementById('notification-panel');
           const notificationPanelMessage = document.getElementById('notification-panel-message');
           const notificationPanelCloseButton = document.getElementById('notification-panel-close');
-          const recentSessionsCol = document.getElementById('recent-sessions-col');
-          const recentSessionsTitle = document.getElementById('recent-sessions-title');
+          const recentSessionsList = document.getElementById('recent-sessions-list');
+          const recentExpander = document.getElementById('recent-expander');
+          const expandCollapseText = document.getElementById('expand-collapse-text');
 
           function updateRecentSessionList(recentSessions, resetCollapseState) {
             const maxRecentItems = ${maxRecentItems};
-            // clear list
-            while (recentSessionsTitle.nextSibling) {
-              recentSessionsTitle.nextSibling.remove();
-            }
+            
+            // Clear list
+            recentSessionsList.innerHTML = '';
 
             let recentSessionCount = 0;
 
-            const fragment = new DocumentFragment();
-
             for (const recentSession of recentSessions) {
               const {isRemote, linkLabel, linkTooltip, linkDetail} = recentSession;
-              const recentSessionRow = document.createElement('div');
-              recentSessionRow.classList.add("row");
-              recentSessionRow.classList.add("recent-session-row");
-              recentSessionRow.dataset.sessionIndex = recentSessionCount;
-              recentSessionRow.innerHTML = \`
-                  <div class="recent-session-link\$\{!isRemote ? ' recent-item-local' : ''\}" onclick='handleRecentSessionClick(event);' title="\$\{linkTooltip\}">\$\{linkLabel\}</div>
-                  \$\{linkDetail ? \`<div class="recent-session-detail" title="\$\{linkDetail\}">\$\{linkDetail\}</div>\`: ''}
-                  <div class="recent-session-delete" title="Remove" onclick="handleRecentSesssionDeleteClick(event)">
-                    <svg class="delete-button" version="2.0">
-                      <use href="#circle-xmark" />
-                    </svg>
-                  </div>\`;
+              const recentItem = document.createElement('div');
+              recentItem.classList.add('recent-item');
+              if (!isRemote) {
+                recentItem.classList.add('recent-item-local');
+              }
+              recentItem.dataset.sessionIndex = recentSessionCount;
+              recentItem.innerHTML = \`
+                <div class="recent-item-content">
+                  <div class="recent-item-name">\${linkLabel}</div>
+                  \${linkDetail ? \`<div class="recent-item-path">\${linkDetail}</div>\` : ''}
+                </div>
+                <div class="recent-item-delete" title="Remove" onclick="handleRecentSesssionDeleteClick(event)">
+                  <svg version="2.0">
+                    <use href="#circle-xmark" />
+                  </svg>
+                </div>
+              \`;
 
-              fragment.append(recentSessionRow);
+              recentItem.addEventListener('click', (event) => {
+                if (!event.target.closest('.recent-item-delete')) {
+                  handleRecentSessionClick(event);
+                }
+              });
 
+              recentSessionsList.appendChild(recentItem);
               recentSessionCount++;
             }
 
             if (recentSessionCount === 0) {
               const noHistoryMessage = document.createElement('div');
               noHistoryMessage.className = 'no-recent-message';
-              noHistoryMessage.innerText = 'No history yet';
-              fragment.append(noHistoryMessage);
+              noHistoryMessage.innerText = 'No recent sessions';
+              recentSessionsList.appendChild(noHistoryMessage);
             }
 
-            recentSessionsCol.append(fragment);
-
-            // also reset if item remove causes count to get back to limit
+            // Handle expand/collapse
             resetCollapseState = resetCollapseState || recentSessionCount <= maxRecentItems;
 
             if (resetCollapseState) {
-              const recentExpanderCol = document.getElementById('recent-expander-col');
               if (recentSessionCount > maxRecentItems) {
-                recentSessionsCol.classList.add('recents-collapsed');
-                recentExpanderCol.style.display = 'block';
+                recentSessionsList.classList.add('recents-collapsed');
+                recentExpander.style.display = 'block';
+                
+                // Hide items beyond maxRecentItems
+                const items = recentSessionsList.querySelectorAll('.recent-item');
+                items.forEach((item, index) => {
+                  if (index >= maxRecentItems) {
+                    item.style.display = 'none';
+                  }
+                });
               } else {
-                recentSessionsCol.classList.remove('recents-collapsed');
-                recentSessionsCol.classList.remove('recents-expanded');
-                recentExpanderCol.style.display = 'none';
+                recentSessionsList.classList.remove('recents-collapsed');
+                recentSessionsList.classList.remove('recents-expanded');
+                recentExpander.style.display = 'none';
               }
             }
           }
 
           window.electronAPI.onSetRecentSessionList((recentSessions, resetCollapseState) => {
             updateRecentSessionList(recentSessions, resetCollapseState);
-          });
-          
-          window.electronAPI.onSetNewsList((newsList) => {
-            // clear list
-            while (newsListContainer.firstChild) {
-              newsListContainer.firstChild.remove();
-            }
-
-            const fragment = new DocumentFragment();
-            for (const news of newsList) {
-              const newsRow = document.createElement('div');
-              newsRow.innerHTML = \`
-                <div class="row">
-                  <a href="javascript:void(0)" onclick=\'handleNewsClick("\$\{news.link\}");\' title="\$\{news.title\}">\$\{news.title\}</a>
-                </div>\`;
-              fragment.append(newsRow);
-            }
-
-            newsListContainer.append(fragment);
           });
 
           document.addEventListener('dragover', (event) => {
@@ -541,39 +496,48 @@ export class WelcomeView {
           }
 
           function handleRecentSessionClick(event) {
-            const row = event.currentTarget.closest('.recent-session-row');
-            if (!row) {
+            const item = event.currentTarget.closest('.recent-item');
+            if (!item) {
               return;
             }
-            const sessionIndex = parseInt(row.dataset.sessionIndex);
+            const sessionIndex = parseInt(item.dataset.sessionIndex);
             window.electronAPI.openRecentSession(sessionIndex);
           }
 
           function handleRecentSesssionDeleteClick(event) {
-            const row = event.currentTarget.closest('.recent-session-row');
-            if (!row) {
+            event.stopPropagation();
+            const item = event.currentTarget.closest('.recent-item');
+            if (!item) {
               return;
             }
-            const sessionIndex = parseInt(row.dataset.sessionIndex);
+            const sessionIndex = parseInt(item.dataset.sessionIndex);
             window.electronAPI.deleteRecentSession(sessionIndex);
           }
 
-          function handleNewsClick(newsLink) {
-            window.electronAPI.openNewsLink(newsLink);
-          }
-
           function handleExpandCollapseRecents() {
-            const expandCollapseButton = document.getElementById("expand-collapse-recents");
-            const classList = recentSessionsCol.classList;
-            const isCollapsed = classList.contains("recents-collapsed");
+            const isCollapsed = recentSessionsList.classList.contains("recents-collapsed");
+            const items = recentSessionsList.querySelectorAll('.recent-item');
+            
             if (isCollapsed) {
-              classList.remove("recents-collapsed");
-              classList.add("recents-expanded");
-              expandCollapseButton.innerText = "Less...";
+              recentSessionsList.classList.remove("recents-collapsed");
+              recentSessionsList.classList.add("recents-expanded");
+              expandCollapseText.innerText = "Less...";
+              
+              // Show all items
+              items.forEach(item => {
+                item.style.display = 'flex';
+              });
             } else {
-              classList.remove("recents-expanded");
-              classList.add("recents-collapsed");
-              expandCollapseButton.innerText = "More...";
+              recentSessionsList.classList.remove("recents-expanded");
+              recentSessionsList.classList.add("recents-collapsed");
+              expandCollapseText.innerText = "More...";
+              
+              // Hide items beyond maxRecentItems
+              items.forEach((item, index) => {
+                if (index >= ${maxRecentItems}) {
+                  item.style.display = 'none';
+                }
+              });
             }
           }
 
@@ -604,7 +568,7 @@ export class WelcomeView {
               }
             });
 
-            document.querySelectorAll('div.recent-item-local').forEach(link => {
+            document.querySelectorAll('.recent-item-local').forEach(link => {
               if (enable) {
                 link.classList.remove("disabled");
               } else {
@@ -664,10 +628,6 @@ export class WelcomeView {
 
     this.updateRecentSessionList(true);
 
-    if (userSettings.getValue(SettingType.showNewsFeed)) {
-      this._updateNewsList();
-    }
-
     this._registry.environmentListUpdated.connect(
       this._onEnvironmentListUpdated,
       this
@@ -721,47 +681,6 @@ export class WelcomeView {
         `,
           true
         );
-      });
-  }
-
-  private _updateNewsList() {
-    if (WelcomeView._newsListFetched) {
-      return;
-    }
-
-    const newsFeedUrl = 'https://blog.jupyter.org/feed';
-    const maxNewsToShow = 10;
-
-    fetch(newsFeedUrl)
-      .then(async response => {
-        try {
-          const data = await response.text();
-          const parser = new XMLParser();
-          const feed = parser.parse(data);
-          const newsList: INewsItem[] = [];
-          for (const item of feed.rss.channel.item) {
-            newsList.push({
-              title: item.title,
-              link: encodeURIComponent(item.link)
-            });
-            if (newsList.length === maxNewsToShow) {
-              break;
-            }
-          }
-
-          this._view.webContents.send(EventTypeRenderer.SetNewsList, newsList);
-
-          WelcomeView._newsList = newsList;
-          appData.newsList = [...newsList];
-          if (newsList.length > 0) {
-            WelcomeView._newsListFetched = true;
-          }
-        } catch (error) {
-          console.error('Failed to parse news list:', error);
-        }
-      })
-      .catch(error => {
-        console.error('Failed to fetch news list:', error);
       });
   }
 
@@ -823,8 +742,6 @@ export class WelcomeView {
   private _viewReady: Promise<void>;
   private _registry: IRegistry;
   private _pageSource: string;
-  static _newsList: INewsItem[] = [];
-  static _newsListFetched = false;
 }
 
 export namespace WelcomeView {

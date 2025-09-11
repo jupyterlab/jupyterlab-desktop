@@ -11,11 +11,6 @@ import { ISignal, Signal } from '@lumino/signaling';
 
 const MAX_RECENT_SESSIONS = 20;
 
-export interface INewsItem {
-  title: string;
-  link: string;
-}
-
 export interface IRecentSession {
   workingDirectory?: string;
   filesToOpen?: string[];
@@ -160,16 +155,6 @@ export class ApplicationData {
       }
     }
 
-    this.newsList = [];
-    if ('newsList' in jsonData && Array.isArray(jsonData.newsList)) {
-      for (const newsItem of jsonData.newsList) {
-        this.newsList.push({
-          title: newsItem.title,
-          link: newsItem.link
-        });
-      }
-    }
-
     if ('updateBundledEnvOnRestart' in jsonData) {
       this.updateBundledEnvOnRestart = jsonData.updateBundledEnvOnRestart;
     }
@@ -238,14 +223,6 @@ export class ApplicationData {
         path: pythonEnv.path,
         type: pythonEnv.type,
         versions: { ...pythonEnv.versions }
-      });
-    }
-
-    appDataJSON.newsList = [];
-    for (const newsItem of this.newsList) {
-      appDataJSON.newsList.push({
-        title: newsItem.title,
-        link: newsItem.link
       });
     }
 
@@ -384,7 +361,6 @@ export class ApplicationData {
     });
   }
 
-  newsList: INewsItem[] = [];
   /**
    * discovered pythonPath (for JupyterLab server)
    */
