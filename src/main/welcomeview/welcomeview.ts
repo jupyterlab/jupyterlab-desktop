@@ -70,13 +70,13 @@ export class WelcomeView {
               display: flex;
               flex-direction: column;
               align-items: center;
-              justify-content: center;
-              padding: 40px;
+              justify-content: flex-start;
+              padding: 25vh 40px 40px 40px;
             }
             
             .header {
               text-align: center;
-              margin-bottom: 60px;
+              margin-bottom: 40px;
             }
             
             .logo-container {
@@ -99,7 +99,7 @@ export class WelcomeView {
             .actions-container {
               display: flex;
               gap: 16px;
-              margin-bottom: 80px;
+              margin-bottom: 20px;
               flex-wrap: wrap;
               justify-content: center;
             }
@@ -153,29 +153,32 @@ export class WelcomeView {
               width: 100%;
               max-width: 800px;
               gap: 60px;
+              justify-content: center;
             }
             
             .recent-section {
-              flex: 1;
+              max-width: 400px;
+              width: 100%;
             }
             
             .section-title {
-              font-size: 18px;
-              font-weight: 600;
-              margin-bottom: 20px;
+              font-size: 14px;
+              font-weight: 500;
+              margin-bottom: 16px;
               color: ${this._isDarkTheme ? '#ffffff' : '#000000'};
             }
             
             .recent-list {
               display: flex;
               flex-direction: column;
-              gap: 8px;
+              gap: 6px;
             }
             
             .recent-item {
               display: flex;
               align-items: center;
-              padding: 12px 16px;
+              justify-content: space-between;
+              padding: 8px 12px;
               background: ${this._isDarkTheme ? '#2a2a2a' : '#f8f8f8'};
               border: 1px solid ${this._isDarkTheme ? '#404040' : '#e0e0e0'};
               border-radius: 6px;
@@ -193,16 +196,24 @@ export class WelcomeView {
               pointer-events: none;
             }
             
-            .recent-item-name {
-              font-weight: 500;
-              color: ${this._isDarkTheme ? '#ffffff' : '#000000'};
+            .recent-item-content {
+              display: flex;
+              align-items: center;
+              justify-content: space-between;
               flex: 1;
+              margin-right: 8px;
+            }
+            
+            .recent-item-name {
+              font-weight: 400;
+              color: ${this._isDarkTheme ? '#ffffff' : '#000000'};
+              font-size: 13px;
             }
             
             .recent-item-path {
-              font-size: 12px;
+              font-size: 11px;
               color: ${this._isDarkTheme ? '#888888' : '#666666'};
-              margin-top: 2px;
+              margin-left: 12px;
             }
             
             .recent-item-delete {
@@ -408,7 +419,7 @@ export class WelcomeView {
               }
               recentItem.dataset.sessionIndex = recentSessionCount;
               recentItem.innerHTML = \`
-                <div>
+                <div class="recent-item-content">
                   <div class="recent-item-name">\${linkLabel}</div>
                   \${linkDetail ? \`<div class="recent-item-path">\${linkDetail}</div>\` : ''}
                 </div>
