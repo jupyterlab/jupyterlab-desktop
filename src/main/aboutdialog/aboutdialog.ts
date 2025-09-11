@@ -70,7 +70,7 @@ export class AboutDialog {
           </div>
           <div class="app-title-version">
             <div class="app-title">
-              JupyterLab Desktop
+              Mito
             </div>
             <div class="app-version">
               Version <%= version %>

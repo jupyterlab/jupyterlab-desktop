@@ -1,7 +1,7 @@
 {
   "name": "jupyterlab-desktop",
   "version": "4.4.6-1",
-  "description": "JupyterLab Desktop",
+  "description": "Mito Desktop App",
   "main": "./build/out/main/main.js",
   "scripts": {
     "start": "electron .",
@@ -58,7 +58,7 @@
   },
   "build": {
     "appId": "org.jupyter.jupyterlab-desktop",
-    "productName": "JupyterLab",
+    "productName": "Mito",
     "artifactName": "${productName}.${ext}",
     "directories": {
       "buildResources": "dist-resources"

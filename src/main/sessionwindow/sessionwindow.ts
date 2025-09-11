@@ -125,7 +125,7 @@ export class SessionWindow implements IDisposable {
       minWidth: 400,
       minHeight: 300,
       show: false,
-      title: 'JupyterLab',
+      title: 'Mito',
       titleBarStyle: 'hidden',
       frame: process.platform === 'darwin',
       backgroundColor: this._isDarkTheme ? DarkThemeBGColor : LightThemeBGColor,

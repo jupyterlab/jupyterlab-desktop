@@ -123,11 +123,11 @@ function redirectConsoleToLog() {
 const thisYear = new Date().getFullYear();
 
 app.setAboutPanelOptions({
-  applicationName: 'JupyterLab Desktop',
+  applicationName: 'Mito',
   applicationVersion: app.getVersion(),
   version: app.getVersion(),
-  website: 'https://jupyter.org/about.html',
-  copyright: `© 2015-${thisYear}  Project Jupyter Contributors`
+  website: 'https://trymito.io',
+  copyright: `© 2025-${thisYear} Saga Inc.`
 });
 
 // when a file is double clicked or dropped on the app icon on OS,
