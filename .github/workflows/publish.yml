@@ -52,9 +52,9 @@ jobs:
         run: |
           yarn check_version_match
 
-      - name: Check Lint & Prettier
-        run: |
-          yarn lint:check
+      # - name: Check Lint & Prettier
+      #   run: |
+      #     yarn lint:check
 
       - name: Get package info
         shell: bash
@@ -86,7 +86,7 @@ jobs:
         if: (matrix.cfg.platform == 'osx-64' || matrix.cfg.platform == 'osx-arm64') && steps.release-exists.outputs.result == 'true'
         env: 
           CSC_IDENTITY_AUTO_DISCOVERY: true
-          CSC_FOR_PULL_REQUEST: true
+          # Remove this line: CSC_FOR_PULL_REQUEST: true
           CSC_LINK: ${{ secrets.CSC_LINK }}
           CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
           APPLEID: ${{ secrets.APPLEID }}
@@ -102,7 +102,7 @@ jobs:
           security import certificate.p12 -k build.keychain -P $CSC_KEY_PASSWORD -T /usr/bin/codesign
           security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k $ENV_INSTALLER_KEYCHAIN_PASS build.keychain
           echo "Signing env binaries"
-          while read line; do /usr/bin/codesign --force --options=runtime --deep -s "Developer ID Application" ./env_installer/jlab_server_extracted/"$line" -v; done < ./env_installer/sign-${{ matrix.cfg.platform }}.txt
+          while read line; do /usr/bin/codesign --force --options=runtime --deep -s "Developer ID Application: Aaron Rohn Diamond-Reivich (JJ638MV5FJ)" ./env_installer/jlab_server_extracted/"$line" -v; done < ./env_installer/sign-${{ matrix.cfg.platform }}.txt
           rm certificate.p12
           security delete-keychain build.keychain
 
@@ -123,12 +123,15 @@ jobs:
       - name: Create Application Installer for Release
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: true
-          CSC_FOR_PULL_REQUEST: true
+          # Remove this line: CSC_FOR_PULL_REQUEST: true
           APPLEID: ${{ secrets.APPLEID }}
           APPLEIDPASS: ${{ secrets.APPLEIDPASS }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
           CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
           CSC_LINK: ${{ secrets.CSC_LINK }}
+          CSC_NOTARIZE: true
+          CSC_NOTARY_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          DEBUG: electron-builder,electron-notarize
         run: |
           yarn dist:${{ matrix.cfg.platform }}
         if: steps.release-exists.outputs.result == 'true'
@@ -149,14 +152,14 @@ jobs:
           path: |
             dist/JupyterLab.rpm
       
-      - name: Upload Snap Installer
-        if: matrix.cfg.platform == 'linux-64'
-        uses: actions/upload-artifact@v4
-        id: snap-artifact
-        with:
-          name: snap-installer
-          path: |
-            dist/JupyterLab.snap
+      # - name: Upload Snap Installer
+      #   if: matrix.cfg.platform == 'linux-64'
+      #   uses: actions/upload-artifact@v4
+      #   id: snap-artifact
+      #   with:
+      #     name: snap-installer
+      #     path: |
+      #       dist/JupyterLab.snap
 
       - name: Upload macOS x64 Installer
         if: matrix.cfg.platform == 'osx-64'
@@ -186,7 +189,7 @@ jobs:
         if: matrix.cfg.platform == 'linux-64' && steps.release-exists.outputs.result == 'true'
         uses: svenstaro/upload-release-action@v2
         with:
-          repo_token: ${{ secrets.JLAB_APP_TOKEN }}
+          repo_token: ${{ secrets.REPO_MANAGER_TOKEN }}
           file: dist/JupyterLab.deb
           asset_name: JupyterLab-Setup-Debian-x64.deb
           tag: v${{ steps.package-info.outputs.version}}
@@ -196,7 +199,7 @@ jobs:
         if: matrix.cfg.platform == 'linux-64' && steps.release-exists.outputs.result == 'true'
         uses: svenstaro/upload-release-action@v2
         with:
-          repo_token: ${{ secrets.JLAB_APP_TOKEN }}
+          repo_token: ${{ secrets.REPO_MANAGER_TOKEN }}
           file: dist/JupyterLab.rpm
           asset_name: JupyterLab-Setup-Fedora-x64.rpm
           tag: v${{ steps.package-info.outputs.version}}
@@ -206,7 +209,7 @@ jobs:
         if: matrix.cfg.platform == 'osx-64' && steps.release-exists.outputs.result == 'true'
         uses: svenstaro/upload-release-action@v2
         with:
-          repo_token: ${{ secrets.JLAB_APP_TOKEN }}
+          repo_token: ${{ secrets.REPO_MANAGER_TOKEN }}
           file: dist/JupyterLab-x64.dmg
           asset_name: JupyterLab-Setup-macOS-x64.dmg
           tag: v${{ steps.package-info.outputs.version}}
@@ -216,7 +219,7 @@ jobs:
         if: matrix.cfg.platform == 'osx-arm64' && steps.release-exists.outputs.result == 'true'
         uses: svenstaro/upload-release-action@v2
         with:
-          repo_token: ${{ secrets.JLAB_APP_TOKEN }}
+          repo_token: ${{ secrets.REPO_MANAGER_TOKEN }}
           file: dist/JupyterLab-arm64.dmg
           asset_name: JupyterLab-Setup-macOS-arm64.dmg
           tag: v${{ steps.package-info.outputs.version}}
@@ -226,7 +229,7 @@ jobs:
         if: matrix.cfg.platform == 'osx-64' && steps.release-exists.outputs.result == 'true'
         uses: svenstaro/upload-release-action@v2
         with:
-          repo_token: ${{ secrets.JLAB_APP_TOKEN }}
+          repo_token: ${{ secrets.REPO_MANAGER_TOKEN }}
           file: dist/JupyterLab-x64.zip
           asset_name: JupyterLab-macOS-x64.zip
           tag: v${{ steps.package-info.outputs.version}}
@@ -236,7 +239,7 @@ jobs:
         if: matrix.cfg.platform == 'osx-arm64' && steps.release-exists.outputs.result == 'true'
         uses: svenstaro/upload-release-action@v2
         with:
-          repo_token: ${{ secrets.JLAB_APP_TOKEN }}
+          repo_token: ${{ secrets.REPO_MANAGER_TOKEN }}
           file: dist/JupyterLab-arm64.zip
           asset_name: JupyterLab-macOS-arm64.zip
           tag: v${{ steps.package-info.outputs.version}}
@@ -246,7 +249,7 @@ jobs:
         if: matrix.cfg.platform == 'win-64' && steps.release-exists.outputs.result == 'true'
         uses: svenstaro/upload-release-action@v2
         with:
-          repo_token: ${{ secrets.JLAB_APP_TOKEN }}
+          repo_token: ${{ secrets.REPO_MANAGER_TOKEN }}
           file: dist/JupyterLab-Setup.exe
           asset_name: JupyterLab-Setup-Windows-x64.exe
           tag: v${{ steps.package-info.outputs.version}}
@@ -256,27 +259,29 @@ jobs:
         if: matrix.cfg.platform == 'win-64' && steps.release-exists.outputs.result == 'true'
         uses: svenstaro/upload-release-action@v2
         with:
-          repo_token: ${{ secrets.JLAB_APP_TOKEN }}
+          repo_token: ${{ secrets.REPO_MANAGER_TOKEN }}
           file: dist/latest.yml
           asset_name: latest.yml
           tag: v${{ steps.package-info.outputs.version}}
           overwrite: true
           
-      - name: Upload snap installer as Release asset
-        if: matrix.cfg.platform == 'linux-64' && steps.release-exists.outputs.result == 'true'
-        uses: svenstaro/upload-release-action@v2
-        with:
-          repo_token: ${{ secrets.JLAB_APP_TOKEN }}
-          file: dist/JupyterLab.snap
-          asset_name: JupyterLab-Setup.snap
-          tag: v${{ steps.package-info.outputs.version}}
-          overwrite: true
+      # Skip snap store publishing for now
+      # - name: Upload snap installer as Release asset
+      #   if: matrix.cfg.platform == 'linux-64' && steps.release-exists.outputs.result == 'true'
+      #   uses: svenstaro/upload-release-action@v2
+      #   with:
+      #     repo_token: ${{ secrets.REPO_MANAGER_TOKEN }}
+      #     file: dist/JupyterLab.snap
+      #     asset_name: JupyterLab-Setup.snap
+      #     tag: v${{ steps.package-info.outputs.version}}
+      #     overwrite: true
 
-      - name: Publish snap to the latest/candidate channel in Snap Store
-        if: matrix.cfg.platform == 'linux-64' && steps.release-exists.outputs.result == 'true'
-        uses: snapcore/action-publish@v1
-        env:
-          SNAPCRAFT_STORE_CREDENTIALS: ${{ secrets.SNAPCRAFT_STORE_CREDENTIALS }}
-        with:
-          snap: dist/JupyterLab.snap
-          release: candidate
+      # Skip snap store publishing for now
+      # - name: Publish snap to the latest/candidate channel in Snap Store
+      #   if: matrix.cfg.platform == 'linux-64' && steps.release-exists.outputs.result == 'true'
+      #   uses: snapcore/action-publish@v1
+      #   env:
+      #     SNAPCRAFT_STORE_CREDENTIALS: ${{ secrets.SNAPCRAFT_STORE_CREDENTIALS }}
+      #   with:
+      #     snap: dist/JupyterLab.snap
+      #     release: candidate

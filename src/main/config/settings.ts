@@ -172,10 +172,10 @@ export class UserSettings {
       pythonEnvsPath: new Setting<string>(''),
       condaChannels: new Setting<string[]>(['conda-forge']),
 
-      uiMode: new Setting<UIMode>(UIMode.ManagedByWebApp, {
+      uiMode: new Setting<UIMode>(UIMode.MultiDocument, {
         wsOverridable: true
       }),
-      uiModeForSingleFileOpen: new Setting<UIMode>(UIMode.Zen),
+      uiModeForSingleFileOpen: new Setting<UIMode>(UIMode.MultiDocument),
       showTOCInZenMode: new Setting<boolean>(false)
     };
 
