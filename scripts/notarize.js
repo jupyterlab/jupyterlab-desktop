@@ -3,6 +3,10 @@
 const { notarize } = require('electron-notarize');
 
 exports.default = async function notarizing(context) {
+  // Skip notarization for now since it is taking too long
+  console.log('Skipping notarization...');
+  return;
+
   const { electronPlatformName, appOutDir } = context;
   if (
     electronPlatformName !== 'darwin' ||
