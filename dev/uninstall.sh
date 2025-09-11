@@ -18,16 +18,16 @@ rm -rf /Applications/Mito.app || true
 # Remove application cache and bundled Python environment
 echo "Removing application cache and bundled Python environment..."
 rm -rf ~/Library/jupyterlab-desktop || true
-rm -rf ~/Library/mito-desktop || true
+rm -rf ~/Library/Mito || true
 
 # Remove user data
 echo "Removing user data..."
 rm -rf ~/Library/Application\ Support/jupyterlab-desktop || true
-rm -rf ~/Library/Application\ Support/mito-desktop || true
+rm -rf ~/Library/Application\ Support/Mito || true
 
 # Remove logs
 echo "Removing logs..."
 rm -rf ~/Library/Logs/jupyterlab-desktop || true
-rm -rf ~/Library/Logs/mito-desktop || true
+rm -rf ~/Library/Logs/Mito || true
 
 echo "Uninstall process completed."
