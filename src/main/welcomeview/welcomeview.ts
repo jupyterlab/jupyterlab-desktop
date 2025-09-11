@@ -42,11 +42,7 @@ export class WelcomeView {
         <path d="M16.5 16.5l-5.4-4.3-5.6 4.3v-11h11z"/>
       </g>
       </svg>`;
-    const labIcon = fs.readFileSync(
-      path.join(__dirname, '../../../app-assets/icon.svg')
-    );
     const openIcon = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Pro 6.2.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license (Commercial License) Copyright 2022 Fonticons, Inc. --><path d="M88.7 223.8L0 375.8V96C0 60.7 28.7 32 64 32H181.5c17 0 33.3 6.7 45.3 18.7l26.5 26.5c12 12 28.3 18.7 45.3 18.7H416c35.3 0 64 28.7 64 64v32H144c-22.8 0-43.8 12.1-55.3 31.8zm27.6 16.1C122.1 230 132.6 224 144 224H544c11.5 0 22 6.1 27.7 16.1s5.7 22.2-.1 32.1l-112 192C453.9 474 443.4 480 432 480H32c-11.5 0-22-6.1-27.7-16.1s-5.7-22.2 .1-32.1l112-192z"/></svg>`;
-    const serverIcon = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Pro 6.2.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license (Commercial License) Copyright 2022 Fonticons, Inc. --><path d="M64 32C28.7 32 0 60.7 0 96v64c0 35.3 28.7 64 64 64H448c35.3 0 64-28.7 64-64V96c0-35.3-28.7-64-64-64H64zM344 152c-13.3 0-24-10.7-24-24s10.7-24 24-24s24 10.7 24 24s-10.7 24-24 24zm96-24c0 13.3-10.7 24-24 24s-24-10.7-24-24s10.7-24 24-24s24 10.7 24 24zM64 288c-35.3 0-64 28.7-64 64v64c0 35.3 28.7 64 64 64H448c35.3 0 64-28.7 64-64V352c0-35.3-28.7-64-64-64H64zM344 408c-13.3 0-24-10.7-24-24s10.7-24 24-24s24 10.7 24 24s-10.7 24-24 24zm104-24c0 13.3-10.7 24-24 24s-24-10.7-24-24s10.7-24 24-24s24 10.7 24 24z"/></svg>`;
 
     this._pageSource = `
       <!DOCTYPE html>
@@ -242,7 +238,11 @@ export class WelcomeView {
               color: ${this._isDarkTheme ? '#888888' : '#666666'};
               font-style: italic;
               text-align: center;
-              padding: 20px;
+              padding: 40px 20px;
+              background: ${this._isDarkTheme ? 'rgba(255, 255, 255, 0.02)' : 'rgba(0, 0, 0, 0.02)'};
+              border: 1px dashed ${this._isDarkTheme ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'};
+              border-radius: 8px;
+              margin: 20px 0;
             }
             
             .view-all-link {
@@ -342,10 +342,6 @@ export class WelcomeView {
                 <div class="action-icon">${notebookIcon}</div>
                 New notebook
               </a>
-              <a class="action-button" id="new-session-link" href="javascript:void(0)" title="Launch new JupyterLab session in the default working directory" onclick="handleNewSessionClick('blank');">
-                <div class="action-icon">${labIcon}</div>
-                New session
-              </a>
               ${
                 process.platform === 'darwin'
                   ? `<a class="action-button" id="open-file-or-folder-link" href="javascript:void(0)" title="Open a notebook or folder in JupyterLab" onclick="handleNewSessionClick('open');">
@@ -361,10 +357,6 @@ export class WelcomeView {
                       Open Folder
                     </a>`
               }
-              <a class="action-button" href="javascript:void(0)" title="Connect to an existing local or remote JupyterLab server" onclick="handleNewSessionClick('remote');">
-                <div class="action-icon">${serverIcon}</div>
-                Connect
-              </a>
             </div>
 
             <div class="content-section">
