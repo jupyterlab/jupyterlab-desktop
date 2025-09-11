@@ -33,8 +33,8 @@ export class WelcomeView {
       this._isDarkTheme ? DarkThemeBGColor : LightThemeBGColor
     );
 
-    const jupyterlabWordmarkSrc = fs.readFileSync(
-      path.join(__dirname, '../../../app-assets/jupyterlab-wordmark.svg')
+    const mitoWordmarkSrc = fs.readFileSync(
+      path.join(__dirname, '../../../app-assets/mito-wordmark.svg')
     );
     const notebookIcon = `<svg xmlns="http://www.w3.org/2000/svg" width="16" viewBox="0 0 22 22">
       <g class="jp-icon-warn0 jp-icon-selectable" fill="#EF6C00">
@@ -163,12 +163,6 @@ export class WelcomeView {
             .app-ui-dark .more-row a {
               color: #f0f0f0;
             }
-            .jupyterlab-wordmark svg {
-              width: 300px;
-            }
-            .jupyterlab-wordmark .jp-icon2 {
-              fill: #888888;
-            }
             .recent-session-link {
               white-space: nowrap;
             }
@@ -292,7 +286,7 @@ export class WelcomeView {
             <div class="row app-title-row">
               <div class="app-title">
                 <div class="jupyterlab-wordmark">
-                  ${jupyterlabWordmarkSrc}
+                  ${mitoWordmarkSrc}
                 </div>
               </div>
             </div>
