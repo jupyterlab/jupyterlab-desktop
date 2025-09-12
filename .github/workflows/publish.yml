@@ -142,7 +142,7 @@ jobs:
         with:
           name: debian-installer-x64
           path: |
-            dist/JupyterLab.deb
+            dist/Mito.deb
 
       - name: Upload Fedora x64 Installer
         if: matrix.cfg.platform == 'linux-64'
@@ -150,7 +150,7 @@ jobs:
         with:
           name: fedora-installer-x64
           path: |
-            dist/JupyterLab.rpm
+            dist/Mito.rpm
       
       # - name: Upload Snap Installer
       #   if: matrix.cfg.platform == 'linux-64'
@@ -159,7 +159,7 @@ jobs:
       #   with:
       #     name: snap-installer
       #     path: |
-      #       dist/JupyterLab.snap
+      #       dist/Mito.snap
 
       - name: Upload macOS x64 Installer
         if: matrix.cfg.platform == 'osx-64'
@@ -167,7 +167,7 @@ jobs:
         with:
           name: mac-installer-x64
           path: |
-            dist/JupyterLab-x64.dmg
+            dist/Mito-x64.dmg
 
       - name: Upload macOS arm64 Installer
         if: matrix.cfg.platform == 'osx-arm64'
@@ -175,7 +175,7 @@ jobs:
         with:
           name: mac-installer-arm64
           path: |
-            dist/JupyterLab-arm64.dmg
+            dist/Mito-arm64.dmg
 
       - name: Upload Windows x64 Installer
         if: matrix.cfg.platform == 'win-64'
@@ -183,15 +183,15 @@ jobs:
         with:
           name: windows-installer-x64
           path: |
-            dist/JupyterLab-Setup.exe
+            dist/Mito-Setup.exe
 
       - name: Upload Debian x64 Installer as Release asset
         if: matrix.cfg.platform == 'linux-64' && steps.release-exists.outputs.result == 'true'
         uses: svenstaro/upload-release-action@v2
         with:
           repo_token: ${{ secrets.REPO_MANAGER_TOKEN }}
-          file: dist/JupyterLab.deb
-          asset_name: JupyterLab-Setup-Debian-x64.deb
+          file: dist/Mito.deb
+          asset_name: Mito-Setup-Debian-x64.deb
           tag: v${{ steps.package-info.outputs.version}}
           overwrite: true
 
@@ -200,8 +200,8 @@ jobs:
         uses: svenstaro/upload-release-action@v2
         with:
           repo_token: ${{ secrets.REPO_MANAGER_TOKEN }}
-          file: dist/JupyterLab.rpm
-          asset_name: JupyterLab-Setup-Fedora-x64.rpm
+          file: dist/Mito.rpm
+          asset_name: Mito-Setup-Fedora-x64.rpm
           tag: v${{ steps.package-info.outputs.version}}
           overwrite: true
 
@@ -210,8 +210,8 @@ jobs:
         uses: svenstaro/upload-release-action@v2
         with:
           repo_token: ${{ secrets.REPO_MANAGER_TOKEN }}
-          file: dist/JupyterLab-x64.dmg
-          asset_name: JupyterLab-Setup-macOS-x64.dmg
+          file: dist/Mito-x64.dmg
+          asset_name: Mito-Setup-macOS-x64.dmg
           tag: v${{ steps.package-info.outputs.version}}
           overwrite: true
 
@@ -220,8 +220,8 @@ jobs:
         uses: svenstaro/upload-release-action@v2
         with:
           repo_token: ${{ secrets.REPO_MANAGER_TOKEN }}
-          file: dist/JupyterLab-arm64.dmg
-          asset_name: JupyterLab-Setup-macOS-arm64.dmg
+          file: dist/Mito-arm64.dmg
+          asset_name: Mito-Setup-macOS-arm64.dmg
           tag: v${{ steps.package-info.outputs.version}}
           overwrite: true
 
@@ -230,8 +230,8 @@ jobs:
         uses: svenstaro/upload-release-action@v2
         with:
           repo_token: ${{ secrets.REPO_MANAGER_TOKEN }}
-          file: dist/JupyterLab-x64.zip
-          asset_name: JupyterLab-macOS-x64.zip
+          file: dist/Mito-x64.zip
+          asset_name: Mito-macOS-x64.zip
           tag: v${{ steps.package-info.outputs.version}}
           overwrite: true
       
@@ -240,8 +240,8 @@ jobs:
         uses: svenstaro/upload-release-action@v2
         with:
           repo_token: ${{ secrets.REPO_MANAGER_TOKEN }}
-          file: dist/JupyterLab-arm64.zip
-          asset_name: JupyterLab-macOS-arm64.zip
+          file: dist/Mito-arm64.zip
+          asset_name: Mito-macOS-arm64.zip
           tag: v${{ steps.package-info.outputs.version}}
           overwrite: true
 
@@ -250,8 +250,8 @@ jobs:
         uses: svenstaro/upload-release-action@v2
         with:
           repo_token: ${{ secrets.REPO_MANAGER_TOKEN }}
-          file: dist/JupyterLab-Setup.exe
-          asset_name: JupyterLab-Setup-Windows-x64.exe
+          file: dist/Mito-Setup.exe
+          asset_name: Mito-Setup-Windows-x64.exe
           tag: v${{ steps.package-info.outputs.version}}
           overwrite: true
 
@@ -271,8 +271,8 @@ jobs:
       #   uses: svenstaro/upload-release-action@v2
       #   with:
       #     repo_token: ${{ secrets.REPO_MANAGER_TOKEN }}
-      #     file: dist/JupyterLab.snap
-      #     asset_name: JupyterLab-Setup.snap
+      #     file: dist/Mito.snap
+      #     asset_name: Mito-Setup.snap
       #     tag: v${{ steps.package-info.outputs.version}}
       #     overwrite: true
 
@@ -283,5 +283,5 @@ jobs:
       #   env:
       #     SNAPCRAFT_STORE_CREDENTIALS: ${{ secrets.SNAPCRAFT_STORE_CREDENTIALS }}
       #   with:
-      #     snap: dist/JupyterLab.snap
+      #     snap: dist/Mito.snap
       #     release: candidate
