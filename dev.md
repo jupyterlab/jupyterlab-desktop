@@ -88,6 +88,7 @@ JupyterLab Desktop bundles JupyterLab front-end and a conda environment as Jupyt
 ## Review guidance
 
 Expected manual testing coverage depends on the PR, when pulling:
+
 - patch releases of JupyterLab or Electron: Testing on a single OS is sufficient.
 - minor or major JupyterLab releases and minor Electron releases: Test on multiple OSes.
 - major Electron releases: Test on all OSes.
@@ -99,24 +100,29 @@ A release PR must be approved by at least two people.
 Depending on the PR, different part of the application may require testing. Use the guide below, but exercise your own judgment to skip or add more checks depending on circumstances.
 
 For patch dependency update PRs:
+
 - [ ] Notebooks UI launches (smoke test, no extensive testing required)
 
 For minor and major JupyterLab update PRs:
+
 - [ ] JupyterLab Desktop theme switching works
 - [ ] UI Mode switching works
 
 For conda update PRs:
+
 - [ ] Creating new environments from "Manage Python Environments" dialog works
 - [ ] The environment picker popover shows up with a list of environments
 - [ ] Switching environments works
 
 For minor and major Electron updates PR:
+
 - [ ] All checks listed above
 - [ ] No new errors in log files (e.g. `~/Library/Logs/jupyterlab-desktop/main.log`) and when launching from terminal with `jlab`
 - [ ] The welcome screen opens, displays the news feed, recent sessions, and allows to create new sessions
 - [ ] The settings window opens
 
 Before JupyterLab Desktop release:
+
 - [ ] All checks listed above
 
 ## Release Instructions
