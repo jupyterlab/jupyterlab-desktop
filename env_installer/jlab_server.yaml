@@ -5,16 +5,16 @@ dependencies:
   - conda
   - ipywidgets >= 8.0.1
   - jupyterlab 4.4.6
-  - ipympl >= 0.8.2
-  - matplotlib-base
-  - numpy
-  - pandas
   - pip
   - python 3.12*
-  - scipy
   - pip:
     - mito-ai
     - mitosheet
+    - "numpy==2.1.*"
+    - "matplotlib==3.9.2"
+    - "ipympl>=0.8.2"
+    - "pandas"
+    - "scipy"
 platforms:
   - linux-64
   - linux-aarch64
