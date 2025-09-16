@@ -65,7 +65,6 @@ Sideload mito-ai development version into mito-desktop
 OPTIONS:
     -p, --mito-path PATH     Path to mito-ai repository (required) - can be relative or absolute
     -n, --env-name NAME      Name for conda environment (default: mito-dev)
-    -f, --force              Force recreate environment if it exists
     -l, --launch             Launch mito-desktop after setup
     -h, --help               Show this help message
 
@@ -78,9 +77,6 @@ EXAMPLES:
 
     # Setup with custom environment name
     $0 -p ../mito-ai -n my-mito-dev
-
-    # Force recreate environment
-    $0 -p ../mito-ai -f
 
     # Setup and launch mito-desktop immediately
     $0 -p ../mito-ai -l
