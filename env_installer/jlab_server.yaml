@@ -3,18 +3,17 @@ channels:
   - conda-forge
 dependencies:
   - conda
-  - ipywidgets >= 8.0.1
-  - jupyterlab 4.4.6
-  - ipympl >= 0.8.2
-  - matplotlib-base
-  - numpy
-  - pandas
   - pip
   - python 3.12*
-  - scipy
   - pip:
     - mito-ai
     - mitosheet
+    - "ipympl>=0.8.2"
+    - "ipywidgets>=8.0.1"
+    - "jupyterlab==4.4.6"
+    - "matplotlib==3.9.2"
+    - "numpy==2.1.*"
+    - "pandas"
 platforms:
   - linux-64
   - linux-aarch64
