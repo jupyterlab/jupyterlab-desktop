@@ -123,24 +123,31 @@ check_mito_ai_path() {
 setup_conda_env() {
     print_status "Setting up conda environment: $ENV_NAME"
 
+    # Get the path to the jlab_server.yaml file
+    local script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    local yaml_file="$script_dir/../env_installer/jlab_server.yaml"
+    
+    if [[ ! -f "$yaml_file" ]]; then
+        print_error "jlab_server.yaml not found at: $yaml_file"
+        exit 1
+    fi
+    
+    print_status "Using dependencies from: $yaml_file"
+
     # Check if environment exists
     if conda env list | grep -q "^$ENV_NAME "; then
         print_warning "Environment $ENV_NAME already exists."
-        print_status "Updating existing environment..."
+        print_status "Updating existing environment from jlab_server.yaml..."
+        
+        # Update existing environment using the YAML file
+        conda env update -n "$ENV_NAME" -f "$yaml_file"
+    else
+        print_status "Creating conda environment from jlab_server.yaml..."
+        
+        # Create new environment using the YAML file
+        conda env create -n "$ENV_NAME" -f "$yaml_file"
     fi
 
-    # Create environment if it doesn't exist
-    if ! conda env list | grep -q "^$ENV_NAME "; then
-        print_status "Creating conda environment: $ENV_NAME"
-        conda create -n "$ENV_NAME" python=3.12 -y
-    fi
-
-    # Activate environment and install packages
-    print_status "Installing packages in environment: $ENV_NAME"
-    
-    # Install JupyterLab and dependencies
-    conda run -n "$ENV_NAME" conda install -c conda-forge jupyterlab=4.4.6 ipywidgets>=8.0.1 ipympl>=0.8.2 matplotlib-base numpy pandas scipy -y
-    
     # Install mito-ai in development mode
     print_status "Installing mito-ai in development mode..."
     conda run -n "$ENV_NAME" pip install -e "$MITO_AI_PATH"
