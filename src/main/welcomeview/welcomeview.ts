@@ -316,6 +316,30 @@ export class WelcomeView {
             .recent-expander a:hover {
               text-decoration: underline;
             }
+            
+            .install-python-button {
+              display: inline-block;
+              background: ${this._isDarkTheme ? '#4a9eff' : '#0066cc'};
+              color: #fff;
+              padding: 6px 12px;
+              border-radius: 4px;
+              text-decoration: none;
+              font-size: 12px;
+              font-weight: 500;
+              margin-left: 8px;
+              transition: all 0.2s ease;
+              border: none;
+              cursor: pointer;
+            }
+            
+            .install-python-button:hover {
+              background: ${this._isDarkTheme ? '#3a8bdf' : '#0052a3'};
+              transform: translateY(-1px);
+            }
+            
+            .install-python-button:active {
+              transform: translateY(0);
+            }
           </style>
           <script>
             document.addEventListener("DOMContentLoaded", () => {
@@ -672,12 +696,9 @@ export class WelcomeView {
         this.enableLocalServerActions(false);
         this.showNotification(
           `
-        <div>
-          <svg style="width: 20px; height: 20px; fill: orange; margin-right: 6px;">
-            <use href="#triangle-exclamation" />
-          </svg>
-        </div>
-        Python environment not found. <a href="javascript:void(0);" onclick="sendMessageToMain('${EventTypeMain.InstallBundledPythonEnv}')">Install using the bundled installer</a> or <a href="javascript:void(0);" onclick="sendMessageToMain('${EventTypeMain.ShowManagePythonEnvironmentsDialog}', 'settings')">Change the default Python environment</a>
+          <div class="warning-message">
+            Python is required to run this app. <a class="install-python-button" href="javascript:void(0);" onclick="sendMessageToMain('${EventTypeMain.InstallBundledPythonEnv}')">Install Python</a>
+          </div>
         `,
           true
         );
