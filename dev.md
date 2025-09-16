@@ -77,7 +77,7 @@ If you prefer manual control:
 To sideload mito-ai development version into mito-desktop, run the following command:
 
 ```bash
-./dev/start-mito-sideloaded.sh -p ../mito-ai -l
+./dev/start-mito-sideloaded.sh -p ../mito/mito-ai -l
 ```
 
 This will create a custom conda environment with the development version of mito-ai and launch mito-desktop with that environment.

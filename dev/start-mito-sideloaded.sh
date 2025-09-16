@@ -73,13 +73,13 @@ EXAMPLES:
     $0 -p /path/to/mito-ai
 
     # Basic setup with relative mito-ai path (from current directory)
-    $0 -p ../mito-ai
+    $0 -p ../mito/mito-ai
 
     # Setup with custom environment name
-    $0 -p ../mito-ai -n my-mito-dev
+    $0 -p ../mito/mito-ai -n my-mito-dev
 
     # Setup and launch mito-desktop immediately
-    $0 -p ../mito-ai -l
+    $0 -p ../mito/mito-ai -l
 
 EOF
 }
