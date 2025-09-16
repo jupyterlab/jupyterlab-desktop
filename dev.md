@@ -54,21 +54,7 @@ JupyterLab Desktop bundles JupyterLab front-end and a conda environment as Jupyt
 
   Installer will be created in `env_installer/jlab_server.tar.gz` and will be available for use in `env_installer/jlab_server`.
 
-### Development with Auto-Reload
-
-For active development with automatic recompilation and app restart:
-
-```bash
-yarn dev
-```
-
-This command will:
-- Watch TypeScript files (`src/**/*.ts`) and automatically recompile them
-- Watch assets and rebuild them when changed
-- Watch the compiled `build/` directory and restart Electron when files change
-- Provide a fast development cycle where changes appear immediately
-
-### Manual Development (Alternative)
+### Manual Development
 
 If you prefer manual control:
 
@@ -85,6 +71,18 @@ If you prefer manual control:
   ```
 
   If JupyterLab Desktop does not find a compatible Python environment configured, it will prompt for installation using JupyterLab Desktop Server installer or let you choose a custom environment on your computer at first launch.
+
+## Sideloading mito-ai development version
+
+To sideload mito-ai development version into mito-desktop, run the following command:
+
+```bash
+./dev/start-mito-sideloaded.sh -p ../mito/mito-ai -l
+```
+
+This will create a custom conda environment with the development version of mito-ai and launch mito-desktop with that environment.
+
+To update the mito-desktop environment and see your changes, rerun the command.
 
 ## Building for distribution
 
