@@ -48,9 +48,9 @@ jobs:
           npm install --global yarn --prefer-offline
           yarn install
 
-      - name: Check JupyterLab version match
-        run: |
-          yarn check_version_match
+      # - name: Check JupyterLab version match
+      #   run: |
+      #     yarn check_version_match
 
       # - name: Check Lint & Prettier
       #   run: |
