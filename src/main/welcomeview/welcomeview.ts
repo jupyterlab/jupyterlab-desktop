@@ -288,6 +288,8 @@ export class WelcomeView {
             #notification-panel-message {
               flex: 1;
               color: ${this._isDarkTheme ? '#ffffff' : '#000000'};
+              display: flex;
+              align-items: center;
             }
             
             #notification-panel .close-button {
@@ -299,6 +301,22 @@ export class WelcomeView {
             
             #notification-panel .close-button:hover {
               fill: ${this._isDarkTheme ? '#ffffff' : '#000000'};
+            }
+            
+            .loading-spinner {
+              width: 16px;
+              height: 16px;
+              border: 2px solid ${this._isDarkTheme ? '#404040' : '#e0e0e0'};
+              border-top: 2px solid ${this._isDarkTheme ? '#ffffff' : '#000000'};
+              border-radius: 50%;
+              animation: spin 1s linear infinite;
+              margin-left: 8px;
+              flex-shrink: 0;
+            }
+            
+            @keyframes spin {
+              0% { transform: rotate(0deg); }
+              100% { transform: rotate(360deg); }
             }
             
             .recent-expander {
@@ -569,8 +587,12 @@ export class WelcomeView {
             window.electronAPI.sendMessageToMain(message, ...args);
           }
 
-          function showNotificationPanel(message, closable) {
-            notificationPanelMessage.innerHTML = message;
+          function showNotificationPanel(message, closable, showSpinner = false) {
+            if (showSpinner) {
+              notificationPanelMessage.innerHTML = message + '<div class="loading-spinner"></div>';
+            } else {
+              notificationPanelMessage.innerHTML = message;
+            }
             notificationPanelCloseButton.style.display = closable ? 'block' : 'none'; 
             notificationPanel.style.display = message === "" ? "none" : "flex";
           }
@@ -611,7 +633,7 @@ export class WelcomeView {
 
           window.electronAPI.onInstallBundledPythonEnvStatus((status, detail) => {
             let message = status === 'STARTED' ?
-              'Installing Python environment...' :
+              'Installing Python environment' :
               status === 'CANCELLED' ?
               'Installation cancelled!' :
               status === 'FAILURE' ?
@@ -621,7 +643,8 @@ export class WelcomeView {
               message += \`[\$\{detail\}]\`;
             }
 
-            showNotificationPanel(message, status === 'CANCELLED' || status === 'FAILURE');
+            const showSpinner = status === 'STARTED';
+            showNotificationPanel(message, status === 'CANCELLED' || status === 'FAILURE', showSpinner);
     
             if (status === 'SUCCESS') {
               setTimeout(() => {
