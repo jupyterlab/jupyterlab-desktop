@@ -648,10 +648,9 @@ export class WelcomeView {
     
             if (status === 'SUCCESS') {
               setTimeout(() => {
-                showNotificationPanel('Installation completed!', true);
-                // Reload the welcome view to refresh the UI, 
-                // and set the new environment as the default.
-                window.location.reload();
+                // Restart the app to refresh the UI, 
+                // which will set the new environment as the default.
+                sendMessageToMain('${EventTypeMain.RestartApp}');
               }, 2000);
             }
           });
@@ -720,11 +719,12 @@ export class WelcomeView {
     this._registry
       .getDefaultEnvironment()
       .then(() => {
-        this.enableLocalServerActions(true);
         // Check if the default environment is the bundled one
         if (!this._registry.isDefaultEnvironmentBundled()) {
+          this.enableLocalServerActions(false);
           this.showNotification(installMessage, false);
         } else {
+          this.enableLocalServerActions(true);
           this.showNotification('', false);
         }
       })
