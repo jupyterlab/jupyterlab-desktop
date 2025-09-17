@@ -37,7 +37,7 @@ jobs:
 
       - name: Create Release pull request
         if: steps.pre-release-exists.outputs.result == 'true'
-        uses: peter-evans/create-pull-request@v6
+        uses: peter-evans/create-pull-request@v7
         with:
           token: ${{ secrets.JLAB_APP_TOKEN }}
           commit-message: Update auto-release logs
