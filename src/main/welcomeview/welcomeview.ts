@@ -697,10 +697,10 @@ export class WelcomeView {
         this.showNotification(
           `
           <div class="warning-message">
-            Python is required to run this app. <a class="install-python-button" href="javascript:void(0);" onclick="sendMessageToMain('${EventTypeMain.InstallBundledPythonEnv}')">Install Python</a>
+            Before you start, we need to set up your workspace. <a class="install-python-button" href="javascript:void(0);" onclick="sendMessageToMain('${EventTypeMain.InstallBundledPythonEnv}')">Get Started</a>
           </div>
         `,
-          true
+          false
         );
       });
   }
