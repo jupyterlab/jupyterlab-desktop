@@ -648,7 +648,10 @@ export class WelcomeView {
     
             if (status === 'SUCCESS') {
               setTimeout(() => {
-                showNotificationPanel('', true);
+                showNotificationPanel('Installation completed!', true);
+                // Reload the welcome view to refresh the UI, 
+                // and set the new environment as the default.
+                window.location.reload();
               }, 2000);
             }
           });
