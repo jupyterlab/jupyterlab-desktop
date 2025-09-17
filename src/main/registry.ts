@@ -64,6 +64,7 @@ export interface IRegistry {
   environmentListUpdated: ISignal<this, void>;
   clearUserSetPythonEnvs(): void;
   bundledEnvironmentIsLatest(): boolean;
+  isDefaultEnvironmentBundled(): boolean;
 }
 
 export const SERVER_TOKEN_PREFIX = 'jlab:srvr:';
@@ -92,6 +93,12 @@ export class Registry implements IRegistry, IDisposable {
 
     try {
       const defaultEnv = this._resolveEnvironmentSync(pythonPath);
+      if (defaultEnv.path !== getBundledPythonPath()) {
+        // If the default environment is not the bundled one, don't set it (this._defaultEnv).
+        // This is to prevent the default environment from being set to one of the user's 
+        // other environments. We should only be working with the bundled environment.
+        return;
+      }
 
       if (defaultEnv) {
         this._defaultEnv = defaultEnv;
@@ -672,6 +679,15 @@ export class Registry implements IRegistry, IDisposable {
     }
 
     return bundledEnvInstallationLatest;
+  }
+
+  isDefaultEnvironmentBundled(): boolean {
+    if (!this._defaultEnv) {
+      return false;
+    }
+
+    const bundledPythonPath = getBundledPythonPath();
+    return this._defaultEnv.path === bundledPythonPath;
   }
 
   private _updateEnvironments() {
