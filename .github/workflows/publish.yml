@@ -62,7 +62,7 @@ jobs:
         run: echo "version=$(python scripts/get_package_version.py)" >> $GITHUB_OUTPUT
 
       - name: 'Find Release with tag v${{ steps.package-info.outputs.version}}'
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         id: release-exists
         env:
           APP_VERSION: ${{ steps.package-info.outputs.version}}
