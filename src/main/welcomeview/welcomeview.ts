@@ -712,34 +712,25 @@ export class WelcomeView {
   }
 
   private async _onEnvironmentListUpdated() {
+    const installMessage = `
+      <div class="warning-message">
+        Before you start, we need to set up your workspace. <a class="install-python-button" href="javascript:void(0);" onclick="sendMessageToMain('${EventTypeMain.InstallBundledPythonEnv}')">Get Started</a>
+      </div>
+    `;
     this._registry
       .getDefaultEnvironment()
       .then(() => {
         this.enableLocalServerActions(true);
         // Check if the default environment is the bundled one
         if (!this._registry.isDefaultEnvironmentBundled()) {
-          this.showNotification(
-            `
-            <div class="warning-message">
-              Before you start, we need to set up your workspace. <a class="install-python-button" href="javascript:void(0);" onclick="sendMessageToMain('${EventTypeMain.InstallBundledPythonEnv}')">Get Started</a>
-            </div>
-          `,
-            false
-          );
+          this.showNotification(installMessage, false);
         } else {
           this.showNotification('', false);
         }
       })
       .catch(() => {
         this.enableLocalServerActions(false);
-        this.showNotification(
-          `
-          <div class="warning-message">
-            Before you start, we need to set up your workspace. <a class="install-python-button" href="javascript:void(0);" onclick="sendMessageToMain('${EventTypeMain.InstallBundledPythonEnv}')">Get Started</a>
-          </div>
-        `,
-          false
-        );
+        this.showNotification(installMessage, false);
       });
   }
 
