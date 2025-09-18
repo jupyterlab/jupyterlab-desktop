@@ -225,6 +225,7 @@ export class UserSettings {
     const userSettingsPath = UserSettings.getUserSettingsPath();
     const userSettings: { [key: string]: any } = {};
 
+
     for (let key in SettingType) {
       const setting = this._settings[key];
       if (setting.differentThanDefault) {

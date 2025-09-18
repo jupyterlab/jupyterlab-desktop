@@ -151,7 +151,22 @@ export class SessionWindow implements IDisposable {
       workingDirectory: this._sessionConfig.resolvedWorkingDirectory
     };
 
-    const pythonPath = this._wsSettings.getValue(SettingType.pythonPath);
+    /* 
+    This is the Python path that we actually use in the session.
+    By always using the bundledPythonPath, reguardless of what the default is, 
+    we ensure that the user always has the correct environment. 
+
+    Originally, this line of code was the following: 
+      
+      const pythonPath = this._wsSettings.getValue(SettingType.pythonPath);
+
+    This would give us the wrong environment because the getValue function 
+    prioritizes the workspace settings over the other settings. The workspace 
+    settings are read from the following path: 
+
+      return path.join(workingDirectory, '.jupyter', 'desktop-settings.json');
+    */
+    const pythonPath = getBundledPythonPath()
 
     if (pythonPath) {
       serverOptions.environment = this._registry.getEnvironmentByPath(

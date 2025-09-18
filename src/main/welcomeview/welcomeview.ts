@@ -648,9 +648,7 @@ export class WelcomeView {
     
             if (status === 'SUCCESS') {
               setTimeout(() => {
-                // Restart the app to refresh the UI, 
-                // which will set the new environment as the default.
-                sendMessageToMain('${EventTypeMain.RestartApp}');
+                showNotificationPanel('', true);
               }, 2000);
             }
           });
