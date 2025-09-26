@@ -13,19 +13,11 @@ bin/cjpeg
 bin/clear
 bin/conda2solv
 bin/curve_keygen
-bin/derb
 bin/djpeg
 bin/dumpsolv
 bin/fax2ps
 bin/fax2tiff
-bin/genbrk
-bin/gencfu
-bin/gencnval
-bin/gendict
-bin/genrb
 bin/gss-client
-bin/icuexportdata
-bin/icuinfo
 bin/infocmp
 bin/installcheck
 bin/jpegtran
@@ -42,7 +34,6 @@ bin/libdeflate-gunzip
 bin/libdeflate-gzip
 bin/linkicc
 bin/lz4
-bin/makeconv
 bin/mamba-package
 bin/mergesolv
 bin/nghttp
@@ -53,7 +44,6 @@ bin/opj_compress
 bin/opj_decompress
 bin/opj_dump
 bin/pal2rgb
-bin/pkgdata
 bin/png-fix-itxt
 bin/pngfix
 bin/ppm2tiff
@@ -138,12 +128,6 @@ lib/libgssapi_krb5.2.2.dylib
 lib/libgssrpc.4.2.dylib
 lib/libhistory.8.2.dylib
 lib/libiconv.2.dylib
-lib/libicudata.75.1.dylib
-lib/libicui18n.75.1.dylib
-lib/libicuio.75.1.dylib
-lib/libicutest.75.1.dylib
-lib/libicutu.75.1.dylib
-lib/libicuuc.75.1.dylib
 lib/libjpeg.8.3.2.dylib
 lib/libk5crypto.3.1.dylib
 lib/libkadm5clnt_mit.12.0.dylib
@@ -164,7 +148,7 @@ lib/libncursesw.6.dylib
 lib/libnghttp2.14.dylib
 lib/libomp.dylib
 lib/libopenblasp-r0.3.30.dylib
-lib/libopenjp2.2.5.3.dylib
+lib/libopenjp2.2.5.4.dylib
 lib/libpanel.6.dylib
 lib/libpanelw.6.dylib
 lib/libpng16.16.dylib
@@ -219,7 +203,7 @@ lib/libxcb-xtest.0.dylib
 lib/libxcb-xv.0.dylib
 lib/libxcb-xvmc.0.dylib
 lib/libxcb.1.dylib
-lib/libxml2.2.dylib
+lib/libxml2.16.dylib
 lib/libyaml-0.2.dylib
 lib/libyaml-cpp.0.8.0.dylib
 lib/libz.1.3.1.dylib
