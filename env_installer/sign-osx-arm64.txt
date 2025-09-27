@@ -163,7 +163,7 @@ lib/libncursesw.6.dylib
 lib/libnghttp2.14.dylib
 lib/libomp.dylib
 lib/libopenblas.0.dylib
-lib/libopenjp2.2.5.3.dylib
+lib/libopenjp2.2.5.4.dylib
 lib/libpanel.6.dylib
 lib/libpanelw.6.dylib
 lib/libpng16.16.dylib
@@ -218,7 +218,7 @@ lib/libxcb-xtest.0.dylib
 lib/libxcb-xv.0.dylib
 lib/libxcb-xvmc.0.dylib
 lib/libxcb.1.dylib
-lib/libxml2.2.dylib
+lib/libxml2.16.dylib
 lib/libyaml-0.2.dylib
 lib/libyaml-cpp.0.8.0.dylib
 lib/libz.1.3.1.dylib
