@@ -112,9 +112,9 @@ lib/libLerc.4.dylib
 lib/libXau.6.dylib
 lib/libXdmcp.6.dylib
 lib/libarchive.13.dylib
-lib/libbrotlicommon.1.1.0.dylib
-lib/libbrotlidec.1.1.0.dylib
-lib/libbrotlienc.1.1.0.dylib
+lib/libbrotlicommon.1.2.0.dylib
+lib/libbrotlidec.1.2.0.dylib
+lib/libbrotlienc.1.2.0.dylib
 lib/libbz2.1.0.8.dylib
 lib/libc++.1.0.dylib
 lib/libcares.2.19.4.dylib
@@ -127,7 +127,7 @@ lib/libedit.0.dylib
 lib/libev.4.dylib
 lib/libexpat.1.10.2.dylib
 lib/libffi.8.dylib
-lib/libfmt.11.2.0.dylib
+lib/libfmt.12.0.0.dylib
 lib/libform.6.dylib
 lib/libformw.6.dylib
 lib/libfreetype.6.dylib
@@ -155,7 +155,7 @@ lib/liblcms2.2.dylib
 lib/liblz4.1.10.0.dylib
 lib/liblzma.5.dylib
 lib/liblzo2.2.0.0.dylib
-lib/libmamba.4.0.1.dylib
+lib/libmamba.4.1.1.dylib
 lib/libmenu.6.dylib
 lib/libmenuw.6.dylib
 lib/libncurses.6.dylib
@@ -163,7 +163,7 @@ lib/libncursesw.6.dylib
 lib/libnghttp2.14.dylib
 lib/libomp.dylib
 lib/libopenblas.0.dylib
-lib/libopenjp2.2.5.3.dylib
+lib/libopenjp2.2.5.4.dylib
 lib/libpanel.6.dylib
 lib/libpanelw.6.dylib
 lib/libpng16.16.dylib
@@ -174,11 +174,11 @@ lib/libreadline.8.2.dylib
 lib/libreproc++.14.2.4.dylib
 lib/libreproc.14.2.4.dylib
 lib/libsharpyuv.0.1.2.dylib
-lib/libsimdjson.26.0.0.dylib
+lib/libsimdjson.27.0.0.dylib
 lib/libsodium.26.dylib
 lib/libsolv.1.dylib
 lib/libsolvext.1.dylib
-lib/libsqlite3.3.50.4.dylib
+lib/libsqlite3.3.51.0.dylib
 lib/libssh2.1.0.1.dylib
 lib/libssl.3.dylib
 lib/libtcl8.6.dylib
@@ -218,9 +218,10 @@ lib/libxcb-xtest.0.dylib
 lib/libxcb-xv.0.dylib
 lib/libxcb-xvmc.0.dylib
 lib/libxcb.1.dylib
-lib/libxml2.2.dylib
+lib/libxml2.16.dylib
 lib/libyaml-0.2.dylib
 lib/libyaml-cpp.0.8.0.dylib
+lib/libz-ng.2.2.5.dylib
 lib/libz.1.3.1.dylib
 lib/libzmq.5.dylib
 lib/libzstd.1.5.7.dylib
@@ -413,7 +414,6 @@ lib/python3.12/site-packages/pandas/_libs/window/indexers.cpython-312-darwin.so
 lib/python3.12/site-packages/pandas/_libs/writers.cpython-312-darwin.so
 lib/python3.12/site-packages/pkg_resources/tests/data/my-test-package_zipped-egg/my_test_package-1.0-py3.7.egg
 lib/python3.12/site-packages/psutil/_psutil_osx.abi3.so
-lib/python3.12/site-packages/psutil/_psutil_posix.abi3.so
 lib/python3.12/site-packages/pycosat.cpython-312-darwin.so
 lib/python3.12/site-packages/rpds/rpds.cpython-312-darwin.so
 lib/python3.12/site-packages/scipy/_cyutility.cpython-312-darwin.so
