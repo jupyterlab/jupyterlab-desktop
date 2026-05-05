@@ -35,6 +35,7 @@ exports.default = async function afterPack(context) {
 
   await flipFuses(electronPath, {
     version: FuseVersion.V1,
+    resetAdHocDarwinSignature: electronPlatformName === 'darwin',
     [FuseV1Options.RunAsNode]: false,
     [FuseV1Options.EnableNodeOptionsEnvironmentVariable]: false,
     [FuseV1Options.EnableNodeCliInspectArguments]: false,
