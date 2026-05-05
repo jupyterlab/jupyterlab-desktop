@@ -16,6 +16,10 @@ vi.mock('fs', async () => {
     mkdirSync: vi.fn()
   };
 });
+vi.mock('child_process', async () => {
+  const actual = await vi.importActual<typeof import('child_process')>('child_process');
+  return { ...actual, exec: vi.fn(), execFile: vi.fn(), execFileSync: vi.fn(), execSync: vi.fn() };
+});
 vi.mock('os', async () => {
   const actual = await vi.importActual<typeof import('os')>('os');
   return { ...actual, tmpdir: vi.fn(() => '/tmp') };
@@ -38,11 +42,14 @@ import {
   getJlabCLICommandSymlinkPath,
   getJlabCLICommandTargetPath,
   jlabCLICommandIsSetup,
+  createCommandScriptInEnv,
+  openDirectoryInExplorer,
   waitForDuration,
   waitForFunction,
   DarkThemeBGColor,
   LightThemeBGColor
 } from '../../src/main/utils';
+import * as childProcess from 'child_process';
 
 const mockFs = vi.mocked(fs);
 
@@ -369,5 +376,116 @@ describe('jlabCLICommandIsSetup', () => {
   it('returns true on non-darwin platforms (win32)', () => {
     Object.defineProperty(process, 'platform', { value: 'win32' });
     expect(jlabCLICommandIsSetup()).toBe(true);
+  });
+});
+
+describe('openDirectoryInExplorer', () => {
+  const originalPlatform = process.platform;
+  const mockExec = vi.mocked(childProcess.exec);
+
+  beforeEach(() => {
+    mockExec.mockReset();
+  });
+  afterEach(() => {
+    Object.defineProperty(process, 'platform', { value: originalPlatform });
+  });
+
+  it('returns false when path does not exist', () => {
+    mockFs.existsSync = vi.fn(() => false);
+    expect(openDirectoryInExplorer('/nonexistent')).toBe(false);
+    expect(mockExec).not.toHaveBeenCalled();
+  });
+
+  it('returns false when path is a file not a directory', () => {
+    mockFs.existsSync = vi.fn(() => true);
+    mockFs.statSync = vi.fn(() => ({ isDirectory: () => false } as fs.Stats));
+    expect(openDirectoryInExplorer('/some/file.txt')).toBe(false);
+  });
+
+  it('returns true and calls exec on darwin', () => {
+    Object.defineProperty(process, 'platform', { value: 'darwin' });
+    mockFs.existsSync = vi.fn(() => true);
+    mockFs.statSync = vi.fn(() => ({ isDirectory: () => true } as fs.Stats));
+    const result = openDirectoryInExplorer('/data/notebooks');
+    expect(result).toBe(true);
+    expect(mockExec).toHaveBeenCalledWith(expect.stringContaining('open'));
+  });
+
+  it('returns true and calls exec on windows', () => {
+    Object.defineProperty(process, 'platform', { value: 'win32' });
+    mockFs.existsSync = vi.fn(() => true);
+    mockFs.statSync = vi.fn(() => ({ isDirectory: () => true } as fs.Stats));
+    const result = openDirectoryInExplorer('/data/notebooks');
+    expect(result).toBe(true);
+    expect(mockExec).toHaveBeenCalledWith(expect.stringContaining('explorer'));
+  });
+
+  it('returns true and calls exec on linux', () => {
+    Object.defineProperty(process, 'platform', { value: 'linux' });
+    mockFs.existsSync = vi.fn(() => true);
+    mockFs.statSync = vi.fn(() => ({ isDirectory: () => true } as fs.Stats));
+    const result = openDirectoryInExplorer('/data/notebooks');
+    expect(result).toBe(true);
+    expect(mockExec).toHaveBeenCalledWith(expect.stringContaining('xdg-open'));
+  });
+});
+
+describe('createCommandScriptInEnv', () => {
+  const originalPlatform = process.platform;
+
+  afterEach(() => {
+    Object.defineProperty(process, 'platform', { value: originalPlatform });
+  });
+
+  it('returns empty string when envPath is not a directory', () => {
+    mockFs.lstatSync = vi.fn(() => ({ isDirectory: () => false } as fs.Stats));
+    expect(createCommandScriptInEnv('/notadir', '/base', {})).toBe('');
+  });
+
+  it('returns empty string when envPath lstatSync throws and no activate exists', () => {
+    // when lstatSync throws, the try-catch swallows it and execution continues;
+    // if there's also no activate script, the function returns ''
+    mockFs.lstatSync = vi.fn(() => { throw new Error('ENOENT'); });
+    mockFs.existsSync = vi.fn(() => false);
+    expect(createCommandScriptInEnv('/missing', '/base', {})).toBe('');
+  });
+
+  it('returns empty string when no activate script exists', () => {
+    Object.defineProperty(process, 'platform', { value: 'darwin' });
+    mockFs.lstatSync = vi.fn(() => ({ isDirectory: () => true } as fs.Stats));
+    mockFs.existsSync = vi.fn(() => false); // no activate, no conda-meta
+    expect(createCommandScriptInEnv('/env', '/base', {})).toBe('');
+  });
+
+  it('includes source activate for venv on posix', () => {
+    Object.defineProperty(process, 'platform', { value: 'darwin' });
+    mockFs.lstatSync = vi.fn(() => ({ isDirectory: () => true, isFile: () => false } as fs.Stats));
+    mockFs.existsSync = vi.fn((p: fs.PathLike) => p.toString().includes('activate')); // has activate, not conda
+    const script = createCommandScriptInEnv('/env', '/base', { command: 'pip install numpy' });
+    expect(script).toContain('source');
+    expect(script).toContain('activate');
+    expect(script).toContain('pip install numpy');
+  });
+
+  it('includes CALL activate on windows venv', () => {
+    Object.defineProperty(process, 'platform', { value: 'win32' });
+    mockFs.lstatSync = vi.fn(() => ({ isDirectory: () => true, isFile: () => false } as fs.Stats));
+    mockFs.existsSync = vi.fn((p: fs.PathLike) => p.toString().includes('activate'));
+    const script = createCommandScriptInEnv('/env', '/base', { command: 'pip install numpy' });
+    expect(script).toContain('CALL');
+    expect(script).toContain('activate');
+  });
+
+  it('uses custom quoteChar and joinStr', () => {
+    Object.defineProperty(process, 'platform', { value: 'linux' });
+    mockFs.lstatSync = vi.fn(() => ({ isDirectory: () => true } as fs.Stats));
+    mockFs.existsSync = vi.fn((p: fs.PathLike) => p.toString().includes('activate'));
+    const script = createCommandScriptInEnv('/env', '/base', {
+      command: 'echo hello',
+      quoteChar: "'",
+      joinStr: ' ; '
+    });
+    expect(script).toContain("'");
+    expect(script).toContain(' ; ');
   });
 });

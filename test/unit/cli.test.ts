@@ -5,7 +5,11 @@ vi.mock('../../src/main/config/settings', () => ({
   SettingType: { condaPath: 'condaPath', pythonPath: 'pythonPath' }
 }));
 vi.mock('../../src/main/config/appdata', () => ({
-  appData: { discoveredPythonPaths: [], userSetPythonEnvs: [] }
+  appData: {
+    discoveredPythonPaths: [],
+    userSetPythonEnvs: [],
+    discoveredPythonEnvs: []
+  }
 }));
 vi.mock('../../src/main/registry', () => ({
   appRegistry: { getDefaultEnvironment: vi.fn() }
