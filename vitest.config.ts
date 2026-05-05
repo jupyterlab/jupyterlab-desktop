@@ -22,4 +22,8 @@ export default defineConfig({
   // which resolves paths from the project root — so '../../../src/main/foo' works.
   // Test files with NO vi.mock() use standard Node.js resolution from the file's directory;
   // those must use '../../src/main/foo' (two levels up to reach the project root).
+  //
+  // Preload scripts (src/main/*/preload.ts) use require('electron') which bypasses vitest's
+  // module interception. The alias only applies to ESM import statements. Preload tests
+  // must be done via Playwright E2E (electron-playwright-helpers) not unit tests.
 });
