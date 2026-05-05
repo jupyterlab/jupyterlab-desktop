@@ -4,7 +4,17 @@ import * as os from 'os';
 
 vi.mock('fs', async () => {
   const actual = await vi.importActual<typeof import('fs')>('fs');
-  return { ...actual, existsSync: vi.fn(), lstatSync: vi.fn(), mkdtempSync: vi.fn(), writeFileSync: vi.fn(), mkdirSync: vi.fn() };
+  return {
+    ...actual,
+    existsSync: vi.fn(),
+    lstatSync: vi.fn(),
+    statSync: vi.fn(),
+    accessSync: vi.fn(),
+    readlinkSync: vi.fn(),
+    mkdtempSync: vi.fn(),
+    writeFileSync: vi.fn(),
+    mkdirSync: vi.fn()
+  };
 });
 vi.mock('os', async () => {
   const actual = await vi.importActual<typeof import('os')>('os');
@@ -20,8 +30,14 @@ import {
   condaSourcePathForEnvPath,
   jupyterEnvInstallInfoPathForEnvPath,
   isCondaEnv,
+  isBaseCondaEnv,
   isEnvInstalledByDesktopApp,
   getRelativePathToUserHome,
+  bundledEnvironmentIsInstalled,
+  getLogFilePath,
+  getJlabCLICommandSymlinkPath,
+  getJlabCLICommandTargetPath,
+  jlabCLICommandIsSetup,
   waitForDuration,
   waitForFunction,
   DarkThemeBGColor,
@@ -213,5 +229,145 @@ describe('theme constants', () => {
 
   it('LightThemeBGColor is valid hex', () => {
     expect(LightThemeBGColor).toMatch(/^#[0-9a-f]{6}$/i);
+  });
+});
+
+describe('isBaseCondaEnv', () => {
+  const originalPlatform = process.platform;
+
+  afterEach(() => {
+    Object.defineProperty(process, 'platform', { value: originalPlatform });
+  });
+
+  it('returns true when condabin/conda exists and is a file on posix', () => {
+    Object.defineProperty(process, 'platform', { value: 'darwin' });
+    mockFs.existsSync = vi.fn(() => true);
+    mockFs.lstatSync = vi.fn(() => ({ isFile: () => true } as fs.Stats));
+    expect(isBaseCondaEnv('/env')).toBe(true);
+  });
+
+  it('returns false when condabin/conda does not exist', () => {
+    Object.defineProperty(process, 'platform', { value: 'darwin' });
+    mockFs.existsSync = vi.fn(() => false);
+    expect(isBaseCondaEnv('/env')).toBe(false);
+  });
+
+  it('returns false when path exists but is not a file', () => {
+    Object.defineProperty(process, 'platform', { value: 'darwin' });
+    mockFs.existsSync = vi.fn(() => true);
+    mockFs.lstatSync = vi.fn(() => ({ isFile: () => false } as fs.Stats));
+    expect(isBaseCondaEnv('/env')).toBe(false);
+  });
+
+  it('checks condabin/conda.bat on windows', () => {
+    Object.defineProperty(process, 'platform', { value: 'win32' });
+    let checkedPath = '';
+    mockFs.existsSync = vi.fn((p: fs.PathLike) => {
+      checkedPath = p.toString();
+      return true;
+    });
+    mockFs.lstatSync = vi.fn(() => ({ isFile: () => true } as fs.Stats));
+    isBaseCondaEnv('/env');
+    expect(checkedPath).toContain('conda.bat');
+  });
+});
+
+describe('bundledEnvironmentIsInstalled', () => {
+  it('returns true when bundled env path exists and is directory', () => {
+    mockFs.existsSync = vi.fn(() => true);
+    mockFs.statSync = vi.fn(() => ({ isDirectory: () => true } as fs.Stats));
+    expect(bundledEnvironmentIsInstalled()).toBe(true);
+  });
+
+  it('returns false when bundled env path does not exist', () => {
+    mockFs.existsSync = vi.fn(() => false);
+    expect(bundledEnvironmentIsInstalled()).toBe(false);
+  });
+
+  it('returns false when path is a file not directory', () => {
+    mockFs.existsSync = vi.fn(() => true);
+    mockFs.statSync = vi.fn(() => ({ isDirectory: () => false } as fs.Stats));
+    expect(bundledEnvironmentIsInstalled()).toBe(false);
+  });
+});
+
+describe('getLogFilePath', () => {
+  const originalPlatform = process.platform;
+
+  afterEach(() => {
+    Object.defineProperty(process, 'platform', { value: originalPlatform });
+  });
+
+  it('returns path containing main.log by default', () => {
+    expect(getLogFilePath()).toContain('main.log');
+  });
+
+  it('returns path containing renderer.log for renderer process', () => {
+    expect(getLogFilePath('renderer')).toContain('renderer.log');
+  });
+
+  it('returns path under Library/Logs on darwin', () => {
+    Object.defineProperty(process, 'platform', { value: 'darwin' });
+    expect(getLogFilePath()).toContain('Library/Logs');
+  });
+
+  it('returns path under .config on linux', () => {
+    Object.defineProperty(process, 'platform', { value: 'linux' });
+    expect(getLogFilePath()).toContain('.config');
+  });
+
+  it('returns path under userData on windows', () => {
+    Object.defineProperty(process, 'platform', { value: 'win32' });
+    expect(getLogFilePath()).toContain('logs');
+  });
+});
+
+describe('getJlabCLICommandSymlinkPath', () => {
+  const originalPlatform = process.platform;
+
+  afterEach(() => {
+    Object.defineProperty(process, 'platform', { value: originalPlatform });
+  });
+
+  it('returns /usr/local/bin/jlab on darwin', () => {
+    Object.defineProperty(process, 'platform', { value: 'darwin' });
+    expect(getJlabCLICommandSymlinkPath()).toBe('/usr/local/bin/jlab');
+  });
+
+  it('returns undefined on non-darwin', () => {
+    Object.defineProperty(process, 'platform', { value: 'linux' });
+    expect(getJlabCLICommandSymlinkPath()).toBeUndefined();
+  });
+});
+
+describe('getJlabCLICommandTargetPath', () => {
+  const originalPlatform = process.platform;
+
+  afterEach(() => {
+    Object.defineProperty(process, 'platform', { value: originalPlatform });
+  });
+
+  // darwin path requires require.main via isDevMode() — only test the non-darwin case here
+  it('returns undefined on non-darwin', () => {
+    Object.defineProperty(process, 'platform', { value: 'linux' });
+    expect(getJlabCLICommandTargetPath()).toBeUndefined();
+  });
+});
+
+describe('jlabCLICommandIsSetup', () => {
+  const originalPlatform = process.platform;
+
+  afterEach(() => {
+    Object.defineProperty(process, 'platform', { value: originalPlatform });
+  });
+
+  it('returns true on non-darwin platforms (linux)', () => {
+    Object.defineProperty(process, 'platform', { value: 'linux' });
+    expect(jlabCLICommandIsSetup()).toBe(true);
+  });
+
+  it('returns true on non-darwin platforms (win32)', () => {
+    Object.defineProperty(process, 'platform', { value: 'win32' });
+    expect(jlabCLICommandIsSetup()).toBe(true);
   });
 });
