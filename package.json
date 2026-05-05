@@ -79,6 +79,7 @@
       "env_installer/jlab_server.tar.gz",
       "env_installer/sign*.txt"
     ],
+    "afterPack": "scripts/afterPack.js",
     "afterSign": "scripts/notarize.js",
     "linux": {
       "target": [
@@ -186,6 +187,7 @@
   "repository": "https://github.com/jupyterlab/jupyterlab-desktop",
   "license": "BSD-3-Clause",
   "devDependencies": {
+    "@electron/fuses": "^2.1.1",
     "@jupyter-notebook/web-components": "0.9.1",
     "@leeoniya/ufuzzy": "1.0.14",
     "@playwright/test": "^1.59.1",
@@ -253,7 +255,7 @@
   "lint-staged": {
     "*.{ts,tsx}": [
       "eslint --cache --fix",
-      "vitest run --related --reporter=dot"
+      "vitest related --run --reporter=dot"
     ],
     "*.{ts,tsx,js,jsx,css,json,md}": [
       "prettier --write"

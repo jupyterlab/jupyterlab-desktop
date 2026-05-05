@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import * as fs from 'fs';
 import * as os from 'os';
 
@@ -13,12 +13,25 @@ vi.mock('fs', async () => {
     readlinkSync: vi.fn(),
     mkdtempSync: vi.fn(),
     writeFileSync: vi.fn(),
-    mkdirSync: vi.fn()
+    mkdirSync: vi.fn(),
+    rmSync: vi.fn()
   };
 });
+vi.mock('net', async () => {
+  const actual = await vi.importActual<typeof import('net')>('net');
+  return { ...actual, Socket: vi.fn(), createServer: vi.fn() };
+});
 vi.mock('child_process', async () => {
-  const actual = await vi.importActual<typeof import('child_process')>('child_process');
-  return { ...actual, exec: vi.fn(), execFile: vi.fn(), execFileSync: vi.fn(), execSync: vi.fn() };
+  const actual = await vi.importActual<typeof import('child_process')>(
+    'child_process'
+  );
+  return {
+    ...actual,
+    exec: vi.fn(),
+    execFile: vi.fn(),
+    execFileSync: vi.fn(),
+    execSync: vi.fn()
+  };
 });
 vi.mock('os', async () => {
   const actual = await vi.importActual<typeof import('os')>('os');
@@ -26,30 +39,37 @@ vi.mock('os', async () => {
 });
 
 import {
-  isDarkTheme,
-  versionWithoutSuffix,
-  pythonPathForEnvPath,
-  envPathForPythonPath,
   activatePathForEnvPath,
-  condaSourcePathForEnvPath,
-  jupyterEnvInstallInfoPathForEnvPath,
-  isCondaEnv,
-  isBaseCondaEnv,
-  isEnvInstalledByDesktopApp,
-  getRelativePathToUserHome,
   bundledEnvironmentIsInstalled,
-  getLogFilePath,
+  condaSourcePathForEnvPath,
+  createCommandScriptInEnv,
+  createTempFile,
+  DarkThemeBGColor,
+  deletePythonEnvironment,
+  EnvironmentDeleteStatus,
+  envPathForPythonPath,
+  getFreePort,
   getJlabCLICommandSymlinkPath,
   getJlabCLICommandTargetPath,
+  getLogFilePath,
+  getRelativePathToUserHome,
+  isBaseCondaEnv,
+  isCondaEnv,
+  isDarkTheme,
+  isEnvInstalledByDesktopApp,
+  isPortInUse,
   jlabCLICommandIsSetup,
-  createCommandScriptInEnv,
+  jupyterEnvInstallInfoPathForEnvPath,
+  LightThemeBGColor,
+  markEnvironmentAsJupyterInstalled,
   openDirectoryInExplorer,
+  pythonPathForEnvPath,
+  versionWithoutSuffix,
   waitForDuration,
-  waitForFunction,
-  DarkThemeBGColor,
-  LightThemeBGColor
+  waitForFunction
 } from '../../../src/main/utils';
 import * as childProcess from 'child_process';
+import * as net from 'net';
 
 const mockFs = vi.mocked(fs);
 
@@ -155,7 +175,9 @@ describe('condaSourcePathForEnvPath', () => {
 
   it('returns conda.sh path on posix', () => {
     Object.defineProperty(process, 'platform', { value: 'darwin' });
-    expect(condaSourcePathForEnvPath('/env')).toBe('/env/etc/profile.d/conda.sh');
+    expect(condaSourcePathForEnvPath('/env')).toBe(
+      '/env/etc/profile.d/conda.sh'
+    );
   });
 
   it('returns undefined on windows', () => {
@@ -219,7 +241,9 @@ describe('waitForFunction', () => {
   });
 
   it('rejects on timeout when fn never returns true', async () => {
-    await expect(waitForFunction(() => false, 100)).rejects.toThrow('Timed out');
+    await expect(waitForFunction(() => false, 100)).rejects.toThrow(
+      'Timed out'
+    );
   });
 
   it('resolves after fn eventually returns true', async () => {
@@ -445,7 +469,9 @@ describe('createCommandScriptInEnv', () => {
   it('returns empty string when envPath lstatSync throws and no activate exists', () => {
     // when lstatSync throws, the try-catch swallows it and execution continues;
     // if there's also no activate script, the function returns ''
-    mockFs.lstatSync = vi.fn(() => { throw new Error('ENOENT'); });
+    mockFs.lstatSync = vi.fn(() => {
+      throw new Error('ENOENT');
+    });
     mockFs.existsSync = vi.fn(() => false);
     expect(createCommandScriptInEnv('/missing', '/base', {})).toBe('');
   });
@@ -459,9 +485,15 @@ describe('createCommandScriptInEnv', () => {
 
   it('includes source activate for venv on posix', () => {
     Object.defineProperty(process, 'platform', { value: 'darwin' });
-    mockFs.lstatSync = vi.fn(() => ({ isDirectory: () => true, isFile: () => false } as fs.Stats));
-    mockFs.existsSync = vi.fn((p: fs.PathLike) => p.toString().includes('activate')); // has activate, not conda
-    const script = createCommandScriptInEnv('/env', '/base', { command: 'pip install numpy' });
+    mockFs.lstatSync = vi.fn(
+      () => ({ isDirectory: () => true, isFile: () => false } as fs.Stats)
+    );
+    mockFs.existsSync = vi.fn((p: fs.PathLike) =>
+      p.toString().includes('activate')
+    ); // has activate, not conda
+    const script = createCommandScriptInEnv('/env', '/base', {
+      command: 'pip install numpy'
+    });
     expect(script).toContain('source');
     expect(script).toContain('activate');
     expect(script).toContain('pip install numpy');
@@ -469,9 +501,15 @@ describe('createCommandScriptInEnv', () => {
 
   it('includes CALL activate on windows venv', () => {
     Object.defineProperty(process, 'platform', { value: 'win32' });
-    mockFs.lstatSync = vi.fn(() => ({ isDirectory: () => true, isFile: () => false } as fs.Stats));
-    mockFs.existsSync = vi.fn((p: fs.PathLike) => p.toString().includes('activate'));
-    const script = createCommandScriptInEnv('/env', '/base', { command: 'pip install numpy' });
+    mockFs.lstatSync = vi.fn(
+      () => ({ isDirectory: () => true, isFile: () => false } as fs.Stats)
+    );
+    mockFs.existsSync = vi.fn((p: fs.PathLike) =>
+      p.toString().includes('activate')
+    );
+    const script = createCommandScriptInEnv('/env', '/base', {
+      command: 'pip install numpy'
+    });
     expect(script).toContain('CALL');
     expect(script).toContain('activate');
   });
@@ -479,7 +517,9 @@ describe('createCommandScriptInEnv', () => {
   it('uses custom quoteChar and joinStr', () => {
     Object.defineProperty(process, 'platform', { value: 'linux' });
     mockFs.lstatSync = vi.fn(() => ({ isDirectory: () => true } as fs.Stats));
-    mockFs.existsSync = vi.fn((p: fs.PathLike) => p.toString().includes('activate'));
+    mockFs.existsSync = vi.fn((p: fs.PathLike) =>
+      p.toString().includes('activate')
+    );
     const script = createCommandScriptInEnv('/env', '/base', {
       command: 'echo hello',
       quoteChar: "'",
@@ -487,5 +527,199 @@ describe('createCommandScriptInEnv', () => {
     });
     expect(script).toContain("'");
     expect(script).toContain(' ; ');
+  });
+});
+
+describe('markEnvironmentAsJupyterInstalled', () => {
+  beforeEach(() => {
+    mockFs.existsSync = vi.fn(() => false);
+    mockFs.mkdirSync = vi.fn();
+    mockFs.writeFileSync = vi.fn();
+  });
+
+  it('creates .jupyter dir when missing and writes env.json', () => {
+    markEnvironmentAsJupyterInstalled('/env/myenv');
+    expect(mockFs.mkdirSync).toHaveBeenCalledWith(
+      expect.stringContaining('.jupyter'),
+      { recursive: true }
+    );
+    expect(mockFs.writeFileSync).toHaveBeenCalledWith(
+      expect.stringContaining('env.json'),
+      expect.stringContaining('jupyterlab-desktop')
+    );
+  });
+
+  it('skips mkdirSync when .jupyter dir already exists', () => {
+    mockFs.existsSync = vi.fn(() => true);
+    markEnvironmentAsJupyterInstalled('/env/myenv');
+    expect(mockFs.mkdirSync).not.toHaveBeenCalled();
+    expect(mockFs.writeFileSync).toHaveBeenCalled();
+  });
+
+  it('merges extraData into written JSON', () => {
+    mockFs.existsSync = vi.fn(() => true);
+    markEnvironmentAsJupyterInstalled('/env/myenv', { version: '4.0.0' });
+    const content = (mockFs.writeFileSync as any).mock.calls[0][1] as string;
+    const json = JSON.parse(content);
+    expect(json.installer).toBe('jupyterlab-desktop');
+    expect(json.version).toBe('4.0.0');
+  });
+
+  it('does not throw when writeFileSync fails', () => {
+    mockFs.existsSync = vi.fn(() => true);
+    mockFs.writeFileSync = vi.fn(() => {
+      throw new Error('EACCES');
+    });
+    expect(() => markEnvironmentAsJupyterInstalled('/env/myenv')).not.toThrow();
+  });
+});
+
+describe('deletePythonEnvironment', () => {
+  beforeEach(() => {
+    mockFs.existsSync = vi.fn(() => false);
+    mockFs.rmSync = vi.fn();
+  });
+
+  it('rejects when env was not installed by Desktop (no env.json)', async () => {
+    // isEnvInstalledByDesktopApp → existsSync returns false
+    const listener = { onDeleteStatus: vi.fn() };
+    await expect(
+      deletePythonEnvironment('/env/foreign', listener)
+    ).rejects.toBeUndefined();
+    expect(listener.onDeleteStatus).toHaveBeenCalledWith(
+      EnvironmentDeleteStatus.Failure,
+      expect.any(String)
+    );
+  });
+
+  it('calls rmSync and resolves true when env.json exists', async () => {
+    // isEnvInstalledByDesktopApp → existsSync returns true
+    mockFs.existsSync = vi.fn(() => true);
+    const listener = { onDeleteStatus: vi.fn() };
+    const result = await deletePythonEnvironment('/env/myenv', listener);
+    expect(mockFs.rmSync).toHaveBeenCalledWith('/env/myenv', {
+      recursive: true,
+      force: true
+    });
+    expect(result).toBe(true);
+    expect(listener.onDeleteStatus).toHaveBeenCalledWith(
+      EnvironmentDeleteStatus.Success
+    );
+  });
+
+  it('rejects with Failure status when rmSync throws', async () => {
+    mockFs.existsSync = vi.fn(() => true);
+    mockFs.rmSync = vi.fn(() => {
+      throw new Error('EPERM');
+    });
+    const listener = { onDeleteStatus: vi.fn() };
+    await expect(
+      deletePythonEnvironment('/env/myenv', listener)
+    ).rejects.toBeUndefined();
+    expect(listener.onDeleteStatus).toHaveBeenCalledWith(
+      EnvironmentDeleteStatus.Failure,
+      'EPERM'
+    );
+  });
+
+  it('works without a listener', async () => {
+    mockFs.existsSync = vi.fn(() => true);
+    await expect(deletePythonEnvironment('/env/myenv')).resolves.toBe(true);
+  });
+});
+
+describe('createTempFile', () => {
+  beforeEach(() => {
+    mockFs.mkdtempSync = vi.fn(() => '/tmp/jlab_desktop_abc');
+    mockFs.writeFileSync = vi.fn();
+  });
+
+  it('calls mkdtempSync with jlab_desktop prefix', () => {
+    createTempFile('test.sh', 'echo hi');
+    expect(mockFs.mkdtempSync).toHaveBeenCalledWith(
+      expect.stringContaining('jlab_desktop')
+    );
+  });
+
+  it('writes data to the temp file', () => {
+    createTempFile('test.sh', 'echo hi', 'utf8');
+    expect(mockFs.writeFileSync).toHaveBeenCalledWith(
+      expect.stringContaining('test.sh'),
+      'echo hi',
+      { encoding: 'utf8' }
+    );
+  });
+
+  it('returns path inside the temp dir', () => {
+    const result = createTempFile('run.sh');
+    expect(result).toContain('run.sh');
+    expect(result).toContain('/tmp/jlab_desktop_abc');
+  });
+
+  it('uses defaults when called with no args', () => {
+    const result = createTempFile();
+    expect(result).toContain('temp');
+  });
+});
+
+describe('isPortInUse', () => {
+  it('resolves false on connection error (port not in use)', async () => {
+    const mockSocket = {
+      setTimeout: vi.fn(),
+      once: vi.fn((event: string, cb: () => void) => {
+        if (event === 'error') cb();
+      }),
+      on: vi.fn((event: string, cb: (v?: any) => void) => {
+        if (event === 'close') cb(false);
+      }),
+      connect: vi.fn(),
+      destroy: vi.fn()
+    };
+    vi.mocked(net.Socket).mockImplementation(function () {
+      return mockSocket;
+    } as any);
+    const result = await isPortInUse(9999);
+    expect(result).toBe(false);
+  });
+
+  it('resolves true on connect (port in use)', async () => {
+    let closeCallback: ((v?: any) => void) | null = null;
+    const mockSocket = {
+      setTimeout: vi.fn(),
+      once: vi.fn(),
+      on: vi.fn((event: string, cb: (v?: any) => void) => {
+        if (event === 'connect') {
+          cb();
+        }
+        if (event === 'close') {
+          closeCallback = cb;
+        }
+      }),
+      connect: vi.fn(() => {
+        if (closeCallback) closeCallback(false);
+      }),
+      destroy: vi.fn()
+    };
+    vi.mocked(net.Socket).mockImplementation(function () {
+      return mockSocket;
+    } as any);
+    const result = await isPortInUse(8080);
+    expect(result).toBe(true);
+  });
+});
+
+describe('getFreePort', () => {
+  it('resolves a numeric port from server address', async () => {
+    const mockServer = {
+      on: vi.fn((event: string, cb: (e?: any) => void) => {
+        if (event === 'listening') cb({});
+      }),
+      listen: vi.fn(),
+      close: vi.fn(),
+      address: vi.fn(() => ({ port: 54321 }))
+    };
+    vi.mocked(net.createServer).mockReturnValue(mockServer as any);
+    const port = await getFreePort();
+    expect(port).toBe(54321);
   });
 });
