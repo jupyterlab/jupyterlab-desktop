@@ -24,8 +24,19 @@ vi.mock('electron', () => ({
     on: vi.fn(),
     handle: vi.fn(),
     removeHandler: vi.fn(),
+    removeListener: vi.fn(),
     removeAllListeners: vi.fn(),
     emit: vi.fn()
+  },
+  ipcRenderer: {
+    on: vi.fn(),
+    send: vi.fn(),
+    invoke: vi.fn(),
+    removeListener: vi.fn(),
+    removeAllListeners: vi.fn()
+  },
+  contextBridge: {
+    exposeInMainWorld: vi.fn()
   },
   dialog: {
     showOpenDialog: vi.fn(),

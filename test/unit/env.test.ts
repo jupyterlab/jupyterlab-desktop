@@ -43,13 +43,17 @@ import {
   condaExePathForEnvPath,
   condaEnvPathForCondaExePath,
   getNextPythonEnvName,
-  validatePythonPath
+  validatePythonPath,
+  validateCondaPath,
+  validateSystemPythonPath,
+  getAdditionalPathIncludesForPythonPath
 } from '../../src/main/env';
 import { appData } from '../../src/main/config/appdata';
 import { userSettings } from '../../src/main/config/settings';
 import * as childProcess from 'child_process';
 
 const mockFs = vi.mocked(fs);
+const mockExecFileSync = vi.mocked(childProcess.execFileSync);
 
 describe('validateNewPythonEnvironmentName', () => {
   beforeEach(() => {
@@ -310,8 +314,6 @@ describe('getNextPythonEnvName', () => {
 });
 
 describe('validatePythonPath', () => {
-  const mockExecFileSync = vi.mocked(childProcess.execFileSync);
-
   beforeEach(() => {
     mockFs.existsSync = vi.fn(() => false);
     mockFs.lstatSync = vi.fn(() => ({ isFile: () => false, isSymbolicLink: () => false } as fs.Stats));
@@ -363,5 +365,121 @@ describe('validatePythonPath', () => {
     mockExecFileSync.mockReturnValue(Buffer.from('Python 3.10.0\n'));
     const result = await validatePythonPath('/usr/local/bin/python');
     expect(result.valid).toBe(true);
+  });
+});
+
+describe('validateSystemPythonPath', () => {
+  beforeEach(() => {
+    mockFs.existsSync = vi.fn(() => false);
+    mockFs.lstatSync = vi.fn(() => ({ isFile: () => false, isSymbolicLink: () => false } as fs.Stats));
+    mockExecFileSync.mockReset();
+  });
+
+  it('returns invalid when path does not exist', async () => {
+    const result = await validateSystemPythonPath('/nonexistent/python');
+    expect(result.valid).toBe(false);
+    expect(result.message).toMatch(/does not exist/i);
+  });
+
+  it('returns invalid when path is not a file or symlink', async () => {
+    mockFs.existsSync = vi.fn(() => true);
+    mockFs.lstatSync = vi.fn(() => ({ isFile: () => false, isSymbolicLink: () => false } as fs.Stats));
+    const result = await validateSystemPythonPath('/some/dir');
+    expect(result.valid).toBe(false);
+    expect(result.message).toMatch(/not a valid file/i);
+  });
+
+  it('returns valid when execFileSync returns :valid:', async () => {
+    mockFs.existsSync = vi.fn(() => true);
+    mockFs.lstatSync = vi.fn(() => ({ isFile: () => true, isSymbolicLink: () => false } as fs.Stats));
+    mockExecFileSync.mockReturnValue(Buffer.from(':valid:\n'));
+    const result = await validateSystemPythonPath('/usr/bin/python3');
+    expect(result.valid).toBe(true);
+  });
+
+  it('returns invalid when execFileSync output is wrong', async () => {
+    mockFs.existsSync = vi.fn(() => true);
+    mockFs.lstatSync = vi.fn(() => ({ isFile: () => true, isSymbolicLink: () => false } as fs.Stats));
+    mockExecFileSync.mockReturnValue(Buffer.from('not python\n'));
+    const result = await validateSystemPythonPath('/usr/bin/ruby');
+    expect(result.valid).toBe(false);
+  });
+
+  it('returns invalid when execFileSync throws', async () => {
+    mockFs.existsSync = vi.fn(() => true);
+    mockFs.lstatSync = vi.fn(() => ({ isFile: () => true, isSymbolicLink: () => false } as fs.Stats));
+    mockExecFileSync.mockImplementation(() => { throw new Error('spawn error'); });
+    const result = await validateSystemPythonPath('/bad/python');
+    expect(result.valid).toBe(false);
+  });
+
+  it('accepts symlinks', async () => {
+    mockFs.existsSync = vi.fn(() => true);
+    mockFs.lstatSync = vi.fn(() => ({ isFile: () => false, isSymbolicLink: () => true } as fs.Stats));
+    mockExecFileSync.mockReturnValue(Buffer.from(':valid:\n'));
+    const result = await validateSystemPythonPath('/usr/local/bin/python');
+    expect(result.valid).toBe(true);
+  });
+});
+
+describe('validateCondaPath', () => {
+  beforeEach(() => {
+    mockFs.existsSync = vi.fn(() => false);
+    mockFs.lstatSync = vi.fn(() => ({ isFile: () => false } as fs.Stats));
+  });
+
+  it('returns invalid when conda executable does not exist', async () => {
+    mockFs.existsSync = vi.fn(() => false);
+    const result = await validateCondaPath('/nonexistent/conda');
+    expect(result.valid).toBe(false);
+    expect(result.message).toMatch(/does not exist/i);
+  });
+
+  it('returns invalid when path is not a file', async () => {
+    mockFs.existsSync = vi.fn(() => true);
+    mockFs.lstatSync = vi.fn(() => ({ isFile: () => false } as fs.Stats));
+    const result = await validateCondaPath('/some/directory');
+    expect(result.valid).toBe(false);
+    expect(result.message).toMatch(/not a valid file/i);
+  });
+
+  it('returns invalid when not in a base conda environment', async () => {
+    // existsSync: conda exe exists but conda-meta/condabin don't → not a base env
+    mockFs.existsSync = vi.fn((p: fs.PathLike) => {
+      return p.toString() === '/opt/miniconda/bin/conda';
+    });
+    mockFs.lstatSync = vi.fn(() => ({ isFile: () => true } as fs.Stats));
+    const result = await validateCondaPath('/opt/miniconda/bin/conda');
+    expect(result.valid).toBe(false);
+    expect(result.message).toMatch(/base conda/i);
+  });
+});
+
+describe('getAdditionalPathIncludesForPythonPath', () => {
+  const originalPlatform = process.platform;
+
+  afterEach(() => {
+    Object.defineProperty(process, 'platform', { value: originalPlatform });
+  });
+
+  it('returns a non-empty PATH string on posix', () => {
+    Object.defineProperty(process, 'platform', { value: 'darwin' });
+    const result = getAdditionalPathIncludesForPythonPath('/env/bin/python');
+    expect(typeof result).toBe('string');
+    expect(result.length).toBeGreaterThan(0);
+    expect(result).toContain('/env');
+  });
+
+  it('includes env bin path on posix', () => {
+    Object.defineProperty(process, 'platform', { value: 'linux' });
+    const result = getAdditionalPathIncludesForPythonPath('/myenv/bin/python');
+    // envPath = /myenv, pathEnv = /myenv:/myenv/bin:...
+    expect(result).toContain('/myenv');
+  });
+
+  it('uses semicolon separator on windows', () => {
+    Object.defineProperty(process, 'platform', { value: 'win32' });
+    const result = getAdditionalPathIncludesForPythonPath('C:\\envs\\myenv\\python.exe');
+    expect(result).toContain(';');
   });
 });
