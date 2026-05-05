@@ -81,6 +81,15 @@ function copyAssests() {
       ),
       path.join(buildDir, 'entitlements.plist')
     );
+    fs.copySync(
+      path.join(
+        path.resolve('./'),
+        'dist-resources',
+        'darwin',
+        'entitlements.inherit.plist'
+      ),
+      path.join(buildDir, 'entitlements.inherit.plist')
+    );
   } else if (platform === 'win32') {
     fs.copySync(
       path.join(

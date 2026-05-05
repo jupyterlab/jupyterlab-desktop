@@ -74,6 +74,7 @@
       "env_installer/jlab_server.tar.gz",
       "env_installer/sign*.txt"
     ],
+    "afterPack": "scripts/afterPack.js",
     "afterSign": "scripts/notarize.js",
     "linux": {
       "target": [
@@ -107,7 +108,7 @@
       "base": "core22",
       "environment": {
         "SHELL": "/bin/bash",
-        "GTK_USE_PORTAL":"1"
+        "GTK_USE_PORTAL": "1"
       },
       "hooks": "build/snap-hooks"
     },
@@ -152,7 +153,7 @@
         }
       ],
       "entitlements": "build/entitlements.plist",
-      "entitlementsInherit": "build/entitlements.plist",
+      "entitlementsInherit": "build/entitlements.inherit.plist",
       "darkModeSupport": true,
       "hardenedRuntime": true,
       "gatekeeperAssess": false,
@@ -181,7 +182,9 @@
   "repository": "https://github.com/jupyterlab/jupyterlab-desktop",
   "license": "BSD-3-Clause",
   "devDependencies": {
+    "@electron/fuses": "^2.1.1",
     "@jupyter-notebook/web-components": "0.9.1",
+    "@leeoniya/ufuzzy": "1.0.14",
     "@types/ejs": "^3.1.0",
     "@types/js-yaml": "^4.0.3",
     "@types/node": "^14.14.31",
@@ -193,7 +196,6 @@
     "@types/yargs": "^17.0.18",
     "@typescript-eslint/eslint-plugin": "~5.28.0",
     "@typescript-eslint/parser": "~5.28.0",
-    "@leeoniya/ufuzzy": "1.0.14",
     "electron": "^27.0.2",
     "electron-builder": "^24.9.1",
     "electron-notarize": "^1.2.2",
