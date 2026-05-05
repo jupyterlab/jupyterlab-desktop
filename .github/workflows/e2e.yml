@@ -27,14 +27,12 @@ jobs:
       - name: Build app
         run: yarn build
 
-      - name: Install Playwright browsers
+      - name: Install Playwright Chromium + system deps
         run: npx playwright install --with-deps chromium
 
-      # Electron needs a display on Linux
+      # xvfb-maybe auto-detects headless Linux and wraps with xvfb-run
       - name: Run E2E tests
-        uses: coactions/setup-xvfb@v1
-        with:
-          run: yarn test:e2e
+        run: yarn test:e2e
         env:
           CI: true
 
