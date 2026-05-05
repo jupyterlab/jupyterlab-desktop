@@ -18,7 +18,7 @@ import {
   DEFAULT_WIN_WIDTH,
   DEFAULT_WIN_HEIGHT,
   resolveWorkingDirectory
-} from '../../../src/main/config/settings';
+} from '../../src/main/config/settings';
 
 const mockFs = vi.mocked(fs);
 

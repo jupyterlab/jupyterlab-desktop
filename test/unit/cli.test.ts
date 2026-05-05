@@ -1,22 +1,22 @@
 import { describe, it, expect, vi, beforeAll, afterAll } from 'vitest';
 
-vi.mock('../../../src/main/config/settings', () => ({
+vi.mock('../../src/main/config/settings', () => ({
   userSettings: { getValue: vi.fn(() => null), setValue: vi.fn() },
   SettingType: { condaPath: 'condaPath', pythonPath: 'pythonPath' }
 }));
-vi.mock('../../../src/main/config/appdata', () => ({
+vi.mock('../../src/main/config/appdata', () => ({
   appData: { discoveredPythonPaths: [], userSetPythonEnvs: [] }
 }));
-vi.mock('../../../src/main/registry', () => ({
+vi.mock('../../src/main/registry', () => ({
   appRegistry: { getDefaultEnvironment: vi.fn() }
 }));
-vi.mock('../../../src/main/env', () => ({
+vi.mock('../../src/main/env', () => ({
   updateDiscoveredPythonPaths: vi.fn(() => Promise.resolve()),
   getCondaPath: vi.fn(() => null),
   getPythonEnvsDirectory: vi.fn(() => '/tmp/envs')
 }));
-vi.mock('../../../src/main/utils', async () => {
-  const actual = await vi.importActual('../../../src/main/utils');
+vi.mock('../../src/main/utils', async () => {
+  const actual = await vi.importActual('../../src/main/utils');
   return {
     ...actual,
     getUserDataDir: vi.fn(() => '/tmp/test-userdata'),
@@ -25,7 +25,7 @@ vi.mock('../../../src/main/utils', async () => {
   };
 });
 
-import { parseCLIArgs } from '../../../src/main/cli';
+import { parseCLIArgs } from '../../src/main/cli';
 
 let exitSpy: ReturnType<typeof vi.spyOn>;
 

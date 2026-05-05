@@ -5,9 +5,16 @@ import { join } from 'path';
 const userDataPath = join(tmpdir(), 'jlab-test-userdata');
 const logFilePath = join(tmpdir(), 'jlab-test.log');
 
+// isDevMode() in utils.ts calls require.main.filename. In vitest's ESM context
+// require.main is undefined; patch it so unit tests can call getAppDir() on darwin.
+if (typeof require !== 'undefined' && !(require as any).main) {
+  (require as any).main = { filename: '/test/vitest-runner.js' };
+}
+
 vi.mock('electron', () => ({
   app: {
     getPath: vi.fn((name: string) => join(userDataPath, name)),
+    getAppPath: vi.fn(() => join(userDataPath, 'app')),
     getVersion: vi.fn(() => '4.4.7'),
     getName: vi.fn(() => 'JupyterLab'),
     isPackaged: false,
