@@ -457,14 +457,34 @@ export class WelcomeView {
               recentSessionRow.classList.add("row");
               recentSessionRow.classList.add("recent-session-row");
               recentSessionRow.dataset.sessionIndex = recentSessionCount;
-              recentSessionRow.innerHTML = \`
-                  <div class="recent-session-link\$\{!isRemote ? ' recent-item-local' : ''\}" onclick='handleRecentSessionClick(event);' title="\$\{linkTooltip\}">\$\{linkLabel\}</div>
-                  \$\{linkDetail ? \`<div class="recent-session-detail" title="\$\{linkDetail\}">\$\{linkDetail\}</div>\`: ''}
-                  <div class="recent-session-delete" title="Remove" onclick="handleRecentSesssionDeleteClick(event)">
-                    <svg class="delete-button" version="2.0">
-                      <use href="#circle-xmark" />
-                    </svg>
-                  </div>\`;
+              const linkDiv = document.createElement('div');
+              linkDiv.className = \`recent-session-link\${!isRemote ? ' recent-item-local' : ''}\`;
+              linkDiv.setAttribute('onclick', 'handleRecentSessionClick(event);');
+              linkDiv.setAttribute('title', linkTooltip);
+              linkDiv.textContent = linkLabel;
+              recentSessionRow.appendChild(linkDiv);
+
+              if (linkDetail) {
+                const detailDiv = document.createElement('div');
+                detailDiv.className = 'recent-session-detail';
+                detailDiv.setAttribute('title', linkDetail);
+                detailDiv.textContent = linkDetail;
+                recentSessionRow.appendChild(detailDiv);
+              }
+
+              const deleteDiv = document.createElement('div');
+              deleteDiv.className = 'recent-session-delete';
+              deleteDiv.setAttribute('title', 'Remove');
+              deleteDiv.setAttribute('onclick', 'handleRecentSesssionDeleteClick(event)');
+              const svgNS = 'http://www.w3.org/2000/svg';
+              const deleteSvg = document.createElementNS(svgNS, 'svg');
+              deleteSvg.classList.add('delete-button');
+              deleteSvg.setAttribute('version', '2.0');
+              const deleteUse = document.createElementNS(svgNS, 'use');
+              deleteUse.setAttribute('href', '#circle-xmark');
+              deleteSvg.appendChild(deleteUse);
+              deleteDiv.appendChild(deleteSvg);
+              recentSessionRow.appendChild(deleteDiv);
 
               fragment.append(recentSessionRow);
 
@@ -509,10 +529,17 @@ export class WelcomeView {
             const fragment = new DocumentFragment();
             for (const news of newsList) {
               const newsRow = document.createElement('div');
-              newsRow.innerHTML = \`
-                <div class="row">
-                  <a href="javascript:void(0)" onclick=\'handleNewsClick("\$\{news.link\}");\' title="\$\{news.title\}">\$\{news.title\}</a>
-                </div>\`;
+              const rowDiv = document.createElement('div');
+              rowDiv.className = 'row';
+              const anchor = document.createElement('a');
+              anchor.href = 'javascript:void(0)';
+              anchor.setAttribute('title', news.title);
+              anchor.textContent = news.title;
+              anchor.addEventListener('click', () => {
+                handleNewsClick(news.link);
+              });
+              rowDiv.appendChild(anchor);
+              newsRow.appendChild(rowDiv);
               fragment.append(newsRow);
             }
 

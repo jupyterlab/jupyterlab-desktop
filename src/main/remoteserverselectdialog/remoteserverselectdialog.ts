@@ -165,9 +165,19 @@ export class RemoteServerSelectDialog {
             menuItem.addEventListener('click', () => {
               onRecentServerClicked(menuItem, index);
             });
-            menuItem.innerHTML = server.url + \`<svg class="delete-button" version="2.0" slot="end" onclick="onDeleteRecentRemoteURLClicked(event, \$\{index\})">
-                <use href="#circle-xmark" />
-              </svg>\`;
+            menuItem.appendChild(document.createTextNode(server.url));
+            const svgNS = 'http://www.w3.org/2000/svg';
+            const deleteSvg = document.createElementNS(svgNS, 'svg');
+            deleteSvg.classList.add('delete-button');
+            deleteSvg.setAttribute('version', '2.0');
+            deleteSvg.setAttribute('slot', 'end');
+            deleteSvg.addEventListener('click', event => {
+              onDeleteRecentRemoteURLClicked(event, index);
+            });
+            const deleteUse = document.createElementNS(svgNS, 'use');
+            deleteUse.setAttribute('href', '#circle-xmark');
+            deleteSvg.appendChild(deleteUse);
+            menuItem.appendChild(deleteSvg);
             fragment.append(menuItem);
           });
 
