@@ -1,5 +1,6 @@
 const { flipFuses, FuseVersion, FuseV1Options } = require('@electron/fuses');
 const path = require('path');
+const fs = require('fs');
 
 exports.default = async function afterPack(context) {
   const { electronPlatformName, appOutDir } = context;
@@ -17,7 +18,19 @@ exports.default = async function afterPack(context) {
   } else if (electronPlatformName === 'win32') {
     electronPath = path.join(appOutDir, `${appName}.exe`);
   } else {
-    electronPath = path.join(appOutDir, appName);
+    // On Linux, the executable name is derived from package.json "name" (e.g.
+    // "jupyterlab-desktop"), not productName ("JupyterLab").
+    const executableName =
+      context.packager.executableName ||
+      context.packager.appInfo.name ||
+      appName;
+    electronPath = path.join(appOutDir, executableName);
+  }
+
+  if (!fs.existsSync(electronPath)) {
+    throw new Error(
+      `afterPack: Electron binary not found at expected path: ${electronPath}`
+    );
   }
 
   await flipFuses(electronPath, {
