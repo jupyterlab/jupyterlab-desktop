@@ -3,7 +3,7 @@
   "extends": ["config:recommended"],
   "onboarding": false,
   "requireConfig": "optional",
-  "schedule": ["every weekend"],
+  "schedule": ["at any time"],
   "packageRules": [
     {
       "description": "Group Electron + related packages — major bumps need Phase 3 review",
