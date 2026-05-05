@@ -63,6 +63,7 @@ export class WelcomeView {
       <html>
         <head>
           <meta charset="utf-8" />
+          <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'unsafe-inline'; img-src 'self' data:; require-trusted-types-for 'script'" />
           <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0">
           <title>Welcome</title>
           <style>
@@ -609,7 +610,7 @@ export class WelcomeView {
           }
 
           function showNotificationPanel(message, closable) {
-            notificationPanelMessage.innerHTML = message;
+            notificationPanelMessage.textContent = message;
             notificationPanelCloseButton.style.display = closable ? 'block' : 'none'; 
             notificationPanel.style.display = message === "" ? "none" : "flex";
           }
