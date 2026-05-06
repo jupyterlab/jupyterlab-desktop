@@ -732,7 +732,7 @@ export class WelcomeView {
     const maxNewsToShow = 10;
 
     net
-      .fetch(newsFeedUrl)
+      .fetch(newsFeedUrl, { cache: 'no-cache' })
       .then(async response => {
         try {
           const data = await response.text();
