@@ -1,11 +1,10 @@
 // Copyright (c) Jupyter Development Team.
 // Distributed under the terms of the Modified BSD License.
 
-import { BrowserView } from 'electron';
+import { BrowserView, net } from 'electron';
 import { DarkThemeBGColor, getUserHomeDir, LightThemeBGColor } from '../utils';
 import * as path from 'path';
 import * as fs from 'fs';
-import fetch from 'node-fetch';
 import { XMLParser } from 'fast-xml-parser';
 import { SettingType, userSettings } from '../config/settings';
 import { appData, INewsItem } from '../config/appdata';
@@ -732,11 +731,12 @@ export class WelcomeView {
     const newsFeedUrl = 'https://blog.jupyter.org/feed';
     const maxNewsToShow = 10;
 
-    fetch(newsFeedUrl)
+    net
+      .fetch(newsFeedUrl)
       .then(async response => {
         try {
           const data = await response.text();
-          const parser = new XMLParser();
+          const parser = new XMLParser({ isArray: name => name === 'item' });
           const feed = parser.parse(data);
           const newsList: INewsItem[] = [];
           for (const item of feed.rss.channel.item) {
