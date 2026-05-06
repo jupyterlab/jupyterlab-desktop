@@ -753,6 +753,7 @@ export class WelcomeView {
 
           WelcomeView._newsList = newsList;
           appData.newsList = [...newsList];
+          appData.save();
           if (newsList.length > 0) {
             WelcomeView._newsListFetched = true;
           }
