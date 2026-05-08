@@ -15,9 +15,16 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
+# Default workflow-level permissions are minimal. The `publish` job that
+# uploads release assets overrides this at the job level.
+permissions:
+  contents: read
+
 jobs:
   test:
     name: 'Unit tests (${{ matrix.os }})'
+    permissions:
+      contents: read
     strategy:
       fail-fast: false
       matrix:
@@ -44,6 +51,9 @@ jobs:
 
   publish:
     needs: test
+    # Needs write access to upload release assets and read draft/prerelease metadata.
+    permissions:
+      contents: write
     strategy:
       matrix:
         cfg:
