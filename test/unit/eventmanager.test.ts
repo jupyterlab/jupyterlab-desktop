@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ipcMain } from 'electron';
 import { EventManager } from '../../src/main/eventmanager';
 import { EventTypeMain } from '../../src/main/eventtypes';
@@ -14,7 +14,10 @@ describe('EventManager.registerEventHandler', () => {
     const mgr = new EventManager();
     const handler = vi.fn();
     mgr.registerEventHandler(EventTypeMain.OpenFile, handler);
-    expect(mockIpcMain.on).toHaveBeenCalledWith(EventTypeMain.OpenFile, handler);
+    expect(mockIpcMain.on).toHaveBeenCalledWith(
+      EventTypeMain.OpenFile,
+      handler
+    );
   });
 
   it('registers multiple handlers for same event type', () => {
@@ -44,7 +47,10 @@ describe('EventManager.registerSyncEventHandler', () => {
     const mgr = new EventManager();
     const handler = vi.fn();
     mgr.registerSyncEventHandler(EventTypeMain.IsDarkTheme, handler);
-    expect(mockIpcMain.handle).toHaveBeenCalledWith(EventTypeMain.IsDarkTheme, handler);
+    expect(mockIpcMain.handle).toHaveBeenCalledWith(
+      EventTypeMain.IsDarkTheme,
+      handler
+    );
   });
 
   it('registers multiple sync handlers for same event', () => {
@@ -64,13 +70,18 @@ describe('EventManager.unregisterEventHandler', () => {
     mgr.registerEventHandler(EventTypeMain.OpenFile, handler);
     vi.clearAllMocks();
     mgr.unregisterEventHandler(EventTypeMain.OpenFile, handler);
-    expect(mockIpcMain.removeListener).toHaveBeenCalledWith(EventTypeMain.OpenFile, handler);
+    expect(mockIpcMain.removeListener).toHaveBeenCalledWith(
+      EventTypeMain.OpenFile,
+      handler
+    );
   });
 
   it('no-ops when event type was never registered', () => {
     const mgr = new EventManager();
     const handler = vi.fn();
-    expect(() => mgr.unregisterEventHandler(EventTypeMain.OpenFile, handler)).not.toThrow();
+    expect(() =>
+      mgr.unregisterEventHandler(EventTypeMain.OpenFile, handler)
+    ).not.toThrow();
     expect(mockIpcMain.removeListener).not.toHaveBeenCalled();
   });
 
@@ -93,7 +104,10 @@ describe('EventManager.unregisterEventHandler', () => {
     vi.clearAllMocks();
     mgr.unregisterEventHandler(EventTypeMain.OpenFile, h1);
     expect(mockIpcMain.removeListener).toHaveBeenCalledTimes(1);
-    expect(mockIpcMain.removeListener).toHaveBeenCalledWith(EventTypeMain.OpenFile, h1);
+    expect(mockIpcMain.removeListener).toHaveBeenCalledWith(
+      EventTypeMain.OpenFile,
+      h1
+    );
   });
 });
 
@@ -104,12 +118,17 @@ describe('EventManager.unregisterSyncEventHandler', () => {
     mgr.registerSyncEventHandler(EventTypeMain.IsDarkTheme, handler);
     vi.clearAllMocks();
     mgr.unregisterSyncEventHandler(EventTypeMain.IsDarkTheme, handler);
-    expect(mockIpcMain.removeListener).toHaveBeenCalledWith(EventTypeMain.IsDarkTheme, handler);
+    expect(mockIpcMain.removeListener).toHaveBeenCalledWith(
+      EventTypeMain.IsDarkTheme,
+      handler
+    );
   });
 
   it('no-ops when event type was never registered', () => {
     const mgr = new EventManager();
-    expect(() => mgr.unregisterSyncEventHandler(EventTypeMain.IsDarkTheme, vi.fn())).not.toThrow();
+    expect(() =>
+      mgr.unregisterSyncEventHandler(EventTypeMain.IsDarkTheme, vi.fn())
+    ).not.toThrow();
     expect(mockIpcMain.removeListener).not.toHaveBeenCalled();
   });
 });
@@ -123,8 +142,14 @@ describe('EventManager.unregisterAllEventHandlers', () => {
     mgr.registerEventHandler(EventTypeMain.OpenFolder, h2);
     vi.clearAllMocks();
     mgr.unregisterAllEventHandlers();
-    expect(mockIpcMain.removeListener).toHaveBeenCalledWith(EventTypeMain.OpenFile, h1);
-    expect(mockIpcMain.removeListener).toHaveBeenCalledWith(EventTypeMain.OpenFolder, h2);
+    expect(mockIpcMain.removeListener).toHaveBeenCalledWith(
+      EventTypeMain.OpenFile,
+      h1
+    );
+    expect(mockIpcMain.removeListener).toHaveBeenCalledWith(
+      EventTypeMain.OpenFolder,
+      h2
+    );
   });
 
   it('no-ops when no handlers registered', () => {
@@ -156,8 +181,14 @@ describe('EventManager.dispose', () => {
     mgr.registerSyncEventHandler(EventTypeMain.IsDarkTheme, sync1);
     vi.clearAllMocks();
     await expect(mgr.dispose()).resolves.toBeUndefined();
-    expect(mockIpcMain.removeListener).toHaveBeenCalledWith(EventTypeMain.OpenFile, async1);
-    expect(mockIpcMain.removeListener).toHaveBeenCalledWith(EventTypeMain.IsDarkTheme, sync1);
+    expect(mockIpcMain.removeListener).toHaveBeenCalledWith(
+      EventTypeMain.OpenFile,
+      async1
+    );
+    expect(mockIpcMain.removeListener).toHaveBeenCalledWith(
+      EventTypeMain.IsDarkTheme,
+      sync1
+    );
   });
 
   it('is safe to call dispose twice', async () => {

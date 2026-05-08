@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeAll, afterAll } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
 vi.mock('../../../src/main/config/settings', () => ({
   userSettings: { getValue: vi.fn(() => null), setValue: vi.fn() },
@@ -30,7 +30,9 @@ import { parseCLIArgs } from '../../../src/main/cli';
 let exitSpy: ReturnType<typeof vi.spyOn>;
 
 beforeAll(() => {
-  exitSpy = vi.spyOn(process, 'exit').mockImplementation(() => undefined as never);
+  exitSpy = vi
+    .spyOn(process, 'exit')
+    .mockImplementation(() => undefined as never);
 });
 afterAll(() => {
   exitSpy.mockRestore();

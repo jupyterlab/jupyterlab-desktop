@@ -51,7 +51,11 @@ vi.mock('electron', () => ({
   })),
   shell: { openExternal: vi.fn(), openPath: vi.fn() },
   nativeTheme: { shouldUseDarkColors: false },
-  screen: { getPrimaryDisplay: vi.fn(() => ({ workAreaSize: { width: 1920, height: 1080 } })) }
+  screen: {
+    getPrimaryDisplay: vi.fn(() => ({
+      workAreaSize: { width: 1920, height: 1080 }
+    }))
+  }
 }));
 
 vi.mock('electron-log', () => ({

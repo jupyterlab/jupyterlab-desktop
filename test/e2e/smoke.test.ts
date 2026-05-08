@@ -1,4 +1,4 @@
-import { test, expect, _electron as electron } from '@playwright/test';
+import { _electron as electron, expect, test } from '@playwright/test';
 import { ElectronApplication } from '@playwright/test';
 import { stubAllDialogs } from 'electron-playwright-helpers';
 import { mkdtempSync, rmSync } from 'fs';

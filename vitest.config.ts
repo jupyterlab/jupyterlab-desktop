@@ -15,7 +15,8 @@ export default defineConfig({
   resolve: {
     alias: {
       // redirect electron to the in-process mock so unit tests run without a real Electron binary
-      electron: '/Users/notluquis/jupyterlab-desktop/test/setup/electron-mock.ts'
+      electron:
+        '/Users/notluquis/jupyterlab-desktop/test/setup/electron-mock.ts'
     }
   }
   // Import-path note: test files that call vi.mock() have their mocks hoisted by vitest,

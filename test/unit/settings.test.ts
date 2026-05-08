@@ -1,23 +1,28 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import * as fs from 'fs';
 
 vi.mock('fs', async () => {
   const actual = await vi.importActual<typeof import('fs')>('fs');
-  return { ...actual, existsSync: vi.fn(), lstatSync: vi.fn(), mkdirSync: vi.fn() };
+  return {
+    ...actual,
+    existsSync: vi.fn(),
+    lstatSync: vi.fn(),
+    mkdirSync: vi.fn()
+  };
 });
 
 import {
-  ThemeType,
-  StartupMode,
-  LogLevel,
   CtrlWBehavior,
-  UIMode,
-  SettingType,
-  serverLaunchArgsFixed,
-  serverLaunchArgsDefault,
-  DEFAULT_WIN_WIDTH,
   DEFAULT_WIN_HEIGHT,
-  resolveWorkingDirectory
+  DEFAULT_WIN_WIDTH,
+  LogLevel,
+  resolveWorkingDirectory,
+  serverLaunchArgsDefault,
+  serverLaunchArgsFixed,
+  SettingType,
+  StartupMode,
+  ThemeType,
+  UIMode
 } from '../../../src/main/config/settings';
 
 const mockFs = vi.mocked(fs);
@@ -79,7 +84,9 @@ describe('serverLaunchArgsFixed', () => {
 
 describe('serverLaunchArgsDefault', () => {
   it('allows hidden files', () => {
-    expect(serverLaunchArgsDefault.some(a => a.includes('allow_hidden=True'))).toBe(true);
+    expect(
+      serverLaunchArgsDefault.some(a => a.includes('allow_hidden=True'))
+    ).toBe(true);
   });
 });
 
@@ -104,13 +111,17 @@ describe('resolveWorkingDirectory', () => {
   });
 
   it('resets to home when path does not exist', () => {
-    mockFs.lstatSync = vi.fn(() => { throw new Error('ENOENT'); });
+    mockFs.lstatSync = vi.fn(() => {
+      throw new Error('ENOENT');
+    });
     const result = resolveWorkingDirectory('/nonexistent/path');
     expect(result).not.toBe('/nonexistent/path');
   });
 
   it('keeps invalid path when resetIfInvalid is false', () => {
-    mockFs.lstatSync = vi.fn(() => { throw new Error('ENOENT'); });
+    mockFs.lstatSync = vi.fn(() => {
+      throw new Error('ENOENT');
+    });
     const result = resolveWorkingDirectory('/bad/path', false);
     expect(result).toBe('/bad/path');
   });
