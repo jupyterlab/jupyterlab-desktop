@@ -34,6 +34,9 @@ jobs:
       - name: Build app
         run: yarn build
 
+      - name: Check preload bundle sizes
+        run: node scripts/check-bundle-size.js
+
       # --with-deps installs Linux apt packages; macOS/Windows handle deps natively
       - name: Install Playwright Chromium (Linux)
         if: runner.os == 'Linux'
