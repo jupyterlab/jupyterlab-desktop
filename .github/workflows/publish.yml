@@ -24,6 +24,8 @@ jobs:
           node-version: '20.x'
           cache: 'yarn'
       - run: yarn install --frozen-lockfile
+      - name: Type check
+        run: npx tsc --noEmit
       - name: Run unit tests with coverage
         run: yarn test:unit:coverage
       - name: Upload coverage report

@@ -28,6 +28,9 @@ jobs:
       - name: Install dependencies
         run: yarn install --frozen-lockfile
 
+      - name: Type check
+        run: npx tsc --noEmit
+
       - name: Build app
         run: yarn build
 
