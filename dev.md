@@ -85,6 +85,18 @@ JupyterLab Desktop bundles JupyterLab front-end and a conda environment as Jupyt
 
   Application Installer will be created in `dist/JupyterLab.dmg` (macOS), `dist/JupyterLab.deb` (Debian, Ubuntu), `dist/JupyterLab.rpm` (Red Hat, Fedora) and `dist/JupyterLab-Setup.exe` (Windows) based on the platform
 
+## Automated test coverage
+
+CI runs the following on every push and PR to `master`:
+
+- **Unit tests** (`yarn test:unit:coverage`, Vitest): runs on Linux, macOS, and Windows in parallel via the matrix in `.github/workflows/publish.yml`. Coverage report is uploaded only from the Linux job to avoid duplicate artifacts.
+- **E2E smoke tests** (`yarn test:e2e`, Playwright + Electron): same 3-OS matrix in `.github/workflows/e2e.yml`. Linux uses `xvfb-maybe` for headless display; macOS and Windows run natively.
+- **Type check** (`npx tsc --noEmit`): explicit step before build in both workflows so type errors surface independent of the bundle/copy pipeline.
+- **Bundle size budget** (`scripts/check-bundle-size.js`): verifies each preload bundle stays under 30 KB after `yarn build`.
+- **Lint** (`yarn lint:check`): Prettier + ESLint, runs in the publish workflow.
+
+Failing one OS in the matrix does not cancel the others (`fail-fast: false`), so a platform-specific regression does not mask others.
+
 ## Review guidance
 
 Expected manual testing coverage depends on the PR, when pulling:
