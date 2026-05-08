@@ -1251,7 +1251,8 @@ export class JupyterApplication implements IApplication, IDisposable {
   checkForUpdates(showDialog: 'on-new-version' | 'always') {
     net
       .fetch(
-        'https://github.com/jupyterlab/jupyterlab-desktop/releases/latest/download/latest.yml'
+        'https://github.com/jupyterlab/jupyterlab-desktop/releases/latest/download/latest.yml',
+        { cache: 'no-store' }
       )
       .then(async response => {
         try {

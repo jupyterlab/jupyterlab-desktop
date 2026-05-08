@@ -760,7 +760,7 @@ export class WelcomeView {
     const maxNewsToShow = 10;
 
     net
-      .fetch(newsFeedUrl)
+      .fetch(newsFeedUrl, { cache: 'no-cache' })
       .then(async response => {
         try {
           const data = await response.text();
@@ -781,6 +781,7 @@ export class WelcomeView {
 
           WelcomeView._newsList = newsList;
           appData.newsList = [...newsList];
+          appData.save();
           if (newsList.length > 0) {
             WelcomeView._newsListFetched = true;
           }
