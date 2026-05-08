@@ -9,6 +9,12 @@ on:
   # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
 
+# Cancel previous in-flight runs on the same PR; pushes to master queue
+# so a release-tag push is never aborted by a follow-up commit.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   test:
     name: 'Unit tests (${{ matrix.os }})'
