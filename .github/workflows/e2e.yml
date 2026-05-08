@@ -9,8 +9,12 @@ on:
 
 jobs:
   e2e:
-    name: 'E2E smoke tests'
-    runs-on: ubuntu-latest
+    name: 'E2E smoke (${{ matrix.os }})'
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
     timeout-minutes: 20
 
     steps:
@@ -27,10 +31,16 @@ jobs:
       - name: Build app
         run: yarn build
 
-      - name: Install Playwright Chromium + system deps
+      # --with-deps installs Linux apt packages; macOS/Windows handle deps natively
+      - name: Install Playwright Chromium (Linux)
+        if: runner.os == 'Linux'
         run: npx playwright install --with-deps chromium
 
-      # xvfb-maybe auto-detects headless Linux and wraps with xvfb-run
+      - name: Install Playwright Chromium (macOS/Windows)
+        if: runner.os != 'Linux'
+        run: npx playwright install chromium
+
+      # xvfb-maybe auto-detects headless Linux and wraps with xvfb-run; passes through on macOS/Windows
       - name: Run E2E tests
         run: yarn test:e2e
         env:
@@ -40,6 +50,6 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: e2e-test-results
+          name: e2e-test-results-${{ matrix.os }}
           path: test-results/
           retention-days: 7
