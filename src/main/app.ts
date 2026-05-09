@@ -6,12 +6,12 @@ import {
   autoUpdater,
   BrowserWindow,
   dialog,
+  net,
   session,
   shell
 } from 'electron';
 import log from 'electron-log';
 import { IRegistry, Registry } from './registry';
-import fetch from 'node-fetch';
 import * as yaml from 'js-yaml';
 import * as semver from 'semver';
 import * as fs from 'fs';
@@ -1249,9 +1249,11 @@ export class JupyterApplication implements IApplication, IDisposable {
   }
 
   checkForUpdates(showDialog: 'on-new-version' | 'always') {
-    fetch(
-      'https://github.com/jupyterlab/jupyterlab-desktop/releases/latest/download/latest.yml'
-    )
+    net
+      .fetch(
+        'https://github.com/jupyterlab/jupyterlab-desktop/releases/latest/download/latest.yml',
+        { cache: 'no-store' }
+      )
       .then(async response => {
         try {
           const data = await response.text();
