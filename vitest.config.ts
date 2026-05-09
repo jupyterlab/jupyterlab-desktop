@@ -1,5 +1,4 @@
 import { defineConfig } from 'vitest/config';
-import { resolve } from 'path';
 
 export default defineConfig({
   test: {
@@ -11,11 +10,6 @@ export default defineConfig({
       provider: 'v8',
       include: ['src/main/**/*.ts'],
       exclude: ['src/main/**/*.d.ts', 'src/main/main.ts']
-    }
-  },
-  resolve: {
-    alias: {
-      electron: resolve(__dirname, 'test/setup/electron-mock.ts')
     }
   }
 });
