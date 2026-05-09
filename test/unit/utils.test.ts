@@ -1,6 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import * as fs from 'fs';
 import * as os from 'os';
+import * as path from 'path';
+import { join } from 'path';
 
 vi.mock('fs', async () => {
   const actual = await vi.importActual<typeof import('fs')>('fs');
@@ -207,12 +209,21 @@ describe('isEnvInstalledByDesktopApp', () => {
 });
 
 describe('getRelativePathToUserHome', () => {
-  it('replaces home prefix with ~', () => {
-    const home = '/Users/test';
-    const abs = '/Users/test/notebooks/file.ipynb';
-    // app.getPath('home') is mocked to /tmp/jlab-test-userdata/home
-    // but we can test the logic by checking the function exists
-    expect(typeof getRelativePathToUserHome).toBe('function');
+  it('replaces home prefix with ~ for paths under home', async () => {
+    // resolve the mocked home path at runtime so symlinks (e.g. macOS /var
+    // vs /private/var) and platform differences do not break the prefix match
+    const { getUserHomeDir } = await import('../../src/main/utils');
+    const home = getUserHomeDir();
+    const result = getRelativePathToUserHome(
+      join(home, 'notebooks', 'file.ipynb')
+    );
+    expect(result).toBe(`~${path.sep}notebooks${path.sep}file.ipynb`);
+  });
+
+  it('returns undefined for paths not under home', () => {
+    expect(
+      getRelativePathToUserHome('/totally/unrelated/path')
+    ).toBeUndefined();
   });
 });
 
