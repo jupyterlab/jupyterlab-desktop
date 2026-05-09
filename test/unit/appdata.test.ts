@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import * as fs from 'fs';
 
 vi.mock('fs', async () => {
@@ -6,7 +6,9 @@ vi.mock('fs', async () => {
   return {
     ...actual,
     existsSync: vi.fn(() => false),
-    readFileSync: vi.fn(() => { throw new Error('ENOENT'); }),
+    readFileSync: vi.fn(() => {
+      throw new Error('ENOENT');
+    }),
     writeFileSync: vi.fn(),
     mkdirSync: vi.fn()
   };
@@ -15,8 +17,8 @@ vi.mock('fs', async () => {
 import {
   appData,
   ApplicationData,
-  IRecentSession,
-  IRecentRemoteURL
+  IRecentRemoteURL,
+  IRecentSession
 } from '../../../src/main/config/appdata';
 
 const mockFs = vi.mocked(fs);
@@ -166,7 +168,9 @@ describe('ApplicationData.addRemoteURLToRecents', () => {
   it('new entry gets a date close to now', () => {
     const before = Date.now();
     appData.addRemoteURLToRecents('https://example.com');
-    expect(appData.recentRemoteURLs[0].date.valueOf()).toBeGreaterThanOrEqual(before);
+    expect(appData.recentRemoteURLs[0].date.valueOf()).toBeGreaterThanOrEqual(
+      before
+    );
   });
 
   it('updates date of existing URL without duplicating', () => {
@@ -249,13 +253,21 @@ describe('ApplicationData.addSessionToRecents', () => {
   });
 
   it('re-adding existing session updates date without duplicating', async () => {
-    await appData.addSessionToRecents({ workingDirectory: '/a', filesToOpen: [] });
+    await appData.addSessionToRecents({
+      workingDirectory: '/a',
+      filesToOpen: []
+    });
     const before = appData.recentSessions[0].date.valueOf();
     // small delay so new Date() advances
     await new Promise(r => setTimeout(r, 5));
-    await appData.addSessionToRecents({ workingDirectory: '/a', filesToOpen: [] });
+    await appData.addSessionToRecents({
+      workingDirectory: '/a',
+      filesToOpen: []
+    });
     expect(appData.recentSessions).toHaveLength(1);
-    expect(appData.recentSessions[0].date.valueOf()).toBeGreaterThanOrEqual(before);
+    expect(appData.recentSessions[0].date.valueOf()).toBeGreaterThanOrEqual(
+      before
+    );
   });
 });
 

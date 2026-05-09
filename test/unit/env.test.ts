@@ -11,7 +11,9 @@ vi.mock('fs', async () => {
   };
 });
 vi.mock('child_process', async () => {
-  const actual = await vi.importActual<typeof import('child_process')>('child_process');
+  const actual = await vi.importActual<typeof import('child_process')>(
+    'child_process'
+  );
   return { ...actual, execFileSync: vi.fn(), spawn: vi.fn() };
 });
 vi.mock('../../src/main/config/settings', () => ({
@@ -33,20 +35,20 @@ vi.mock('../../src/main/config/appdata', () => ({
 }));
 
 import {
+  condaEnvPathForCondaExePath,
+  condaExePathForEnvPath,
   environmentSatisfiesRequirements,
+  getAdditionalPathIncludesForPythonPath,
+  getCondaChannels,
+  getCondaPath,
+  getNextPythonEnvName,
+  getSystemPythonPath,
   validateCondaChannels,
+  validateCondaPath,
   validateNewPythonEnvironmentName,
   validatePythonEnvironmentInstallDirectory,
-  getCondaPath,
-  getCondaChannels,
-  getSystemPythonPath,
-  condaExePathForEnvPath,
-  condaEnvPathForCondaExePath,
-  getNextPythonEnvName,
   validatePythonPath,
-  validateCondaPath,
-  validateSystemPythonPath,
-  getAdditionalPathIncludesForPythonPath
+  validateSystemPythonPath
 } from '../../src/main/env';
 import { appData } from '../../src/main/config/appdata';
 import { userSettings } from '../../src/main/config/settings';
@@ -252,13 +254,17 @@ describe('getCondaPath', () => {
   it('falls through to appData.condaPath when user setting file missing', () => {
     (userSettings as any).getValue = vi.fn(() => '/missing/conda');
     (appData as any).condaPath = '/appdata/conda';
-    mockFs.existsSync = vi.fn((p: fs.PathLike) => p.toString() === '/appdata/conda');
+    mockFs.existsSync = vi.fn(
+      (p: fs.PathLike) => p.toString() === '/appdata/conda'
+    );
     expect(getCondaPath()).toBe('/appdata/conda');
   });
 
   it('uses CONDA_EXE env var as last resort', () => {
     process.env['CONDA_EXE'] = '/env/conda';
-    mockFs.existsSync = vi.fn((p: fs.PathLike) => p.toString() === '/env/conda');
+    mockFs.existsSync = vi.fn(
+      (p: fs.PathLike) => p.toString() === '/env/conda'
+    );
     expect(getCondaPath()).toBe('/env/conda');
   });
 });
@@ -283,7 +289,9 @@ describe('getSystemPythonPath', () => {
   it('falls through to appData.systemPythonPath', () => {
     (userSettings as any).getValue = vi.fn(() => '/missing/python');
     (appData as any).systemPythonPath = '/appdata/python3';
-    mockFs.existsSync = vi.fn((p: fs.PathLike) => p.toString() === '/appdata/python3');
+    mockFs.existsSync = vi.fn(
+      (p: fs.PathLike) => p.toString() === '/appdata/python3'
+    );
     expect(getSystemPythonPath()).toBe('/appdata/python3');
   });
 });
@@ -316,7 +324,9 @@ describe('getNextPythonEnvName', () => {
 describe('validatePythonPath', () => {
   beforeEach(() => {
     mockFs.existsSync = vi.fn(() => false);
-    mockFs.lstatSync = vi.fn(() => ({ isFile: () => false, isSymbolicLink: () => false } as fs.Stats));
+    mockFs.lstatSync = vi.fn(
+      () => ({ isFile: () => false, isSymbolicLink: () => false } as fs.Stats)
+    );
     mockExecFileSync.mockReset();
   });
 
@@ -329,7 +339,9 @@ describe('validatePythonPath', () => {
 
   it('returns invalid when path is not a file or symlink', async () => {
     mockFs.existsSync = vi.fn(() => true);
-    mockFs.lstatSync = vi.fn(() => ({ isFile: () => false, isSymbolicLink: () => false } as fs.Stats));
+    mockFs.lstatSync = vi.fn(
+      () => ({ isFile: () => false, isSymbolicLink: () => false } as fs.Stats)
+    );
     const result = await validatePythonPath('/some/dir');
     expect(result.valid).toBe(false);
     expect(result.message).toMatch(/not a valid file/i);
@@ -337,7 +349,9 @@ describe('validatePythonPath', () => {
 
   it('returns valid when file exists and execFileSync returns Python version', async () => {
     mockFs.existsSync = vi.fn(() => true);
-    mockFs.lstatSync = vi.fn(() => ({ isFile: () => true, isSymbolicLink: () => false } as fs.Stats));
+    mockFs.lstatSync = vi.fn(
+      () => ({ isFile: () => true, isSymbolicLink: () => false } as fs.Stats)
+    );
     mockExecFileSync.mockReturnValue(Buffer.from('Python 3.11.0\n'));
     const result = await validatePythonPath('/usr/bin/python3');
     expect(result.valid).toBe(true);
@@ -345,7 +359,9 @@ describe('validatePythonPath', () => {
 
   it('returns invalid when execFileSync does not return Python version string', async () => {
     mockFs.existsSync = vi.fn(() => true);
-    mockFs.lstatSync = vi.fn(() => ({ isFile: () => true, isSymbolicLink: () => false } as fs.Stats));
+    mockFs.lstatSync = vi.fn(
+      () => ({ isFile: () => true, isSymbolicLink: () => false } as fs.Stats)
+    );
     mockExecFileSync.mockReturnValue(Buffer.from('not a python binary\n'));
     const result = await validatePythonPath('/usr/bin/ruby');
     expect(result.valid).toBe(false);
@@ -353,15 +369,21 @@ describe('validatePythonPath', () => {
 
   it('returns invalid when execFileSync throws', async () => {
     mockFs.existsSync = vi.fn(() => true);
-    mockFs.lstatSync = vi.fn(() => ({ isFile: () => true, isSymbolicLink: () => false } as fs.Stats));
-    mockExecFileSync.mockImplementation(() => { throw new Error('spawn error'); });
+    mockFs.lstatSync = vi.fn(
+      () => ({ isFile: () => true, isSymbolicLink: () => false } as fs.Stats)
+    );
+    mockExecFileSync.mockImplementation(() => {
+      throw new Error('spawn error');
+    });
     const result = await validatePythonPath('/bad/python');
     expect(result.valid).toBe(false);
   });
 
   it('accepts symlinks as valid path type', async () => {
     mockFs.existsSync = vi.fn(() => true);
-    mockFs.lstatSync = vi.fn(() => ({ isFile: () => false, isSymbolicLink: () => true } as fs.Stats));
+    mockFs.lstatSync = vi.fn(
+      () => ({ isFile: () => false, isSymbolicLink: () => true } as fs.Stats)
+    );
     mockExecFileSync.mockReturnValue(Buffer.from('Python 3.10.0\n'));
     const result = await validatePythonPath('/usr/local/bin/python');
     expect(result.valid).toBe(true);
@@ -371,7 +393,9 @@ describe('validatePythonPath', () => {
 describe('validateSystemPythonPath', () => {
   beforeEach(() => {
     mockFs.existsSync = vi.fn(() => false);
-    mockFs.lstatSync = vi.fn(() => ({ isFile: () => false, isSymbolicLink: () => false } as fs.Stats));
+    mockFs.lstatSync = vi.fn(
+      () => ({ isFile: () => false, isSymbolicLink: () => false } as fs.Stats)
+    );
     mockExecFileSync.mockReset();
   });
 
@@ -383,7 +407,9 @@ describe('validateSystemPythonPath', () => {
 
   it('returns invalid when path is not a file or symlink', async () => {
     mockFs.existsSync = vi.fn(() => true);
-    mockFs.lstatSync = vi.fn(() => ({ isFile: () => false, isSymbolicLink: () => false } as fs.Stats));
+    mockFs.lstatSync = vi.fn(
+      () => ({ isFile: () => false, isSymbolicLink: () => false } as fs.Stats)
+    );
     const result = await validateSystemPythonPath('/some/dir');
     expect(result.valid).toBe(false);
     expect(result.message).toMatch(/not a valid file/i);
@@ -391,7 +417,9 @@ describe('validateSystemPythonPath', () => {
 
   it('returns valid when execFileSync returns :valid:', async () => {
     mockFs.existsSync = vi.fn(() => true);
-    mockFs.lstatSync = vi.fn(() => ({ isFile: () => true, isSymbolicLink: () => false } as fs.Stats));
+    mockFs.lstatSync = vi.fn(
+      () => ({ isFile: () => true, isSymbolicLink: () => false } as fs.Stats)
+    );
     mockExecFileSync.mockReturnValue(Buffer.from(':valid:\n'));
     const result = await validateSystemPythonPath('/usr/bin/python3');
     expect(result.valid).toBe(true);
@@ -399,7 +427,9 @@ describe('validateSystemPythonPath', () => {
 
   it('returns invalid when execFileSync output is wrong', async () => {
     mockFs.existsSync = vi.fn(() => true);
-    mockFs.lstatSync = vi.fn(() => ({ isFile: () => true, isSymbolicLink: () => false } as fs.Stats));
+    mockFs.lstatSync = vi.fn(
+      () => ({ isFile: () => true, isSymbolicLink: () => false } as fs.Stats)
+    );
     mockExecFileSync.mockReturnValue(Buffer.from('not python\n'));
     const result = await validateSystemPythonPath('/usr/bin/ruby');
     expect(result.valid).toBe(false);
@@ -407,15 +437,21 @@ describe('validateSystemPythonPath', () => {
 
   it('returns invalid when execFileSync throws', async () => {
     mockFs.existsSync = vi.fn(() => true);
-    mockFs.lstatSync = vi.fn(() => ({ isFile: () => true, isSymbolicLink: () => false } as fs.Stats));
-    mockExecFileSync.mockImplementation(() => { throw new Error('spawn error'); });
+    mockFs.lstatSync = vi.fn(
+      () => ({ isFile: () => true, isSymbolicLink: () => false } as fs.Stats)
+    );
+    mockExecFileSync.mockImplementation(() => {
+      throw new Error('spawn error');
+    });
     const result = await validateSystemPythonPath('/bad/python');
     expect(result.valid).toBe(false);
   });
 
   it('accepts symlinks', async () => {
     mockFs.existsSync = vi.fn(() => true);
-    mockFs.lstatSync = vi.fn(() => ({ isFile: () => false, isSymbolicLink: () => true } as fs.Stats));
+    mockFs.lstatSync = vi.fn(
+      () => ({ isFile: () => false, isSymbolicLink: () => true } as fs.Stats)
+    );
     mockExecFileSync.mockReturnValue(Buffer.from(':valid:\n'));
     const result = await validateSystemPythonPath('/usr/local/bin/python');
     expect(result.valid).toBe(true);
@@ -479,7 +515,9 @@ describe('getAdditionalPathIncludesForPythonPath', () => {
 
   it('uses semicolon separator on windows', () => {
     Object.defineProperty(process, 'platform', { value: 'win32' });
-    const result = getAdditionalPathIncludesForPythonPath('C:\\envs\\myenv\\python.exe');
+    const result = getAdditionalPathIncludesForPythonPath(
+      'C:\\envs\\myenv\\python.exe'
+    );
     expect(result).toContain(';');
   });
 });

@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -15,19 +15,23 @@ vi.mock('fs', async () => {
 });
 
 import {
-  WorkspaceSettings,
+  resolveWorkingDirectory,
   SettingType,
   ThemeType,
   UIMode,
-  resolveWorkingDirectory
+  WorkspaceSettings
 } from '../../src/main/config/settings';
 
 const mockFs = vi.mocked(fs);
 
 describe('WorkspaceSettings.getWorkspaceSettingsPath', () => {
   it('returns .jupyter/desktop-settings.json inside working dir', () => {
-    const result = WorkspaceSettings.getWorkspaceSettingsPath('/data/notebooks');
-    expect(result).toBe(path.join('/data/notebooks', '.jupyter', 'desktop-settings.json'));
+    const result = WorkspaceSettings.getWorkspaceSettingsPath(
+      '/data/notebooks'
+    );
+    expect(result).toBe(
+      path.join('/data/notebooks', '.jupyter', 'desktop-settings.json')
+    );
   });
 });
 
@@ -35,7 +39,9 @@ describe('WorkspaceSettings — no workspace file', () => {
   beforeEach(() => {
     // user settings file does not exist, workspace settings file does not exist
     mockFs.existsSync = vi.fn(() => false);
-    mockFs.readFileSync = vi.fn(() => { throw new Error('ENOENT'); });
+    mockFs.readFileSync = vi.fn(() => {
+      throw new Error('ENOENT');
+    });
   });
 
   it('constructs without throwing', () => {
@@ -63,7 +69,9 @@ describe('WorkspaceSettings — with workspace file', () => {
     mockFs.readFileSync = vi.fn((p: fs.PathLike | fs.promises.FileHandle) => {
       if (p.toString().includes('desktop-settings.json')) {
         // serverArgs and uiMode are wsOverridable
-        return Buffer.from(JSON.stringify({ serverArgs: '--no-browser', uiMode: 'zen' }));
+        return Buffer.from(
+          JSON.stringify({ serverArgs: '--no-browser', uiMode: 'zen' })
+        );
       }
       throw new Error('ENOENT');
     });
@@ -99,7 +107,9 @@ describe('WorkspaceSettings — with workspace file', () => {
 describe('WorkspaceSettings setValue / unsetValue', () => {
   beforeEach(() => {
     mockFs.existsSync = vi.fn(() => false);
-    mockFs.readFileSync = vi.fn(() => { throw new Error('ENOENT'); });
+    mockFs.readFileSync = vi.fn(() => {
+      throw new Error('ENOENT');
+    });
   });
 
   it('setValue sets workspace-level value', () => {
@@ -127,7 +137,9 @@ describe('WorkspaceSettings setValue / unsetValue', () => {
 describe('WorkspaceSettings save', () => {
   beforeEach(() => {
     mockFs.existsSync = vi.fn(() => false);
-    mockFs.readFileSync = vi.fn(() => { throw new Error('ENOENT'); });
+    mockFs.readFileSync = vi.fn(() => {
+      throw new Error('ENOENT');
+    });
     mockFs.writeFileSync = vi.fn();
     mockFs.mkdirSync = vi.fn();
   });

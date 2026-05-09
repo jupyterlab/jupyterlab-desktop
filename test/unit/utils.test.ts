@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import * as fs from 'fs';
 import * as os from 'os';
 
@@ -17,8 +17,16 @@ vi.mock('fs', async () => {
   };
 });
 vi.mock('child_process', async () => {
-  const actual = await vi.importActual<typeof import('child_process')>('child_process');
-  return { ...actual, exec: vi.fn(), execFile: vi.fn(), execFileSync: vi.fn(), execSync: vi.fn() };
+  const actual = await vi.importActual<typeof import('child_process')>(
+    'child_process'
+  );
+  return {
+    ...actual,
+    exec: vi.fn(),
+    execFile: vi.fn(),
+    execFileSync: vi.fn(),
+    execSync: vi.fn()
+  };
 });
 vi.mock('os', async () => {
   const actual = await vi.importActual<typeof import('os')>('os');
@@ -26,28 +34,28 @@ vi.mock('os', async () => {
 });
 
 import {
-  isDarkTheme,
-  versionWithoutSuffix,
-  pythonPathForEnvPath,
-  envPathForPythonPath,
   activatePathForEnvPath,
-  condaSourcePathForEnvPath,
-  jupyterEnvInstallInfoPathForEnvPath,
-  isCondaEnv,
-  isBaseCondaEnv,
-  isEnvInstalledByDesktopApp,
-  getRelativePathToUserHome,
   bundledEnvironmentIsInstalled,
-  getLogFilePath,
+  condaSourcePathForEnvPath,
+  createCommandScriptInEnv,
+  DarkThemeBGColor,
+  envPathForPythonPath,
   getJlabCLICommandSymlinkPath,
   getJlabCLICommandTargetPath,
+  getLogFilePath,
+  getRelativePathToUserHome,
+  isBaseCondaEnv,
+  isCondaEnv,
+  isDarkTheme,
+  isEnvInstalledByDesktopApp,
   jlabCLICommandIsSetup,
-  createCommandScriptInEnv,
+  jupyterEnvInstallInfoPathForEnvPath,
+  LightThemeBGColor,
   openDirectoryInExplorer,
+  pythonPathForEnvPath,
+  versionWithoutSuffix,
   waitForDuration,
-  waitForFunction,
-  DarkThemeBGColor,
-  LightThemeBGColor
+  waitForFunction
 } from '../../src/main/utils';
 import * as childProcess from 'child_process';
 
@@ -155,7 +163,9 @@ describe('condaSourcePathForEnvPath', () => {
 
   it('returns conda.sh path on posix', () => {
     Object.defineProperty(process, 'platform', { value: 'darwin' });
-    expect(condaSourcePathForEnvPath('/env')).toBe('/env/etc/profile.d/conda.sh');
+    expect(condaSourcePathForEnvPath('/env')).toBe(
+      '/env/etc/profile.d/conda.sh'
+    );
   });
 
   it('returns undefined on windows', () => {
@@ -219,7 +229,9 @@ describe('waitForFunction', () => {
   });
 
   it('rejects on timeout when fn never returns true', async () => {
-    await expect(waitForFunction(() => false, 100)).rejects.toThrow('Timed out');
+    await expect(waitForFunction(() => false, 100)).rejects.toThrow(
+      'Timed out'
+    );
   });
 
   it('resolves after fn eventually returns true', async () => {
@@ -445,7 +457,9 @@ describe('createCommandScriptInEnv', () => {
   it('returns empty string when envPath lstatSync throws and no activate exists', () => {
     // when lstatSync throws, the try-catch swallows it and execution continues;
     // if there's also no activate script, the function returns ''
-    mockFs.lstatSync = vi.fn(() => { throw new Error('ENOENT'); });
+    mockFs.lstatSync = vi.fn(() => {
+      throw new Error('ENOENT');
+    });
     mockFs.existsSync = vi.fn(() => false);
     expect(createCommandScriptInEnv('/missing', '/base', {})).toBe('');
   });
@@ -459,9 +473,15 @@ describe('createCommandScriptInEnv', () => {
 
   it('includes source activate for venv on posix', () => {
     Object.defineProperty(process, 'platform', { value: 'darwin' });
-    mockFs.lstatSync = vi.fn(() => ({ isDirectory: () => true, isFile: () => false } as fs.Stats));
-    mockFs.existsSync = vi.fn((p: fs.PathLike) => p.toString().includes('activate')); // has activate, not conda
-    const script = createCommandScriptInEnv('/env', '/base', { command: 'pip install numpy' });
+    mockFs.lstatSync = vi.fn(
+      () => ({ isDirectory: () => true, isFile: () => false } as fs.Stats)
+    );
+    mockFs.existsSync = vi.fn((p: fs.PathLike) =>
+      p.toString().includes('activate')
+    ); // has activate, not conda
+    const script = createCommandScriptInEnv('/env', '/base', {
+      command: 'pip install numpy'
+    });
     expect(script).toContain('source');
     expect(script).toContain('activate');
     expect(script).toContain('pip install numpy');
@@ -469,9 +489,15 @@ describe('createCommandScriptInEnv', () => {
 
   it('includes CALL activate on windows venv', () => {
     Object.defineProperty(process, 'platform', { value: 'win32' });
-    mockFs.lstatSync = vi.fn(() => ({ isDirectory: () => true, isFile: () => false } as fs.Stats));
-    mockFs.existsSync = vi.fn((p: fs.PathLike) => p.toString().includes('activate'));
-    const script = createCommandScriptInEnv('/env', '/base', { command: 'pip install numpy' });
+    mockFs.lstatSync = vi.fn(
+      () => ({ isDirectory: () => true, isFile: () => false } as fs.Stats)
+    );
+    mockFs.existsSync = vi.fn((p: fs.PathLike) =>
+      p.toString().includes('activate')
+    );
+    const script = createCommandScriptInEnv('/env', '/base', {
+      command: 'pip install numpy'
+    });
     expect(script).toContain('CALL');
     expect(script).toContain('activate');
   });
@@ -479,7 +505,9 @@ describe('createCommandScriptInEnv', () => {
   it('uses custom quoteChar and joinStr', () => {
     Object.defineProperty(process, 'platform', { value: 'linux' });
     mockFs.lstatSync = vi.fn(() => ({ isDirectory: () => true } as fs.Stats));
-    mockFs.existsSync = vi.fn((p: fs.PathLike) => p.toString().includes('activate'));
+    mockFs.existsSync = vi.fn((p: fs.PathLike) =>
+      p.toString().includes('activate')
+    );
     const script = createCommandScriptInEnv('/env', '/base', {
       command: 'echo hello',
       quoteChar: "'",

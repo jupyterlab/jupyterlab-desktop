@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import * as fs from 'fs';
 
 vi.mock('fs', async () => {
@@ -81,7 +81,9 @@ describe('SessionConfig.createLocal', () => {
   });
 
   it('skips files that do not exist', () => {
-    mockFs.lstatSync = vi.fn(() => { throw new Error('ENOENT'); });
+    mockFs.lstatSync = vi.fn(() => {
+      throw new Error('ENOENT');
+    });
     const s = SessionConfig.createLocal('/data', ['missing.ipynb']);
     expect(s.filesToOpen).toEqual([]);
   });
@@ -100,51 +102,85 @@ describe('SessionConfig.createLocal', () => {
 
 describe('SessionConfig.createRemote', () => {
   it('sets remoteURL', () => {
-    const s = SessionConfig.createRemote('http://localhost:8888/lab?token=abc', true, '');
+    const s = SessionConfig.createRemote(
+      'http://localhost:8888/lab?token=abc',
+      true,
+      ''
+    );
     expect(s.remoteURL).toBe('http://localhost:8888/lab?token=abc');
     expect(s.isRemote).toBe(true);
   });
 
   it('extracts token from URL', () => {
-    const s = SessionConfig.createRemote('http://localhost:8888/lab?token=mysecret', true, '');
+    const s = SessionConfig.createRemote(
+      'http://localhost:8888/lab?token=mysecret',
+      true,
+      ''
+    );
     expect(s.token).toBe('mysecret');
   });
 
   it('persist partition when persistSessionData is true', () => {
-    const s = SessionConfig.createRemote('http://localhost:8888/lab?token=x', true, '');
+    const s = SessionConfig.createRemote(
+      'http://localhost:8888/lab?token=x',
+      true,
+      ''
+    );
     expect(s.partition).toMatch(/^persist:/);
   });
 
   it('non-persist partition when persistSessionData is false', () => {
-    const s = SessionConfig.createRemote('http://localhost:8888/lab?token=x', false, '');
+    const s = SessionConfig.createRemote(
+      'http://localhost:8888/lab?token=x',
+      false,
+      ''
+    );
     expect(s.partition).toMatch(/^partition:/);
   });
 
   it('uses provided partition instead of generating one', () => {
-    const s = SessionConfig.createRemote('http://localhost:8888/lab?token=x', true, 'persist:my-custom-id');
+    const s = SessionConfig.createRemote(
+      'http://localhost:8888/lab?token=x',
+      true,
+      'persist:my-custom-id'
+    );
     expect(s.partition).toBe('persist:my-custom-id');
   });
 
   it('sets persistSessionData to false correctly', () => {
-    const s = SessionConfig.createRemote('http://localhost:8888/lab?token=x', false, '');
+    const s = SessionConfig.createRemote(
+      'http://localhost:8888/lab?token=x',
+      false,
+      ''
+    );
     expect(s.persistSessionData).toBe(false);
   });
 
   it('persistSessionData defaults to true when not false', () => {
-    const s = SessionConfig.createRemote('http://localhost:8888/lab?token=x', true, '');
+    const s = SessionConfig.createRemote(
+      'http://localhost:8888/lab?token=x',
+      true,
+      ''
+    );
     expect(s.persistSessionData).toBe(true);
   });
 });
 
 describe('SessionConfig.createLocalForFilesOrFolders', () => {
   it('creates session in parent dir of first file', () => {
-    mockFs.lstatSync = vi.fn(() => ({ isFile: () => true, isDirectory: () => false } as fs.Stats));
-    const s = SessionConfig.createLocalForFilesOrFolders(['/data/nb/test.ipynb']);
+    mockFs.lstatSync = vi.fn(
+      () => ({ isFile: () => true, isDirectory: () => false } as fs.Stats)
+    );
+    const s = SessionConfig.createLocalForFilesOrFolders([
+      '/data/nb/test.ipynb'
+    ]);
     expect(s.workingDirectory).toBe('/data/nb');
   });
 
   it('creates session at directory path', () => {
-    mockFs.lstatSync = vi.fn(() => ({ isFile: () => false, isDirectory: () => true } as fs.Stats));
+    mockFs.lstatSync = vi.fn(
+      () => ({ isFile: () => false, isDirectory: () => true } as fs.Stats)
+    );
     const s = SessionConfig.createLocalForFilesOrFolders(['/data/notebooks']);
     expect(s.workingDirectory).toBe('/data/notebooks');
   });
@@ -155,8 +191,12 @@ describe('SessionConfig.createLocalForFilesOrFolders', () => {
   });
 
   it('skips paths where lstatSync throws', () => {
-    mockFs.lstatSync = vi.fn(() => { throw new Error('ENOENT'); });
-    const s = SessionConfig.createLocalForFilesOrFolders(['/missing/path.ipynb']);
+    mockFs.lstatSync = vi.fn(() => {
+      throw new Error('ENOENT');
+    });
+    const s = SessionConfig.createLocalForFilesOrFolders([
+      '/missing/path.ipynb'
+    ]);
     expect(s).toBeUndefined();
   });
 
@@ -164,10 +204,14 @@ describe('SessionConfig.createLocalForFilesOrFolders', () => {
     let call = 0;
     mockFs.lstatSync = vi.fn(() => {
       call++;
-      if (call === 1) return { isFile: () => false, isDirectory: () => true } as fs.Stats; // folder first
+      if (call === 1)
+        return { isFile: () => false, isDirectory: () => true } as fs.Stats; // folder first
       return { isFile: () => true, isDirectory: () => false } as fs.Stats; // then file
     });
-    const s = SessionConfig.createLocalForFilesOrFolders(['/some/folder', '/some/folder/note.ipynb']);
+    const s = SessionConfig.createLocalForFilesOrFolders([
+      '/some/folder',
+      '/some/folder/note.ipynb'
+    ]);
     // files take precedence: working dir should be parent of the file
     expect(s.workingDirectory).toBe('/some/folder');
   });
@@ -176,18 +220,29 @@ describe('SessionConfig.createLocalForFilesOrFolders', () => {
 describe('SessionConfig.createFromArgs', () => {
   beforeEach(() => {
     mockFs.existsSync = vi.fn(() => false);
-    mockFs.lstatSync = vi.fn(() => { throw new Error('ENOENT'); });
+    mockFs.lstatSync = vi.fn(() => {
+      throw new Error('ENOENT');
+    });
   });
 
   it('returns undefined when no args', () => {
-    const result = SessionConfig.createFromArgs({ _: [], $0: '', cwd: '/cwd', pythonPath: '', workingDir: '' });
+    const result = SessionConfig.createFromArgs({
+      _: [],
+      $0: '',
+      cwd: '/cwd',
+      pythonPath: '',
+      workingDir: ''
+    });
     expect(result).toBeUndefined();
   });
 
   it('creates remote session for https URL', () => {
     const result = SessionConfig.createFromArgs({
       _: ['https://example.com/lab?token=tok'],
-      $0: '', cwd: '/cwd', pythonPath: '', workingDir: ''
+      $0: '',
+      cwd: '/cwd',
+      pythonPath: '',
+      workingDir: ''
     });
     expect(result).toBeDefined();
     expect(result.isRemote).toBe(true);
@@ -197,7 +252,10 @@ describe('SessionConfig.createFromArgs', () => {
   it('creates remote session for http URL', () => {
     const result = SessionConfig.createFromArgs({
       _: ['http://localhost:8888/lab?token=abc'],
-      $0: '', cwd: '/cwd', pythonPath: '', workingDir: ''
+      $0: '',
+      cwd: '/cwd',
+      pythonPath: '',
+      workingDir: ''
     });
     expect(result.isRemote).toBe(true);
   });
@@ -205,7 +263,11 @@ describe('SessionConfig.createFromArgs', () => {
   it('creates local session when workingDir exists', () => {
     mockFs.existsSync = vi.fn(() => true);
     const result = SessionConfig.createFromArgs({
-      _: [], $0: '', cwd: '/cwd', pythonPath: '', workingDir: '/valid/dir'
+      _: [],
+      $0: '',
+      cwd: '/cwd',
+      pythonPath: '',
+      workingDir: '/valid/dir'
     });
     expect(result).toBeDefined();
     expect(result.isRemote).toBe(false);
@@ -215,16 +277,26 @@ describe('SessionConfig.createFromArgs', () => {
   it('returns undefined when workingDir does not exist and no files', () => {
     mockFs.existsSync = vi.fn(() => false);
     const result = SessionConfig.createFromArgs({
-      _: [], $0: '', cwd: '/cwd', pythonPath: '', workingDir: '/nonexistent'
+      _: [],
+      $0: '',
+      cwd: '/cwd',
+      pythonPath: '',
+      workingDir: '/nonexistent'
     });
     expect(result).toBeUndefined();
   });
 
   it('includes file paths resolved from cwd', () => {
     mockFs.existsSync = vi.fn(() => false);
-    mockFs.lstatSync = vi.fn(() => ({ isFile: () => true, isDirectory: () => false } as fs.Stats));
+    mockFs.lstatSync = vi.fn(
+      () => ({ isFile: () => true, isDirectory: () => false } as fs.Stats)
+    );
     const result = SessionConfig.createFromArgs({
-      _: ['test.ipynb'], $0: '', cwd: '/cwd', pythonPath: '', workingDir: ''
+      _: ['test.ipynb'],
+      $0: '',
+      cwd: '/cwd',
+      pythonPath: '',
+      workingDir: ''
     });
     expect(result).toBeDefined();
   });
@@ -235,7 +307,11 @@ describe('SessionConfig.createFromArgs', () => {
       return pathStr.includes('python3') || pathStr.includes('valid/dir');
     });
     const result = SessionConfig.createFromArgs({
-      _: [], $0: '', cwd: '/cwd', pythonPath: '/usr/bin/python3', workingDir: '/valid/dir'
+      _: [],
+      $0: '',
+      cwd: '/cwd',
+      pythonPath: '/usr/bin/python3',
+      workingDir: '/valid/dir'
     });
     expect(result).toBeDefined();
     expect(result.pythonPath).toContain('python3');
@@ -246,7 +322,11 @@ describe('SessionConfig.createFromArgs', () => {
       return p.toString().includes('valid/dir');
     });
     const result = SessionConfig.createFromArgs({
-      _: [], $0: '', cwd: '/cwd', pythonPath: '/nonexistent/python', workingDir: '/valid/dir'
+      _: [],
+      $0: '',
+      cwd: '/cwd',
+      pythonPath: '/nonexistent/python',
+      workingDir: '/valid/dir'
     });
     expect(result).toBeDefined();
     expect(result.pythonPath).toBe('');
@@ -272,11 +352,16 @@ describe('SessionConfig.serialize', () => {
   it('includes remoteURL when set', () => {
     const s = new SessionConfig();
     s.remoteURL = 'http://localhost:8888/lab';
-    expect(s.serialize()).toHaveProperty('remoteURL', 'http://localhost:8888/lab');
+    expect(s.serialize()).toHaveProperty(
+      'remoteURL',
+      'http://localhost:8888/lab'
+    );
   });
 
   it('omits persistSessionData when true (default)', () => {
-    expect(new SessionConfig().serialize()).not.toHaveProperty('persistSessionData');
+    expect(new SessionConfig().serialize()).not.toHaveProperty(
+      'persistSessionData'
+    );
   });
 
   it('includes persistSessionData when false', () => {
@@ -299,7 +384,9 @@ describe('SessionConfig.serialize', () => {
   });
 
   it('omits workingDirectory when empty', () => {
-    expect(new SessionConfig().serialize()).not.toHaveProperty('workingDirectory');
+    expect(new SessionConfig().serialize()).not.toHaveProperty(
+      'workingDirectory'
+    );
   });
 
   it('includes workingDirectory when set', () => {
@@ -322,7 +409,9 @@ describe('SessionConfig.serialize', () => {
     const s = new SessionConfig();
     const json = s.serialize();
     expect(() => new Date(json.lastOpened)).not.toThrow();
-    expect(new Date(json.lastOpened).getFullYear()).toBeGreaterThanOrEqual(2020);
+    expect(new Date(json.lastOpened).getFullYear()).toBeGreaterThanOrEqual(
+      2020
+    );
   });
 });
 
@@ -406,7 +495,11 @@ describe('SessionConfig serialize/deserialize round-trip', () => {
   });
 
   it('round-trips a remote session', () => {
-    const original = SessionConfig.createRemote('http://remote:8888/lab?token=tok', true, 'persist:id123');
+    const original = SessionConfig.createRemote(
+      'http://remote:8888/lab?token=tok',
+      true,
+      'persist:id123'
+    );
     const copy = new SessionConfig();
     copy.deserialize(original.serialize());
 
@@ -417,7 +510,11 @@ describe('SessionConfig serialize/deserialize round-trip', () => {
   });
 
   it('round-trips a non-persistent remote session', () => {
-    const original = SessionConfig.createRemote('http://remote:8888/lab?token=tok', false, '');
+    const original = SessionConfig.createRemote(
+      'http://remote:8888/lab?token=tok',
+      false,
+      ''
+    );
     const copy = new SessionConfig();
     copy.deserialize(original.serialize());
 
