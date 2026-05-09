@@ -9,7 +9,7 @@ vi.mock('fs', async () => {
     lstatSync: vi.fn()
   };
 });
-vi.mock('../../../src/main/config/settings', () => ({
+vi.mock('../../src/main/config/settings', () => ({
   userSettings: {
     getValue: vi.fn(() => null),
     setValue: vi.fn()
@@ -20,7 +20,7 @@ vi.mock('../../../src/main/config/settings', () => ({
     envType: 'envType'
   }
 }));
-vi.mock('../../../src/main/config/appdata', () => ({
+vi.mock('../../src/main/config/appdata', () => ({
   appData: {
     discoveredPythonPaths: [],
     condaPath: null
@@ -32,7 +32,7 @@ import {
   validateCondaChannels,
   validateNewPythonEnvironmentName,
   validatePythonEnvironmentInstallDirectory
-} from '../../../src/main/env';
+} from '../../src/main/env';
 
 const mockFs = vi.mocked(fs);
 
