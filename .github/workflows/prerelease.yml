@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
       
       - name: Get package info
         shell: bash
@@ -19,7 +19,7 @@ jobs:
         run: echo "version=$(python scripts/get_package_version.py)" >> $GITHUB_OUTPUT
 
       - name: 'Find Release with tag v${{ steps.package-info.outputs.version}}'
-        uses: actions/github-script@v7
+        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7
         id: release-exists
         env:
           APP_VERSION: ${{ steps.package-info.outputs.version}}
@@ -35,7 +35,7 @@ jobs:
           result-encoding: string
 
       - name: Create pre-release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2
         if: steps.release-exists.outputs.result == 'false'
         with:
           token: ${{ secrets.JLAB_APP_TOKEN }}
