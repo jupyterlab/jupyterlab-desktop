@@ -228,6 +228,16 @@ describe('ApplicationData.addSessionToRecents', () => {
     expect(appData.recentSessions[0].remoteURL).toBe('https://hub.example.com');
   });
 
+  it('caps the recents list at 20 entries', async () => {
+    for (let i = 0; i < 25; i++) {
+      await appData.addSessionToRecents({
+        workingDirectory: `/data/nb${i}`,
+        filesToOpen: []
+      });
+    }
+    expect(appData.recentSessions).toHaveLength(20);
+  });
+
   it('updates date of duplicate local session without duplicating', async () => {
     const oldDate = new Date(Date.now() - 5000);
     appData.recentSessions = [

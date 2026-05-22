@@ -249,6 +249,31 @@ describe('SessionConfig.createFromArgs', () => {
     expect(result.remoteURL).toBe('https://example.com/lab?token=tok');
   });
 
+  it('uses a persist: partition when persistSessionData is true', () => {
+    const result = SessionConfig.createFromArgs({
+      _: ['https://example.com/lab?token=tok'],
+      $0: '',
+      cwd: '/cwd',
+      pythonPath: '',
+      workingDir: '',
+      persistSessionData: true
+    });
+    expect(result.persistSessionData).toBe(true);
+    expect(result.partition.startsWith('persist:')).toBe(true);
+  });
+
+  it('uses a non-persistent partition when persistSessionData is not set', () => {
+    const result = SessionConfig.createFromArgs({
+      _: ['https://example.com/lab?token=tok'],
+      $0: '',
+      cwd: '/cwd',
+      pythonPath: '',
+      workingDir: ''
+    });
+    expect(result.persistSessionData).toBe(false);
+    expect(result.partition.startsWith('partition:')).toBe(true);
+  });
+
   it('creates remote session for http URL', () => {
     const result = SessionConfig.createFromArgs({
       _: ['http://localhost:8888/lab?token=abc'],

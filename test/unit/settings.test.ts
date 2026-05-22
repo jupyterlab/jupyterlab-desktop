@@ -7,7 +7,8 @@ vi.mock('fs', async () => {
     ...actual,
     existsSync: vi.fn(),
     lstatSync: vi.fn(),
-    mkdirSync: vi.fn()
+    mkdirSync: vi.fn(),
+    writeFileSync: vi.fn()
   };
 });
 
@@ -19,9 +20,12 @@ import {
   resolveWorkingDirectory,
   serverLaunchArgsDefault,
   serverLaunchArgsFixed,
+  Setting,
+  SettingType,
   StartupMode,
   ThemeType,
-  UIMode
+  UIMode,
+  UserSettings
 } from '../../src/main/config/settings';
 
 const mockFs = vi.mocked(fs);
@@ -123,5 +127,67 @@ describe('resolveWorkingDirectory', () => {
     });
     const result = resolveWorkingDirectory('/bad/path', false);
     expect(result).toBe('/bad/path');
+  });
+});
+
+describe('Setting', () => {
+  it('returns the default value until one is set', () => {
+    const s = new Setting<string>('def');
+    expect(s.value).toBe('def');
+    expect(s.valueSet).toBe(false);
+  });
+
+  it('returns the assigned value after it is set', () => {
+    const s = new Setting<string>('def');
+    s.value = 'changed';
+    expect(s.value).toBe('changed');
+    expect(s.valueSet).toBe(true);
+  });
+
+  it('reports differentThanDefault only after a real change', () => {
+    const s = new Setting<number>(10);
+    expect(s.differentThanDefault).toBe(false);
+    s.value = 11;
+    expect(s.differentThanDefault).toBe(true);
+  });
+
+  it('setToDefault restores the default value', () => {
+    const s = new Setting<string>('def');
+    s.value = 'x';
+    s.setToDefault();
+    expect(s.value).toBe('def');
+    expect(s.differentThanDefault).toBe(false);
+  });
+});
+
+describe('UserSettings', () => {
+  it('getValue returns the default before any change', () => {
+    const us = new UserSettings(false);
+    expect(us.getValue(SettingType.theme)).toBe(ThemeType.System);
+  });
+
+  it('setValue then getValue round-trips a non-default value', () => {
+    const us = new UserSettings(false);
+    us.setValue(SettingType.theme, ThemeType.Light);
+    expect(us.getValue(SettingType.theme)).toBe(ThemeType.Light);
+  });
+
+  it('unsetValue restores the default', () => {
+    const us = new UserSettings(false);
+    us.setValue(SettingType.theme, ThemeType.Light);
+    us.unsetValue(SettingType.theme);
+    expect(us.getValue(SettingType.theme)).toBe(ThemeType.System);
+  });
+
+  it('save persists only settings that differ from their default', () => {
+    mockFs.writeFileSync = vi.fn();
+    const us = new UserSettings(false);
+    us.setValue(SettingType.theme, ThemeType.Light);
+    us.save();
+    const written = JSON.parse(
+      (mockFs.writeFileSync as any).mock.calls[0][1] as string
+    );
+    expect(written).toHaveProperty('theme', ThemeType.Light);
+    expect(written).not.toHaveProperty('logLevel');
   });
 });
