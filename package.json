@@ -5,7 +5,10 @@
   "main": "./build/out/main/main.js",
   "scripts": {
     "start": "electron .",
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "yarn test:unit",
+    "test:unit": "vitest run",
+    "test:unit:watch": "vitest",
+    "test:e2e": "playwright test",
     "clean": "rimraf build dist",
     "watch:tsc": "tsc -w",
     "watch:assets": "node ./scripts/extract.js && node ./scripts/copyassets.js watch",
@@ -105,7 +108,7 @@
       "base": "core22",
       "environment": {
         "SHELL": "/bin/bash",
-        "GTK_USE_PORTAL":"1"
+        "GTK_USE_PORTAL": "1"
       },
       "hooks": "build/snap-hooks"
     },
@@ -180,6 +183,8 @@
   "license": "BSD-3-Clause",
   "devDependencies": {
     "@jupyter-notebook/web-components": "0.9.1",
+    "@leeoniya/ufuzzy": "1.0.14",
+    "@playwright/test": "^1.59.1",
     "@types/ejs": "^3.1.0",
     "@types/js-yaml": "^4.0.3",
     "@types/node": "^14.14.31",
@@ -190,10 +195,11 @@
     "@types/yargs": "^17.0.18",
     "@typescript-eslint/eslint-plugin": "~5.28.0",
     "@typescript-eslint/parser": "~5.28.0",
-    "@leeoniya/ufuzzy": "1.0.14",
+    "@vitest/coverage-v8": "^4.1.5",
     "electron": "^27.0.2",
     "electron-builder": "^24.9.1",
     "electron-notarize": "^1.2.2",
+    "electron-playwright-helpers": "^2.1.0",
     "eslint": "~8.17.0",
     "eslint-config-prettier": "~8.5.0",
     "eslint-plugin-prettier": "~4.0.0",
@@ -207,8 +213,13 @@
     "rimraf": "~3.0.0",
     "shx": "^0.3.4",
     "typescript": "~4.2.2",
+    "vitest": "^4.1.5",
     "webpack": "^5.76.0",
     "webpack-cli": "^4.5.0"
+  },
+  "resolutions": {
+    "serialize-javascript": "^6.0.2",
+    "micromatch": "^4.0.8"
   },
   "dependencies": {
     "@lumino/signaling": "^1.10.0",
