@@ -3,6 +3,9 @@ name: Create Pre-release
 on:
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   prerelease:
     runs-on: ubuntu-latest
