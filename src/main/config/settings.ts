@@ -326,10 +326,7 @@ export class WorkspaceSettings extends UserSettings {
     const exists = fs.existsSync(wsSettingsPath);
     if (Object.keys(wsSettings).length > 0 || exists) {
       if (!exists) {
-        const dirPath = path.dirname(wsSettingsPath);
-        if (!fs.existsSync(dirPath)) {
-          fs.mkdirSync(dirPath, { recursive: true });
-        }
+        fs.mkdirSync(path.dirname(wsSettingsPath), { recursive: true });
       }
       fs.writeFileSync(wsSettingsPath, JSON.stringify(wsSettings, null, 2));
     }
