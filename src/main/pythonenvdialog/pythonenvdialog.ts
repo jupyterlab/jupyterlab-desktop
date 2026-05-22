@@ -985,7 +985,7 @@ export class ManagePythonEnvironmentDialog {
           } else {
             const envPath = getEnvInstallPath();
             createCommandPreview.value = \`python -m venv \$\{envPath\}\n\$\{envPath\}\$\{pathSeparator\}${activateRelPath.replace(
-              '\\',
+              /\\/g,
               '\\\\'
             )}\npython -m pip install \$\{getPackageList()\}\`;
           }
