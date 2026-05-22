@@ -1,148 +1,72 @@
 import { describe, expect, it } from 'vitest';
 import { EventTypeMain, EventTypeRenderer } from '../../src/main/eventtypes';
 
-// Spot-check critical IPC event strings — a typo here silently breaks the IPC channel
+// IPC channel strings; a typo silently breaks the channel, so they are pinned.
 
-describe('EventTypeMain — window controls', () => {
-  it('MinimizeWindow', () =>
-    expect(EventTypeMain.MinimizeWindow).toBe('minimize-window'));
-  it('MaximizeWindow', () =>
-    expect(EventTypeMain.MaximizeWindow).toBe('maximize-window'));
-  it('RestoreWindow', () =>
-    expect(EventTypeMain.RestoreWindow).toBe('restore-window'));
-  it('CloseWindow', () =>
-    expect(EventTypeMain.CloseWindow).toBe('close-window'));
+describe('EventTypeMain channel strings', () => {
+  it.each([
+    [EventTypeMain.MinimizeWindow, 'minimize-window'],
+    [EventTypeMain.MaximizeWindow, 'maximize-window'],
+    [EventTypeMain.RestoreWindow, 'restore-window'],
+    [EventTypeMain.CloseWindow, 'close-window'],
+    [EventTypeMain.CreateNewSession, 'create-new-session'],
+    [EventTypeMain.CreateNewRemoteSession, 'create-new-remote-session'],
+    [EventTypeMain.OpenRecentSession, 'open-recent-session'],
+    [EventTypeMain.DeleteRecentSession, 'delete-recent-session'],
+    [EventTypeMain.OpenDroppedFiles, 'open-dropped-files'],
+    [EventTypeMain.RestartSession, 'restart-session'],
+    [EventTypeMain.LabUIReady, 'lab-ui-ready'],
+    [EventTypeMain.ValidatePythonPath, 'validate-python-path'],
+    [EventTypeMain.SetDefaultPythonPath, 'set-default-python-path'],
+    [EventTypeMain.InstallBundledPythonEnv, 'install-bundled-python-env'],
+    [EventTypeMain.UpdateBundledPythonEnv, 'update-bundled-python-env'],
+    [EventTypeMain.GetPythonEnvironmentList, 'get-python-environment-list'],
+    [EventTypeMain.DeletePythonEnvironment, 'delete-python-environment'],
+    [EventTypeMain.CreateNewPythonEnvironment, 'create-new-python-environment'],
+    [EventTypeMain.ValidateNewPythonEnvironmentName, 'validate-new-env-name'],
+    [EventTypeMain.ValidateCondaChannels, 'validate-conda-channels'],
+    [EventTypeMain.SetTheme, 'set-theme'],
+    [EventTypeMain.SetLogLevel, 'set-log-level'],
+    [EventTypeMain.SetStartupMode, 'set-startup-mode'],
+    [EventTypeMain.SetCtrlWBehavior, 'set-ctrl-w-behavior'],
+    [EventTypeMain.SetSettings, 'set-settings'],
+    [EventTypeMain.ClearHistory, 'clear-history'],
+    [EventTypeMain.CheckForUpdates, 'check-for-updates']
+  ])('"%s" stays stable', (value, expected) => {
+    expect(value).toBe(expected);
+  });
 });
 
-describe('EventTypeMain — session management', () => {
-  it('CreateNewSession', () =>
-    expect(EventTypeMain.CreateNewSession).toBe('create-new-session'));
-  it('CreateNewRemoteSession', () =>
-    expect(EventTypeMain.CreateNewRemoteSession).toBe(
-      'create-new-remote-session'
-    ));
-  it('OpenRecentSession', () =>
-    expect(EventTypeMain.OpenRecentSession).toBe('open-recent-session'));
-  it('DeleteRecentSession', () =>
-    expect(EventTypeMain.DeleteRecentSession).toBe('delete-recent-session'));
-  it('OpenDroppedFiles', () =>
-    expect(EventTypeMain.OpenDroppedFiles).toBe('open-dropped-files'));
-  it('RestartSession', () =>
-    expect(EventTypeMain.RestartSession).toBe('restart-session'));
-  it('LabUIReady', () => expect(EventTypeMain.LabUIReady).toBe('lab-ui-ready'));
+describe('EventTypeRenderer channel strings', () => {
+  it.each([
+    [EventTypeRenderer.WorkingDirectorySelected, 'working-directory-selected'],
+    [EventTypeRenderer.InstallPythonEnvStatus, 'install-python-env-status'],
+    [EventTypeRenderer.ShowProgress, 'show-progress'],
+    [EventTypeRenderer.SetCurrentPythonPath, 'set-current-python-path'],
+    [EventTypeRenderer.SetRunningServerList, 'set-running-server-list'],
+    [EventTypeRenderer.SetTitle, 'set-title'],
+    [EventTypeRenderer.SetRecentSessionList, 'set-recent-session-list'],
+    [EventTypeRenderer.SetPythonEnvironmentList, 'set-python-environment-list']
+  ])('"%s" stays stable', (value, expected) => {
+    expect(value).toBe(expected);
+  });
 });
 
-describe('EventTypeMain — python environment', () => {
-  it('ValidatePythonPath', () =>
-    expect(EventTypeMain.ValidatePythonPath).toBe('validate-python-path'));
-  it('SetDefaultPythonPath', () =>
-    expect(EventTypeMain.SetDefaultPythonPath).toBe('set-default-python-path'));
-  it('InstallBundledPythonEnv', () =>
-    expect(EventTypeMain.InstallBundledPythonEnv).toBe(
-      'install-bundled-python-env'
-    ));
-  it('UpdateBundledPythonEnv', () =>
-    expect(EventTypeMain.UpdateBundledPythonEnv).toBe(
-      'update-bundled-python-env'
-    ));
-  it('GetPythonEnvironmentList', () =>
-    expect(EventTypeMain.GetPythonEnvironmentList).toBe(
-      'get-python-environment-list'
-    ));
-  it('DeletePythonEnvironment', () =>
-    expect(EventTypeMain.DeletePythonEnvironment).toBe(
-      'delete-python-environment'
-    ));
-  it('CreateNewPythonEnvironment', () =>
-    expect(EventTypeMain.CreateNewPythonEnvironment).toBe(
-      'create-new-python-environment'
-    ));
-  it('ValidateNewPythonEnvironmentName', () =>
-    expect(EventTypeMain.ValidateNewPythonEnvironmentName).toBe(
-      'validate-new-env-name'
-    ));
-  it('ValidateCondaChannels', () =>
-    expect(EventTypeMain.ValidateCondaChannels).toBe(
-      'validate-conda-channels'
-    ));
-});
-
-describe('EventTypeMain — settings', () => {
-  it('SetTheme', () => expect(EventTypeMain.SetTheme).toBe('set-theme'));
-  it('SetLogLevel', () =>
-    expect(EventTypeMain.SetLogLevel).toBe('set-log-level'));
-  it('SetStartupMode', () =>
-    expect(EventTypeMain.SetStartupMode).toBe('set-startup-mode'));
-  it('SetCtrlWBehavior', () =>
-    expect(EventTypeMain.SetCtrlWBehavior).toBe('set-ctrl-w-behavior'));
-  it('SetSettings', () =>
-    expect(EventTypeMain.SetSettings).toBe('set-settings'));
-  it('ClearHistory', () =>
-    expect(EventTypeMain.ClearHistory).toBe('clear-history'));
-  it('CheckForUpdates', () =>
-    expect(EventTypeMain.CheckForUpdates).toBe('check-for-updates'));
-});
-
-describe('EventTypeMain — all values are non-empty strings', () => {
-  it('every event has a non-empty string value', () => {
-    for (const [key, val] of Object.entries(EventTypeMain)) {
-      expect(typeof val, `EventTypeMain.${key}`).toBe('string');
-      expect(
-        (val as string).length,
-        `EventTypeMain.${key} is empty`
-      ).toBeGreaterThan(0);
+describe.each([
+  ['EventTypeMain', EventTypeMain],
+  ['EventTypeRenderer', EventTypeRenderer]
+])('%s structural invariants', (name, registry) => {
+  it('every value is a non-empty string', () => {
+    for (const [key, val] of Object.entries(registry)) {
+      expect(typeof val, `${name}.${key}`).toBe('string');
+      expect((val as string).length, `${name}.${key} is empty`).toBeGreaterThan(
+        0
+      );
     }
   });
 
-  it('no duplicate event values', () => {
-    const values = Object.values(EventTypeMain);
-    const unique = new Set(values);
-    expect(unique.size).toBe(values.length);
-  });
-});
-
-describe('EventTypeRenderer', () => {
-  it('WorkingDirectorySelected', () =>
-    expect(EventTypeRenderer.WorkingDirectorySelected).toBe(
-      'working-directory-selected'
-    ));
-  it('InstallPythonEnvStatus', () =>
-    expect(EventTypeRenderer.InstallPythonEnvStatus).toBe(
-      'install-python-env-status'
-    ));
-  it('ShowProgress', () =>
-    expect(EventTypeRenderer.ShowProgress).toBe('show-progress'));
-  it('SetCurrentPythonPath', () =>
-    expect(EventTypeRenderer.SetCurrentPythonPath).toBe(
-      'set-current-python-path'
-    ));
-  it('SetRunningServerList', () =>
-    expect(EventTypeRenderer.SetRunningServerList).toBe(
-      'set-running-server-list'
-    ));
-  it('SetTitle', () => expect(EventTypeRenderer.SetTitle).toBe('set-title'));
-  it('SetRecentSessionList', () =>
-    expect(EventTypeRenderer.SetRecentSessionList).toBe(
-      'set-recent-session-list'
-    ));
-  it('SetPythonEnvironmentList', () =>
-    expect(EventTypeRenderer.SetPythonEnvironmentList).toBe(
-      'set-python-environment-list'
-    ));
-
-  it('all values are non-empty strings', () => {
-    for (const [key, val] of Object.entries(EventTypeRenderer)) {
-      expect(typeof val, `EventTypeRenderer.${key}`).toBe('string');
-      expect(
-        (val as string).length,
-        `EventTypeRenderer.${key} is empty`
-      ).toBeGreaterThan(0);
-    }
-  });
-
-  it('no duplicate event values', () => {
-    const values = Object.values(EventTypeRenderer);
-    const unique = new Set(values);
-    expect(unique.size).toBe(values.length);
+  it('has no duplicate channel values', () => {
+    const values = Object.values(registry);
+    expect(new Set(values).size).toBe(values.length);
   });
 });
