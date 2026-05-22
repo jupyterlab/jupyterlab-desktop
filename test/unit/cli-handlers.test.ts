@@ -90,6 +90,7 @@ vi.mock('../../src/main/registry', () => ({ Registry: vi.fn() }));
 
 import {
   addUserSetEnvironment,
+  handleEnvActivateCommand,
   handleEnvSetCondaChannelsCommand,
   handleEnvSetCondaPathCommand,
   handleEnvSetPythonEnvsPathCommand,
@@ -316,5 +317,22 @@ describe('handleEnvSetCondaPathCommand', () => {
     expect(spy).toHaveBeenCalled();
     expect(userSettings.setValue).not.toHaveBeenCalled();
     spy.mockRestore();
+  });
+});
+
+describe('handleEnvActivateCommand', () => {
+  it('rejects an invalid environment directory and does not activate', async () => {
+    mockFs.existsSync = vi.fn(() => false);
+    const errorSpy = vi.spyOn(console, 'error').mockReturnValue(undefined);
+    const logSpy = vi.spyOn(console, 'log').mockReturnValue(undefined);
+    await handleEnvActivateCommand({ _: ['env-activate', '/nonexistent/env'] });
+    expect(errorSpy).toHaveBeenCalledWith(
+      expect.stringContaining('Invalid environment directory')
+    );
+    expect(logSpy).not.toHaveBeenCalledWith(
+      expect.stringContaining('Activating')
+    );
+    errorSpy.mockRestore();
+    logSpy.mockRestore();
   });
 });
