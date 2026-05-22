@@ -30,10 +30,10 @@ export default defineConfig({
       thresholds: {
         // Floor for the logic layer as a whole; cli.ts and env.ts still have
         // large untested spawn/discovery branches that pull the aggregate down.
-        lines: 45,
-        statements: 45,
-        functions: 50,
-        branches: 35,
+        lines: 48,
+        statements: 48,
+        functions: 53,
+        branches: 37,
         // Lock the well-covered modules at their current level so a future
         // change cannot silently regress them.
         'src/main/eventmanager.ts': {
@@ -43,22 +43,22 @@ export default defineConfig({
           branches: 90
         },
         'src/main/config/sessionconfig.ts': {
-          lines: 90,
-          statements: 90,
-          functions: 90,
-          branches: 85
+          lines: 93,
+          statements: 93,
+          functions: 92,
+          branches: 88
         },
         'src/main/config/settings.ts': {
-          lines: 78,
-          statements: 78,
-          functions: 60,
-          branches: 65
+          lines: 90,
+          statements: 90,
+          functions: 86,
+          branches: 73
         },
         'src/main/config/appdata.ts': {
-          lines: 70,
-          statements: 70,
-          functions: 75,
-          branches: 58
+          lines: 75,
+          statements: 75,
+          functions: 82,
+          branches: 62
         }
       }
     }
