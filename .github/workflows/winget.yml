@@ -15,8 +15,8 @@ jobs:
     # Action can only be run on windows
     runs-on: windows-latest
     steps:
-      - uses: vedantmgoyal2009/winget-releaser@4ffc7888bffd451b357355dc214d43bb9f23917e # v2
-        # https://github.com/vedantmgoyal2009/winget-releaser
+      - uses: vedantmgoyal9/winget-releaser@4ffc7888bffd451b357355dc214d43bb9f23917e # v2
+# https://github.com/vedantmgoyal9/winget-releaser
         with:
           identifier: ProjectJupyter.JupyterLab
           token: ${{ secrets.WINGET_TOKEN }}
