@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import * as fs from 'fs';
 import * as path from 'path';
+import { nativeTheme } from 'electron';
 
 vi.mock('fs', async () => {
   const actual = await vi.importActual<typeof import('fs')>('fs');
@@ -74,6 +75,20 @@ import * as net from 'net';
 
 const mockFs = vi.mocked(fs);
 
+// Reset the fs stubs to fresh no-op fns before every test so a value set in
+// one test cannot leak into a later one that does not set it.
+beforeEach(() => {
+  vi.clearAllMocks();
+  mockFs.existsSync = vi.fn();
+  mockFs.lstatSync = vi.fn();
+  mockFs.statSync = vi.fn();
+  mockFs.accessSync = vi.fn();
+  mockFs.readlinkSync = vi.fn();
+  mockFs.writeFileSync = vi.fn();
+  mockFs.mkdirSync = vi.fn();
+  mockFs.rmSync = vi.fn();
+});
+
 describe('isDarkTheme', () => {
   it.each([
     ['light', false],
@@ -83,8 +98,11 @@ describe('isDarkTheme', () => {
   });
 
   it('falls back to nativeTheme.shouldUseDarkColors for unknown value', () => {
-    // nativeTheme mock returns false
+    (nativeTheme as any).shouldUseDarkColors = false;
     expect(isDarkTheme('system')).toBe(false);
+    (nativeTheme as any).shouldUseDarkColors = true;
+    expect(isDarkTheme('system')).toBe(true);
+    (nativeTheme as any).shouldUseDarkColors = false;
   });
 });
 

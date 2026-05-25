@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import * as fs from 'fs';
 
 vi.mock('fs', async () => {
@@ -120,7 +120,9 @@ beforeEach(() => {
   ).mockReturnValue({ valid: true, message: '' });
 });
 
-// ─── addUserSetEnvironment ────────────────────────────────────────────────────
+afterEach(() => {
+  vi.restoreAllMocks();
+});
 
 describe('addUserSetEnvironment', () => {
   it('pushes venv entry to appData.userSetPythonEnvs and saves', () => {
@@ -155,8 +157,6 @@ describe('addUserSetEnvironment', () => {
     expect(userSettings.setValue).not.toHaveBeenCalled();
   });
 });
-
-// ─── handleEnvSetPythonEnvsPathCommand ───────────────────────────────────────
 
 describe('handleEnvSetPythonEnvsPathCommand', () => {
   it('sets pythonEnvsPath when dir is valid', async () => {
@@ -200,8 +200,6 @@ describe('handleEnvSetPythonEnvsPathCommand', () => {
   });
 });
 
-// ─── handleEnvSetCondaChannelsCommand ────────────────────────────────────────
-
 describe('handleEnvSetCondaChannelsCommand', () => {
   it('sets conda channels from argv slice', async () => {
     await handleEnvSetCondaChannelsCommand({
@@ -219,8 +217,6 @@ describe('handleEnvSetCondaChannelsCommand', () => {
     expect(userSettings.setValue).toHaveBeenCalledWith(expect.any(String), []);
   });
 });
-
-// ─── handleEnvSetSystemPythonPathCommand ─────────────────────────────────────
 
 describe('handleEnvSetSystemPythonPathCommand', () => {
   it('sets systemPythonPath when path is valid', async () => {
@@ -272,8 +268,6 @@ describe('handleEnvSetSystemPythonPathCommand', () => {
     spy.mockRestore();
   });
 });
-
-// ─── handleEnvSetCondaPathCommand ────────────────────────────────────────────
 
 describe('handleEnvSetCondaPathCommand', () => {
   it('sets condaPath when path exists and is valid', async () => {

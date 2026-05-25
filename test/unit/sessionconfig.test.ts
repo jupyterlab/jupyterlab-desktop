@@ -323,7 +323,7 @@ describe('SessionConfig.createFromArgs', () => {
       pythonPath: '',
       workingDir: ''
     });
-    expect(result).toBeDefined();
+    expect(result.filesToOpen.some(f => f.includes('test.ipynb'))).toBe(true);
   });
 
   it('includes pythonPath when it exists', () => {
@@ -433,7 +433,7 @@ describe('SessionConfig.serialize', () => {
   it('lastOpened is ISO string', () => {
     const s = new SessionConfig();
     const json = s.serialize();
-    expect(() => new Date(json.lastOpened)).not.toThrow();
+    expect(Number.isNaN(new Date(json.lastOpened).getTime())).toBe(false);
     expect(new Date(json.lastOpened).getFullYear()).toBeGreaterThanOrEqual(
       2020
     );
