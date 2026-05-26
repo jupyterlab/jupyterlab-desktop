@@ -124,9 +124,15 @@ export function clearSession(session: Electron.Session): Promise<void> {
         session.clearAuthCache(),
         session.clearStorageData(),
         session.flushStorageData()
-      ]).then(() => {
-        resolve();
-      });
+      ])
+        .then(() => {
+          resolve();
+        })
+        // without a rejection handler an async failure in any clear*() call
+        // leaves this promise pending forever; the try/catch only sees sync throws.
+        .catch(() => {
+          reject();
+        });
     } catch (error) {
       reject();
     }
@@ -630,6 +636,7 @@ export async function runCommand(
     execFile(executablePath, commands, options, (error, stdout, stderr) => {
       if (error) {
         reject(error);
+        return;
       }
       if (stdout) {
         resolve(stdout);

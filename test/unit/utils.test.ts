@@ -42,6 +42,7 @@ vi.mock('os', async () => {
 import {
   activatePathForEnvPath,
   bundledEnvironmentIsInstalled,
+  clearSession,
   condaSourcePathForEnvPath,
   createCommandScriptInEnv,
   createTempFile,
@@ -651,6 +652,28 @@ describe('deletePythonEnvironment', () => {
   it('works without a listener', async () => {
     mockFs.existsSync = vi.fn(() => true);
     await expect(deletePythonEnvironment('/env/myenv')).resolves.toBe(true);
+  });
+});
+
+describe('clearSession', () => {
+  const fakeSession = (overrides: Record<string, any> = {}) =>
+    (({
+      clearCache: vi.fn(() => Promise.resolve()),
+      clearAuthCache: vi.fn(() => Promise.resolve()),
+      clearStorageData: vi.fn(() => Promise.resolve()),
+      flushStorageData: vi.fn(() => Promise.resolve()),
+      ...overrides
+    } as unknown) as Electron.Session);
+
+  it('resolves once every clear call settles', async () => {
+    await expect(clearSession(fakeSession())).resolves.toBeUndefined();
+  });
+
+  it('rejects (does not hang) when a clear call rejects', async () => {
+    const session = fakeSession({
+      clearStorageData: vi.fn(() => Promise.reject(new Error('boom')))
+    });
+    await expect(clearSession(session)).rejects.toBeUndefined();
   });
 });
 

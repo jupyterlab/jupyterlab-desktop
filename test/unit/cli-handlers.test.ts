@@ -97,7 +97,7 @@ import {
   handleEnvSetSystemPythonPathCommand
 } from '../../src/main/cli';
 import { appData } from '../../src/main/config/appdata';
-import { userSettings } from '../../src/main/config/settings';
+import { SettingType, userSettings } from '../../src/main/config/settings';
 import * as envModule from '../../src/main/env';
 
 const mockFs = vi.mocked(fs);
@@ -145,7 +145,7 @@ describe('addUserSetEnvironment', () => {
     );
     addUserSetEnvironment('/home/user/myenv', false);
     expect(userSettings.setValue).toHaveBeenCalledWith(
-      expect.any(String),
+      SettingType.pythonPath,
       expect.stringContaining('/home/user/myenv')
     );
     expect(userSettings.save).toHaveBeenCalledOnce();
@@ -168,7 +168,7 @@ describe('handleEnvSetPythonEnvsPathCommand', () => {
       _: ['set-envs-path', '/my/envs']
     });
     expect(userSettings.setValue).toHaveBeenCalledWith(
-      expect.any(String),
+      SettingType.pythonEnvsPath,
       '/my/envs'
     );
     expect(userSettings.save).toHaveBeenCalledOnce();
@@ -205,7 +205,9 @@ describe('handleEnvSetCondaChannelsCommand', () => {
     await handleEnvSetCondaChannelsCommand({
       _: ['set-conda-channels', 'conda-forge', 'defaults']
     });
-    expect(userSettings.setValue).toHaveBeenCalledWith(expect.any(String), [
+    expect(
+      userSettings.setValue
+    ).toHaveBeenCalledWith(SettingType.condaChannels, [
       'conda-forge',
       'defaults'
     ]);
@@ -214,7 +216,10 @@ describe('handleEnvSetCondaChannelsCommand', () => {
 
   it('sets empty array when no channels given', async () => {
     await handleEnvSetCondaChannelsCommand({ _: ['set-conda-channels'] });
-    expect(userSettings.setValue).toHaveBeenCalledWith(expect.any(String), []);
+    expect(userSettings.setValue).toHaveBeenCalledWith(
+      SettingType.condaChannels,
+      []
+    );
   });
 });
 
@@ -228,7 +233,7 @@ describe('handleEnvSetSystemPythonPathCommand', () => {
       _: ['set-sys-python', '/usr/bin/python3']
     });
     expect(userSettings.setValue).toHaveBeenCalledWith(
-      expect.any(String),
+      SettingType.systemPythonPath,
       '/usr/bin/python3'
     );
     expect(userSettings.save).toHaveBeenCalledOnce();
@@ -277,7 +282,7 @@ describe('handleEnvSetCondaPathCommand', () => {
       _: ['set-conda-path', '/usr/bin/conda']
     });
     expect(userSettings.setValue).toHaveBeenCalledWith(
-      expect.any(String),
+      SettingType.condaPath,
       '/usr/bin/conda'
     );
     expect(userSettings.save).toHaveBeenCalledOnce();
