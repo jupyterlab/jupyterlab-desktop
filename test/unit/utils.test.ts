@@ -613,6 +613,9 @@ describe('deletePythonEnvironment', () => {
       EnvironmentDeleteStatus.Failure,
       expect.any(String)
     );
+    // the guard must stop here: a rejected promise is not enough, the
+    // directory must never be touched when it was not Desktop-installed.
+    expect(mockFs.rmSync).not.toHaveBeenCalled();
   });
 
   it('calls rmSync and resolves true when env.json exists', async () => {

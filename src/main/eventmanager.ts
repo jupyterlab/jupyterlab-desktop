@@ -67,7 +67,9 @@ export class EventManager implements IDisposable {
     const handlers = this._syncEventHandlers.get(eventType);
     const index = handlers.indexOf(handler);
     if (index !== -1) {
-      ipcMain.removeListener(eventType, handler);
+      // sync handlers register via ipcMain.handle, which is unbound with
+      // removeHandler(channel); removeListener only applies to ipcMain.on.
+      ipcMain.removeHandler(eventType);
       handlers.splice(index, 1);
     }
   }
@@ -85,13 +87,9 @@ export class EventManager implements IDisposable {
   }
 
   unregisterAllSyncEventHandlers() {
-    this._syncEventHandlers.forEach(
-      (handlers: SyncEventHandlerMain[], eventType: EventTypeMain) => {
-        for (const handler of handlers) {
-          ipcMain.removeListener(eventType, handler);
-        }
-      }
-    );
+    for (const eventType of this._syncEventHandlers.keys()) {
+      ipcMain.removeHandler(eventType);
+    }
 
     this._syncEventHandlers.clear();
   }

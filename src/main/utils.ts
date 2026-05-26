@@ -407,6 +407,9 @@ export async function deletePythonEnvironment(
         'Environment cannot be deleted since it was not installed by JupyterLab Desktop.'
       );
       reject();
+      // without this return the guard is advisory only: execution falls
+      // through and rmSync deletes the directory the guard just refused.
+      return;
     }
 
     try {

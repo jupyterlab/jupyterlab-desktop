@@ -53,13 +53,22 @@ describe('EventManager.registerSyncEventHandler', () => {
     );
   });
 
-  it('registers multiple sync handlers for same event', () => {
+  it('registers sync handlers for different event types independently', () => {
     const mgr = new EventManager();
     const h1 = vi.fn();
     const h2 = vi.fn();
+    // ipcMain.handle allows one handler per channel, so distinct channels is
+    // the real registration shape, not two handlers on the same channel.
     mgr.registerSyncEventHandler(EventTypeMain.IsDarkTheme, h1);
-    mgr.registerSyncEventHandler(EventTypeMain.IsDarkTheme, h2);
-    expect(mockIpcMain.handle).toHaveBeenCalledTimes(2);
+    mgr.registerSyncEventHandler(EventTypeMain.ValidatePythonPath, h2);
+    expect(mockIpcMain.handle).toHaveBeenCalledWith(
+      EventTypeMain.IsDarkTheme,
+      h1
+    );
+    expect(mockIpcMain.handle).toHaveBeenCalledWith(
+      EventTypeMain.ValidatePythonPath,
+      h2
+    );
   });
 });
 
@@ -112,16 +121,18 @@ describe('EventManager.unregisterEventHandler', () => {
 });
 
 describe('EventManager.unregisterSyncEventHandler', () => {
-  it('calls ipcMain.removeListener for sync handler', () => {
+  it('calls ipcMain.removeHandler with the channel for a sync handler', () => {
     const mgr = new EventManager();
     const handler = vi.fn();
     mgr.registerSyncEventHandler(EventTypeMain.IsDarkTheme, handler);
     vi.clearAllMocks();
     mgr.unregisterSyncEventHandler(EventTypeMain.IsDarkTheme, handler);
-    expect(mockIpcMain.removeListener).toHaveBeenCalledWith(
-      EventTypeMain.IsDarkTheme,
-      handler
+    // handle() handlers are removed by channel via removeHandler, not by
+    // (channel, handler) via removeListener.
+    expect(mockIpcMain.removeHandler).toHaveBeenCalledWith(
+      EventTypeMain.IsDarkTheme
     );
+    expect(mockIpcMain.removeListener).not.toHaveBeenCalled();
   });
 
   it('no-ops when event type was never registered', () => {
@@ -129,7 +140,17 @@ describe('EventManager.unregisterSyncEventHandler', () => {
     expect(() =>
       mgr.unregisterSyncEventHandler(EventTypeMain.IsDarkTheme, vi.fn())
     ).not.toThrow();
-    expect(mockIpcMain.removeListener).not.toHaveBeenCalled();
+    expect(mockIpcMain.removeHandler).not.toHaveBeenCalled();
+  });
+
+  it('no-ops when the sync handler is not in the list', () => {
+    const mgr = new EventManager();
+    const registered = vi.fn();
+    const other = vi.fn();
+    mgr.registerSyncEventHandler(EventTypeMain.IsDarkTheme, registered);
+    vi.clearAllMocks();
+    mgr.unregisterSyncEventHandler(EventTypeMain.IsDarkTheme, other);
+    expect(mockIpcMain.removeHandler).not.toHaveBeenCalled();
   });
 });
 
@@ -160,15 +181,21 @@ describe('EventManager.unregisterAllEventHandlers', () => {
 });
 
 describe('EventManager.unregisterAllSyncEventHandlers', () => {
-  it('removes all sync handlers', () => {
+  it('calls removeHandler once per registered sync channel', () => {
     const mgr = new EventManager();
     const h1 = vi.fn();
     const h2 = vi.fn();
     mgr.registerSyncEventHandler(EventTypeMain.IsDarkTheme, h1);
-    mgr.registerSyncEventHandler(EventTypeMain.IsDarkTheme, h2);
+    mgr.registerSyncEventHandler(EventTypeMain.ValidatePythonPath, h2);
     vi.clearAllMocks();
     mgr.unregisterAllSyncEventHandlers();
-    expect(mockIpcMain.removeListener).toHaveBeenCalledTimes(2);
+    expect(mockIpcMain.removeHandler).toHaveBeenCalledTimes(2);
+    expect(mockIpcMain.removeHandler).toHaveBeenCalledWith(
+      EventTypeMain.IsDarkTheme
+    );
+    expect(mockIpcMain.removeHandler).toHaveBeenCalledWith(
+      EventTypeMain.ValidatePythonPath
+    );
   });
 });
 
@@ -185,9 +212,8 @@ describe('EventManager.dispose', () => {
       EventTypeMain.OpenFile,
       async1
     );
-    expect(mockIpcMain.removeListener).toHaveBeenCalledWith(
-      EventTypeMain.IsDarkTheme,
-      sync1
+    expect(mockIpcMain.removeHandler).toHaveBeenCalledWith(
+      EventTypeMain.IsDarkTheme
     );
   });
 
