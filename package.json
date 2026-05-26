@@ -8,6 +8,7 @@
     "test": "yarn test:unit",
     "test:unit": "vitest run",
     "test:unit:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
     "test:e2e": "playwright test",
     "clean": "rimraf build dist",
     "watch:tsc": "tsc -w",

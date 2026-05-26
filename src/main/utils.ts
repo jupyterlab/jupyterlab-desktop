@@ -117,18 +117,19 @@ export function isDarkTheme(themeType: string) {
 }
 
 export function clearSession(session: Electron.Session): Promise<void> {
-  return new Promise((resolve, reject) => {
-    try {
-      Promise.all([
-        session.clearCache(),
-        session.clearAuthCache(),
-        session.clearStorageData(),
-        session.flushStorageData()
-      ]).then(() => {
-        resolve();
-      });
-    } catch (error) {
-      reject();
+  // best-effort teardown: callers await this before closing windows, so a
+  // failure to clear one cache must not reject and skip that cleanup, nor hang
+  // (Promise.all with no catch would). allSettled always resolves; log failures.
+  return Promise.allSettled([
+    session.clearCache(),
+    session.clearAuthCache(),
+    session.clearStorageData(),
+    session.flushStorageData()
+  ]).then(results => {
+    for (const result of results) {
+      if (result.status === 'rejected') {
+        log.error('Failed to clear part of the session', result.reason);
+      }
     }
   });
 }
@@ -407,6 +408,9 @@ export async function deletePythonEnvironment(
         'Environment cannot be deleted since it was not installed by JupyterLab Desktop.'
       );
       reject();
+      // without this return the guard is advisory only: execution falls
+      // through and rmSync deletes the directory the guard just refused.
+      return;
     }
 
     try {
@@ -627,6 +631,7 @@ export async function runCommand(
     execFile(executablePath, commands, options, (error, stdout, stderr) => {
       if (error) {
         reject(error);
+        return;
       }
       if (stdout) {
         resolve(stdout);
