@@ -5,6 +5,7 @@
   "main": "./build/out/main/main.js",
   "scripts": {
     "start": "electron .",
+    "prepare": "husky",
     "test": "yarn test:unit",
     "test:unit": "vitest run",
     "test:unit:watch": "vitest",
@@ -55,6 +56,16 @@
     "prettier": "prettier --write \"**/*{.ts,.tsx,.js,.jsx,.css,.json,.md}\"",
     "prettier:check": "prettier --check \"**/*{.ts,.tsx,.js,.jsx,.css,.json,.md}\"",
     "update-ufuzzy": "shx cp node_modules/@leeoniya/ufuzzy/dist/uFuzzy.iife.min.js src/assets/"
+  },
+  "lint-staged": {
+    "*.{ts,tsx,js,jsx}": [
+      "eslint --fix",
+      "prettier --write",
+      "vitest related --run"
+    ],
+    "*.{json,md,css}": [
+      "prettier --write"
+    ]
   },
   "build": {
     "appId": "org.jupyter.jupyterlab-desktop",
@@ -205,7 +216,9 @@
     "eslint-plugin-prettier": "~4.0.0",
     "eslint-plugin-react": "~7.29.4",
     "fs-extra": "~9.1.0",
+    "husky": "^9.1.7",
     "istextorbinary": "^6.0.0",
+    "lint-staged": "^16.4.0",
     "meow": "^6.0.1",
     "node-watch": "^0.7.4",
     "prettier": "~2.1.1",
