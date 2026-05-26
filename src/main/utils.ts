@@ -117,24 +117,19 @@ export function isDarkTheme(themeType: string) {
 }
 
 export function clearSession(session: Electron.Session): Promise<void> {
-  return new Promise((resolve, reject) => {
-    try {
-      Promise.all([
-        session.clearCache(),
-        session.clearAuthCache(),
-        session.clearStorageData(),
-        session.flushStorageData()
-      ])
-        .then(() => {
-          resolve();
-        })
-        // without a rejection handler an async failure in any clear*() call
-        // leaves this promise pending forever; the try/catch only sees sync throws.
-        .catch(() => {
-          reject();
-        });
-    } catch (error) {
-      reject();
+  // best-effort teardown: callers await this before closing windows, so a
+  // failure to clear one cache must not reject and skip that cleanup, nor hang
+  // (Promise.all with no catch would). allSettled always resolves; log failures.
+  return Promise.allSettled([
+    session.clearCache(),
+    session.clearAuthCache(),
+    session.clearStorageData(),
+    session.flushStorageData()
+  ]).then(results => {
+    for (const result of results) {
+      if (result.status === 'rejected') {
+        log.error('Failed to clear part of the session', result.reason);
+      }
     }
   });
 }

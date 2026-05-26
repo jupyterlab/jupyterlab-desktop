@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import * as fs from 'fs';
 import * as path from 'path';
 import { nativeTheme } from 'electron';
+import log from 'electron-log';
 
 vi.mock('fs', async () => {
   const actual = await vi.importActual<typeof import('fs')>('fs');
@@ -669,11 +670,17 @@ describe('clearSession', () => {
     await expect(clearSession(fakeSession())).resolves.toBeUndefined();
   });
 
-  it('rejects (does not hang) when a clear call rejects', async () => {
+  it('still resolves and logs when a clear call rejects, so teardown proceeds', async () => {
     const session = fakeSession({
       clearStorageData: vi.fn(() => Promise.reject(new Error('boom')))
     });
-    await expect(clearSession(session)).rejects.toBeUndefined();
+    // best-effort: callers close windows right after awaiting, so a failed
+    // clear must not reject (skipping cleanup) nor hang.
+    await expect(clearSession(session)).resolves.toBeUndefined();
+    expect(log.error).toHaveBeenCalledWith(
+      'Failed to clear part of the session',
+      expect.any(Error)
+    );
   });
 });
 
