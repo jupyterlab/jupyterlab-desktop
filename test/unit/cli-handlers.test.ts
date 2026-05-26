@@ -128,13 +128,13 @@ describe('addUserSetEnvironment', () => {
   it('pushes venv entry to appData.userSetPythonEnvs and saves', () => {
     addUserSetEnvironment('/home/user/myenv', false);
     expect(appData.userSetPythonEnvs).toHaveLength(1);
-    expect(appData.userSetPythonEnvs[0].name).toContain('venv');
+    expect(appData.userSetPythonEnvs[0].name).toBe('venv: myenv');
     expect(appData.save).toHaveBeenCalledOnce();
   });
 
   it('pushes conda entry when isConda=true', () => {
     addUserSetEnvironment('/home/user/myconda', true);
-    expect(appData.userSetPythonEnvs[0].name).toContain('conda');
+    expect(appData.userSetPythonEnvs[0].name).toBe('conda: myconda');
   });
 
   it('sets userSettings pythonPath when none configured and env python exists', () => {
@@ -177,7 +177,7 @@ describe('handleEnvSetPythonEnvsPathCommand', () => {
   it('logs error and skips save when no path provided', async () => {
     const spy = vi.spyOn(console, 'error').mockReturnValue(undefined);
     await handleEnvSetPythonEnvsPathCommand({ _: ['set-envs-path'] });
-    expect(spy).toHaveBeenCalled();
+    expect(spy).toHaveBeenCalledWith('Please set a valid envs directory');
     expect(userSettings.setValue).not.toHaveBeenCalled();
     spy.mockRestore();
   });
@@ -245,7 +245,7 @@ describe('handleEnvSetSystemPythonPathCommand', () => {
     await handleEnvSetSystemPythonPathCommand({
       _: ['set-sys-python', '/no/python']
     });
-    expect(spy).toHaveBeenCalled();
+    expect(spy).toHaveBeenCalledWith('Python path "/no/python" does not exist');
     expect(userSettings.setValue).not.toHaveBeenCalled();
     spy.mockRestore();
   });
@@ -260,7 +260,9 @@ describe('handleEnvSetSystemPythonPathCommand', () => {
     await handleEnvSetSystemPythonPathCommand({
       _: ['set-sys-python', '/bad/python']
     });
-    expect(spy).toHaveBeenCalled();
+    expect(spy).toHaveBeenCalledWith(
+      '"/bad/python" is not a valid Python path'
+    );
     expect(userSettings.setValue).not.toHaveBeenCalled();
     spy.mockRestore();
   });
@@ -268,7 +270,7 @@ describe('handleEnvSetSystemPythonPathCommand', () => {
   it('logs error when no path argument given', async () => {
     const spy = vi.spyOn(console, 'error').mockReturnValue(undefined);
     await handleEnvSetSystemPythonPathCommand({ _: ['set-sys-python'] });
-    expect(spy).toHaveBeenCalled();
+    expect(spy).toHaveBeenCalledWith('Please set a valid Python path');
     expect(userSettings.setValue).not.toHaveBeenCalled();
     spy.mockRestore();
   });
@@ -292,7 +294,7 @@ describe('handleEnvSetCondaPathCommand', () => {
     mockFs.existsSync = vi.fn(() => false);
     const spy = vi.spyOn(console, 'error').mockReturnValue(undefined);
     await handleEnvSetCondaPathCommand({ _: ['set-conda-path', '/no/conda'] });
-    expect(spy).toHaveBeenCalled();
+    expect(spy).toHaveBeenCalledWith('conda path "/no/conda" does not exist');
     expect(userSettings.setValue).not.toHaveBeenCalled();
     spy.mockRestore();
   });
@@ -305,7 +307,7 @@ describe('handleEnvSetCondaPathCommand', () => {
     });
     const spy = vi.spyOn(console, 'error').mockReturnValue(undefined);
     await handleEnvSetCondaPathCommand({ _: ['set-conda-path', '/bad/conda'] });
-    expect(spy).toHaveBeenCalled();
+    expect(spy).toHaveBeenCalledWith('"/bad/conda" is not a valid conda path');
     expect(userSettings.setValue).not.toHaveBeenCalled();
     spy.mockRestore();
   });
@@ -313,7 +315,7 @@ describe('handleEnvSetCondaPathCommand', () => {
   it('logs error when no path argument given', async () => {
     const spy = vi.spyOn(console, 'error').mockReturnValue(undefined);
     await handleEnvSetCondaPathCommand({ _: ['set-conda-path'] });
-    expect(spy).toHaveBeenCalled();
+    expect(spy).toHaveBeenCalledWith('Please set a valid conda path');
     expect(userSettings.setValue).not.toHaveBeenCalled();
     spy.mockRestore();
   });

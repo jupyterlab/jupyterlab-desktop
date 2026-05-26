@@ -48,9 +48,14 @@ describe('ApplicationData.read', () => {
     resetAppData();
   });
 
-  it('no-ops gracefully when file does not exist', () => {
+  it('does not read or mutate state when the file does not exist', () => {
     mockFs.existsSync = vi.fn(() => false);
-    expect(() => appData.read()).not.toThrow();
+    mockFs.readFileSync = vi.fn();
+    const pythonPathBefore = appData.pythonPath;
+    appData.read();
+    // the missing-file guard must short-circuit before parsing anything
+    expect(mockFs.readFileSync).not.toHaveBeenCalled();
+    expect(appData.pythonPath).toBe(pythonPathBefore);
   });
 
   it('reads pythonPath from JSON', () => {
