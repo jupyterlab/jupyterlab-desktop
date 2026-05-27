@@ -10,7 +10,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.head_ref || github.ref }}
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -56,7 +56,8 @@ jobs:
       - name: Provision a Python env for the env-backed e2e
         run: |
           python3 -m venv "$RUNNER_TEMP/jlab-venv"
-          "$RUNNER_TEMP/jlab-venv/bin/pip" install --quiet --upgrade pip jupyterlab
+          "$RUNNER_TEMP/jlab-venv/bin/pip" install --quiet --upgrade pip
+          "$RUNNER_TEMP/jlab-venv/bin/pip" install --quiet "jupyterlab==4.5.7"
           echo "JLAB_TEST_PYTHON_PATH=$RUNNER_TEMP/jlab-venv/bin/python" >> "$GITHUB_ENV"
       - run: xvfb-run -a yarn test:e2e
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
