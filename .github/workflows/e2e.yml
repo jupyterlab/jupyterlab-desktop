@@ -24,6 +24,10 @@ jobs:
           node-version: '26.x'
           cache: 'yarn'
       - run: yarn install --frozen-lockfile
+      # Ensure Electron's platform binary is present; its postinstall can be
+      # skipped when node_modules is restored from cache, which fails launch
+      # with "Electron failed to install correctly".
+      - run: node node_modules/electron/install.js
       - run: yarn build
       # Electron needs system libraries; xvfb provides a display on the headless
       # runner. The app launches up to four windows, so a real display beats
