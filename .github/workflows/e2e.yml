@@ -21,12 +21,21 @@ jobs:
       - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
       - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
         with:
-          node-version: '26.x'
+          # Node 24 (active LTS), not 26 (Current): keep the e2e runner on the
+          # stable line for Electron's install tooling and Playwright.
+          node-version: '24.x'
           cache: 'yarn'
+      # Cache the @electron/get binary download so launch does not depend on a
+      # fresh GitHub-releases fetch every run.
+      - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: ~/.cache/electron
+          key: ${{ runner.os }}-electron-${{ hashFiles('yarn.lock') }}
+          restore-keys: ${{ runner.os }}-electron-
       - run: yarn install --frozen-lockfile
-      # Ensure Electron's platform binary is present; its postinstall can be
-      # skipped when node_modules is restored from cache, which fails launch
-      # with "Electron failed to install correctly".
+      # Materialize Electron's platform binary into node_modules/electron/dist;
+      # its postinstall can be skipped on a cache-restored tree, which fails
+      # launch with "Electron failed to install correctly".
       - run: node node_modules/electron/install.js
       - run: yarn build
       # Electron needs system libraries; xvfb provides a display on the headless
