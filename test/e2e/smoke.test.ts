@@ -28,6 +28,23 @@ test('on first run the Welcome window renders', async () => {
   }
 });
 
+test('the session window composes multiple views (titlebar + welcome + content)', async () => {
+  const { app, userDataDir } = await launchApp();
+  try {
+    // Once the welcome view has settled, the BrowserView/WebContentsView
+    // composition should expose several views (titlebar, welcome, content area)
+    // as separate pages. A dropped view after the Phase 3 WebContentsView
+    // migration would lower this count.
+    await pageByTitle(app, /welcome/i);
+    await expect
+      .poll(() => app.windows().length, { timeout: 10000 })
+      .toBeGreaterThanOrEqual(3);
+  } finally {
+    await app.close();
+    cleanup(userDataDir);
+  }
+});
+
 test('app shuts down cleanly without hanging', async () => {
   const { app, userDataDir } = await launchApp();
   try {
