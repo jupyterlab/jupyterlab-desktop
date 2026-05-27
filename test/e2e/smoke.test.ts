@@ -19,7 +19,9 @@ test('on first run the Welcome window renders', async () => {
     // windows and only this one is the welcome view.
     const welcome = await pageByTitle(app, /welcome/i);
     await welcome.waitForLoadState('domcontentloaded');
-    await expect(welcome.locator('body')).toBeVisible();
+    // Assert a Welcome-specific element, not just body, so a blank or error
+    // page would fail rather than pass.
+    await expect(welcome.locator('#new-notebook-link')).toBeVisible();
   } finally {
     await app.close();
     cleanup(home);

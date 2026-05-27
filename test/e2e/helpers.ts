@@ -4,23 +4,26 @@ import { mkdtempSync, rmSync } from 'fs';
 import { join } from 'path';
 import { tmpdir } from 'os';
 
-// A fresh JLAB_DESKTOP_HOME per launch keeps tests independent. Returns the app
-// plus the temp dir so the caller can clean it up in a finally block.
+// A fresh userData dir per launch keeps tests independent. Electron's native
+// --user-data-dir flag is honored because the app reads app.getPath('userData')
+// (see getUserDataDir in utils) and only overrides it on Snap. Returns the app
+// plus the temp dir so the caller can clean it up in a finally block. If launch
+// fails, the temp dir is removed here so repeated runs don't accumulate dirs.
 export async function launchApp(): Promise<{
   app: ElectronApplication;
   home: string;
 }> {
   const home = mkdtempSync(join(tmpdir(), 'jlab-e2e-'));
-  const app = await electron.launch({
-    args: ['.'],
-    env: {
-      ...process.env,
-      JLAB_DESKTOP_HOME: home,
-      ELECTRON_IS_TEST: '1'
-    }
-  });
-  await stubAllDialogs(app);
-  return { app, home };
+  try {
+    const app = await electron.launch({
+      args: ['.', `--user-data-dir=${home}`]
+    });
+    await stubAllDialogs(app);
+    return { app, home };
+  } catch (error) {
+    cleanup(home);
+    throw error;
+  }
 }
 
 export function cleanup(home: string): void {
