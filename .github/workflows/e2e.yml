@@ -32,19 +32,12 @@ jobs:
           # 24); do not run ahead of it. Node 26 broke Electron's install tooling.
           node-version: '24.x'
           cache: 'yarn'
-      # Cache the @electron/get binary download so launch does not depend on a
-      # fresh GitHub-releases fetch every run.
-      - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
-        with:
-          path: ~/.cache/electron
-          key: ${{ runner.os }}-electron-${{ hashFiles('yarn.lock') }}
-          restore-keys: ${{ runner.os }}-electron-
+      # Let yarn install run Electron's postinstall to download + extract the
+      # binary fresh each run. We deliberately do NOT cache ~/.cache/electron:
+      # on a cache hit the postinstall skips extraction (empty dist), and adding
+      # an explicit install.js step then corrupts a fresh install. A clean
+      # download every run is ~10s and fully deterministic.
       - run: yarn install --frozen-lockfile
-      # Electron's postinstall only extracts the binary into
-      # node_modules/electron/dist on a fresh download. On a ~/.cache/electron
-      # cache hit it skips that, leaving dist empty and launch failing with
-      # "Electron failed to install correctly", so materialize it explicitly.
-      - run: node node_modules/electron/install.js
       - run: yarn build
       # Electron needs system libraries; xvfb provides a display on the headless
       # runner. The app launches up to four windows, so a real display beats
