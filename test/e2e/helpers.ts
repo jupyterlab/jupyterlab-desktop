@@ -11,9 +11,12 @@ import { tmpdir } from 'os';
 // If launch fails, the temp dir is removed here so repeated runs don't
 // accumulate dirs.
 //
-// Pass `pythonPath` to seed `app-data.json` before launch (the app reads
-// `appData.pythonPath`), which makes the app treat that env as configured and
-// enables the local-server welcome actions.
+// Pass `pythonPath` to seed the app's config before launch so it treats that
+// interpreter as a configured environment. Two files are written, matching the
+// two seams the app reads: `app-data.json` (`pythonPath` enables the welcome
+// actions; `userSetPythonEnvs` registers the env so the session registry
+// resolves it) and `settings.json` (`pythonPath` is what a new session reads
+// via workspace settings to boot its server).
 export async function launchApp(opts?: {
   pythonPath?: string;
 }): Promise<{ app: ElectronApplication; userDataDir: string }> {
@@ -21,6 +24,21 @@ export async function launchApp(opts?: {
   if (opts?.pythonPath) {
     writeFileSync(
       join(userDataDir, 'app-data.json'),
+      JSON.stringify({
+        pythonPath: opts.pythonPath,
+        userSetPythonEnvs: [
+          {
+            path: opts.pythonPath,
+            name: 'e2e-env',
+            type: 'path',
+            versions: { jupyterlab: '4.5.7' },
+            defaultKernel: 'python3'
+          }
+        ]
+      })
+    );
+    writeFileSync(
+      join(userDataDir, 'settings.json'),
       JSON.stringify({ pythonPath: opts.pythonPath })
     );
   }
