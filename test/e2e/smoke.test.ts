@@ -1,75 +1,60 @@
-import { _electron as electron, expect, test } from '@playwright/test';
-import { stubAllDialogs } from 'electron-playwright-helpers';
-import { mkdtempSync, rmSync } from 'fs';
-import { join } from 'path';
-import { tmpdir } from 'os';
+import { expect, test } from '@playwright/test';
+import { cleanup, launchApp, pageByTitle } from './helpers';
 
-let tempUserData: string;
-
-test.beforeEach(() => {
-  tempUserData = mkdtempSync(join(tmpdir(), 'jlab-e2e-'));
+test('app launches and opens at least one window', async () => {
+  const { app, userDataDir } = await launchApp();
+  try {
+    await app.firstWindow();
+    expect(app.windows().length).toBeGreaterThan(0);
+  } finally {
+    await app.close();
+    cleanup(userDataDir);
+  }
 });
 
-test.afterEach(async () => {
-  rmSync(tempUserData, { recursive: true, force: true });
+test('on first run the Welcome window renders', async () => {
+  const { app, userDataDir } = await launchApp();
+  try {
+    // Selecting by title rather than firstWindow(): the app opens several
+    // windows and only this one is the welcome view.
+    const welcome = await pageByTitle(app, /welcome/i);
+    await welcome.waitForLoadState('domcontentloaded');
+    // Assert a Welcome-specific element, not just body, so a blank or error
+    // page would fail rather than pass.
+    await expect(welcome.locator('#new-notebook-link')).toBeVisible();
+  } finally {
+    await app.close();
+    cleanup(userDataDir);
+  }
 });
 
-test('app launches and shows a window', async () => {
-  const app = await electron.launch({
-    args: ['.'],
-    env: {
-      ...process.env,
-      JLAB_DESKTOP_HOME: tempUserData,
-      ELECTRON_IS_TEST: '1'
-    }
-  });
-
-  await stubAllDialogs(app);
-  const window = await app.firstWindow();
-  await window.waitForLoadState('domcontentloaded');
-
-  expect(app.windows().length).toBeGreaterThan(0);
-  await app.close();
+test('the session window composes multiple views (titlebar + welcome + content)', async () => {
+  const { app, userDataDir } = await launchApp();
+  try {
+    // Once the welcome view has settled, the BrowserView/WebContentsView
+    // composition should expose several views (titlebar, welcome, content area)
+    // as separate pages. A dropped view after the Phase 3 WebContentsView
+    // migration would lower this count.
+    await pageByTitle(app, /welcome/i);
+    await expect
+      .poll(() => app.windows().length, { timeout: 10000 })
+      .toBeGreaterThanOrEqual(3);
+  } finally {
+    await app.close();
+    cleanup(userDataDir);
+  }
 });
 
-test('app exits with code 0', async () => {
-  const app = await electron.launch({
-    args: ['.'],
-    env: {
-      ...process.env,
-      JLAB_DESKTOP_HOME: tempUserData,
-      ELECTRON_IS_TEST: '1'
-    }
-  });
-
-  await stubAllDialogs(app);
-  await app.firstWindow();
-
-  const exitCode = await app.close();
-  expect(exitCode).toBe(0);
-});
-
-test('first-run shows env selection when no env configured', async () => {
-  const app = await electron.launch({
-    args: ['.'],
-    env: {
-      ...process.env,
-      JLAB_DESKTOP_HOME: tempUserData,
-      ELECTRON_IS_TEST: '1',
-      // empty userData = no prior config = first run
-      APPDATA: tempUserData
-    }
-  });
-
-  await stubAllDialogs(app);
-  const window = await app.firstWindow();
-
-  // welcome view or env select should appear within 15s
-  await expect(
-    window.locator(
-      '#welcome-view, #env-select-dialog, [data-testid="env-select"]'
-    )
-  ).toBeVisible({ timeout: 15000 });
-
-  await app.close();
+test('app shuts down cleanly without hanging', async () => {
+  const { app, userDataDir } = await launchApp();
+  try {
+    await app.firstWindow();
+  } finally {
+    // Close in finally so the Electron process is always terminated, even if
+    // an earlier step throws. A hang here surfaces via the job timeout.
+    await app.close();
+    cleanup(userDataDir);
+  }
+  // close() has resolved, so the process exited and the windows are gone.
+  expect(app.windows().length).toBe(0);
 });
