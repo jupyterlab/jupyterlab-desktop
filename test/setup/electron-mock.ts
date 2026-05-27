@@ -1,48 +1,27 @@
 import { vi } from 'vitest';
 import { tmpdir } from 'os';
 import { join } from 'path';
+import * as electronStub from './electron-stub';
 
-const userDataPath = join(tmpdir(), 'jlab-test-userdata');
 const logFilePath = join(tmpdir(), 'jlab-test.log');
 
-vi.mock('electron', () => ({
-  app: {
-    getPath: vi.fn((name: string) => join(userDataPath, name)),
-    getVersion: vi.fn(() => '4.4.7'),
-    getName: vi.fn(() => 'JupyterLab'),
-    isPackaged: false,
-    whenReady: vi.fn(() => Promise.resolve())
-  },
-  ipcMain: {
-    on: vi.fn(),
-    handle: vi.fn(),
-    removeHandler: vi.fn(),
-    removeListener: vi.fn(),
-    removeAllListeners: vi.fn(),
-    emit: vi.fn()
-  },
-  dialog: {
-    showOpenDialog: vi.fn(),
-    showMessageBox: vi.fn(),
-    showMessageBoxSync: vi.fn(() => 0)
-  },
-  BrowserWindow: vi.fn().mockImplementation(() => ({
-    loadURL: vi.fn(),
-    webContents: { send: vi.fn(), on: vi.fn() },
-    on: vi.fn(),
-    once: vi.fn(),
-    show: vi.fn(),
-    close: vi.fn(),
-    isDestroyed: vi.fn(() => false)
-  })),
-  shell: { openExternal: vi.fn(), openPath: vi.fn() },
-  nativeTheme: { shouldUseDarkColors: false },
-  screen: {
-    getPrimaryDisplay: vi.fn(() => ({
-      workAreaSize: { width: 1920, height: 1080 }
-    }))
-  }
-}));
+// `electron` is mocked two ways pointing at the same ./electron-stub instances:
+//   - vitest.config `resolve.alias` redirects ESM `import ... from 'electron'`.
+//   - vitest leaves CJS `require('electron')` (used by the preload scripts)
+//     externalized, so it hits Node's require and would return the binary path
+//     string. Pre-seeding require.cache for electron's resolved id makes that
+//     require return the stub instead. Both paths share electronStub's vi.fns.
+try {
+  const electronId = require.resolve('electron');
+  (require.cache as Record<string, unknown>)[electronId] = {
+    id: electronId,
+    filename: electronId,
+    loaded: true,
+    exports: electronStub
+  };
+} catch {
+  // electron not resolvable in this environment; ESM alias still applies.
+}
 
 vi.mock('electron-log', () => ({
   default: {
