@@ -40,10 +40,6 @@ jobs:
           key: ${{ runner.os }}-electron-${{ hashFiles('yarn.lock') }}
           restore-keys: ${{ runner.os }}-electron-
       - run: yarn install --frozen-lockfile
-      # Materialize Electron's platform binary into node_modules/electron/dist;
-      # its postinstall can be skipped on a cache-restored tree, which fails
-      # launch with "Electron failed to install correctly".
-      - run: node node_modules/electron/install.js
       - run: yarn build
       # Electron needs system libraries; xvfb provides a display on the headless
       # runner. The app launches up to four windows, so a real display beats
