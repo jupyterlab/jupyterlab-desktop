@@ -17,12 +17,19 @@ jobs:
   e2e:
     name: 'Playwright (Linux)'
     runs-on: ubuntu-latest
+    # Bound the job so a stuck Electron launch/close fails fast instead of
+    # tying up a runner; this suite specifically guards shutdown hangs.
+    timeout-minutes: 15
+    env:
+      # Only Electron is launched here, never Playwright's bundled browsers, so
+      # skip their download during yarn install (faster, fewer network flakes).
+      PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: '1'
     steps:
       - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
       - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
         with:
-          # Node 24 (active LTS), not 26 (Current): keep the e2e runner on the
-          # stable line for Electron's install tooling and Playwright.
+          # Match the Node that the target Electron bundles (Electron 42 -> Node
+          # 24); do not run ahead of it. Node 26 broke Electron's install tooling.
           node-version: '24.x'
           cache: 'yarn'
       # Cache the @electron/get binary download so launch does not depend on a

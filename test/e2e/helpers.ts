@@ -7,27 +7,28 @@ import { tmpdir } from 'os';
 // A fresh userData dir per launch keeps tests independent. Electron's native
 // --user-data-dir flag is honored because the app reads app.getPath('userData')
 // (see getUserDataDir in utils) and only overrides it on Snap. Returns the app
-// plus the temp dir so the caller can clean it up in a finally block. If launch
-// fails, the temp dir is removed here so repeated runs don't accumulate dirs.
+// plus the temp userData dir so the caller can clean it up in a finally block.
+// If launch fails, the temp dir is removed here so repeated runs don't
+// accumulate dirs.
 export async function launchApp(): Promise<{
   app: ElectronApplication;
-  home: string;
+  userDataDir: string;
 }> {
-  const home = mkdtempSync(join(tmpdir(), 'jlab-e2e-'));
+  const userDataDir = mkdtempSync(join(tmpdir(), 'jlab-e2e-'));
   try {
     const app = await electron.launch({
-      args: ['.', `--user-data-dir=${home}`]
+      args: ['.', `--user-data-dir=${userDataDir}`]
     });
     await stubAllDialogs(app);
-    return { app, home };
+    return { app, userDataDir };
   } catch (error) {
-    cleanup(home);
+    cleanup(userDataDir);
     throw error;
   }
 }
 
-export function cleanup(home: string): void {
-  rmSync(home, { recursive: true, force: true });
+export function cleanup(userDataDir: string): void {
+  rmSync(userDataDir, { recursive: true, force: true });
 }
 
 // The app opens several windows (titlebar, welcome, session, manager) and most
