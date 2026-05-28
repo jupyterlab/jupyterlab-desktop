@@ -33,13 +33,12 @@ jobs:
           node-version: '24.x'
           cache: 'yarn'
       - run: yarn install --frozen-lockfile
-      - name: DIAG electron install state
+      - name: DIAG electron resolution
         run: |
-          echo "--- dist before ---"; ls -la node_modules/electron/dist 2>&1 | head -5 || echo "NO DIST"
-          echo "--- path.txt ---"; cat node_modules/electron/path.txt 2>&1 || echo "NO path.txt"
-          echo "--- run install.js ---"; ELECTRON_GET_USE_PROXY= node node_modules/electron/install.js 2>&1 || echo "install.js EXIT $?"
-          echo "--- dist after ---"; ls -la node_modules/electron/dist 2>&1 | head -5 || echo "STILL NO DIST"
-          echo "--- ~/.cache/electron ---"; ls -la ~/.cache/electron 2>&1 | head -5 || echo "no cache dir"
+          echo "--- require('electron') resolves to ---"; node -e "console.log(require('electron'))" 2>&1 || echo "REQUIRE FAILED $?"
+          echo "--- dist/electron binary ---"; ls -la node_modules/electron/dist/electron 2>&1 || echo "NO BINARY at dist/electron"
+          echo "--- how many electron dirs ---"; find node_modules -maxdepth 3 -type d -name electron 2>/dev/null
+          echo "--- playwright version ---"; node -e "console.log(require('@playwright/test/package.json').version)" 2>&1
       - run: yarn build
       # Electron needs system libraries; xvfb provides a display on the headless
       # runner. The app launches up to four windows, so a real display beats
