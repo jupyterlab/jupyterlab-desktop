@@ -63,7 +63,7 @@ jobs:
           # this tracks a version bump instead of drifting. Fail loudly if the
           # pin format changes rather than silently installing latest.
           ver=$(awk '$1=="-" && $2=="jupyterlab" {print $3}' env_installer/jlab_server.yaml)
-          test -n "$ver" || { echo "no jupyterlab pin in jlab_server.yaml"; exit 1; }
+          [[ "$ver" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "unexpected jupyterlab pin '$ver' in jlab_server.yaml (want exact x.y.z)"; exit 1; }
           python3 -m venv "$RUNNER_TEMP/jlab-venv"
           "$RUNNER_TEMP/jlab-venv/bin/pip" install --quiet "jupyterlab==$ver"
           echo "JLAB_TEST_PYTHON_PATH=$RUNNER_TEMP/jlab-venv/bin/python" >> "$GITHUB_ENV"
