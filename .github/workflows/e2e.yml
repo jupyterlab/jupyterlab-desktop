@@ -58,8 +58,14 @@ jobs:
       # app-data.json points the app at this interpreter.
       - name: Provision a Python env for the env-backed e2e
         run: |
+          set -euo pipefail
+          # Install the same jupyterlab the app bundles, read from the env spec so
+          # this tracks a version bump instead of drifting. Fail loudly if the
+          # pin format changes rather than silently installing latest.
+          ver=$(awk '$1=="-" && $2=="jupyterlab" {print $3}' env_installer/jlab_server.yaml)
+          test -n "$ver" || { echo "no jupyterlab pin in jlab_server.yaml"; exit 1; }
           python3 -m venv "$RUNNER_TEMP/jlab-venv"
-          "$RUNNER_TEMP/jlab-venv/bin/pip" install --quiet "jupyterlab==4.5.7"
+          "$RUNNER_TEMP/jlab-venv/bin/pip" install --quiet "jupyterlab==$ver"
           echo "JLAB_TEST_PYTHON_PATH=$RUNNER_TEMP/jlab-venv/bin/python" >> "$GITHUB_ENV"
       - run: xvfb-run -a yarn test:e2e
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
