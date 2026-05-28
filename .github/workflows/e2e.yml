@@ -45,7 +45,10 @@ jobs:
           rm -rf node_modules/electron/dist node_modules/electron/path.txt ~/.cache/electron
           cat node_modules/electron/package.json | grep '"version"'
           node node_modules/electron/install.js; echo "install.js exit=$?"
-          ls -la node_modules/electron/dist 2>&1 | head -8 || echo "NO DIST"
+          Z=$(ls ~/.cache/electron/*/*.zip 2>/dev/null | head -1); echo "ZIP=$Z"
+          ls -la "$Z" 2>&1; du -h "$Z" 2>&1
+          unzip -t "$Z" >/dev/null 2>&1 && echo "ZIP_OK" || echo "ZIP_CORRUPT"
+          unzip -l "$Z" 2>&1 | tail -3
           test -x node_modules/electron/dist/electron && echo "BINARY OK" || echo "BINARY MISSING"
       - run: yarn build
       # Electron needs system libraries; xvfb provides a display on the headless
