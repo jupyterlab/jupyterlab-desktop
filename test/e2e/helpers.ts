@@ -31,7 +31,6 @@ export async function launchApp(opts?: {
             path: opts.pythonPath,
             name: 'e2e-env',
             type: 'path',
-            versions: { jupyterlab: '4.5.7' },
             defaultKernel: 'python3'
           }
         ]
