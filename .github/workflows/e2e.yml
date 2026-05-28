@@ -37,19 +37,20 @@ jobs:
       # not the `electron` binary), and its postinstall then skips re-extraction
       # because path.txt already exists, so launch fails with "Electron failed to
       # install correctly". Force a clean download and verify the binary exists.
-      - name: Install the Electron binary (clean)
-        env:
-          DEBUG: '@electron/get:*'
+      # electron's postinstall (extract-zip) leaves dist without the `electron`
+      # binary on this runner even though the downloaded zip is complete and
+      # valid. Let install.js fetch the zip into the cache, then extract it with
+      # the system `unzip` and point path.txt at the binary.
+      - name: Install the Electron binary
         run: |
-          set -x
-          rm -rf node_modules/electron/dist node_modules/electron/path.txt ~/.cache/electron
-          cat node_modules/electron/package.json | grep '"version"'
-          node node_modules/electron/install.js; echo "install.js exit=$?"
-          Z=$(ls ~/.cache/electron/*/*.zip 2>/dev/null | head -1); echo "ZIP=$Z"
-          ls -la "$Z" 2>&1; du -h "$Z" 2>&1
-          unzip -t "$Z" >/dev/null 2>&1 && echo "ZIP_OK" || echo "ZIP_CORRUPT"
-          unzip -l "$Z" 2>&1 | tail -3
-          test -x node_modules/electron/dist/electron && echo "BINARY OK" || echo "BINARY MISSING"
+          set -euo pipefail
+          node node_modules/electron/install.js || true
+          zip=$(ls ~/.cache/electron/*/electron-*-linux-x64.zip | head -1)
+          rm -rf node_modules/electron/dist
+          mkdir -p node_modules/electron/dist
+          unzip -q -o "$zip" -d node_modules/electron/dist
+          printf 'electron' > node_modules/electron/path.txt
+          test -x node_modules/electron/dist/electron
       - run: yarn build
       # Electron needs system libraries; xvfb provides a display on the headless
       # runner. The app launches up to four windows, so a real display beats
