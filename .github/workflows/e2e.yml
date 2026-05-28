@@ -33,14 +33,11 @@ jobs:
           node-version: '24.x'
           cache: 'yarn'
       - run: yarn install --frozen-lockfile
-      # yarn install can leave Electron's dist half-extracted (resource files but
-      # not the `electron` binary), and its postinstall then skips re-extraction
-      # because path.txt already exists, so launch fails with "Electron failed to
-      # install correctly". Force a clean download and verify the binary exists.
       # electron's postinstall (extract-zip) leaves dist without the `electron`
       # binary on this runner even though the downloaded zip is complete and
-      # valid. Let install.js fetch the zip into the cache, then extract it with
-      # the system `unzip` and point path.txt at the binary.
+      # valid, so launch fails with "Electron failed to install correctly". Let
+      # install.js fetch the zip into the cache, then extract it with the system
+      # `unzip` and point path.txt at the binary.
       - name: Install the Electron binary
         run: |
           set -euo pipefail
