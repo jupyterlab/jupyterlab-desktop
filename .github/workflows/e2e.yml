@@ -33,12 +33,15 @@ jobs:
           node-version: '24.x'
           cache: 'yarn'
       - run: yarn install --frozen-lockfile
-      - name: DIAG electron resolution
+      # yarn install can leave Electron's dist half-extracted (resource files but
+      # not the `electron` binary), and its postinstall then skips re-extraction
+      # because path.txt already exists, so launch fails with "Electron failed to
+      # install correctly". Force a clean download and verify the binary exists.
+      - name: Install the Electron binary (clean)
         run: |
-          echo "--- require('electron') resolves to ---"; node -e "console.log(require('electron'))" 2>&1 || echo "REQUIRE FAILED $?"
-          echo "--- dist/electron binary ---"; ls -la node_modules/electron/dist/electron 2>&1 || echo "NO BINARY at dist/electron"
-          echo "--- how many electron dirs ---"; find node_modules -maxdepth 3 -type d -name electron 2>/dev/null
-          echo "--- playwright version ---"; node -e "console.log(require('@playwright/test/package.json').version)" 2>&1
+          rm -rf node_modules/electron/dist node_modules/electron/path.txt ~/.cache/electron
+          node node_modules/electron/install.js
+          test -x node_modules/electron/dist/electron
       - run: yarn build
       # Electron needs system libraries; xvfb provides a display on the headless
       # runner. The app launches up to four windows, so a real display beats
