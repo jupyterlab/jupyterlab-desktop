@@ -1,6 +1,18 @@
+import { fileURLToPath } from 'url';
 import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
+  resolve: {
+    alias: {
+      // Route `require('electron')` (preload scripts) and ESM imports to one
+      // stub of vi.fn instances; native require would return the binary path
+      // string and bypass vi.mock. The vi.mock in electron-mock.ts targets the
+      // same stub, so both resolution paths share instances.
+      electron: fileURLToPath(
+        new URL('./test/setup/electron-stub.ts', import.meta.url)
+      )
+    }
+  },
   test: {
     environment: 'node',
     globals: true,
