@@ -1,0 +1,78 @@
+name: E2E
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  e2e:
+    name: 'Playwright (Linux)'
+    runs-on: ubuntu-latest
+    # Bound the job so a stuck Electron launch/close fails fast instead of
+    # tying up a runner; this suite specifically guards shutdown hangs.
+    timeout-minutes: 15
+    env:
+      # Only Electron is launched here, never Playwright's bundled browsers, so
+      # skip their download during yarn install (faster, fewer network flakes).
+      PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: '1'
+    steps:
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        with:
+          # Match the Node that the target Electron bundles (Electron 42 -> Node
+          # 24); do not run ahead of it. Node 26 broke Electron's install tooling.
+          node-version: '24.x'
+          cache: 'yarn'
+      - run: yarn install --frozen-lockfile
+      # electron's postinstall (extract-zip) leaves dist without the `electron`
+      # binary on this runner even though the downloaded zip is complete and
+      # valid, so launch fails with "Electron failed to install correctly". Let
+      # install.js fetch the zip into the cache, then extract it with the system
+      # `unzip` and point path.txt at the binary.
+      - name: Install the Electron binary
+        run: |
+          set -euo pipefail
+          node node_modules/electron/install.js || true
+          zip=$(ls ~/.cache/electron/*/electron-*-linux-x64.zip | head -1)
+          rm -rf node_modules/electron/dist
+          mkdir -p node_modules/electron/dist
+          unzip -q -o "$zip" -d node_modules/electron/dist
+          printf 'electron' > node_modules/electron/path.txt
+          test -x node_modules/electron/dist/electron
+      - run: yarn build
+      # Electron needs system libraries; xvfb provides a display on the headless
+      # runner. The app launches up to four windows, so a real display beats
+      # --headless here.
+      - run: npx playwright install-deps
+      # A minimal Python env with jupyterlab so the env-backed tests run (a venv
+      # + pip is lighter than a full conda env for a smoke). The seeded
+      # app-data.json points the app at this interpreter.
+      - name: Provision a Python env for the env-backed e2e
+        run: |
+          set -euo pipefail
+          # Install the same jupyterlab the app bundles, read from the env spec so
+          # this tracks a version bump instead of drifting. Fail loudly if the
+          # pin format changes rather than silently installing latest.
+          ver=$(awk '$1=="-" && $2=="jupyterlab" {print $3}' env_installer/jlab_server.yaml)
+          [[ "$ver" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "unexpected jupyterlab pin '$ver' in jlab_server.yaml (want exact x.y.z)"; exit 1; }
+          python3 -m venv "$RUNNER_TEMP/jlab-venv"
+          "$RUNNER_TEMP/jlab-venv/bin/pip" install --quiet "jupyterlab==$ver"
+          echo "JLAB_TEST_PYTHON_PATH=$RUNNER_TEMP/jlab-venv/bin/python" >> "$GITHUB_ENV"
+      - run: xvfb-run -a yarn test:e2e
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: ${{ !cancelled() }}
+        with:
+          name: playwright-report
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 14

@@ -8,6 +8,8 @@ node_modules
 .cache
 .eslintcache
 coverage
+test-results
+playwright-report
 .vscode/*
 !.vscode/launch.json
 *.py[co]
