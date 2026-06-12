@@ -126,7 +126,7 @@ lib/libcurl.4.dylib
 lib/libdeflate.0.dylib
 lib/libedit.0.dylib
 lib/libev.4.dylib
-lib/libexpat.1.11.3.dylib
+lib/libexpat.1.12.1.dylib
 lib/libffi.8.dylib
 lib/libfmt.12.1.0.dylib
 lib/libform.6.dylib
@@ -157,7 +157,7 @@ lib/liblcms2.2.dylib
 lib/liblz4.1.10.0.dylib
 lib/liblzma.5.dylib
 lib/liblzo2.2.0.0.dylib
-lib/libmamba.4.0.2.dylib
+lib/libmamba.4.0.1.dylib
 lib/libmenu.6.dylib
 lib/libmenuw.6.dylib
 lib/libmsgpack-c.2.0.0.dylib
@@ -165,7 +165,7 @@ lib/libncurses.6.dylib
 lib/libncursesw.6.dylib
 lib/libnghttp2.14.dylib
 lib/libomp.dylib
-lib/libopenblasp-r0.3.32.dylib
+lib/libopenblasp-r0.3.33.dylib
 lib/libopenjp2.2.5.4.dylib
 lib/libpanel.6.dylib
 lib/libpanelw.6.dylib
@@ -174,15 +174,15 @@ lib/libpython3.12.dylib
 lib/libqhull_r.8.0.2.dylib
 lib/libquadmath.0.dylib
 lib/libreadline.8.3.dylib
-lib/libreproc++.14.2.4.dylib
-lib/libreproc.14.2.4.dylib
+lib/libreproc++.14.2.7.dylib
+lib/libreproc.14.2.7.dylib
 lib/libsharpyuv.0.1.2.dylib
 lib/libsimdjson.33.0.0.dylib
 lib/libsodium.26.dylib
 lib/libsolv.1.dylib
 lib/libsolvext.1.dylib
 lib/libspdlog.1.17.0.dylib
-lib/libsqlite3.3.53.0.dylib
+lib/libsqlite3.3.53.2.dylib
 lib/libssh2.1.0.1.dylib
 lib/libssl.3.dylib
 lib/libtcl8.6.dylib
@@ -423,6 +423,8 @@ lib/python3.12/site-packages/pandas/_libs/window/indexers.cpython-312-darwin.so
 lib/python3.12/site-packages/pandas/_libs/writers.cpython-312-darwin.so
 lib/python3.12/site-packages/psutil/_psutil_osx.abi3.so
 lib/python3.12/site-packages/pycosat.cpython-312-darwin.so
+lib/python3.12/site-packages/pydantic_core/_pydantic_core.cpython-312-darwin.so
+lib/python3.12/site-packages/rattler/rattler.abi3.so
 lib/python3.12/site-packages/rpds/rpds.cpython-312-darwin.so
 lib/python3.12/site-packages/scipy/_cyutility.cpython-312-darwin.so
 lib/python3.12/site-packages/scipy/_lib/_ccallback_c.cpython-312-darwin.so
