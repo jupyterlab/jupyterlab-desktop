@@ -1,6 +1,7 @@
+import electron = require('electron');
 import { IRecentRemoteURL } from '../config/appdata';
 import { EventTypeMain, EventTypeRenderer } from '../eventtypes';
-const { contextBridge, ipcRenderer } = require('electron');
+const { contextBridge, ipcRenderer } = electron;
 
 type RecentRemoteURLsUpdatedListener = (
   recentServers: IRecentRemoteURL[]

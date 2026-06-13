@@ -5,6 +5,9 @@
 **/static
 **/dist
 **/.ipynb_checkpoints
+coverage
+test-results
+playwright-report
 
 # ms IDE stuff
 .history/

@@ -1,7 +1,8 @@
+import electron = require('electron');
 import { EventTypeMain, EventTypeRenderer } from '../eventtypes';
 import { IPythonEnvironment } from '../tokens';
 
-const { contextBridge, ipcRenderer } = require('electron');
+const { contextBridge, ipcRenderer } = electron;
 
 type InstallBundledPythonEnvStatusListener = (
   status: string,
