@@ -14,6 +14,7 @@
     "watch:tsc": "tsc -w",
     "watch:assets": "node ./scripts/extract.js && node ./scripts/copyassets.js watch",
     "watch": "concurrently \"yarn watch:tsc\" \"yarn watch:assets\" ",
+    "type-check": "tsc --noEmit",
     "build": "tsc && yarn bundle:preload && node ./scripts/extract.js && node ./scripts/copyassets.js",
     "build:all": "yarn clean && yarn build && yarn start",
     "bundle:preload": "webpack --config webpack.preload.js",
