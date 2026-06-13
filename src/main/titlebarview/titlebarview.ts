@@ -5,17 +5,21 @@ import { BrowserView } from 'electron';
 import * as path from 'path';
 import * as fs from 'fs';
 import * as ejs from 'ejs';
-import { DarkThemeBGColor, LightThemeBGColor } from '../utils';
+import {
+  DarkThemeBGColor,
+  hardenedWebPreferences,
+  LightThemeBGColor
+} from '../utils';
 import { EventTypeRenderer } from '../eventtypes';
 
 export class TitleBarView {
   constructor(options: TitleBarView.IOptions) {
     this._isDarkTheme = options.isDarkTheme;
     this._view = new BrowserView({
-      webPreferences: {
+      webPreferences: hardenedWebPreferences({
         preload: path.join(__dirname, './preload.js'),
         devTools: process.env.NODE_ENV === 'development'
-      }
+      })
     });
 
     this._view.setBackgroundColor(

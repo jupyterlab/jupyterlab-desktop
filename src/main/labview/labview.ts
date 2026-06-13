@@ -14,6 +14,7 @@ import * as fs from 'fs';
 import {
   clearSession,
   DarkThemeBGColor,
+  hardenedWebPreferences,
   isDarkTheme,
   LightThemeBGColor
 } from '../utils';
@@ -57,10 +58,10 @@ export class LabView implements IDisposable {
       }
     }
     this._view = new BrowserView({
-      webPreferences: {
+      webPreferences: hardenedWebPreferences({
         preload: path.join(__dirname, './preload.js'),
         partition
-      }
+      })
     });
 
     this._view.setBackgroundColor(
