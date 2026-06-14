@@ -107,15 +107,18 @@ jobs:
           echo "JLAB_TEST_PYTHON_PATH=$RUNNER_TEMP/jlab-venv/bin/python" >> "$GITHUB_ENV"
       - name: Diagnose electron resolution on macOS
         if: matrix.os == 'macos-latest'
+        shell: bash
         run: |
-          echo "--- path.txt (cat -A) ---"; cat -A node_modules/electron/path.txt; echo
+          set +e
+          echo "--- path.txt bytes ---"; wc -c node_modules/electron/path.txt; od -c node_modules/electron/path.txt
           echo "--- dist/version ---"; cat node_modules/electron/dist/version; echo
           echo "--- dist top ---"; ls -la node_modules/electron/dist | head
           echo "--- binary ---"; ls -la "node_modules/electron/dist/Electron.app/Contents/MacOS/Electron"
           echo "--- require.resolve(electron) ---"; node -e "console.log(require.resolve('electron'))"
           echo "--- require(electron) ---"; node -e "console.log(require('electron'))" || echo "REQUIRE THREW"
           echo "--- all electron path.txt in tree ---"; find node_modules -name path.txt -path "*electron*" 2>/dev/null
-          echo "--- playwright electron resolution ---"; node -e "const r=require('@playwright/test'); console.log('pw ok')" || echo "PW REQUIRE THREW"
+          echo "--- ELECTRON env vars ---"; env | grep -i electron || echo "none"
+          echo "done"
       # xvfb is Linux-only; on macOS the runner has a real display, so run the
       # suite directly. Same yarn test:e2e command on both legs.
       - name: Run the e2e suite
