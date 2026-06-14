@@ -30,6 +30,17 @@ export function isDevMode(): boolean {
   return require.main.filename.indexOf('app.asar') === -1;
 }
 
+export function hardenedWebPreferences(
+  extra?: Electron.WebPreferences
+): Electron.WebPreferences {
+  return {
+    contextIsolation: true,
+    nodeIntegration: false,
+    sandbox: true,
+    ...extra
+  };
+}
+
 export function getAppDir(): string {
   let appDir = app.getAppPath();
   if (!isDevMode()) {

@@ -4,7 +4,11 @@
 import { BrowserWindow } from 'electron';
 import * as fs from 'fs';
 import * as path from 'path';
-import { DarkThemeBGColor, LightThemeBGColor } from '../utils';
+import {
+  DarkThemeBGColor,
+  hardenedWebPreferences,
+  LightThemeBGColor
+} from '../utils';
 
 export class ThemedWindow {
   constructor(options: ThemedWindow.IOptions) {
@@ -22,9 +26,9 @@ export class ThemedWindow {
       titleBarStyle: 'hidden',
       frame: process.platform === 'darwin',
       backgroundColor: this._isDarkTheme ? DarkThemeBGColor : LightThemeBGColor,
-      webPreferences: {
+      webPreferences: hardenedWebPreferences({
         preload: options.preload || path.join(__dirname, './preload.js')
-      }
+      })
     });
 
     // hide the traffic lights

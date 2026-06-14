@@ -2,7 +2,7 @@
 // Distributed under the terms of the Modified BSD License.
 
 import { BrowserWindow, Cookie } from 'electron';
-import { clearSession } from './utils';
+import { clearSession, hardenedWebPreferences } from './utils';
 
 export let connectWindow: BrowserWindow;
 
@@ -39,20 +39,19 @@ export async function connectAndGetServerInfo(
       return;
     }
 
-    const browserOptions: Electron.BrowserWindowConstructorOptions = {
-      title: 'JupyterLab Server Connection',
-      show: options?.showDialog === true
-    };
+    let partition: string | undefined;
     if (options?.incognito) {
-      browserOptions.webPreferences = {
-        partition: `partition-${Date.now()}`
-      };
+      partition = `partition-${Date.now()}`;
     }
     if (options?.partition) {
-      browserOptions.webPreferences = {
-        partition: options.partition
-      };
+      partition = options.partition;
     }
+
+    const browserOptions: Electron.BrowserWindowConstructorOptions = {
+      title: 'JupyterLab Server Connection',
+      show: options?.showDialog === true,
+      webPreferences: hardenedWebPreferences({ partition })
+    };
 
     const window = new BrowserWindow(browserOptions);
 

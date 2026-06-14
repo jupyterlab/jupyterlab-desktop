@@ -28,6 +28,7 @@ import {
   envPathForPythonPath,
   getBundledPythonPath,
   getLogFilePath,
+  hardenedWebPreferences,
   isDarkTheme,
   LightThemeBGColor
 } from '../utils';
@@ -129,9 +130,9 @@ export class SessionWindow implements IDisposable {
       titleBarStyle: 'hidden',
       frame: process.platform === 'darwin',
       backgroundColor: this._isDarkTheme ? DarkThemeBGColor : LightThemeBGColor,
-      webPreferences: {
+      webPreferences: hardenedWebPreferences({
         devTools: false
-      }
+      })
     });
 
     this._window.setMenuBarVisibility(false);
