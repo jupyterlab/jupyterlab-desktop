@@ -60,34 +60,30 @@ jobs:
             echo "linux electron binary present, no repair needed"
           fi
           test -x node_modules/electron/dist/electron
-      # On the macOS runner extract-zip leaves dist/Electron.app and dist/version
-      # in place but does not write node_modules/electron/path.txt, so
-      # require('electron') throws "failed to install correctly" (index.js reads
-      # path.txt, not the binary). Re-extract with ditto only if the binary is
-      # actually missing (ditto preserves the Electron Framework symlinks that
-      # plain unzip mangles), then always (re)write path.txt, whose macOS value
-      # is constant. The echo reports which case fired so the log shows the real
-      # on-disk state.
+      # extract-zip produces a broken Electron.app on the macOS runner: the
+      # launcher at Contents/MacOS/Electron is present but Contents/Frameworks/
+      # Electron Framework.framework is incomplete, so dyld fails with "Library
+      # not loaded" at launch, and path.txt is never written either. Re-extract
+      # the cached darwin zip with ditto, which reproduces a complete .app
+      # (framework binary plus the Versions/Current symlinks plain unzip mangles)
+      # locally, then write path.txt (its macOS value is constant) and verify
+      # both the launcher and the framework binary are in place.
       - name: Repair the Electron install on macOS
         if: matrix.os == 'macos-latest'
         run: |
           set -euo pipefail
-          bin="node_modules/electron/dist/Electron.app/Contents/MacOS/Electron"
-          if [ ! -x "$bin" ]; then
-            case "$(uname -m)" in
-              arm64) az=arm64 ;;
-              *) az=x64 ;;
-            esac
-            zip=$(ls ~/Library/Caches/electron/electron-*-darwin-$az.zip | head -1)
-            echo "macos electron binary missing, re-extracting from $zip"
-            rm -rf node_modules/electron/dist
-            mkdir -p node_modules/electron/dist
-            ditto -x -k "$zip" node_modules/electron/dist
-          else
-            echo "macos electron binary present, writing path.txt only"
-          fi
+          case "$(uname -m)" in
+            arm64) az=arm64 ;;
+            *) az=x64 ;;
+          esac
+          zip=$(ls ~/Library/Caches/electron/electron-*-darwin-$az.zip | head -1)
+          echo "re-extracting electron from $zip"
+          rm -rf node_modules/electron/dist
+          mkdir -p node_modules/electron/dist
+          ditto -x -k "$zip" node_modules/electron/dist
           printf 'Electron.app/Contents/MacOS/Electron' > node_modules/electron/path.txt
-          test -x "$bin"
+          test -x "node_modules/electron/dist/Electron.app/Contents/MacOS/Electron"
+          test -f "node_modules/electron/dist/Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Electron Framework"
           node -e "console.log('resolved electron:', require('electron'))"
       - run: yarn build
       # Electron needs system libraries; xvfb provides a display on the headless
