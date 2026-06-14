@@ -50,13 +50,40 @@ jobs:
         run: |
           set -euo pipefail
           if [ ! -x node_modules/electron/dist/electron ]; then
+            echo "linux electron binary missing, repairing from the cached zip"
             zip=$(ls ~/.cache/electron/*/electron-*-linux-x64.zip | head -1)
             rm -rf node_modules/electron/dist
             mkdir -p node_modules/electron/dist
             unzip -q -o "$zip" -d node_modules/electron/dist
             printf 'electron' > node_modules/electron/path.txt
+          else
+            echo "linux electron binary present, no repair needed"
           fi
           test -x node_modules/electron/dist/electron
+      # extract-zip drops the binary on macOS too. Re-extract the cached darwin
+      # zip with ditto (preserves the Electron Framework symlinks that plain
+      # unzip mangles) and point path.txt at the app binary. The echo reports
+      # whether the repair actually fired, so the CI log shows the real state.
+      - name: Repair the Electron binary on macOS if needed
+        if: matrix.os == 'macos-latest'
+        run: |
+          set -euo pipefail
+          bin="node_modules/electron/dist/Electron.app/Contents/MacOS/Electron"
+          if [ ! -x "$bin" ]; then
+            case "$(uname -m)" in
+              arm64) az=arm64 ;;
+              *) az=x64 ;;
+            esac
+            zip=$(ls ~/Library/Caches/electron/electron-*-darwin-$az.zip | head -1)
+            echo "macos electron binary missing, repairing from $zip"
+            rm -rf node_modules/electron/dist
+            mkdir -p node_modules/electron/dist
+            ditto -x -k "$zip" node_modules/electron/dist
+            printf 'Electron.app/Contents/MacOS/Electron' > node_modules/electron/path.txt
+          else
+            echo "macos electron binary present, no repair needed"
+          fi
+          test -x "$bin"
       - run: yarn build
       # Electron needs system libraries; xvfb provides a display on the headless
       # runner. The app launches up to four windows, so a real display beats
