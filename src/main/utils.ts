@@ -72,6 +72,79 @@ export function getEnvironmentPath(environment: IPythonEnvironment): string {
   return envPathForPythonPath(environment.path);
 }
 
+export function getUniquePythonEnvironments(
+  envs: IPythonEnvironment[]
+): IPythonEnvironment[] {
+  const uniquePythonPaths = new Set<string>();
+
+  return envs.filter(env => {
+    if (!uniquePythonPaths.has(env.path)) {
+      uniquePythonPaths.add(env.path);
+      return true;
+    }
+
+    return false;
+  });
+}
+
+export function getPixiManifestPath(workspacePath: string): string {
+  try {
+    const pixiTomlPath = path.join(workspacePath, 'pixi.toml');
+    if (fs.existsSync(pixiTomlPath) && fs.statSync(pixiTomlPath).isFile()) {
+      return pixiTomlPath;
+    }
+
+    const pyprojectTomlPath = path.join(workspacePath, 'pyproject.toml');
+    if (
+      fs.existsSync(pyprojectTomlPath) &&
+      fs.statSync(pyprojectTomlPath).isFile()
+    ) {
+      const pyprojectToml = fs.readFileSync(pyprojectTomlPath, 'utf8');
+      if (/^\s*\[\[?\s*tool\.pixi(?:\s*\]|\.)/m.test(pyprojectToml)) {
+        return pyprojectTomlPath;
+      }
+    }
+  } catch (error) {
+    log.error(`Failed to inspect pixi manifest in "${workspacePath}".`, error);
+  }
+
+  return '';
+}
+
+export function findPixiManifestPath(startPath: string): string {
+  let workspacePath = path.resolve(startPath);
+  let reachedRoot = false;
+
+  while (!reachedRoot) {
+    const manifestPath = getPixiManifestPath(workspacePath);
+    if (manifestPath) {
+      return manifestPath;
+    }
+
+    const parentPath = path.dirname(workspacePath);
+    reachedRoot = parentPath === workspacePath;
+    workspacePath = parentPath;
+  }
+
+  return '';
+}
+
+export function getPixiManifestPathForEnvPath(envPath: string): string {
+  const normalizedEnvPath = path.normalize(envPath);
+  const envsPath = path.dirname(normalizedEnvPath);
+  const pixiPath = path.dirname(envsPath);
+
+  if (
+    !path.basename(normalizedEnvPath) ||
+    path.basename(envsPath) !== 'envs' ||
+    path.basename(pixiPath) !== '.pixi'
+  ) {
+    return '';
+  }
+
+  return getPixiManifestPath(path.dirname(pixiPath));
+}
+
 export function getBundledEnvInstallerPath(): string {
   const appDir = getAppDir();
   return path.join(appDir, 'env_installer', 'jlab_server.tar.gz');

@@ -17,9 +17,12 @@ import {
 } from './tokens';
 import {
   envPathForPythonPath,
+  findPixiManifestPath,
   getBundledPythonEnvPath,
   getBundledPythonPath,
   getEnvironmentPath,
+  getPixiManifestPathForEnvPath,
+  getUniquePythonEnvironments,
   getUserHomeDir,
   isBaseCondaEnv,
   isCondaEnv,
@@ -60,6 +63,9 @@ export interface IRegistry {
   getRequirementsInstallCommand: (envPath: string) => string;
   getEnvironmentInfo(pythonPath: string): Promise<IPythonEnvironment>;
   getRunningServerList(): Promise<string[]>;
+  discoverProjectEnvironments: (
+    workingDirectory: string
+  ) => Promise<IPythonEnvironment[]>;
   dispose(): Promise<void>;
   environmentListUpdated: ISignal<this, void>;
   clearUserSetPythonEnvs(): void;
@@ -77,7 +83,10 @@ export class Registry implements IRegistry, IDisposable {
     this._environments = [
       ...appData.discoveredPythonEnvs,
       ...appData.userSetPythonEnvs
-    ].filter(env => this._pathExistsSync(env.path));
+    ].filter(
+      env =>
+        env.type !== IEnvironmentType.PixiEnv && this._pathExistsSync(env.path)
+    );
 
     // initialize default environment to user set or bundled
     // TODO: try to use userSettings.pythonPath and bundled python path separately
@@ -179,10 +188,9 @@ export class Registry implements IRegistry, IDisposable {
       .then(async environments => {
         let discoveredEnvs = [].concat(...environments);
 
-        this._userSetEnvironments = await this._resolveEnvironments(
-          this._getUserSetPythonEnvs(),
-          true
-        );
+        this._userSetEnvironments = (
+          await this._resolveEnvironments(this._getUserSetPythonEnvs(), true)
+        ).filter(env => env.type !== IEnvironmentType.PixiEnv);
 
         // filter out user set environments
         discoveredEnvs = discoveredEnvs.filter(env => {
@@ -192,7 +200,9 @@ export class Registry implements IRegistry, IDisposable {
         });
 
         discoveredEnvs = await this._resolveEnvironments(discoveredEnvs, true);
-        this._discoveredEnvironments = discoveredEnvs;
+        this._discoveredEnvironments = discoveredEnvs.filter(
+          env => env.type !== IEnvironmentType.PixiEnv
+        );
 
         this._updateEnvironments();
 
@@ -283,7 +293,7 @@ export class Registry implements IRegistry, IDisposable {
     sort?: boolean
   ): Promise<IPythonEnvironment[]> {
     let filteredEnvs = envs.filter(env => this._pathExistsSync(env.path));
-    const uniqueEnvs = this._getUniqueEnvs(filteredEnvs);
+    const uniqueEnvs = getUniquePythonEnvironments(filteredEnvs);
     const resolvedEnvs = await Promise.all(
       uniqueEnvs.map(async env => await this._resolveEnvironment(env.path))
     );
@@ -343,13 +353,15 @@ export class Registry implements IRegistry, IDisposable {
       JUPYTER_ENV_REQUIREMENTS.forEach(req => {
         versionsFound.push(`${req.name}: ${env.versions[req.name]}`);
       });
+      const installCommand = this.getRequirementsInstallCommand(envPath);
+      const installHint = installCommand
+        ? ` You can install missing packages using '${installCommand}'.`
+        : ' Update the pixi manifest and run pixi install.';
 
       log.error(
         `Required Python packages not found in the environment path "${envPath}". Versions found are: ${versionsFound.join(
           ','
-        )}. You can install missing packages using '${this.getRequirementsInstallCommand(
-          envPath
-        )}'.`
+        )}.${installHint}`
       );
       throw {
         type: PythonEnvResolveErrorType.RequirementsNotSatisfied
@@ -444,19 +456,18 @@ export class Registry implements IRegistry, IDisposable {
       return inUserSetEnvList;
     }
 
-    try {
-      const env = this._resolveEnvironmentSync(pythonPath);
-      if (env) {
-        if (!this._defaultEnv) {
-          this._defaultEnv = env;
-        }
-        this._userSetEnvironments.push(env);
-        this._updateEnvironments();
-        this._environmentListUpdated.emit();
+    const env = this._resolveEnvironmentSync(pythonPath);
+    if (env) {
+      if (env.type === IEnvironmentType.PixiEnv) {
         return env;
       }
-    } catch (error) {
-      //
+      if (!this._defaultEnv) {
+        this._defaultEnv = env;
+      }
+      this._userSetEnvironments.push(env);
+      this._updateEnvironments();
+      this._environmentListUpdated.emit();
+      return env;
     }
   }
 
@@ -581,6 +592,10 @@ export class Registry implements IRegistry, IDisposable {
   }
 
   getRequirementsInstallCommand(envPath: string): string {
+    if (getPixiManifestPathForEnvPath(envPath)) {
+      return '';
+    }
+
     const isConda = isCondaEnv(envPath);
     const condaChannels = getCondaChannels();
     const channels = condaChannels.map(channel => `-c ${channel}`);
@@ -674,8 +689,49 @@ export class Registry implements IRegistry, IDisposable {
     return bundledEnvInstallationLatest;
   }
 
+  async discoverProjectEnvironments(
+    workingDirectory: string
+  ): Promise<IPythonEnvironment[]> {
+    if (!workingDirectory) {
+      return [];
+    }
+
+    const discovery = this._projectEnvironmentDiscoveries.get(workingDirectory);
+    if (discovery) {
+      return discovery;
+    }
+
+    const newDiscovery = this._discoverProjectEnvironments(
+      workingDirectory
+    ).finally(() => {
+      this._projectEnvironmentDiscoveries.delete(workingDirectory);
+    });
+    this._projectEnvironmentDiscoveries.set(workingDirectory, newDiscovery);
+
+    return newDiscovery;
+  }
+
+  private async _discoverProjectEnvironments(
+    workingDirectory: string
+  ): Promise<IPythonEnvironment[]> {
+    await this._registryBuilt;
+
+    const pixiEnvs = await this._resolveEnvironments(
+      this._loadPixiEnvironments(workingDirectory),
+      true
+    );
+    return pixiEnvs.filter(env => {
+      return (
+        !this._discoveredEnvironments.find(
+          existing => existing.path === env.path
+        ) &&
+        !this._userSetEnvironments.find(existing => existing.path === env.path)
+      );
+    });
+  }
+
   private _updateEnvironments() {
-    this._environments = this._getUniqueEnvs([
+    this._environments = getUniquePythonEnvironments([
       ...this._userSetEnvironments,
       ...this._discoveredEnvironments
     ]);
@@ -724,6 +780,50 @@ export class Registry implements IRegistry, IDisposable {
 
       return newPythonEnvironment;
     });
+  }
+
+  private _loadPixiEnvironments(
+    workingDirectory: string
+  ): IPythonEnvironment[] {
+    const manifestPath = findPixiManifestPath(workingDirectory);
+    if (!manifestPath) {
+      return [];
+    }
+
+    const envsPath = path.join(path.dirname(manifestPath), '.pixi', 'envs');
+    try {
+      if (!fs.existsSync(envsPath) || !fs.statSync(envsPath).isDirectory()) {
+        return [];
+      }
+
+      return fs
+        .readdirSync(envsPath)
+        .filter(envName => {
+          const envPath = path.join(envsPath, envName);
+          try {
+            return fs.statSync(envPath).isDirectory();
+          } catch (error) {
+            return false;
+          }
+        })
+        .map(envName => {
+          const envPath = path.join(envsPath, envName);
+          return {
+            name: `pixi: ${envName}`,
+            path: pythonPathForEnvPath(envPath, true),
+            type: IEnvironmentType.PixiEnv,
+            versions: {},
+            defaultKernel: 'python3'
+          } as IPythonEnvironment;
+        })
+        .filter(env => this._pathExistsSync(env.path));
+    } catch (error) {
+      log.error(
+        `Failed to discover pixi environments in "${envsPath}".`,
+        error
+      );
+      return [];
+    }
   }
 
   private async _loadCondaEnvironments(): Promise<IPythonEnvironment[]> {
@@ -1105,6 +1205,8 @@ export class Registry implements IRegistry, IDisposable {
         return 2;
       case IEnvironmentType.CondaEnv:
         return 3;
+      case IEnvironmentType.PixiEnv:
+        return 4;
       default:
         return 100;
     }
@@ -1116,19 +1218,6 @@ export class Registry implements IRegistry, IDisposable {
     return pythonPaths.filter(pythonPath => {
       if (!uniquePythonPaths.has(pythonPath)) {
         uniquePythonPaths.add(pythonPath);
-        return true;
-      }
-
-      return false;
-    });
-  }
-
-  private _getUniqueEnvs(envs: IPythonEnvironment[]): IPythonEnvironment[] {
-    const uniquePythonPaths = new Set<string>();
-
-    return envs.filter(env => {
-      if (!uniquePythonPaths.has(env.path)) {
-        uniquePythonPaths.add(env.path);
         return true;
       }
 
@@ -1153,6 +1242,10 @@ export class Registry implements IRegistry, IDisposable {
 
   private _environments: IPythonEnvironment[] = [];
   private _discoveredEnvironments: IPythonEnvironment[] = [];
+  private _projectEnvironmentDiscoveries = new Map<
+    string,
+    Promise<IPythonEnvironment[]>
+  >();
   private _userSetEnvironments: IPythonEnvironment[] = [];
   private _defaultEnv: IPythonEnvironment;
   private _registryBuilt: Promise<void>;

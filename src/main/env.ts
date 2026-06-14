@@ -456,6 +456,8 @@ export async function getEnvironmentInfoFromPythonPath(
         ? IEnvironmentType.CondaRoot
         : envInfo.type === 'conda-env'
         ? IEnvironmentType.CondaEnv
+        : envInfo.type === 'pixi-env'
+        ? IEnvironmentType.PixiEnv
         : IEnvironmentType.VirtualEnv;
     const envName = `${EnvironmentTypeName[envType]}: ${envInfo.name}`;
 
@@ -483,6 +485,8 @@ export function getEnvironmentInfoFromPythonPathSync(
       ? IEnvironmentType.CondaRoot
       : envInfo.type === 'conda-env'
       ? IEnvironmentType.CondaEnv
+      : envInfo.type === 'pixi-env'
+      ? IEnvironmentType.PixiEnv
       : IEnvironmentType.VirtualEnv;
   const envName = `${EnvironmentTypeName[envType]}: ${envInfo.name}`;
 

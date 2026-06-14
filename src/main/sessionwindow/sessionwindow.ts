@@ -146,7 +146,10 @@ export class SessionWindow implements IDisposable {
     return this._window;
   }
 
-  private async _createServerForSession() {
+  private async _createServerForSession(
+    projectEnvironments?: IPythonEnvironment[]
+  ) {
+    const environments = await this._registry.getEnvironmentList(false);
     const serverOptions: JupyterServer.IOptions = {
       workingDirectory: this._sessionConfig.resolvedWorkingDirectory
     };
@@ -154,9 +157,19 @@ export class SessionWindow implements IDisposable {
     const pythonPath = this._wsSettings.getValue(SettingType.pythonPath);
 
     if (pythonPath) {
-      serverOptions.environment = this._registry.getEnvironmentByPath(
-        pythonPath
+      serverOptions.environment = environments.find(
+        env => env.path === pythonPath
       );
+      if (!serverOptions.environment) {
+        const projectEnvs =
+          projectEnvironments ??
+          (await this._registry.discoverProjectEnvironments(
+            this._sessionConfig.resolvedWorkingDirectory
+          ));
+        serverOptions.environment = projectEnvs.find(
+          env => env.path === pythonPath
+        );
+      }
     }
 
     const server = await this.serverFactory.createServer(serverOptions);
@@ -718,6 +731,15 @@ export class SessionWindow implements IDisposable {
         const installCommand = this._registry.getRequirementsInstallCommand(
           envPath
         );
+        if (!installCommand) {
+          this._showProgressView(
+            'Unable to install required packages',
+            `<div class="message-row">Update the pixi manifest to include the required packages, then run pixi install.</div>
+            <div class="message-row"><a href="javascript:void(0);" onclick="sendMessageToMain('${EventTypeMain.HideProgressView}')">Close</a></div>`,
+            false
+          );
+          return;
+        }
 
         this._showProgressView('Installing required packages');
 
@@ -789,7 +811,9 @@ export class SessionWindow implements IDisposable {
         return;
       }
 
-      this._showEnvSelectPopup();
+      void this._showEnvSelectPopup().catch(error => {
+        console.error('Failed to show Python environment selector.', error);
+      });
     });
 
     this._evm.registerEventHandler(EventTypeMain.HideEnvSelectPopup, event => {
@@ -817,14 +841,23 @@ export class SessionWindow implements IDisposable {
           this._registry.addEnvironment(path);
         } catch (error) {
           let message = `Error! Python environment at '${path}' is not compatible.`;
+          let requirementsInstallCommand = '';
           if (
             error?.type === PythonEnvResolveErrorType.RequirementsNotSatisfied
           ) {
             const envPath = envPathForPythonPath(path);
-            const requirementInstallCmd = encodeURIComponent(
-              this._registry.getRequirementsInstallCommand(envPath)
+            requirementsInstallCommand = this._registry.getRequirementsInstallCommand(
+              envPath
             );
-            message = `Error! Required Python packages not found in the selected environment. You can install using <copyable-span label="${requirementInstallCmd}" copied="${requirementInstallCmd}"></copyable-span> command in the selected environment.`;
+            if (requirementsInstallCommand) {
+              const encodedInstallCommand = encodeURIComponent(
+                requirementsInstallCommand
+              );
+              message = `Error! Required Python packages not found in the selected environment. You can install using <copyable-span label="${encodedInstallCommand}" copied="${encodedInstallCommand}"></copyable-span> command in the selected environment.`;
+            } else {
+              message =
+                'Error! Required Python packages are missing. Update the pixi manifest and run pixi install.';
+            }
           } else if (error?.type === PythonEnvResolveErrorType.PathNotFound) {
             message = `Error! File not found at '${path}'.`;
           } else if (error?.type === PythonEnvResolveErrorType.ResolveError) {
@@ -834,7 +867,9 @@ export class SessionWindow implements IDisposable {
             'Invalid Environment',
             `<div class="message-row">${message}</div>
           ${
-            error?.type === PythonEnvResolveErrorType.RequirementsNotSatisfied
+            error?.type ===
+              PythonEnvResolveErrorType.RequirementsNotSatisfied &&
+            requirementsInstallCommand
               ? `<div class="message-row"><a href="javascript:void(0);" onclick="sendMessageToMain('${
                   EventTypeMain.InstallPythonEnvRequirements
                 }', '${encodeURIComponent(
@@ -1305,8 +1340,24 @@ export class SessionWindow implements IDisposable {
   }
 
   private async _showEnvSelectPopup() {
-    if (this._envSelectPopupVisible) {
+    if (this._envSelectPopupVisible || this._envSelectPopupOpening) {
       return;
+    }
+
+    this._envSelectPopupOpening = true;
+    try {
+      const workingDirectory = this._sessionConfig?.resolvedWorkingDirectory;
+      if (this._envSelectPopupWorkingDirectory !== workingDirectory) {
+        const [envs, projectEnvs] = await Promise.all([
+          this.registry.getEnvironmentList(false),
+          this.registry.discoverProjectEnvironments(workingDirectory)
+        ]);
+        this._envSelectPopup.setProjectEnvironmentList(projectEnvs);
+        this._envSelectPopup.setPythonEnvironmentList(envs);
+        this._envSelectPopupWorkingDirectory = workingDirectory;
+      }
+    } finally {
+      this._envSelectPopupOpening = false;
     }
 
     const serverInfo = this.getServerInfo();
@@ -1469,26 +1520,46 @@ export class SessionWindow implements IDisposable {
 
     pythonPath = this._wsSettings.getValue(SettingType.pythonPath);
 
+    let projectEnvironments: IPythonEnvironment[];
     if (pythonPath) {
       try {
-        this._registry.addEnvironment(pythonPath);
+        const environments = await this._registry.getEnvironmentList(false);
+        if (!environments.find(env => env.path === pythonPath)) {
+          projectEnvironments = await this._registry.discoverProjectEnvironments(
+            sessionConfig.resolvedWorkingDirectory
+          );
+        }
+        if (!projectEnvironments?.find(env => env.path === pythonPath)) {
+          this._registry.addEnvironment(pythonPath);
+        }
       } catch (error) {
         let message = `Error! Python environment at '${pythonPath}' is not compatible.`;
+        let requirementsInstallCommand = '';
         if (
           error?.type === PythonEnvResolveErrorType.RequirementsNotSatisfied
         ) {
           const envPath = envPathForPythonPath(pythonPath);
-          const requirementInstallCmd = encodeURIComponent(
-            this._registry.getRequirementsInstallCommand(envPath)
+          requirementsInstallCommand = this._registry.getRequirementsInstallCommand(
+            envPath
           );
-          message = `Error! Required packages not found in the Python environment. You can install using <copyable-span label="${requirementInstallCmd}" copied="${requirementInstallCmd}"></copyable-span> command in the selected environment.`;
+          if (requirementsInstallCommand) {
+            const encodedInstallCommand = encodeURIComponent(
+              requirementsInstallCommand
+            );
+            message = `Error! Required packages not found in the Python environment. You can install using <copyable-span label="${encodedInstallCommand}" copied="${encodedInstallCommand}"></copyable-span> command in the selected environment.`;
+          } else {
+            message =
+              'Error! Required Python packages are missing. Update the pixi manifest and run pixi install.';
+          }
         }
 
         this._showProgressView(
           'Invalid Environment configured for project',
           `<div class="message-row">${message}</div>
           ${
-            error?.type === PythonEnvResolveErrorType.RequirementsNotSatisfied
+            error?.type ===
+              PythonEnvResolveErrorType.RequirementsNotSatisfied &&
+            requirementsInstallCommand
               ? `<div class="message-row"><a href="javascript:void(0);" onclick="sendMessageToMain('${
                   EventTypeMain.InstallPythonEnvRequirements
                 }', '${encodeURIComponent(
@@ -1512,7 +1583,7 @@ export class SessionWindow implements IDisposable {
     }
 
     this._sessionConfig = sessionConfig;
-    await this._createServerForSession();
+    await this._createServerForSession(projectEnvironments);
 
     this._contentViewType = ContentViewType.Lab;
     this._updateContentView();
@@ -1728,6 +1799,8 @@ export class SessionWindow implements IDisposable {
   private _labView: LabView;
   private _contentViewType: ContentViewType = ContentViewType.Welcome;
   private _serverFactory: IServerFactory;
+  private _envSelectPopupWorkingDirectory = '';
+  private _envSelectPopupOpening = false;
   private _app: IApplication;
   private _registry: IRegistry;
   private _server: JupyterServerFactory.IFactoryItem;
