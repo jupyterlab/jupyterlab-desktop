@@ -349,6 +349,7 @@ export async function validateCondaPath(
                         resolve({
                           valid: true
                         });
+                        return;
                       }
                     } catch (error) {
                       //

@@ -387,7 +387,11 @@ export class JupyterServer {
 
         console.debug(
           `Server launch parameters:\n  [script]: ${launchScriptPath}\n  [options]: ${JSON.stringify(
-            execOptions
+            {
+              cwd: execOptions.cwd,
+              shell: execOptions.shell,
+              envVarCount: Object.keys(execOptions.env || {}).length
+            }
           )}`
         );
 

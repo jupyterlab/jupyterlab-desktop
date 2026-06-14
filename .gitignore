@@ -1,4 +1,5 @@
 MANIFEST
+CLAUDE.md
 build
 dist
 lib
@@ -6,6 +7,9 @@ node_modules
 .npmrc
 .cache
 .eslintcache
+coverage
+test-results
+playwright-report
 .vscode/*
 !.vscode/launch.json
 *.py[co]
