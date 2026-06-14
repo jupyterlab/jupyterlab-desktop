@@ -17,10 +17,28 @@ import { tmpdir } from 'os';
 // actions; `userSetPythonEnvs` registers the env so the session registry
 // resolves it) and `settings.json` (`pythonPath` is what a new session reads
 // via workspace settings to boot its server).
+//
+// The spawned Jupyter server inherits the launch env via `{ ...process.env }`
+// in src/main/server.ts, so redirecting the user-layer Jupyter dirs (CONFIG /
+// DATA / RUNTIME) plus HOME here isolates the server's runtime/config writes to
+// a per-launch temp instead of the runner's real ~/.jupyter and
+// ~/Library/Jupyter. This mirrors pytest-jupyter's `jp_environ` fixture. We do
+// NOT set JUPYTER_PATH / JUPYTER_CONFIG_PATH: those control the search path for
+// installed extensions, and the venv ships its jupyterlab assets under the env
+// prefix; overriding them would hide the lab front end. On macOS, setting HOME
+// does not move Electron's own app.getPath('home') (it uses NSHomeDirectory),
+// but HOME does reach the python server through `...process.env`, which is what
+// we want isolated. The jupyter temp dir is returned so the caller can remove
+// it alongside userDataDir.
 export async function launchApp(opts?: {
   pythonPath?: string;
-}): Promise<{ app: ElectronApplication; userDataDir: string }> {
+}): Promise<{
+  app: ElectronApplication;
+  userDataDir: string;
+  jupyterDir: string;
+}> {
   const userDataDir = mkdtempSync(join(tmpdir(), 'jlab-e2e-'));
+  const jupyterDir = mkdtempSync(join(tmpdir(), 'jlab-e2e-jupyter-'));
   if (opts?.pythonPath) {
     writeFileSync(
       join(userDataDir, 'app-data.json'),
@@ -43,18 +61,28 @@ export async function launchApp(opts?: {
   }
   try {
     const app = await electron.launch({
-      args: ['.', `--user-data-dir=${userDataDir}`]
+      args: ['.', `--user-data-dir=${userDataDir}`],
+      env: {
+        ...process.env,
+        HOME: jupyterDir,
+        JUPYTER_CONFIG_DIR: jupyterDir,
+        JUPYTER_DATA_DIR: jupyterDir,
+        JUPYTER_RUNTIME_DIR: join(jupyterDir, 'runtime')
+      }
     });
     await stubAllDialogs(app);
-    return { app, userDataDir };
+    return { app, userDataDir, jupyterDir };
   } catch (error) {
-    cleanup(userDataDir);
+    cleanup(userDataDir, jupyterDir);
     throw error;
   }
 }
 
-export function cleanup(userDataDir: string): void {
+export function cleanup(userDataDir: string, jupyterDir?: string): void {
   rmSync(userDataDir, { recursive: true, force: true });
+  if (jupyterDir) {
+    rmSync(jupyterDir, { recursive: true, force: true });
+  }
 }
 
 // The app opens several windows (titlebar, welcome, session, manager) and most

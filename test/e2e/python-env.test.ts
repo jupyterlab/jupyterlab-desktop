@@ -13,7 +13,7 @@ test('with a seeded Python env, New notebook opens the labview', async () => {
     'set JLAB_TEST_PYTHON_PATH to a python with jupyterlab'
   );
   test.setTimeout(120000);
-  const { app, userDataDir } = await launchApp({ pythonPath });
+  const { app, userDataDir, jupyterDir } = await launchApp({ pythonPath });
   try {
     const welcome = await pageByTitle(app, /welcome/i);
     // The app validated the seeded env and emitted EnableLocalServerActions,
@@ -32,6 +32,6 @@ test('with a seeded Python env, New notebook opens the labview', async () => {
     expect(lab.url()).toMatch(/:\d+/);
   } finally {
     await app.close();
-    cleanup(userDataDir);
+    cleanup(userDataDir, jupyterDir);
   }
 });
