@@ -72,11 +72,10 @@ jobs:
         if: matrix.os == 'macos-latest'
         run: |
           set -euo pipefail
-          case "$(uname -m)" in
-            arm64) az=arm64 ;;
-            *) az=x64 ;;
-          esac
-          zip=$(ls ~/Library/Caches/electron/electron-*-darwin-$az.zip | head -1)
+          # Ask @electron/get (electron's own download dep) for the cached zip,
+          # fetching it if absent. It stores the zip under a content-hash subdir,
+          # so globbing the cache root misses it; let the library resolve the path.
+          zip=$(node -e "const {downloadArtifact}=require('@electron/get');const {version}=require('electron/package.json');downloadArtifact({version,artifactName:'electron',platform:'darwin',arch:process.arch}).then(p=>process.stdout.write(p)).catch(e=>{console.error(e);process.exit(1)})")
           echo "re-extracting electron from $zip"
           rm -rf node_modules/electron/dist
           mkdir -p node_modules/electron/dist
