@@ -4,15 +4,19 @@
 import { BrowserView } from 'electron';
 import * as fs from 'fs';
 import * as path from 'path';
-import { DarkThemeBGColor, LightThemeBGColor } from '../utils';
+import {
+  DarkThemeBGColor,
+  hardenedWebPreferences,
+  LightThemeBGColor
+} from '../utils';
 
 export class ThemedView {
   constructor(options: ThemedView.IOptions) {
     this._isDarkTheme = options.isDarkTheme;
     this._view = new BrowserView({
-      webPreferences: {
+      webPreferences: hardenedWebPreferences({
         preload: options.preload || path.join(__dirname, './preload.js')
-      }
+      })
     });
     this._view.setBackgroundColor(
       this._isDarkTheme ? DarkThemeBGColor : LightThemeBGColor

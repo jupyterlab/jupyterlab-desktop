@@ -13,6 +13,7 @@ import {
   getBundledPythonPath,
   installBundledEnvironment,
   isDevMode,
+  isE2EMode,
   jlabCLICommandIsSetup,
   setupJlabCommandWithUserRights,
   versionWithoutSuffix,
@@ -266,27 +267,31 @@ function handleMultipleAppInstances(): Promise<void> {
     // only the first instance will get the lock
     // pass cliArgs to main instance since argv provided by second-instance
     // event is out of order
-    const gotLock = app.requestSingleInstanceLock({
-      cliArgs: argv,
-      fileToOpenInMainInstance
-    });
-    if (gotLock) {
-      app.on('second-instance', (event, argv, cwd, additionalData: any) => {
-        // second instance created by double clicking a file
-        if (additionalData?.fileToOpenInMainInstance) {
-          jupyterApp.handleOpenFilesOrFolders([
-            additionalData.fileToOpenInMainInstance
-          ]);
-        } else if (additionalData?.cliArgs) {
-          // second instance created using CLI
-          const cliArgs = additionalData.cliArgs;
-          cliArgs.cwd = cwd;
-          const sessionConfig = SessionConfig.createFromArgs(
-            (cliArgs as unknown) as ICLIArguments
-          );
-          jupyterApp.openSession(sessionConfig);
-        }
+    const gotLock =
+      isE2EMode() ||
+      app.requestSingleInstanceLock({
+        cliArgs: argv,
+        fileToOpenInMainInstance
       });
+    if (gotLock) {
+      if (!isE2EMode()) {
+        app.on('second-instance', (event, argv, cwd, additionalData: any) => {
+          // second instance created by double clicking a file
+          if (additionalData?.fileToOpenInMainInstance) {
+            jupyterApp.handleOpenFilesOrFolders([
+              additionalData.fileToOpenInMainInstance
+            ]);
+          } else if (additionalData?.cliArgs) {
+            // second instance created using CLI
+            const cliArgs = additionalData.cliArgs;
+            cliArgs.cwd = cwd;
+            const sessionConfig = SessionConfig.createFromArgs(
+              (cliArgs as unknown) as ICLIArguments
+            );
+            jupyterApp.openSession(sessionConfig);
+          }
+        });
+      }
       resolve();
     } else {
       // is second instance

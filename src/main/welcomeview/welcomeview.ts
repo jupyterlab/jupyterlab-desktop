@@ -2,7 +2,12 @@
 // Distributed under the terms of the Modified BSD License.
 
 import { BrowserView, net } from 'electron';
-import { DarkThemeBGColor, getUserHomeDir, LightThemeBGColor } from '../utils';
+import {
+  DarkThemeBGColor,
+  getUserHomeDir,
+  hardenedWebPreferences,
+  LightThemeBGColor
+} from '../utils';
 import * as path from 'path';
 import * as fs from 'fs';
 import { XMLParser } from 'fast-xml-parser';
@@ -25,10 +30,10 @@ export class WelcomeView {
     this._registry = options.registry;
     this._isDarkTheme = options.isDarkTheme;
     this._view = new BrowserView({
-      webPreferences: {
+      webPreferences: hardenedWebPreferences({
         preload: path.join(__dirname, './preload.js'),
         devTools: process.env.NODE_ENV === 'development'
-      }
+      })
     });
 
     this._view.setBackgroundColor(
