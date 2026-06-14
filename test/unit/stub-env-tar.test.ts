@@ -24,13 +24,14 @@ describe('createStubEnvTar', () => {
     // Act
     const returned = createStubEnvTar(out);
 
-    // Assert
+    // Assert. Read once (readFileSync throws if it is missing) and assert on the
+    // buffer, instead of existsSync + statSync + readFileSync which is a TOCTOU
+    // race on the same path.
     expect(returned).toBe(out);
-    expect(fs.existsSync(out)).toBe(true);
-    expect(fs.statSync(out).size).toBeGreaterThan(0);
-    const header = fs.readFileSync(out).subarray(0, 2);
-    expect(header[0]).toBe(0x1f);
-    expect(header[1]).toBe(0x8b);
+    const content = fs.readFileSync(out);
+    expect(content.length).toBeGreaterThan(0);
+    expect(content[0]).toBe(0x1f);
+    expect(content[1]).toBe(0x8b);
   });
 
   it('packs the STUB_FOR_E2E marker file into the tarball', () => {
