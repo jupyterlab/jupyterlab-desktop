@@ -23,6 +23,7 @@ import {
   getBundledPythonPath,
   installBundledEnvironment,
   isDarkTheme,
+  isE2EMode,
   pythonPathForEnvPath,
   setupJlabCLICommandWithElevatedRights,
   waitForDuration
@@ -817,8 +818,12 @@ export class JupyterApplication implements IApplication, IDisposable {
 
         if (choice === 0) {
           appData.updateBundledEnvOnRestart = true;
-          app.relaunch();
-          app.quit();
+          if (!isE2EMode()) {
+            app.relaunch();
+            app.quit();
+          } else {
+            log.info('JLAB_DESKTOP_E2E_MODE: skipping relaunch');
+          }
         }
       }
     );
@@ -1042,8 +1047,12 @@ export class JupyterApplication implements IApplication, IDisposable {
     );
 
     this._evm.registerEventHandler(EventTypeMain.RestartApp, _event => {
-      app.relaunch();
-      app.quit();
+      if (!isE2EMode()) {
+        app.relaunch();
+        app.quit();
+      } else {
+        log.info('JLAB_DESKTOP_E2E_MODE: skipping relaunch');
+      }
     });
 
     this._evm.registerEventHandler(EventTypeMain.CheckForUpdates, _event => {
