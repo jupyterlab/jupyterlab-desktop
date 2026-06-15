@@ -115,3 +115,53 @@ export async function pageByTitle(
   }
   throw new Error(`no window title matched ${pattern}`);
 }
+
+// Wait for any open page whose URL matches `pattern`. Unlike
+// electron-playwright-helpers' waitForWindowByUrl, which only resolves on a new
+// "window" event, this also catches an in-place navigation of an existing page
+// (e.g. the session content view swapping to a remote server URL), so it is the
+// reliable wait for "a view reached this URL" regardless of how it got there.
+export async function pageByUrl(
+  app: ElectronApplication,
+  pattern: RegExp,
+  timeout = 90000
+) {
+  const deadline = Date.now() + timeout;
+  while (Date.now() < deadline) {
+    for (const page of app.windows()) {
+      try {
+        if (pattern.test(page.url())) {
+          return page;
+        }
+      } catch {
+        // page may be closing; retry on the next pass
+      }
+    }
+    await new Promise(resolve => setTimeout(resolve, 150));
+  }
+  throw new Error(`no window URL matched ${pattern}`);
+}
+
+// Wait for any open page that contains `selector` (a DOM element). Used to find
+// a dialog window that has no distinctive document title (e.g. a ThemedWindow),
+// by an element it owns rather than by title.
+export async function pageByLocator(
+  app: ElectronApplication,
+  selector: string,
+  timeout = 20000
+) {
+  const deadline = Date.now() + timeout;
+  while (Date.now() < deadline) {
+    for (const page of app.windows()) {
+      try {
+        if ((await page.locator(selector).count()) > 0) {
+          return page;
+        }
+      } catch {
+        // page may be mid-navigation; retry on the next pass
+      }
+    }
+    await new Promise(resolve => setTimeout(resolve, 100));
+  }
+  throw new Error(`no window contained selector ${selector}`);
+}

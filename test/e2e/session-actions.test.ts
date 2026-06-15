@@ -1,9 +1,9 @@
 import { expect, test } from '@playwright/test';
-import { stubDialog, waitForWindowByUrl } from 'electron-playwright-helpers';
+import { stubDialog } from 'electron-playwright-helpers';
 import { mkdtempSync, rmSync, writeFileSync } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
-import { cleanup, launchApp, pageByTitle } from './helpers';
+import { cleanup, launchApp, pageByTitle, pageByUrl } from './helpers';
 
 // These cover the welcome-page session actions other than New notebook (which
 // python-env.test.ts already exercises): New session (blank lab), Open folder,
@@ -42,8 +42,8 @@ test('New session opens a blank labview', async () => {
     const newSession = welcome.locator('#new-session-link');
     await expect(newSession).not.toHaveClass(/disabled/, { timeout: 20000 });
     await newSession.click();
-    const lab = await waitForWindowByUrl(app, LAB_URL, { timeout: 90000 });
-    expect(lab.url()).toMatch(/:\d+/);
+    const lab = await pageByUrl(app, LAB_URL);
+    expect(lab.url()).toMatch(/\/lab/);
   } finally {
     await app.close();
     cleanup(userDataDir, jupyterDir);
@@ -69,8 +69,8 @@ test('Open folder boots a session in the chosen directory', async () => {
     const openFolder = welcome.locator(openFolderLink);
     await expect(openFolder).not.toHaveClass(/disabled/, { timeout: 20000 });
     await openFolder.click();
-    const lab = await waitForWindowByUrl(app, LAB_URL, { timeout: 90000 });
-    expect(lab.url()).toMatch(/:\d+/);
+    const lab = await pageByUrl(app, LAB_URL);
+    expect(lab.url()).toMatch(/\/lab/);
   } finally {
     await app.close();
     cleanup(userDataDir, jupyterDir);
@@ -100,8 +100,8 @@ test('Open file boots a session for the chosen notebook', async () => {
     const openFile = welcome.locator(openFileLink);
     await expect(openFile).not.toHaveClass(/disabled/, { timeout: 20000 });
     await openFile.click();
-    const lab = await waitForWindowByUrl(app, LAB_URL, { timeout: 90000 });
-    expect(lab.url()).toMatch(/:\d+/);
+    const lab = await pageByUrl(app, LAB_URL);
+    expect(lab.url()).toMatch(/\/lab/);
   } finally {
     await app.close();
     cleanup(userDataDir, jupyterDir);

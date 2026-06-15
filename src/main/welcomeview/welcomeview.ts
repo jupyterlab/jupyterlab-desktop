@@ -371,7 +371,7 @@ export class WelcomeView {
                     </div>`
                   }
                   <div class="row action-row">
-                    <a href="javascript:void(0)" title="Connect to an existing local or remote JupyterLab server" onclick="handleNewSessionClick('remote');">
+                    <a id="connect-remote-link" href="javascript:void(0)" title="Connect to an existing local or remote JupyterLab server" onclick="handleNewSessionClick('remote');">
                       <span class="action-icon">  
                       ${serverIcon}
                       </span>

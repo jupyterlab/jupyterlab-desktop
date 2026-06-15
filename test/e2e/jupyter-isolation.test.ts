@@ -1,9 +1,8 @@
 import { expect, test } from '@playwright/test';
-import { waitForWindowByUrl } from 'electron-playwright-helpers';
 import { existsSync, readdirSync } from 'fs';
 import { homedir } from 'os';
 import { join } from 'path';
-import { cleanup, launchApp, pageByTitle } from './helpers';
+import { cleanup, launchApp, pageByTitle, pageByUrl } from './helpers';
 
 // Needs a real Python env with jupyterlab. CI provisions one and points
 // JLAB_TEST_PYTHON_PATH at it. Skipped when absent so the suite stays green
@@ -18,6 +17,11 @@ const pythonPath = process.env.JLAB_TEST_PYTHON_PATH;
 function realRuntimeDir(): string {
   if (process.platform === 'darwin') {
     return join(homedir(), 'Library', 'Jupyter', 'runtime');
+  }
+  if (process.platform === 'win32') {
+    const appData =
+      process.env.APPDATA ?? join(homedir(), 'AppData', 'Roaming');
+    return join(appData, 'jupyter', 'runtime');
   }
   return join(homedir(), '.local', 'share', 'jupyter', 'runtime');
 }
@@ -49,9 +53,7 @@ test('the embedded Jupyter server writes only to the per-launch temp dirs', asyn
 
     // Booting the labview means a real Jupyter server came up. Only then is it
     // meaningful to inspect where it wrote its runtime files.
-    await waitForWindowByUrl(app, /https?:\/\/(127\.0\.0\.1|localhost):\d+/, {
-      timeout: 90000
-    });
+    await pageByUrl(app, /https?:\/\/(127\.0\.0\.1|localhost):\d+/);
 
     // The server used the redirected runtime dir: a connection file landed there.
     const tempRuntimeFiles = listDir(tempRuntime);
