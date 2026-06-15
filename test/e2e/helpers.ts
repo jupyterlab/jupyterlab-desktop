@@ -19,10 +19,15 @@ import { tmpdir } from 'os';
 // via workspace settings to boot its server).
 //
 // The spawned Jupyter server inherits the launch env via `{ ...process.env }`
-// in src/main/server.ts, so redirecting the user-layer Jupyter dirs (CONFIG /
-// DATA / RUNTIME) plus HOME here isolates the server's runtime/config writes to
-// a per-launch temp instead of the runner's real ~/.jupyter and
-// ~/Library/Jupyter. This mirrors pytest-jupyter's `jp_environ` fixture. We do
+// in src/main/server.ts, so redirecting the user-layer Jupyter dirs plus HOME
+// here isolates the server's runtime/config writes to a per-launch temp instead
+// of the runner's real ~/.jupyter and ~/Library/Jupyter. DATA and RUNTIME pass
+// straight through. CONFIG is special: server.ts hardcodes the server's
+// JUPYTER_CONFIG_DIR to `process.env.JLAB_DESKTOP_CONFIG_DIR || getUserDataDir()`,
+// so a plain JUPYTER_CONFIG_DIR here would be ignored for that server; we set
+// JLAB_DESKTOP_CONFIG_DIR (the app's own override) to point it at the temp, and
+// keep JUPYTER_CONFIG_DIR for any child process that reads it directly. This
+// mirrors pytest-jupyter's `jp_environ` fixture. We do
 // NOT set JUPYTER_PATH / JUPYTER_CONFIG_PATH: those control the search path for
 // installed extensions, and the venv ships its jupyterlab assets under the env
 // prefix; overriding them would hide the lab front end. On macOS, setting HOME
@@ -65,6 +70,7 @@ export async function launchApp(opts?: {
       env: {
         ...process.env,
         HOME: jupyterDir,
+        JLAB_DESKTOP_CONFIG_DIR: jupyterDir,
         JUPYTER_CONFIG_DIR: jupyterDir,
         JUPYTER_DATA_DIR: jupyterDir,
         JUPYTER_RUNTIME_DIR: join(jupyterDir, 'runtime')
