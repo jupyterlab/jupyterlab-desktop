@@ -109,6 +109,13 @@ test('Connect to a running server opens its labview', async () => {
   const { app, userDataDir, jupyterDir } = await launchApp({ pythonPath });
   try {
     const welcome = await pageByTitle(app, /welcome/i);
+    // Wait for the welcome page to be fully wired before clicking. The local
+    // actions losing their `disabled` class is the app's signal that the page
+    // scripts and electronAPI are ready; clicking the always-enabled remote link
+    // before then is a no-op and the dialog never opens.
+    await expect(
+      welcome.locator('#new-notebook-link')
+    ).not.toHaveClass(/disabled/, { timeout: 20000 });
     await welcome.locator('#connect-remote-link').click();
 
     // The connect action opens a modal ThemedWindow whose document title is not
