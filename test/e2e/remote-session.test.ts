@@ -113,11 +113,16 @@ test('Connect to a running server opens its labview', async () => {
 
     // The connect action opens a modal ThemedWindow whose document title is not
     // distinctive; find it by the URL input it owns, then submit the running
-    // server's URL through the same IPC the dialog's Enter handler uses.
-    const dialog = await pageByLocator(app, '#server-url');
-    await dialog.evaluate((serverUrl: string) => {
-      (window as any).electronAPI.setRemoteServerOptions(serverUrl, false);
-    }, url);
+    // server's URL through the same IPC the dialog's Enter handler uses. The
+    // window loads asynchronously, so its page handle can briefly go stale as it
+    // navigates ("Target page has been closed"); re-find and submit until it
+    // sticks. evaluate runs once on success, so the IPC is sent at most once.
+    await expect(async () => {
+      const dialog = await pageByLocator(app, '#server-url', 5000);
+      await dialog.evaluate((serverUrl: string) => {
+        (window as any).electronAPI.setRemoteServerOptions(serverUrl, false);
+      }, url);
+    }).toPass({ timeout: 20000 });
 
     // The remote labview loads into the existing session content view, so wait
     // on the page URL rather than a new-window event.
