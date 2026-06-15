@@ -7,6 +7,7 @@ import { tmpdir } from 'os';
 import {
   cleanup,
   launchApp,
+  NEEDS_PYTHON,
   pageByLocator,
   pageByTitle,
   pageByUrl
@@ -97,10 +98,7 @@ async function startRemoteServer(
 }
 
 test('Connect to a running server opens its labview', async () => {
-  test.skip(
-    !pythonPath,
-    'set JLAB_TEST_PYTHON_PATH to a python with jupyterlab'
-  );
+  test.skip(!pythonPath, NEEDS_PYTHON);
   test.setTimeout(150000);
 
   const rootDir = mkdtempSync(join(tmpdir(), 'jlab-e2e-remote-'));

@@ -3,7 +3,14 @@ import { stubDialog } from 'electron-playwright-helpers';
 import { mkdtempSync, rmSync, writeFileSync } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
-import { cleanup, launchApp, pageByTitle, pageByUrl } from './helpers';
+import {
+  cleanup,
+  LAB_URL,
+  launchApp,
+  NEEDS_PYTHON,
+  pageByTitle,
+  pageByUrl
+} from './helpers';
 
 // These cover the welcome-page session actions other than New notebook (which
 // python-env.test.ts already exercises): New session (blank lab), Open folder,
@@ -13,8 +20,6 @@ import { cleanup, launchApp, pageByTitle, pageByUrl } from './helpers';
 // The two Open variants drive dialog.showOpenDialog, stubbed to return a known
 // path so no native file picker blocks the run.
 const pythonPath = process.env.JLAB_TEST_PYTHON_PATH;
-
-const LAB_URL = /https?:\/\/(127\.0\.0\.1|localhost):\d+/;
 
 // The welcome page renders a single unified "Open..." action on macOS and two
 // separate "Open File..." / "Open Folder..." actions elsewhere, so select the
@@ -31,10 +36,7 @@ const openFileLink =
     : '#open-file-link';
 
 test('New session opens a blank labview', async () => {
-  test.skip(
-    !pythonPath,
-    'set JLAB_TEST_PYTHON_PATH to a python with jupyterlab'
-  );
+  test.skip(!pythonPath, NEEDS_PYTHON);
   test.setTimeout(120000);
   const { app, userDataDir, jupyterDir } = await launchApp({ pythonPath });
   try {
@@ -51,10 +53,7 @@ test('New session opens a blank labview', async () => {
 });
 
 test('Open folder boots a session in the chosen directory', async () => {
-  test.skip(
-    !pythonPath,
-    'set JLAB_TEST_PYTHON_PATH to a python with jupyterlab'
-  );
+  test.skip(!pythonPath, NEEDS_PYTHON);
   test.setTimeout(120000);
   const projectDir = mkdtempSync(join(tmpdir(), 'jlab-e2e-project-'));
   const { app, userDataDir, jupyterDir } = await launchApp({ pythonPath });
@@ -79,10 +78,7 @@ test('Open folder boots a session in the chosen directory', async () => {
 });
 
 test('Open file boots a session for the chosen notebook', async () => {
-  test.skip(
-    !pythonPath,
-    'set JLAB_TEST_PYTHON_PATH to a python with jupyterlab'
-  );
+  test.skip(!pythonPath, NEEDS_PYTHON);
   test.setTimeout(120000);
   const projectDir = mkdtempSync(join(tmpdir(), 'jlab-e2e-project-'));
   const notebook = join(projectDir, 'opened.ipynb');

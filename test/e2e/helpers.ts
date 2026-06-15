@@ -4,6 +4,16 @@ import { mkdtempSync, rmSync, writeFileSync } from 'fs';
 import { join } from 'path';
 import { tmpdir } from 'os';
 
+// A booted JupyterLab server URL: the labview navigates here once a session is
+// up. Shared so every server-backed test waits on the same pattern.
+export const LAB_URL = /https?:\/\/(127\.0\.0\.1|localhost):\d+/;
+
+// The env-backed tests need a real Python with jupyterlab; CI provisions one and
+// points JLAB_TEST_PYTHON_PATH at it. Shared so the skip reason reads the same
+// everywhere.
+export const NEEDS_PYTHON =
+  'set JLAB_TEST_PYTHON_PATH to a python with jupyterlab';
+
 // A fresh userData dir per launch keeps tests independent. Electron's native
 // --user-data-dir flag is honored because the app reads app.getPath('userData')
 // (see getUserDataDir in utils) and only overrides it on Snap. Returns the app
