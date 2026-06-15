@@ -151,27 +151,3 @@ export async function pageByUrl(
   }
   throw new Error(`no window URL matched ${pattern}`);
 }
-
-// Wait for any open page that contains `selector` (a DOM element). Used to find
-// a dialog window that has no distinctive document title (e.g. a ThemedWindow),
-// by an element it owns rather than by title.
-export async function pageByLocator(
-  app: ElectronApplication,
-  selector: string,
-  timeout = 20000
-) {
-  const deadline = Date.now() + timeout;
-  while (Date.now() < deadline) {
-    for (const page of app.windows()) {
-      try {
-        if ((await page.locator(selector).count()) > 0) {
-          return page;
-        }
-      } catch {
-        // page may be mid-navigation; retry on the next pass
-      }
-    }
-    await new Promise(resolve => setTimeout(resolve, 100));
-  }
-  throw new Error(`no window contained selector ${selector}`);
-}
