@@ -41,10 +41,6 @@ export function hardenedWebPreferences(
   };
 }
 
-export function isE2EMode(): boolean {
-  return process.env.JLAB_DESKTOP_E2E_MODE === '1';
-}
-
 export function getAppDir(): string {
   let appDir = app.getAppPath();
   if (!isDevMode()) {

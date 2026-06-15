@@ -60,7 +60,6 @@ import {
   isBaseCondaEnv,
   isCondaEnv,
   isDarkTheme,
-  isE2EMode,
   isEnvInstalledByDesktopApp,
   isPortInUse,
   jlabCLICommandIsSetup,
@@ -107,36 +106,6 @@ describe('isDarkTheme', () => {
     expect(isDarkTheme('system')).toBe(true);
     (nativeTheme as any).shouldUseDarkColors = false;
   });
-});
-
-describe('isE2EMode', () => {
-  const original = process.env.JLAB_DESKTOP_E2E_MODE;
-
-  afterEach(() => {
-    if (original === undefined) {
-      delete process.env.JLAB_DESKTOP_E2E_MODE;
-    } else {
-      process.env.JLAB_DESKTOP_E2E_MODE = original;
-    }
-  });
-
-  it('returns true when JLAB_DESKTOP_E2E_MODE is exactly "1"', () => {
-    process.env.JLAB_DESKTOP_E2E_MODE = '1';
-    expect(isE2EMode()).toBe(true);
-  });
-
-  it('returns false when the env var is unset', () => {
-    delete process.env.JLAB_DESKTOP_E2E_MODE;
-    expect(isE2EMode()).toBe(false);
-  });
-
-  it.each(['0', 'true', '', 'yes', '11', ' 1'])(
-    'returns false for non-"1" value %j',
-    value => {
-      process.env.JLAB_DESKTOP_E2E_MODE = value;
-      expect(isE2EMode()).toBe(false);
-    }
-  );
 });
 
 describe('versionWithoutSuffix', () => {
