@@ -5,7 +5,7 @@ import { net, WebContentsView } from 'electron';
 import { DarkThemeBGColor, getUserHomeDir, LightThemeBGColor } from '../utils';
 import * as path from 'path';
 import * as fs from 'fs';
-import { XMLParser } from 'fast-xml-parser';
+import { parseNewsFeed } from './newsfeed';
 import { SettingType, userSettings } from '../config/settings';
 import { appData, INewsItem } from '../config/appdata';
 import { IRegistry } from '../registry';
@@ -736,18 +736,7 @@ export class WelcomeView {
       .then(async response => {
         try {
           const data = await response.text();
-          const parser = new XMLParser({ isArray: name => name === 'item' });
-          const feed = parser.parse(data);
-          const newsList: INewsItem[] = [];
-          for (const item of feed.rss.channel.item) {
-            newsList.push({
-              title: item.title,
-              link: encodeURIComponent(item.link)
-            });
-            if (newsList.length === maxNewsToShow) {
-              break;
-            }
-          }
+          const newsList = parseNewsFeed(data, maxNewsToShow);
 
           this._view.webContents.send(EventTypeRenderer.SetNewsList, newsList);
 
