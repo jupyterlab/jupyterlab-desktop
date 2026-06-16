@@ -1,7 +1,7 @@
 // Copyright (c) Jupyter Development Team.
 // Distributed under the terms of the Modified BSD License.
 
-import { BrowserView, net } from 'electron';
+import { net, WebContentsView } from 'electron';
 import { DarkThemeBGColor, getUserHomeDir, LightThemeBGColor } from '../utils';
 import * as path from 'path';
 import * as fs from 'fs';
@@ -24,7 +24,7 @@ export class WelcomeView {
   constructor(options: WelcomeView.IOptions) {
     this._registry = options.registry;
     this._isDarkTheme = options.isDarkTheme;
-    this._view = new BrowserView({
+    this._view = new WebContentsView({
       webPreferences: {
         preload: path.join(__dirname, './preload.js'),
         devTools: process.env.NODE_ENV === 'development'
@@ -646,7 +646,7 @@ export class WelcomeView {
       `;
   }
 
-  get view(): BrowserView {
+  get view(): WebContentsView {
     return this._view;
   }
 
@@ -820,7 +820,7 @@ export class WelcomeView {
   }
 
   private _isDarkTheme: boolean;
-  private _view: BrowserView;
+  private _view: WebContentsView;
   private _viewReady: Promise<void>;
   private _registry: IRegistry;
   private _pageSource: string;

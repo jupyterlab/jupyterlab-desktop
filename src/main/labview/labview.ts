@@ -2,11 +2,11 @@
 // Distributed under the terms of the Modified BSD License.
 
 import {
-  BrowserView,
   clipboard,
   dialog,
   Menu,
-  MenuItemConstructorOptions
+  MenuItemConstructorOptions,
+  WebContentsView
 } from 'electron';
 import log from 'electron-log';
 import * as path from 'path';
@@ -56,7 +56,7 @@ export class LabView implements IDisposable {
         partition = `partition-${Date.now()}`;
       }
     }
-    this._view = new BrowserView({
+    this._view = new WebContentsView({
       webPreferences: {
         preload: path.join(__dirname, './preload.js'),
         partition
@@ -126,7 +126,7 @@ export class LabView implements IDisposable {
     }
   }
 
-  public get view(): BrowserView {
+  public get view(): WebContentsView {
     return this._view;
   }
 
@@ -305,21 +305,24 @@ export class LabView implements IDisposable {
     });
   }
 
-  dispose(): Promise<void> {
+  async dispose(): Promise<void> {
     this._evm.dispose();
 
     // if local or remote with no data persistence, clear session data
     if (
       this._sessionConfig.isRemote &&
-      !this._sessionConfig.persistSessionData
+      !this._sessionConfig.persistSessionData &&
+      !this._parent.window.isDestroyed()
     ) {
-      if (!this._parent.window.isDestroyed()) {
-        return clearSession(this._view.webContents.session);
-      } else {
-        return Promise.resolve();
-      }
-    } else {
-      return Promise.resolve();
+      await clearSession(this._view.webContents.session);
+    }
+
+    // WebContentsView (unlike the old BrowserView) does not destroy its
+    // webContents when removed from the window, so close it explicitly to avoid
+    // leaking the renderer. When the parent window is already gone, Electron has
+    // destroyed it for us.
+    if (!this._view.webContents.isDestroyed()) {
+      this._view.webContents.close();
     }
   }
 
@@ -547,7 +550,7 @@ export class LabView implements IDisposable {
     });
   }
 
-  private _view: BrowserView;
+  private _view: WebContentsView;
   private _parent: SessionWindow;
   private _sessionConfig: SessionConfig;
   private _jlabBaseUrl: string;

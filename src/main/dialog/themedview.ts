@@ -1,7 +1,7 @@
 // Copyright (c) Jupyter Development Team.
 // Distributed under the terms of the Modified BSD License.
 
-import { BrowserView } from 'electron';
+import { WebContentsView } from 'electron';
 import * as fs from 'fs';
 import * as path from 'path';
 import { DarkThemeBGColor, LightThemeBGColor } from '../utils';
@@ -9,7 +9,7 @@ import { DarkThemeBGColor, LightThemeBGColor } from '../utils';
 export class ThemedView {
   constructor(options: ThemedView.IOptions) {
     this._isDarkTheme = options.isDarkTheme;
-    this._view = new BrowserView({
+    this._view = new WebContentsView({
       webPreferences: {
         preload: options.preload || path.join(__dirname, './preload.js')
       }
@@ -19,7 +19,7 @@ export class ThemedView {
     );
   }
 
-  get view(): BrowserView {
+  get view(): WebContentsView {
     return this._view;
   }
 
@@ -119,7 +119,7 @@ export class ThemedView {
   }
 
   private _isDarkTheme: boolean;
-  private _view: BrowserView;
+  private _view: WebContentsView;
 }
 
 export namespace ThemedView {

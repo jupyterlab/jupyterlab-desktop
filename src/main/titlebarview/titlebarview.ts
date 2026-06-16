@@ -1,7 +1,7 @@
 // Copyright (c) Jupyter Development Team.
 // Distributed under the terms of the Modified BSD License.
 
-import { BrowserView } from 'electron';
+import { WebContentsView } from 'electron';
 import * as path from 'path';
 import * as fs from 'fs';
 import * as ejs from 'ejs';
@@ -11,7 +11,7 @@ import { EventTypeRenderer } from '../eventtypes';
 export class TitleBarView {
   constructor(options: TitleBarView.IOptions) {
     this._isDarkTheme = options.isDarkTheme;
-    this._view = new BrowserView({
+    this._view = new WebContentsView({
       webPreferences: {
         preload: path.join(__dirname, './preload.js'),
         devTools: process.env.NODE_ENV === 'development'
@@ -30,7 +30,7 @@ export class TitleBarView {
     });
   }
 
-  get view(): BrowserView {
+  get view(): WebContentsView {
     return this._view;
   }
 
@@ -73,7 +73,7 @@ export class TitleBarView {
     );
   }
 
-  private _view: BrowserView;
+  private _view: WebContentsView;
   private _isDarkTheme: boolean;
 }
 
