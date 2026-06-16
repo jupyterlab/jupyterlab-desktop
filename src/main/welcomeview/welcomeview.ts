@@ -529,7 +529,7 @@ export class WelcomeView {
         
             const files = [];
             for (const file of event.dataTransfer.files) {
-              files.push(file.path);
+              files.push(window.electronAPI.getPathForFile(file));
             }
 
             window.electronAPI.openDroppedFiles(files);
