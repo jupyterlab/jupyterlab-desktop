@@ -1,6 +1,7 @@
+import electron = require('electron');
 import { EventTypeMain, EventTypeRenderer } from '../eventtypes';
 
-const { contextBridge, ipcRenderer } = require('electron');
+const { contextBridge, ipcRenderer } = electron;
 
 type ShowProgressListener = (
   title: string,

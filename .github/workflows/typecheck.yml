@@ -1,0 +1,32 @@
+name: Type check
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  type-check:
+    name: 'tsc --noEmit'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        with:
+          # Match the Node that the target Electron bundles (Electron 42 -> Node 24).
+          node-version: '24.x'
+          cache: 'yarn'
+      # --ignore-scripts skips the Electron binary download: type-checking only
+      # needs the .d.ts files shipped in the npm packages, and that postinstall
+      # is the flaky part of CI installs here.
+      - run: yarn install --frozen-lockfile --ignore-scripts
+      - run: yarn type-check
