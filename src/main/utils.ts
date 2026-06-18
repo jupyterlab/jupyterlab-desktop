@@ -15,6 +15,7 @@ import {
   execFile,
   ExecFileOptions,
   execFileSync,
+  ExecFileSyncOptions,
   execSync
 } from 'child_process';
 
@@ -634,9 +635,9 @@ export async function runCommand(
         return;
       }
       if (stdout) {
-        resolve(stdout);
+        resolve(stdout.toString());
       } else if (stderr) {
-        resolve(stderr);
+        resolve(stderr.toString());
       } else {
         reject(
           new Error(
@@ -653,7 +654,7 @@ export async function runCommand(
 export function runCommandSync(
   executablePath: string,
   commands: string[],
-  options?: ExecFileOptions
+  options?: ExecFileSyncOptions
 ): string {
   return execFileSync(executablePath, commands, options).toString();
 }
@@ -700,7 +701,6 @@ export function launchTerminalInDirectory(options: {
     exec(
       `osascript -e 'tell application "Terminal" to do script "cd '${dirPath}' ${callCommands}"' -e 'tell application "Terminal" to activate'`
     );
-    ``;
   } else if (platform === 'win32') {
     if (commands) {
       const activateFilePath = createTempFile(
