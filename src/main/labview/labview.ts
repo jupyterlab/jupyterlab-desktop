@@ -317,10 +317,8 @@ export class LabView implements IDisposable {
       await clearSession(this._view.webContents.session);
     }
 
-    // WebContentsView (unlike the old BrowserView) does not destroy its
-    // webContents when removed from the window, so close it explicitly to avoid
-    // leaking the renderer. When the parent window is already gone, Electron has
-    // destroyed it for us.
+    // A WebContentsView's webContents is not destroyed on detach or window
+    // close (electron/electron#42884); close it so the dropped view frees its renderer.
     if (!this._view.webContents.isDestroyed()) {
       this._view.webContents.close();
     }

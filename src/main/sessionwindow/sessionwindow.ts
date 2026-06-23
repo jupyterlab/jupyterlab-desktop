@@ -1189,8 +1189,8 @@ export class SessionWindow implements IDisposable {
     } else {
       if (this._welcomeView) {
         this._window.contentView.removeChildView(this._welcomeView.view);
-        // WebContentsView does not destroy its webContents on removal; the
-        // welcome view is recreated on the way back, so close this one.
+        // removeChildView only detaches; the webContents is not destroyed for us
+        // (electron/electron#42884), and the welcome view is rebuilt on return, so close it.
         if (!this._welcomeView.view.webContents.isDestroyed()) {
           this._welcomeView.view.webContents.close();
         }
