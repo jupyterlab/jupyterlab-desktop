@@ -1,51 +1,33 @@
-const meow = require('meow');
-const fs = require('fs-extra');
+const { parseArgs } = require('util');
+const fs = require('fs');
 const path = require('path');
 const semver = require('semver');
 const yaml = require('js-yaml');
 
+// Native replacements for the fs-extra helpers this script used.
+const readJSONSync = p => JSON.parse(fs.readFileSync(p, 'utf8'));
+const copySync = (src, dest) => fs.cpSync(src, dest, { recursive: true });
+
 const pkgjsonFilePath = path.resolve(__dirname, '../package.json');
 
-const cli = meow(
-  `
-    Usage
-      $ node buildutil <options>
-
-    Options
-      --check-version-match         check for JupyterLab version match
-      --update-binary-sign-list     update binary list to sign for macOS
-      --copy-extras-to-bundled-env  copy extra files from extras to bundled environment installer
-      --platform                    platform for --update-binary-sign-list. osx-64 or osx-arm64
-
-    Other options:
-      --help                        show usage information
-      --version                     show version information
-
-    Examples
-      $ node buildutil --check-version-match
-`,
-  {
-    flags: {
-      checkVersionMatch: {
-        type: 'boolean',
-        default: false
-      },
-      updateBinarySignList: {
-        type: 'boolean',
-        default: false
-      },
-      platform: {
-        type: 'string',
-        default: 'osx-64'
-      }
-    }
+// node buildutil <options>
+//   --check-version-match         check for JupyterLab version match
+//   --update-binary-sign-list     update binary list to sign for macOS
+//   --copy-extras-to-bundled-env  copy extras into the bundled environment
+//   --platform <osx-64|osx-arm64> platform for --update-binary-sign-list
+const { values: flags } = parseArgs({
+  options: {
+    'check-version-match': { type: 'boolean', default: false },
+    'update-binary-sign-list': { type: 'boolean', default: false },
+    'copy-extras-to-bundled-env': { type: 'boolean', default: false },
+    platform: { type: 'string', default: 'osx-64' }
   }
-);
+});
 
-if (cli.flags.checkVersionMatch) {
+if (flags['check-version-match']) {
   // parse application version
   const pkgjsonFileData = fs.existsSync(pkgjsonFilePath)
-    ? fs.readJSONSync(pkgjsonFilePath)
+    ? readJSONSync(pkgjsonFilePath)
     : undefined;
   if (!pkgjsonFileData) {
     console.error('package.json not found!');
@@ -91,7 +73,7 @@ if (cli.flags.checkVersionMatch) {
   process.exit(0);
 }
 
-if (cli.flags.updateBinarySignList) {
+if (flags['update-binary-sign-list']) {
   const { isBinary } = require('istextorbinary');
   const envInstallerDir = path.resolve('env_installer', 'jlab_server');
 
@@ -172,10 +154,7 @@ if (cli.flags.updateBinarySignList) {
 
   const binaries = findBinariesInDirectory(envInstallerDir);
   const fileContent = binaries.join('\n');
-  const signListFile = path.join(
-    'env_installer',
-    `sign-${cli.flags.platform}.txt`
-  );
+  const signListFile = path.join('env_installer', `sign-${flags.platform}.txt`);
 
   fs.writeFileSync(signListFile, `${fileContent}\n`);
 
@@ -184,11 +163,11 @@ if (cli.flags.updateBinarySignList) {
   process.exit(0);
 }
 
-if (cli.flags.copyExtrasToBundledEnv) {
+if (flags['copy-extras-to-bundled-env']) {
   const envExtrasDir = path.resolve('env_installer', 'extras');
   const envInstallerDir = path.resolve('env_installer', 'jlab_server');
 
-  fs.copySync(envExtrasDir, envInstallerDir, { recursive: true });
+  copySync(envExtrasDir, envInstallerDir, { recursive: true });
 
   console.log(
     `Finished copying env extras from \n\t"${envExtrasDir}" to \n\t"${envInstallerDir}"`

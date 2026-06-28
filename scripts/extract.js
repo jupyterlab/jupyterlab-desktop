@@ -1,17 +1,22 @@
 var rpt = require('read-package-tree');
 var path = require('path');
-var fs = require('fs-extra');
+var fs = require('fs');
 var glob = require('glob');
+
+// Native replacements for the fs-extra helpers this script used.
+var removeSync = p => fs.rmSync(p, { recursive: true, force: true });
+var ensureDirSync = d => fs.mkdirSync(d, { recursive: true });
+var copySync = (src, dest) => fs.cpSync(src, dest, { recursive: true });
 
 var seen = {};
 
 var schemaDest = path.resolve('./build/schemas');
-fs.removeSync(schemaDest);
-fs.ensureDirSync(schemaDest);
+removeSync(schemaDest);
+ensureDirSync(schemaDest);
 
 var themesDest = path.resolve('./build/themes');
-fs.removeSync(themesDest);
-fs.ensureDirSync(themesDest);
+removeSync(themesDest);
+ensureDirSync(themesDest);
 
 function extractNode(data) {
   data.children.forEach(function (child) {
@@ -32,7 +37,7 @@ function extractNode(data) {
   if (schemaDir) {
     const from = path.join(data.realpath, schemaDir);
     const to = path.join(schemaDest, data.package.name);
-    fs.copySync(from, to);
+    copySync(from, to);
   }
 
   // Handle themes.
@@ -41,7 +46,7 @@ function extractNode(data) {
     var themeName = data.package.name;
     const from = path.join(data.realpath, themeDir);
     const to = path.join(themesDest, themeName);
-    fs.copySync(from, to);
+    copySync(from, to);
 
     /**
      * Change relative paths. This is done at runtime by jupyterlab_launcher.

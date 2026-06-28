@@ -1,6 +1,8 @@
 const path = require('path');
-const fs = require('fs-extra');
-const watch = require('node-watch');
+const fs = require('fs');
+
+// fs-extra's copySync replaced with the native recursive cp (Node 16.7+).
+const copySync = (src, dest) => fs.cpSync(src, dest, { recursive: true });
 
 const platform = process.platform;
 const buildDir = path.resolve('./build');
@@ -39,40 +41,38 @@ function copyAssests() {
     const destPath = srcPath.replace(srcDir, dest);
 
     if (srcPath.includes('style') || srcPath.includes('img')) {
-      fs.copySync(srcPath, destPath);
+      copySync(srcPath, destPath);
     }
   });
 
   const titlebarPath = path.join('main', 'titlebarview', 'titlebar.html');
-  fs.copySync(
+  copySync(
     path.join(srcDir, titlebarPath),
     path.join(dest, '../app-assets', 'titlebarview', 'titlebar.html')
   );
 
-  fs.copySync(path.join(srcDir, 'assets'), path.join(dest, '../app-assets'), {
-    recursive: true
-  });
+  copySync(path.join(srcDir, 'assets'), path.join(dest, '../app-assets'));
 
   const toolkitPath = path.join(
     '../node_modules',
     '@jupyter-notebook/web-components',
     'dist'
   );
-  fs.copySync(
+  copySync(
     path.join(srcDir, toolkitPath, 'toolkit.min.js'),
     path.join(dest, '../jupyter-ui-toolkit/toolkit.min.js')
   );
-  fs.copySync(
+  copySync(
     path.join(srcDir, toolkitPath, 'toolkit.js'),
     path.join(dest, '../jupyter-ui-toolkit/toolkit.js')
   );
 
   const envInfoPath = path.join('main', 'env_info.py');
-  fs.copySync(path.join(srcDir, envInfoPath), path.join(dest, envInfoPath));
+  copySync(path.join(srcDir, envInfoPath), path.join(dest, envInfoPath));
 
   // Copy install scripts
   if (platform === 'darwin') {
-    fs.copySync(
+    copySync(
       path.join(
         path.resolve('./'),
         'dist-resources',
@@ -82,7 +82,7 @@ function copyAssests() {
       path.join(buildDir, 'entitlements.plist')
     );
   } else if (platform === 'win32') {
-    fs.copySync(
+    copySync(
       path.join(
         path.resolve('./'),
         'electron-builder-scripts',
@@ -91,7 +91,7 @@ function copyAssests() {
       path.join(buildDir, 'wininstall.nsh')
     );
   } else {
-    fs.copySync(
+    copySync(
       path.join(
         path.resolve('./'),
         'electron-builder-scripts',
@@ -99,12 +99,9 @@ function copyAssests() {
       ),
       path.join(buildDir, 'linux_after_install.sh')
     );
-    fs.copySync(
+    copySync(
       path.join(path.resolve('./'), 'electron-builder-scripts', 'snap-hooks'),
-      path.join(buildDir, 'snap-hooks'),
-      {
-        recursive: true
-      }
+      path.join(buildDir, 'snap-hooks')
     );
   }
 
@@ -113,9 +110,12 @@ function copyAssests() {
 copyAssests();
 
 if (process.argv.length > 2 && process.argv[2] == 'watch') {
-  watch(srcDir, { recursive: true }, function (evt, name) {
-    if (/(\.css$)|(\.html$)/.test(name)) {
-      console.log('Asset chage detected.');
+  // native fs.watch replaces node-watch; recursive watch works on macOS,
+  // Windows, and Linux (Node 19+ walks the tree itself). srcDir is small so
+  // the per-directory inotify watches on Linux are not a concern.
+  fs.watch(srcDir, { recursive: true }, function (evt, name) {
+    if (name && /(\.css$)|(\.html$)/.test(name)) {
+      console.log('Asset change detected.');
       copyAssests();
     }
   });
