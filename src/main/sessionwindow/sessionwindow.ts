@@ -23,7 +23,6 @@ import {
 } from '../config/settings';
 import { TitleBarView } from '../titlebarview/titlebarview';
 import {
-  clearSession,
   DarkThemeBGColor,
   envPathForPythonPath,
   getBundledPythonPath,
@@ -249,24 +248,25 @@ export class SessionWindow implements IDisposable {
   private async _disposeSession(): Promise<void> {
     this._wsSettings.save();
 
-    if (this._sessionConfig?.isRemote) {
-      if (!this._sessionConfig.persistSessionData) {
-        return clearSession(this._labView.view.webContents.session);
-      }
-    } else {
+    if (!this._sessionConfig?.isRemote) {
       if (!this._server?.server) {
         return;
       }
 
       await this._server.server.stop();
       this._server = null;
-      if (this._labView) {
-        if (!this._window.isDestroyed()) {
-          this._window.contentView.removeChildView(this._labView.view);
-        }
-        void this._labView.dispose();
-        this._labView = null;
+    }
+
+    if (this._labView) {
+      if (!this._window.isDestroyed()) {
+        this._window.contentView.removeChildView(this._labView.view);
       }
+      // LabView.dispose clears the remote session (when non-persistent) and
+      // closes the webContents; await so a non-persistent remote session is
+      // cleared before the window goes away. Best-effort and idempotent: a
+      // second dispose after the labView was already cleared is a no-op.
+      await this._labView.dispose();
+      this._labView = null;
     }
   }
 
