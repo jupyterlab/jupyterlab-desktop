@@ -17,7 +17,7 @@
     "type-check": "tsc --noEmit",
     "build": "tsc && yarn bundle:preload && node ./scripts/extract.js && node ./scripts/copyassets.js",
     "build:all": "yarn clean && yarn build && yarn start",
-    "bundle:preload": "webpack --config webpack.preload.js",
+    "bundle:preload": "node scripts/bundle-preload.js",
     "extract": "node scripts/extract.js",
     "pack": "yarn build && electron-builder --dir",
     "dist": "yarn build && electron-builder",
@@ -211,8 +211,7 @@
     "typescript": "^6.0.0",
     "typescript-eslint": "^8.61.1",
     "vitest": "^4.1.9",
-    "webpack": "^5.107.2",
-    "webpack-cli": "^4.5.0"
+    "esbuild": "^0.28.1"
   },
   "resolutions": {
     "serialize-javascript": "^6.0.2",
