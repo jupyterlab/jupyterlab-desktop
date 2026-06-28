@@ -20,8 +20,8 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
-      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
         with:
           node-version: '24.x'
           cache: 'yarn'
@@ -46,7 +46,7 @@ jobs:
         shell: bash -el {0}
 
     steps:
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
       - uses: conda-incubator/setup-miniconda@fc2d68f6413eb2d87b895e92f8584b5b94a10167 # v3
         with:
           auto-update-conda: true
@@ -57,7 +57,7 @@ jobs:
       - run: conda install --file ./workflow_env/conda-${{ matrix.cfg.build_platform }}.lock -y
 
       - name: Install node
-        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
         with:
           node-version: '24.x'
           cache: 'yarn'
@@ -81,7 +81,7 @@ jobs:
         run: echo "version=$(python scripts/get_package_version.py)" >> $GITHUB_OUTPUT
 
       - name: 'Find Release with tag v${{ steps.package-info.outputs.version}}'
-        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9
         id: release-exists
         env:
           APP_VERSION: ${{ steps.package-info.outputs.version}}
@@ -154,7 +154,7 @@ jobs:
 
       - name: Upload Debian x64 Installer
         if: matrix.cfg.platform == 'linux-64'
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
           name: debian-installer-x64
           path: |
@@ -162,7 +162,7 @@ jobs:
 
       - name: Upload Fedora x64 Installer
         if: matrix.cfg.platform == 'linux-64'
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
           name: fedora-installer-x64
           path: |
@@ -170,7 +170,7 @@ jobs:
       
       - name: Upload Snap Installer
         if: matrix.cfg.platform == 'linux-64'
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         id: snap-artifact
         with:
           name: snap-installer
@@ -179,7 +179,7 @@ jobs:
 
       - name: Upload macOS x64 Installer
         if: matrix.cfg.platform == 'osx-64'
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
           name: mac-installer-x64
           path: |
@@ -187,7 +187,7 @@ jobs:
 
       - name: Upload macOS arm64 Installer
         if: matrix.cfg.platform == 'osx-arm64'
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
           name: mac-installer-arm64
           path: |
@@ -195,7 +195,7 @@ jobs:
 
       - name: Upload Windows x64 Installer
         if: matrix.cfg.platform == 'win-64'
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
           name: windows-installer-x64
           path: |
