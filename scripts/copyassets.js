@@ -67,6 +67,20 @@ function copyAssests() {
     path.join(dest, '../jupyter-ui-toolkit/toolkit.js')
   );
 
+  // Copy uFuzzy from node_modules at build time, like the toolkit above, so the
+  // pinned dependency is the single source of truth and there is no vendored
+  // copy in src/assets to keep in sync by hand.
+  fs.copySync(
+    path.join(
+      srcDir,
+      '../node_modules',
+      '@leeoniya/ufuzzy',
+      'dist',
+      'uFuzzy.iife.min.js'
+    ),
+    path.join(dest, '../app-assets', 'uFuzzy.iife.min.js')
+  );
+
   const envInfoPath = path.join('main', 'env_info.py');
   fs.copySync(path.join(srcDir, envInfoPath), path.join(dest, envInfoPath));
 
