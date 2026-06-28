@@ -35,7 +35,7 @@ describe('fixDarwinPath', () => {
     setPlatform('darwin');
     process.env.PATH = '/usr/bin';
     mockedExecFileSync.mockReturnValue(
-      'HOME=/Users/x\nPATH=/opt/homebrew/bin:/usr/local/bin:/usr/bin\nSHELL=/bin/zsh\n' as unknown as Buffer
+      ('HOME=/Users/x\nPATH=/opt/homebrew/bin:/usr/local/bin:/usr/bin\nSHELL=/bin/zsh\n' as unknown) as Buffer
     );
 
     // Act
@@ -55,7 +55,7 @@ describe('fixDarwinPath', () => {
     setPlatform('darwin');
     process.env.PATH = '/usr/bin';
     mockedExecFileSync.mockReturnValue(
-      '\x1b[32mwelcome\x1b[0m\nPATH=/opt/homebrew/bin:/usr/bin\n' as unknown as Buffer
+      ('\x1b[32mwelcome\x1b[0m\nPATH=/opt/homebrew/bin:/usr/bin\n' as unknown) as Buffer
     );
 
     // Act
@@ -68,9 +68,7 @@ describe('fixDarwinPath', () => {
   it('keeps a value containing = signs intact', () => {
     // Arrange
     setPlatform('darwin');
-    mockedExecFileSync.mockReturnValue(
-      'PATH=/a=b:/c\n' as unknown as Buffer
-    );
+    mockedExecFileSync.mockReturnValue(('PATH=/a=b:/c\n' as unknown) as Buffer);
 
     // Act
     fixDarwinPath();

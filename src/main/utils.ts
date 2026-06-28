@@ -48,7 +48,7 @@ export function fixDarwinPath(): void {
     });
     // Strip ANSI escapes a chatty rc file may print before env runs.
     // eslint-disable-next-line no-control-regex
-    const clean = stdout.replace(/\x1b\[[0-9;]*[A-Za-z]/g, "");
+    const clean = stdout.replace(/\x1b\[[0-9;]*[A-Za-z]/g, '');
     for (const line of clean.split('\n')) {
       const eq = line.indexOf('=');
       if (eq === -1) {
