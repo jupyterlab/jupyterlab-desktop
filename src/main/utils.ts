@@ -31,6 +31,39 @@ export function isDevMode(): boolean {
   return require.main.filename.indexOf('app.asar') === -1;
 }
 
+// On macOS a packaged GUI app inherits a minimal PATH that misses the entries a
+// login shell sets up in .bashrc / .zshrc / .bash_profile (pyenv, conda,
+// homebrew, nvm). Spawn the user's login shell, read its env, and adopt its
+// PATH. Replaces the fix-path -> shell-path -> shell-env -> execa dependency
+// chain; the login-shell spawn is preserved exactly.
+export function fixDarwinPath(): void {
+  if (process.platform !== 'darwin') {
+    return;
+  }
+
+  const shell = process.env.SHELL || '/bin/bash';
+  try {
+    const stdout = execFileSync(shell, ['-ilc', 'env; exit'], {
+      encoding: 'utf8'
+    });
+    // Strip ANSI escapes a chatty rc file may print before env runs.
+    // eslint-disable-next-line no-control-regex
+    const clean = stdout.replace(/\x1b\[[0-9;]*[A-Za-z]/g, "");
+    for (const line of clean.split('\n')) {
+      const eq = line.indexOf('=');
+      if (eq === -1) {
+        continue;
+      }
+      if (line.slice(0, eq) === 'PATH') {
+        process.env.PATH = line.slice(eq + 1);
+        return;
+      }
+    }
+  } catch (error) {
+    log.error('Failed to resolve login shell PATH', error);
+  }
+}
+
 export function getAppDir(): string {
   let appDir = app.getAppPath();
   if (!isDevMode()) {

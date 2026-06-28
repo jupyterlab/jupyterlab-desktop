@@ -9,6 +9,7 @@ import * as semver from 'semver';
 import {
   bundledEnvironmentIsInstalled,
   EnvironmentInstallStatus,
+  fixDarwinPath,
   getBundledPythonEnvPath,
   getBundledPythonPath,
   installBundledEnvironment,
@@ -49,7 +50,7 @@ async function appReady(): Promise<boolean> {
  * contain all the information that is usually set in .bashrc, .bash_profile, etc.
  * This package fixes the PATH variable
  */
-require('fix-path')();
+fixDarwinPath();
 
 /**
  * Update app home, appData, userData and logs paths to prevent
