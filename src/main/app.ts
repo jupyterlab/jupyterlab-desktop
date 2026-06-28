@@ -1,6 +1,7 @@
 // Copyright (c) Jupyter Development Team.
 // Distributed under the terms of the Modified BSD License.
 
+import { updateElectronApp } from 'update-electron-app';
 import {
   app,
   autoUpdater,
@@ -567,7 +568,7 @@ export class JupyterApplication implements IApplication, IDisposable {
       log.error(message);
     });
 
-    require('update-electron-app')();
+    updateElectronApp();
   }
 
   private _validateRemoteServerUrl(url: string): Promise<IJupyterServerInfo> {
