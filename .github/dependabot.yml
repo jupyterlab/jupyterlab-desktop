@@ -6,3 +6,21 @@ updates:
     schedule:
       # Check for updates to GitHub Actions every week
       interval: "weekly"
+
+  # npm version updates (security updates run automatically regardless of this)
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 10
+    groups:
+      # Roll routine minor/patch bumps into one PR to keep the noise down
+      minor-and-patch:
+        update-types:
+          - "minor"
+          - "patch"
+    ignore:
+      # @types/node tracks the Node version Electron bundles (24 for Electron 42),
+      # not the newest types, so skip major bumps here.
+      - dependency-name: "@types/node"
+        update-types: ["version-update:semver-major"]
