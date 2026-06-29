@@ -100,3 +100,25 @@ test('the labview renders the JupyterLab UI chrome', async () => {
     cleanup(userDataDir, jupyterDir);
   }
 });
+
+// Non-ASCII output rendering through the WebContentsView, the manual check from
+// past JupyterLab bump PRs (arm64 ICU). A cell that prints accented, CJK and
+// Greek text and renders it back confirms text rendering is intact in the
+// embedded view after a bump.
+test('the labview renders non-ASCII output through Electron', async () => {
+  test.skip(!pythonPath, NEEDS_PYTHON);
+  test.setTimeout(180000);
+  const { app, userDataDir, jupyterDir } = await launchApp({ pythonPath });
+  try {
+    const text = 'café ñoño 日本語 αβγ';
+    const { cell } = await runFirstNotebookCell(
+      app,
+      `print(${JSON.stringify(text)})`
+    );
+    const output = cell.locator('.jp-OutputArea-output').first();
+    await expect(output).toContainText(text, { timeout: 90000 });
+  } finally {
+    await app.close();
+    cleanup(userDataDir, jupyterDir);
+  }
+});

@@ -87,7 +87,15 @@ export async function launchApp(opts?: {
         HOME: jupyterDir
       }
     });
-    await stubAllDialogs(app);
+    // Wait for a window to exist, then stub dialogs. stubAllDialogs evaluates
+    // the main process, and at launch a window can be mid-navigation, which
+    // makes that evaluate throw "execution context was destroyed". Retry once
+    // after a short settle so the race doesn't flake the whole suite.
+    await app.firstWindow();
+    await stubAllDialogs(app).catch(async () => {
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      await stubAllDialogs(app);
+    });
     return { app, userDataDir, jupyterDir };
   } catch (error) {
     cleanup(userDataDir, jupyterDir);
