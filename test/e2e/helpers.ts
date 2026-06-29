@@ -1,4 +1,9 @@
-import { _electron as electron, ElectronApplication } from '@playwright/test';
+import {
+  _electron as electron,
+  ElectronApplication,
+  Locator,
+  Page
+} from '@playwright/test';
 import { stubAllDialogs } from 'electron-playwright-helpers';
 import { mkdtempSync, rmSync, writeFileSync } from 'fs';
 import { join } from 'path';
@@ -88,6 +93,48 @@ export async function launchApp(opts?: {
     cleanup(userDataDir, jupyterDir);
     throw error;
   }
+}
+
+// Open a new notebook from the welcome, run `code` in its first cell, and
+// return the labview page plus that cell so the caller can assert on the output
+// it produced. Shared by the cell-run and widget-render tests, which differ
+// only in the code and what they look for. The cell handling follows Galata
+// (textbox role + pressSequentially, the status-bar kernel-ready poll), and the
+// kernel picker is accepted only if it appears.
+export async function runFirstNotebookCell(
+  app: ElectronApplication,
+  code: string
+): Promise<{ lab: Page; cell: Locator }> {
+  const welcome = await pageByTitle(app, /welcome/i);
+  const newNotebook = welcome.locator('#new-notebook-link');
+  await newNotebook.waitFor({ state: 'visible', timeout: 20000 });
+  await newNotebook.click();
+
+  const lab = await pageByUrl(app, LAB_URL);
+  await lab
+    .locator('.jp-Dialog button.jp-mod-accept')
+    .click({ timeout: 15000 })
+    .catch(() => undefined);
+  await lab.waitForFunction(
+    () => {
+      const text =
+        document.querySelector('#jp-main-statusbar')?.textContent ?? '';
+      return !['Connecting', 'Initializing', 'Starting'].some(s =>
+        text.includes(s)
+      );
+    },
+    { timeout: 90000 }
+  );
+
+  const cell = lab
+    .locator('.jp-NotebookPanel:not(.lm-mod-hidden) .jp-Notebook .jp-Cell')
+    .first();
+  const editor = cell.getByRole('textbox');
+  await editor.click();
+  await editor.press('Control+A');
+  await editor.pressSequentially(code);
+  await lab.keyboard.press('Shift+Enter');
+  return { lab, cell };
 }
 
 export function cleanup(userDataDir: string, jupyterDir?: string): void {
