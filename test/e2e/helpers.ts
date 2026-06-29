@@ -62,9 +62,16 @@ export async function launchApp(opts?: {
         ]
       })
     );
+    // Point new sessions at the temp jupyter dir so notebooks the test creates
+    // (New notebook) land there and get removed with it, instead of the real
+    // home. On macOS the spawned server's cwd follows this setting; HOME alone
+    // does not move it because Electron resolves home via NSHomeDirectory.
     writeFileSync(
       join(userDataDir, 'settings.json'),
-      JSON.stringify({ pythonPath: opts.pythonPath })
+      JSON.stringify({
+        pythonPath: opts.pythonPath,
+        defaultWorkingDirectory: jupyterDir
+      })
     );
   }
   try {

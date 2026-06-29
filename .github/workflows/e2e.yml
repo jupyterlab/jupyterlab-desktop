@@ -81,6 +81,8 @@ jobs:
           ver=$(awk '$1=="-" && $2=="jupyterlab" {print $3}' env_installer/jlab_server.yaml)
           [[ "$ver" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "unexpected jupyterlab pin '$ver' in jlab_server.yaml (want exact x.y.z)"; exit 1; }
           python3 -m venv "$RUNNER_TEMP/jlab-venv"
+          # jupyterlab pulls in ipykernel, so the venv already has a python3
+          # kernel for the cell-run test; no need to install it separately.
           "$RUNNER_TEMP/jlab-venv/bin/pip" install --quiet "jupyterlab==$ver"
           echo "JLAB_TEST_PYTHON_PATH=$RUNNER_TEMP/jlab-venv/bin/python" >> "$GITHUB_ENV"
       # xvfb is Linux-only; on macOS the runner has a real display, so run the
