@@ -192,7 +192,6 @@
     "@types/js-yaml": "^4.0.9",
     "@types/node": "^24",
     "@types/semver": "^7.7.1",
-    "@types/tar": "^6.1.13",
     "@types/yargs": "^17.0.35",
     "@vitest/coverage-v8": "^4.1.9",
     "electron": "^42.4.0",
