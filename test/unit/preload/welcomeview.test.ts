@@ -23,6 +23,7 @@ describe('welcomeview preload', () => {
         'openRecentSession',
         'deleteRecentSession',
         'openDroppedFiles',
+        'getPathForFile',
         'openNewsLink',
         'sendMessageToMain',
         'onSetRecentSessionList',

@@ -1,7 +1,7 @@
 import electron = require('electron');
 import { EventTypeMain, EventTypeRenderer } from '../eventtypes';
 
-const { contextBridge, ipcRenderer } = electron;
+const { contextBridge, ipcRenderer, webUtils } = electron;
 
 type SetRecentSessionListListener = (
   recentSessions: any[],
@@ -57,6 +57,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
   openDroppedFiles(files: string[]) {
     ipcRenderer.send(EventTypeMain.OpenDroppedFiles, files);
   },
+  // File.path was removed in Electron 32; the drop handler resolves the path
+  // through webUtils here instead. Must run in the preload (webUtils is not
+  // exposed to the page world).
+  getPathForFile: (file: File) => webUtils.getPathForFile(file),
   openNewsLink: (newsLink: string) => {
     ipcRenderer.send(EventTypeMain.OpenNewsLink, newsLink);
   },

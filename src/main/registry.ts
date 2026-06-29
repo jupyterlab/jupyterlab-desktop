@@ -992,31 +992,21 @@ export class Registry implements IRegistry, IDisposable {
     }
   }
 
-  private _getExecutableInstances(
+  private async _getExecutableInstances(
     executableName: string,
     path: string
   ): Promise<string[]> {
-    return new Promise<string[]>((resolve, reject) => {
-      which(
-        executableName,
-        { all: true, path: path },
-        (err: any, result: string | string[]) => {
-          if (err) {
-            if (err.code === 'ENOENT') {
-              resolve([]);
-            } else {
-              reject(err);
-            }
-          } else {
-            if (typeof result === 'string') {
-              resolve([result]);
-            } else {
-              resolve(result);
-            }
-          }
-        }
-      );
+    // which v7 is promise-only (the callback API was removed in v3); nothrow
+    // returns null instead of throwing when the executable is not found.
+    const result = await which(executableName, {
+      all: true,
+      path,
+      nothrow: true
     });
+    if (!result) {
+      return [];
+    }
+    return typeof result === 'string' ? [result] : result;
   }
 
   private _runPythonModuleCommand(

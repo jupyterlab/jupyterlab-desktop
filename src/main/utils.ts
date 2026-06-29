@@ -279,6 +279,16 @@ export async function installBundledEnvironment(
   return installCondaPackEnvironment(condaPackPath, installPath, listener);
 }
 
+// Extract a conda-pack tarball into destDir. Separated from the install flow so
+// the tar usage (which the project re-verifies on every tar bump) is unit-tested
+// against a real tarball rather than only exercised by a full env install.
+export async function extractTarball(
+  tarballPath: string,
+  destDir: string
+): Promise<void> {
+  await tar.x({ C: destDir, file: tarballPath });
+}
+
 export async function installCondaPackEnvironment(
   condaPackPath: string,
   installPath: string,
@@ -317,7 +327,7 @@ export async function installCondaPackEnvironment(
 
     try {
       fs.mkdirSync(installPath, { recursive: true });
-      await tar.x({ C: installPath, file: condaPackPath });
+      await extractTarball(condaPackPath, installPath);
     } catch (error) {
       listener?.onInstallStatus(
         EnvironmentInstallStatus.Failure,
