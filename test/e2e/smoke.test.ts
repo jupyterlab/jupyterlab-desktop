@@ -58,3 +58,24 @@ test('app shuts down cleanly without hanging', async () => {
   // close() has resolved, so the process exited and the windows are gone.
   expect(app.windows().length).toBe(0);
 });
+
+// The preload contract tests cover the exposed API shape with mocks; this
+// checks the wiring end to end in the running app: a renderer call over the
+// contextBridge reaches the ipcMain handler and a value comes back. isDarkTheme
+// returns a boolean and needs no Python env, so it is the cheapest round-trip.
+test('an electronAPI channel round-trips to the main process', async () => {
+  const { app, userDataDir, jupyterDir } = await launchApp();
+  try {
+    const welcome = await pageByTitle(app, /welcome/i);
+    await welcome.waitForLoadState('domcontentloaded');
+    const isDark = await welcome.evaluate(() =>
+      ((window as unknown) as {
+        electronAPI: { isDarkTheme(): Promise<boolean> };
+      }).electronAPI.isDarkTheme()
+    );
+    expect(typeof isDark).toBe('boolean');
+  } finally {
+    await app.close();
+    cleanup(userDataDir, jupyterDir);
+  }
+});
