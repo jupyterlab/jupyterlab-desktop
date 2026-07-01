@@ -125,8 +125,9 @@ export async function runFirstNotebookCell(
     .catch(() => undefined);
   await lab.waitForFunction(
     () => {
-      const text =
-        document.querySelector('#jp-main-statusbar')?.textContent ?? '';
+      const el = document.querySelector('#jp-main-statusbar');
+      const text = el?.textContent ?? '';
+      if (!el || text.trim().length === 0) return false;
       return !['Connecting', 'Initializing', 'Starting'].some(s =>
         text.includes(s)
       );

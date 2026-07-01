@@ -67,6 +67,7 @@ test('an electronAPI channel round-trips to the main process', async () => {
   const { app, userDataDir, jupyterDir } = await launchApp();
   try {
     const welcome = await pageByTitle(app, /welcome/i);
+    await welcome.waitForLoadState('domcontentloaded');
     const isDark = await welcome.evaluate(() =>
       ((window as unknown) as {
         electronAPI: { isDarkTheme(): Promise<boolean> };
