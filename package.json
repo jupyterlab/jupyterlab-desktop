@@ -202,7 +202,7 @@
     "fs-extra": "^11.3.5",
     "globals": "^17.6.0",
     "istextorbinary": "^9.5.0",
-    "meow": "^9.0.0",
+    "meow": "^14.1.0",
     "node-watch": "^0.7.4",
     "prettier": "~2.1.1",
     "read-package-tree": "^5.1.6",
