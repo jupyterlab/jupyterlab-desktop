@@ -226,6 +226,6 @@
     "update-electron-app": "^3.2.0",
     "which": "^7.0.0",
     "winreg": "^1.2.5",
-    "yargs": "^17.7.2"
+    "yargs": "^18.0.0"
   }
 }
