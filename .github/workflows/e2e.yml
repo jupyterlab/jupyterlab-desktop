@@ -57,9 +57,11 @@ jobs:
             ditto -x -k "$zip" "$dist"
             printf 'Electron.app/Contents/MacOS/Electron' > node_modules/electron/path.txt
             test -f "$dist/Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Electron Framework"
+            test -x "$dist/Electron.app/Contents/MacOS/Electron"
           else
             unzip -q -o "$zip" -d "$dist"
             printf 'electron' > node_modules/electron/path.txt
+            test -x "$dist/electron"
           fi
           node -e "console.log('resolved electron:', require('electron'))"
       - run: yarn build

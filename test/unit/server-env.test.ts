@@ -95,6 +95,23 @@ vi.mock('../../src/main/pythonenvdialog/pythonenvdialog', () => ({
   ManagePythonEnvironmentDialog: { Tab: { Settings: 'settings' } }
 }));
 
+// start() polls the server URL via http/https.request until it is up. Without a
+// real server those requests fail and reschedule a setTimeout retry, leaving
+// background timers and connection attempts running after the assertions. Report
+// the URL as up immediately so the poll resolves and nothing is left scheduled.
+vi.mock('http', () => ({
+  request: (_url: unknown, cb: (res: { statusCode: number }) => void) => {
+    queueMicrotask(() => cb({ statusCode: 200 }));
+    return { on: vi.fn(), end: vi.fn() };
+  }
+}));
+vi.mock('https', () => ({
+  request: (_url: unknown, cb: (res: { statusCode: number }) => void) => {
+    queueMicrotask(() => cb({ statusCode: 200 }));
+    return { on: vi.fn(), end: vi.fn() };
+  }
+}));
+
 import { JupyterServer } from '../../src/main/server';
 import { IEnvironmentType } from '../../src/main/tokens';
 
@@ -119,10 +136,15 @@ async function flush() {
 beforeEach(() => {
   vi.clearAllMocks();
   mockExecFile.mockReturnValue(makeChild());
+  // Clear so the userData-dir assertion is hermetic: a developer or CI with
+  // JLAB_DESKTOP_CONFIG_DIR set in the ambient env would otherwise make start()
+  // legitimately prefer it. unstubAllEnvs in afterEach restores the real value.
+  vi.stubEnv('JLAB_DESKTOP_CONFIG_DIR', undefined);
 });
 
 afterEach(() => {
   vi.restoreAllMocks();
+  vi.unstubAllEnvs();
 });
 
 describe('JupyterServer.start env isolation', () => {
@@ -137,7 +159,7 @@ describe('JupyterServer.start env isolation', () => {
       }
     });
 
-    server.start();
+    void server.start().catch(() => undefined);
     await flush();
 
     expect(mockExecFile).toHaveBeenCalledTimes(1);
@@ -146,32 +168,23 @@ describe('JupyterServer.start env isolation', () => {
   });
 
   it('prefers the JLAB_DESKTOP_CONFIG_DIR override over the userData dir', async () => {
-    const original = process.env.JLAB_DESKTOP_CONFIG_DIR;
-    process.env.JLAB_DESKTOP_CONFIG_DIR = '/override/config';
-    try {
-      const server = new JupyterServer({
-        environment: {
-          path: '/envs/e2e/bin/python',
-          name: 'e2e',
-          type: IEnvironmentType.VirtualEnv,
-          versions: {},
-          defaultKernel: 'python3'
-        }
-      });
-
-      server.start();
-      await flush();
-
-      const options = mockExecFile.mock.calls[0][1] as {
-        env: NodeJS.ProcessEnv;
-      };
-      expect(options.env.JUPYTER_CONFIG_DIR).toBe('/override/config');
-    } finally {
-      if (original === undefined) {
-        delete process.env.JLAB_DESKTOP_CONFIG_DIR;
-      } else {
-        process.env.JLAB_DESKTOP_CONFIG_DIR = original;
+    vi.stubEnv('JLAB_DESKTOP_CONFIG_DIR', '/override/config');
+    const server = new JupyterServer({
+      environment: {
+        path: '/envs/e2e/bin/python',
+        name: 'e2e',
+        type: IEnvironmentType.VirtualEnv,
+        versions: {},
+        defaultKernel: 'python3'
       }
-    }
+    });
+
+    void server.start().catch(() => undefined);
+    await flush();
+
+    const options = mockExecFile.mock.calls[0][1] as {
+      env: NodeJS.ProcessEnv;
+    };
+    expect(options.env.JUPYTER_CONFIG_DIR).toBe('/override/config');
   });
 });
