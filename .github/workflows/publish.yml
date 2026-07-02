@@ -36,8 +36,9 @@ jobs:
         - { platform: linux-64, platform_name: Linux x64,  os: ubuntu-latest, build_platform: linux-64, conda_platform: linux-64 }
         # Native Intel runner: macos-latest is arm64, and packing the osx-64
         # env there runs its x86_64 Python under Rosetta, which aborts conda
-        # pack intermittently (#1018). macos-15-intel is the last x86_64 image.
-        - { platform: osx-64, platform_name: macOS x64, os: macos-15-intel, build_platform: osx-64, conda_platform: osx-64 }
+        # pack intermittently (#1018). macos-26-intel is the newest x86_64
+        # image (GitHub offers no macos-latest-intel; -latest is arm64 only).
+        - { platform: osx-64, platform_name: macOS x64, os: macos-26-intel, build_platform: osx-64, conda_platform: osx-64 }
         - { platform: osx-arm64, platform_name: macOS arm64, os: macos-latest, build_platform: osx-64, conda_platform: osx-arm64 }
         - { platform: win-64, platform_name: Windows x64, os: windows-latest, build_platform: win-64, conda_platform: win-64 }
 
