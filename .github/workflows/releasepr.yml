@@ -45,9 +45,7 @@ jobs:
           APP_VERSION: ${{ steps.package-info.outputs.version }}
           GH_TOKEN: ${{ secrets.JLAB_APP_TOKEN }}
         run: |
-          # No -x: the push URL carries the token, so keep it out of the log
-          # (GitHub also masks the secret, this is belt and suspenders).
-          set -eu
+          set -eux
           # git checkout -b fails if the branch already exists, which keeps a
           # re-run from opening a duplicate release PR.
           BRANCH_NAME="release-v${APP_VERSION}"
@@ -58,11 +56,11 @@ jobs:
           date +%s > auto-release.log
           git add auto-release.log
           git commit -m "Update auto-release logs"
-          # Checkout persisted no credentials, so authenticate this one push with
-          # the app token instead of keeping it in the git config all job long.
-          git push \
-            "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" \
-            "HEAD:refs/heads/${BRANCH_NAME}"
+          # Checkout ran with persist-credentials: false. Wire the app token in
+          # through gh's credential helper just for this push, so it never lands
+          # in the git config or the command log; git push then uses GH_TOKEN.
+          gh auth setup-git
+          git push origin "HEAD:refs/heads/${BRANCH_NAME}"
 
           gh pr create \
             --head "${BRANCH_NAME}" \
