@@ -2,13 +2,13 @@
 // Distributed under the terms of the Modified BSD License.
 
 import {
-  BrowserView,
   BrowserWindow,
   clipboard,
   dialog,
   Menu,
   MenuItemConstructorOptions,
-  shell
+  shell,
+  WebContentsView
 } from 'electron';
 import * as fs from 'fs';
 import { WelcomeView } from '../welcomeview/welcomeview';
@@ -23,7 +23,6 @@ import {
 } from '../config/settings';
 import { TitleBarView } from '../titlebarview/titlebarview';
 import {
-  clearSession,
   DarkThemeBGColor,
   envPathForPythonPath,
   getBundledPythonPath,
@@ -170,7 +169,7 @@ export class SessionWindow implements IDisposable {
 
   load() {
     const titleBarView = new TitleBarView({ isDarkTheme: this._isDarkTheme });
-    this._window.addBrowserView(titleBarView.view);
+    this._window.contentView.addChildView(titleBarView.view);
     titleBarView.view.setBounds({
       x: 0,
       y: 0,
@@ -249,24 +248,25 @@ export class SessionWindow implements IDisposable {
   private async _disposeSession(): Promise<void> {
     this._wsSettings.save();
 
-    if (this._sessionConfig?.isRemote) {
-      if (!this._sessionConfig.persistSessionData) {
-        return clearSession(this._labView.view.webContents.session);
-      }
-    } else {
+    if (!this._sessionConfig?.isRemote) {
       if (!this._server?.server) {
         return;
       }
 
       await this._server.server.stop();
       this._server = null;
-      if (this._labView) {
-        if (!this._window.isDestroyed()) {
-          this._window.removeBrowserView(this._labView.view);
-        }
-        this._labView.dispose();
-        this._labView = null;
+    }
+
+    if (this._labView) {
+      if (!this._window.isDestroyed()) {
+        this._window.contentView.removeChildView(this._labView.view);
       }
+      // LabView.dispose clears the remote session (when non-persistent) and
+      // closes the webContents; await so a non-persistent remote session is
+      // cleared before the window goes away. Best-effort and idempotent: a
+      // second dispose after the labView was already cleared is a no-op.
+      await this._labView.dispose();
+      this._labView = null;
     }
   }
 
@@ -302,7 +302,7 @@ export class SessionWindow implements IDisposable {
       registry: this._registry,
       isDarkTheme: this._isDarkTheme
     });
-    this._window.addBrowserView(welcomeView.view);
+    this._window.contentView.addChildView(welcomeView.view);
     welcomeView.view.setBounds({
       x: 0,
       y: titleBarHeight,
@@ -328,7 +328,7 @@ export class SessionWindow implements IDisposable {
     showAnimation?: boolean
   ) {
     if (!this._progressViewVisible) {
-      this._window.addBrowserView(this._progressView.view.view);
+      this._window.contentView.addChildView(this._progressView.view.view);
       this._progressViewVisible = true;
       this._titleBarView.showServerStatus(false);
     }
@@ -347,7 +347,7 @@ export class SessionWindow implements IDisposable {
       return;
     }
 
-    this._window.removeBrowserView(this._progressView.view.view);
+    this._window.contentView.removeChildView(this._progressView.view.view);
     this._progressViewVisible = false;
     this._titleBarView.showServerStatus(
       this._contentViewType === ContentViewType.Lab
@@ -360,7 +360,7 @@ export class SessionWindow implements IDisposable {
       parent: this,
       sessionConfig: this._sessionConfig
     });
-    this._window.addBrowserView(labView.view);
+    this._window.contentView.addChildView(labView.view);
 
     // transfer focus to labView
     this._window.webContents.on('focus', () => {
@@ -442,7 +442,7 @@ export class SessionWindow implements IDisposable {
     return this._contentViewType;
   }
 
-  get contentView(): BrowserView {
+  get contentView(): WebContentsView {
     if (this._contentViewType === ContentViewType.Welcome) {
       return this._welcomeView?.view;
     } else {
@@ -1178,8 +1178,8 @@ export class SessionWindow implements IDisposable {
     if (this._contentViewType === ContentViewType.Welcome) {
       this._titleBarView.showServerStatus(false);
       if (this._labView) {
-        this._window.removeBrowserView(this._labView.view);
-        this._labView.dispose();
+        this._window.contentView.removeChildView(this._labView.view);
+        void this._labView.dispose();
         this._labView = null;
       }
       this._loadWelcomeView();
@@ -1188,7 +1188,12 @@ export class SessionWindow implements IDisposable {
       this._window.setTitle('Welcome');
     } else {
       if (this._welcomeView) {
-        this._window.removeBrowserView(this._welcomeView.view);
+        this._window.contentView.removeChildView(this._welcomeView.view);
+        // removeChildView only detaches; the webContents is not destroyed for us
+        // (electron/electron#42884), and the welcome view is rebuilt on return, so close it.
+        if (!this._welcomeView.view.webContents.isDestroyed()) {
+          this._welcomeView.view.webContents.close();
+        }
         this._welcomeView = null;
       }
       this._loadLabView();
@@ -1253,8 +1258,11 @@ export class SessionWindow implements IDisposable {
   }
 
   private _openDevTools() {
-    this._window.getBrowserViews().forEach(view => {
-      view.webContents.openDevTools();
+    this._window.contentView.children.forEach(view => {
+      // children is View[]; only WebContentsView exposes webContents.
+      if (view instanceof WebContentsView) {
+        view.webContents.openDevTools();
+      }
     });
   }
 
@@ -1313,7 +1321,7 @@ export class SessionWindow implements IDisposable {
     this._envSelectPopup.setCurrentPythonPath(serverInfo?.environment?.path);
     this._envSelectPopup.resetView();
 
-    this._window.addBrowserView(this._envSelectPopup.view.view);
+    this._window.contentView.addChildView(this._envSelectPopup.view.view);
     this._envSelectPopupVisible = true;
     this._resizeEnvSelectPopup();
     this._envSelectPopup.view.view.webContents.focus();
@@ -1361,7 +1369,7 @@ export class SessionWindow implements IDisposable {
     if (!this._envSelectPopupVisible) {
       return;
     }
-    this._window.removeBrowserView(this._envSelectPopup.view.view);
+    this._window.contentView.removeChildView(this._envSelectPopup.view.view);
     this._envSelectPopupVisible = false;
   }
 

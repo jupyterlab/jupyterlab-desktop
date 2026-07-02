@@ -23,7 +23,7 @@ jobs:
       - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
       - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
         with:
-          node-version: '20.x'
+          node-version: '24.x'
           cache: 'yarn'
       - run: yarn install --frozen-lockfile
       - run: yarn test:coverage
@@ -59,7 +59,7 @@ jobs:
       - name: Install node
         uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
         with:
-          node-version: '20.x'
+          node-version: '24.x'
           cache: 'yarn'
 
       - name: Install dependencies
