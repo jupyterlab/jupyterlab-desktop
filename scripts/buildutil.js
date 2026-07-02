@@ -167,7 +167,7 @@ if (flags['copy-extras-to-bundled-env']) {
   const envExtrasDir = path.resolve('env_installer', 'extras');
   const envInstallerDir = path.resolve('env_installer', 'jlab_server');
 
-  copySync(envExtrasDir, envInstallerDir, { recursive: true });
+  copySync(envExtrasDir, envInstallerDir);
 
   console.log(
     `Finished copying env extras from \n\t"${envExtrasDir}" to \n\t"${envInstallerDir}"`
