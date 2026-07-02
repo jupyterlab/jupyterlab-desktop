@@ -64,5 +64,6 @@ jobs:
 
           gh pr create \
             --head "${BRANCH_NAME}" \
+            --base "${GITHUB_REF_NAME}" \
             --title "Release v${APP_VERSION}" \
             --body "Release v${APP_VERSION}"
