@@ -66,6 +66,8 @@ export class ThemedWindow {
     const titlebarJsSrc = fs.readFileSync(
       path.join(__dirname, './dialogtitlebar.js')
     );
+    // ponytail: dialogtitlebar.js emits CommonJS (tsconfig nodenext); define exports so its customElements.define runs when injected as an inline module. Proper fix in Phase 4: bundle for web / drop data: URLs.
+    const cjsInteropShim = 'var exports={},module={exports};';
 
     const pageSource = `
       <html>
@@ -105,7 +107,7 @@ export class ThemedWindow {
           }
           </style>
           <script type="module">${toolkitJsSrc}</script>
-          <script type="module">${titlebarJsSrc}</script>
+          <script type="module">${cjsInteropShim}${titlebarJsSrc}</script>
           <script>
             document.addEventListener("DOMContentLoaded", () => {
               const platform = "${process.platform}";
