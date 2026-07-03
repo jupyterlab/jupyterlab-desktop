@@ -187,6 +187,17 @@ export class SessionWindow implements IDisposable {
     titleBarView.load();
     this._titleBarView = titleBarView;
 
+    // transfer focus to the current labView. Registered once on the persistent
+    // window and titlebar webContents (they outlive every labView); dereferencing
+    // this._labView freshly means an env switch that recreates the labView cannot
+    // leave a stale, disposed webContents behind, nor accumulate a handler per switch.
+    this._window.webContents.on('focus', () => {
+      this._labView?.view?.webContents?.focus();
+    });
+    this._titleBarView.view.webContents.on('focus', () => {
+      this._labView?.view?.webContents?.focus();
+    });
+
     if (this._contentViewType === ContentViewType.Lab) {
       if (this._sessionConfig.isRemote) {
         this._createSessionForRemoteUrl(
@@ -362,13 +373,6 @@ export class SessionWindow implements IDisposable {
     });
     this._window.contentView.addChildView(labView.view);
 
-    // transfer focus to labView
-    this._window.webContents.on('focus', () => {
-      labView.view.webContents.focus();
-    });
-    this._titleBarView.view.webContents.on('focus', () => {
-      labView.view.webContents.focus();
-    });
     labView.view.webContents.on('did-finish-load', () => {
       labView.view.webContents.focus();
     });
@@ -1237,11 +1241,14 @@ export class SessionWindow implements IDisposable {
     // TODO: on linux, electron 22 does not repaint properly after resize
     // check if fixed in newer versions
     setTimeout(() => {
-      this._titleBarView.view.webContents.invalidate();
-      this.contentView?.webContents.invalidate();
-      if (this._envSelectPopup) {
-        this._envSelectPopup.view.view.webContents.invalidate();
-      }
+      const invalidate = (webContents?: Electron.WebContents) => {
+        if (webContents && !webContents.isDestroyed()) {
+          webContents.invalidate();
+        }
+      };
+      invalidate(this._titleBarView?.view?.webContents);
+      invalidate(this.contentView?.webContents);
+      invalidate(this._envSelectPopup?.view?.view?.webContents);
     }, 200);
   }
 
