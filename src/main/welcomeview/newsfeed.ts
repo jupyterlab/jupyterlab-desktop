@@ -18,9 +18,14 @@ export function parseNewsFeed(xml: string, maxNewsToShow = 10): INewsItem[] {
   const items = feed?.rss?.channel?.item ?? [];
   const newsList: INewsItem[] = [];
   for (const item of items) {
+    const title = item?.title == null ? '' : String(item.title);
+    const link = item?.link == null ? '' : String(item.link);
+    if (!title || !link) {
+      continue;
+    }
     newsList.push({
-      title: item.title,
-      link: encodeURIComponent(item.link)
+      title,
+      link: encodeURIComponent(link)
     });
     if (newsList.length === maxNewsToShow) {
       break;

@@ -741,9 +741,12 @@ export class WelcomeView {
           this._view.webContents.send(EventTypeRenderer.SetNewsList, newsList);
 
           WelcomeView._newsList = newsList;
-          appData.newsList = [...newsList];
-          appData.save();
+          // Only persist a non-empty result so a maintenance page or a feed
+          // schema change (parseNewsFeed returns []) cannot clobber the cached
+          // offline list on disk.
           if (newsList.length > 0) {
+            appData.newsList = [...newsList];
+            appData.save();
             WelcomeView._newsListFetched = true;
           }
         } catch (error) {
