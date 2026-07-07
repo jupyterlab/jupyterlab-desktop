@@ -583,7 +583,9 @@ export class SessionWindow implements IDisposable {
             this._hideProgressView();
           });
         } else {
-          this._hideProgressView();
+          // wait for the lab UI to paint before hiding the spinner, so a new
+          // non-notebook session does not flash blank while it loads.
+          this.labView.labUIReady.then(() => this._hideProgressView());
         }
         appData.addSessionToRecents({
           workingDirectory: sessionConfig.resolvedWorkingDirectory,
@@ -1132,7 +1134,10 @@ export class SessionWindow implements IDisposable {
           await this._createServerForSession();
           this._contentViewType = ContentViewType.Lab;
           this._updateContentView();
-          this._hideProgressView();
+          // hide the progress view once JupyterLab has actually painted, not at
+          // server-ready, otherwise the new lab view shows a blank flash while
+          // it loads over the just-removed spinner.
+          this._labView.labUIReady.then(() => this._hideProgressView());
         } catch (error) {
           this._setProgress(
             'Failed to create session',
