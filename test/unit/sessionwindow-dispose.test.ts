@@ -60,6 +60,34 @@ describe('SessionWindow.dispose', () => {
     expect(progressView.view.view.webContents.close).toHaveBeenCalledTimes(1);
     expect(envSelectPopup.view.view.webContents.close).toHaveBeenCalledTimes(1);
   });
+
+  it('does not re-close an aux-view webContents that is already destroyed', async () => {
+    // Arrange: a titlebar whose renderer is already gone; close must be skipped.
+    const close = vi.fn();
+    const nestedDestroyed = () => ({
+      view: {
+        view: { webContents: { isDestroyed: () => true, close: vi.fn() } }
+      }
+    });
+    const titleBarView = {
+      view: { webContents: { isDestroyed: () => true, close } }
+    };
+
+    const win = makeWindow({
+      _evm: { dispose: vi.fn() },
+      _disposeSession: vi.fn().mockResolvedValue(undefined),
+      _titleBarView: titleBarView,
+      _progressView: nestedDestroyed(),
+      _envSelectPopup: nestedDestroyed(),
+      _welcomeView: null
+    });
+
+    // Act
+    await win.dispose();
+
+    // Assert: the guard skips close() on an already-destroyed webContents.
+    expect(close).not.toHaveBeenCalled();
+  });
 });
 
 describe('LabView.labUIReady', () => {
@@ -67,7 +95,7 @@ describe('LabView.labUIReady', () => {
     vi.useRealTimers();
   });
 
-  it('resolves false once the view is disposed mid-startup instead of polling forever', async () => {
+  it('stops polling on dispose without firing a stale continuation', async () => {
     vi.useFakeTimers();
 
     // Arrange: a LabView that never reached the ready state, so labUIReady is
@@ -79,13 +107,22 @@ describe('LabView.labUIReady', () => {
     labView._sessionConfig = { isRemote: false };
     labView._view = { webContents: { isDestroyed: () => true } };
 
-    const ready = labView.labUIReady as Promise<boolean>;
-
-    // Act: dispose mid-startup, then let the next poll tick fire.
-    await labView.dispose();
+    let settled = false;
+    labView.labUIReady.then(() => {
+      settled = true;
+    });
     await vi.advanceTimersByTimeAsync(100);
+    // Still polling before dispose.
+    expect(vi.getTimerCount()).toBe(1);
 
-    // Assert: the pending promise settles to false rather than leaking.
-    await expect(ready).resolves.toBe(false);
+    // Act: dispose mid-startup, then let the pending tick fire.
+    await labView.dispose();
+    await vi.advanceTimersByTimeAsync(1000);
+
+    // Assert: the poll stopped (no leaked timer) and the promise never
+    // resolved, so the consumers' .then continuations do not run against the
+    // now null labView.
+    expect(vi.getTimerCount()).toBe(0);
+    expect(settled).toBe(false);
   });
 });

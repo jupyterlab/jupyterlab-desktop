@@ -293,8 +293,11 @@ export class LabView implements IDisposable {
     return new Promise<boolean>(resolve => {
       const checkIfReady = () => {
         if (this._isDisposed) {
-          resolve(false);
-        } else if (this._labUIReady) {
+          // stop polling on dispose; leave the promise unsettled so a stale
+          // continuation cannot run against an already null labView.
+          return;
+        }
+        if (this._labUIReady) {
           resolve(true);
         } else {
           setTimeout(() => {
