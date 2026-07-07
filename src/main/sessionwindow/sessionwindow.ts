@@ -192,10 +192,12 @@ export class SessionWindow implements IDisposable {
     // this._labView freshly means an env switch that recreates the labView cannot
     // leave a stale, disposed webContents behind, nor accumulate a handler per switch.
     this._window.webContents.on('focus', () => {
-      this._labView?.view?.webContents?.focus();
+      const wc = this._labView?.view?.webContents;
+      if (wc && !wc.isDestroyed()) wc.focus();
     });
     this._titleBarView.view.webContents.on('focus', () => {
-      this._labView?.view?.webContents?.focus();
+      const wc = this._labView?.view?.webContents;
+      if (wc && !wc.isDestroyed()) wc.focus();
     });
 
     if (this._contentViewType === ContentViewType.Lab) {
@@ -300,6 +302,18 @@ export class SessionWindow implements IDisposable {
       );
 
       this._disposeSession().then(() => {
+        // _disposeSession only closes the labView. The persistent titlebar,
+        // progress and env-select views (and a still-mounted welcome view)
+        // keep their renderers alive on window close (electron/electron#42884),
+        // so close each one that is still alive.
+        const closeIfAlive = (wc?: Electron.WebContents) => {
+          if (wc && !wc.isDestroyed()) wc.close();
+        };
+        closeIfAlive(this._titleBarView?.view?.webContents);
+        closeIfAlive(this._progressView?.view?.view?.webContents);
+        closeIfAlive(this._envSelectPopup?.view?.view?.webContents);
+        closeIfAlive(this._welcomeView?.view?.webContents);
+
         this._disposePromise = null;
         resolve();
       });
@@ -366,6 +380,12 @@ export class SessionWindow implements IDisposable {
   }
 
   private _loadLabView() {
+    if (this._labView) {
+      this._window.contentView.removeChildView(this._labView.view);
+      void this._labView.dispose();
+      this._labView = null;
+    }
+
     const labView = new LabView({
       isDarkTheme: this._isDarkTheme,
       parent: this,
