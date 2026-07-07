@@ -182,6 +182,7 @@ export class SessionWindow implements IDisposable {
     });
     this._window.on('blur', () => {
       titleBarView.deactivate();
+      this._hideEnvSelectPopup();
     });
 
     titleBarView.load();
@@ -1365,7 +1366,10 @@ export class SessionWindow implements IDisposable {
     );
 
     this._envSelectPopup.view.view.setBounds({
-      x: Math.round(titleBarRect.width - paddingRight - popupWidth),
+      x: Math.max(
+        0,
+        Math.round(titleBarRect.width - paddingRight - popupWidth)
+      ),
       y: Math.round(titleBarRect.height),
       width: popupWidth,
       height: Math.round(maxHeight)

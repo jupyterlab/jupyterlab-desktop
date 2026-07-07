@@ -23,3 +23,28 @@ describe('SessionWindow._disposeSession', () => {
     await expect(win._disposeSession()).resolves.toBeUndefined();
   });
 });
+
+describe('SessionWindow._resizeEnvSelectPopup', () => {
+  it('keeps the popup on screen when the window is narrower than the popup', () => {
+    // Arrange: a 400px title bar (the window minWidth) is narrower than the
+    // 600px popup, so an unclamped x would place the popup off the left edge.
+    const setBounds = vi.fn();
+    const win = makeWindow({
+      _envSelectPopupVisible: true,
+      _titleBarView: {
+        view: { getBounds: () => ({ width: 400, height: 60 }) }
+      },
+      _envSelectPopup: {
+        getScrollHeight: () => 300,
+        view: { view: { setBounds } }
+      }
+    });
+
+    // Act
+    win._resizeEnvSelectPopup();
+
+    // Assert: the popup's left edge must never go negative.
+    expect(setBounds).toHaveBeenCalledTimes(1);
+    expect(setBounds.mock.calls[0][0].x).toBeGreaterThanOrEqual(0);
+  });
+});
