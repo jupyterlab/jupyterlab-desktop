@@ -66,7 +66,7 @@ export class ThemedWindow {
     const titlebarJsSrc = fs.readFileSync(
       path.join(__dirname, './dialogtitlebar.js')
     );
-    // ponytail: dialogtitlebar.js emits CommonJS (tsconfig nodenext); define exports so its customElements.define runs when injected as an inline module. Proper fix in Phase 4: bundle for web / drop data: URLs.
+    // dialogtitlebar.js is emitted as CommonJS (tsconfig nodenext), so exports must exist before it runs as an inline module, otherwise its customElements.define never fires. A proper fix would bundle it for the web or drop the data: URL.
     const cjsInteropShim = 'var exports={},module={exports};';
 
     const pageSource = `

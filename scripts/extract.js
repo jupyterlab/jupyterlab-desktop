@@ -2,11 +2,7 @@ var rpt = require('read-package-tree');
 var path = require('path');
 var fs = require('fs');
 var glob = require('glob');
-
-// Native replacements for the fs-extra helpers this script used.
-var removeSync = p => fs.rmSync(p, { recursive: true, force: true });
-var ensureDirSync = d => fs.mkdirSync(d, { recursive: true });
-var copySync = (src, dest) => fs.cpSync(src, dest, { recursive: true });
+const { copySync, removeSync, ensureDirSync } = require('./fsutil');
 
 var seen = {};
 
