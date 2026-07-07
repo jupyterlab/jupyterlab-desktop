@@ -77,13 +77,21 @@ describe('parseNewsFeed', () => {
     expect(parseNewsFeed(xml)).toEqual([]);
   });
 
-  it('coerces a non-string title so the item keeps the string contract', () => {
+  it('skips an item whose title parsed to nested markup rather than text', () => {
     const xml = feed(
       '<item><title><b>Bold</b></title><link>https://blog.jupyter.org/x</link></item>'
     );
 
+    expect(parseNewsFeed(xml)).toEqual([]);
+  });
+
+  it('keeps an item whose title parsed to a number', () => {
+    const xml = feed(
+      '<item><title>2024</title><link>https://blog.jupyter.org/y</link></item>'
+    );
+
     const [news] = parseNewsFeed(xml);
 
-    expect(typeof news.title).toBe('string');
+    expect(news.title).toBe('2024');
   });
 });

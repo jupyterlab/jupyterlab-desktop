@@ -738,17 +738,19 @@ export class WelcomeView {
           const data = await response.text();
           const newsList = parseNewsFeed(data, maxNewsToShow);
 
+          // An empty result (feed down, maintenance page, schema change) must
+          // not blank the cached list the user already sees, so keep the
+          // current state instead of overwriting it.
+          if (newsList.length === 0) {
+            return;
+          }
+
           this._view.webContents.send(EventTypeRenderer.SetNewsList, newsList);
 
           WelcomeView._newsList = newsList;
-          // Only persist a non-empty result so a maintenance page or a feed
-          // schema change (parseNewsFeed returns []) cannot clobber the cached
-          // offline list on disk.
-          if (newsList.length > 0) {
-            appData.newsList = [...newsList];
-            appData.save();
-            WelcomeView._newsListFetched = true;
-          }
+          appData.newsList = [...newsList];
+          appData.save();
+          WelcomeView._newsListFetched = true;
         } catch (error) {
           console.error('Failed to parse news list:', error);
         }
