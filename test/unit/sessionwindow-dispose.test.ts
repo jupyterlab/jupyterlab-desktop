@@ -43,8 +43,12 @@ describe('SessionWindow._resizeEnvSelectPopup', () => {
     // Act
     win._resizeEnvSelectPopup();
 
-    // Assert: the popup's left edge must never go negative.
+    // Assert: the whole popup fits inside the window, so neither the search box
+    // on the left nor the env list on the right is clipped. Clamping x alone
+    // would only move the clipping to the other edge, so the width is capped too.
     expect(setBounds).toHaveBeenCalledTimes(1);
-    expect(setBounds.mock.calls[0][0].x).toBeGreaterThanOrEqual(0);
+    const bounds = setBounds.mock.calls[0][0];
+    expect(bounds.x).toBeGreaterThanOrEqual(0);
+    expect(bounds.x + bounds.width).toBeLessThanOrEqual(400);
   });
 });
