@@ -220,7 +220,7 @@ export class SessionWindow implements IDisposable {
             });
           })
           .catch(error => {
-            this._setProgress(
+            this._showProgressView(
               'Failed to create session',
               `<div class="message-row">${error}</div>
           <div class="message-row">
@@ -1069,6 +1069,11 @@ export class SessionWindow implements IDisposable {
         }
 
         this._hideEnvSelectPopup();
+
+        this._showProgressView(
+          'Restarting server using the selected Python enviroment'
+        );
+
         this._restartServerInPythonEnvironment(currentPythonPath);
       }
     );
@@ -1113,26 +1118,41 @@ export class SessionWindow implements IDisposable {
   }
 
   private _restartServerInPythonEnvironment(pythonPath: string) {
+    if (this._restartingServer) {
+      return;
+    }
+    this._restartingServer = true;
+
     this._wsSettings.setValue(SettingType.pythonPath, pythonPath);
     this._sessionConfig.pythonPath = pythonPath;
 
-    this._disposeSession().then(async () => {
-      try {
-        await this._createServerForSession();
-        this._contentViewType = ContentViewType.Lab;
-        this._updateContentView();
-        this._hideProgressView();
-      } catch (error) {
-        this._setProgress(
-          'Failed to create session',
-          `<div class="message-row">${error}</div>
+    this._disposeSession()
+      .then(async () => {
+        try {
+          await this._createServerForSession();
+          this._contentViewType = ContentViewType.Lab;
+          this._updateContentView();
+          this._hideProgressView();
+        } catch (error) {
+          this._setProgress(
+            'Failed to create session',
+            `<div class="message-row">${error}</div>
         <div class="message-row">
           <a href="javascript:void(0);" onclick="sendMessageToMain('${EventTypeMain.ShowWelcomeView}')">Go to Welcome Page</a>
         </div>`,
+            false
+          );
+        }
+        this._restartingServer = false;
+      })
+      .catch(error => {
+        this._setProgress(
+          'Failed to restart server',
+          `<div class="message-row">${error}</div><div class="message-row"><a href="javascript:void(0);" onclick="sendMessageToMain('${EventTypeMain.ShowWelcomeView}')">Go to Welcome Page</a></div>`,
           false
         );
-      }
-    });
+        this._restartingServer = false;
+      });
   }
 
   getPythonEnvironment(): IPythonEnvironment {
@@ -1740,6 +1760,7 @@ export class SessionWindow implements IDisposable {
   private _welcomeView: WelcomeView;
   private _progressView: ProgressView;
   private _progressViewVisible: boolean = false;
+  private _restartingServer = false;
   private _labView: LabView;
   private _contentViewType: ContentViewType = ContentViewType.Welcome;
   private _serverFactory: IServerFactory;
