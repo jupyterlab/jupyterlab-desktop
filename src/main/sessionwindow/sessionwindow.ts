@@ -192,10 +192,16 @@ export class SessionWindow implements IDisposable {
     // this._labView freshly means an env switch that recreates the labView cannot
     // leave a stale, disposed webContents behind, nor accumulate a handler per switch.
     this._window.webContents.on('focus', () => {
-      this._labView?.view?.webContents?.focus();
+      const wc = this.contentView?.webContents;
+      if (wc && !wc.isDestroyed()) {
+        wc.focus();
+      }
     });
     this._titleBarView.view.webContents.on('focus', () => {
-      this._labView?.view?.webContents?.focus();
+      const wc = this.contentView?.webContents;
+      if (wc && !wc.isDestroyed()) {
+        wc.focus();
+      }
     });
 
     if (this._contentViewType === ContentViewType.Lab) {
@@ -240,12 +246,15 @@ export class SessionWindow implements IDisposable {
       this._resizeViewsDelayed();
     });
     this._window.on('maximize', () => {
+      this._titleBarView.setMaximized(this._window.isMaximized());
       this._resizeViewsDelayed();
     });
     this._window.on('unmaximize', () => {
+      this._titleBarView.setMaximized(this._window.isMaximized());
       this._resizeViewsDelayed();
     });
     this._window.on('restore', () => {
+      this._titleBarView.setMaximized(this._window.isMaximized());
       this._resizeViewsDelayed();
     });
     this._window.on('move', () => {
@@ -374,7 +383,9 @@ export class SessionWindow implements IDisposable {
     this._window.contentView.addChildView(labView.view);
 
     labView.view.webContents.on('did-finish-load', () => {
-      labView.view.webContents.focus();
+      if (this._window.isFocused()) {
+        labView.view.webContents.focus();
+      }
     });
 
     labView.load((errorCode: number, errorDescription: string) => {
