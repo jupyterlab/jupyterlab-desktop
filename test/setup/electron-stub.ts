@@ -55,6 +55,8 @@ export const BrowserWindow = vi.fn().mockImplementation(() => ({
 
 export const shell = { openExternal: vi.fn(), openPath: vi.fn() };
 
+export const net = { fetch: vi.fn() };
+
 export const nativeTheme = { shouldUseDarkColors: false };
 
 export const screen = {

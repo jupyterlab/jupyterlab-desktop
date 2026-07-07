@@ -170,10 +170,11 @@ export class SessionWindow implements IDisposable {
   load() {
     const titleBarView = new TitleBarView({ isDarkTheme: this._isDarkTheme });
     this._window.contentView.addChildView(titleBarView.view);
+    const { width: contentWidth } = this._window.getContentBounds();
     titleBarView.view.setBounds({
       x: 0,
       y: 0,
-      width: DEFAULT_WIN_WIDTH,
+      width: contentWidth,
       height: titleBarHeight
     });
 
@@ -314,11 +315,15 @@ export class SessionWindow implements IDisposable {
       isDarkTheme: this._isDarkTheme
     });
     this._window.contentView.addChildView(welcomeView.view);
+    const {
+      width: contentWidth,
+      height: contentHeight
+    } = this._window.getContentBounds();
     welcomeView.view.setBounds({
       x: 0,
       y: titleBarHeight,
-      width: DEFAULT_WIN_WIDTH,
-      height: DEFAULT_WIN_HEIGHT
+      width: contentWidth,
+      height: contentHeight - titleBarHeight
     });
 
     welcomeView.load();
@@ -1248,6 +1253,7 @@ export class SessionWindow implements IDisposable {
       };
       invalidate(this._titleBarView?.view?.webContents);
       invalidate(this.contentView?.webContents);
+      invalidate(this._progressView?.view?.view?.webContents);
       invalidate(this._envSelectPopup?.view?.view?.webContents);
     }, 200);
   }
