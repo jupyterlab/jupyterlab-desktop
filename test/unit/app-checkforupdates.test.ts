@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { net } from '../setup/electron-stub';
 import { JupyterApplication } from '../../src/main/app';
 
