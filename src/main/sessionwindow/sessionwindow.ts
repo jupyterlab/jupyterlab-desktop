@@ -50,6 +50,7 @@ import { ISignal, Signal } from '@lumino/signaling';
 import { EventTypeMain } from '../eventtypes';
 import { EventManager } from '../eventmanager';
 import { runCommandInEnvironment } from '../env';
+import * as ejs from 'ejs';
 
 export enum ContentViewType {
   Welcome = 'welcome',
@@ -73,6 +74,14 @@ export interface IServerInfo {
 
 const titleBarHeight = 29;
 const defaultEnvSelectPopupHeight = 330;
+
+// Progress-view detail is injected as innerHTML, so a raw error (which can carry
+// server output or a path with markup) is an injection sink. Coerce to a string
+// and escape it at this single choke-point; every caller routes error text
+// through here so no site can forget.
+export function errorMessageRow(error: unknown): string {
+  return `<div class="message-row">${ejs.escapeXML(String(error))}</div>`;
+}
 
 export class SessionWindow implements IDisposable {
   constructor(options: SessionWindow.IOptions) {
@@ -222,7 +231,7 @@ export class SessionWindow implements IDisposable {
           .catch(error => {
             this._showProgressView(
               'Failed to create session',
-              `<div class="message-row">${error}</div>
+              `${errorMessageRow(error)}
           <div class="message-row">
             <a href="javascript:void(0);" onclick="sendMessageToMain('${EventTypeMain.ShowWelcomeView}')">Go to Welcome Page</a>
           </div>`,
@@ -553,7 +562,7 @@ export class SessionWindow implements IDisposable {
           this._showProgressView(
             'Failed to create session!',
             `
-            <div class="message-row">${error}</div>
+            ${errorMessageRow(error)}
             <div class="message-row">
               <a href="javascript:void(0);" onclick="sendMessageToMain('${EventTypeMain.ShowWelcomeView}')">Go to Welcome Page</a>
             </div>
@@ -1141,7 +1150,7 @@ export class SessionWindow implements IDisposable {
         } catch (error) {
           this._setProgress(
             'Failed to create session',
-            `<div class="message-row">${error}</div>
+            `${errorMessageRow(error)}
         <div class="message-row">
           <a href="javascript:void(0);" onclick="sendMessageToMain('${EventTypeMain.ShowWelcomeView}')">Go to Welcome Page</a>
         </div>`,
@@ -1153,7 +1162,7 @@ export class SessionWindow implements IDisposable {
       .catch(error => {
         this._setProgress(
           'Failed to restart server',
-          `<div class="message-row">${error}</div><div class="message-row"><a href="javascript:void(0);" onclick="sendMessageToMain('${EventTypeMain.ShowWelcomeView}')">Go to Welcome Page</a></div>`,
+          `${errorMessageRow(error)}<div class="message-row"><a href="javascript:void(0);" onclick="sendMessageToMain('${EventTypeMain.ShowWelcomeView}')">Go to Welcome Page</a></div>`,
           false
         );
         this._restartingServer = false;
@@ -1431,7 +1440,7 @@ export class SessionWindow implements IDisposable {
       ).catch(error => {
         this._setProgress(
           'Failed to create session',
-          `<div class="message-row">${error}</div>
+          `${errorMessageRow(error)}
           <div class="message-row">
             <a href="javascript:void(0);" onclick="sendMessageToMain('${EventTypeMain.ShowWelcomeView}')">Go to Welcome Page</a>
           </div>`,
@@ -1473,7 +1482,7 @@ export class SessionWindow implements IDisposable {
         ).catch(error => {
           this._setProgress(
             'Failed to create session',
-            `<div class="message-row">${error}</div>
+            `${errorMessageRow(error)}
             <div class="message-row">
               <a href="javascript:void(0);" onclick="sendMessageToMain('${EventTypeMain.ShowWelcomeView}')">Go to Welcome Page</a>
             </div>`,
@@ -1666,7 +1675,7 @@ export class SessionWindow implements IDisposable {
       ).catch(error => {
         this._setProgress(
           'Failed to create session',
-          `<div class="message-row">${error}</div>
+          `${errorMessageRow(error)}
           <div class="message-row">
             <a href="javascript:void(0);" onclick="sendMessageToMain('${EventTypeMain.ShowWelcomeView}')">Go to Welcome Page</a>
           </div>`,
