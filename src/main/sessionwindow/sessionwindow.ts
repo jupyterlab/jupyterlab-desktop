@@ -182,10 +182,28 @@ export class SessionWindow implements IDisposable {
     });
     this._window.on('blur', () => {
       titleBarView.deactivate();
+      this._hideEnvSelectPopup();
     });
 
     titleBarView.load();
     this._titleBarView = titleBarView;
+
+    // transfer focus to the current labView. Registered once on the persistent
+    // window and titlebar webContents (they outlive every labView); dereferencing
+    // this._labView freshly means an env switch that recreates the labView cannot
+    // leave a stale, disposed webContents behind, nor accumulate a handler per switch.
+    this._window.webContents.on('focus', () => {
+      const wc = this.contentView?.webContents;
+      if (wc && !wc.isDestroyed()) {
+        wc.focus();
+      }
+    });
+    this._titleBarView.view.webContents.on('focus', () => {
+      const wc = this.contentView?.webContents;
+      if (wc && !wc.isDestroyed()) {
+        wc.focus();
+      }
+    });
 
     if (this._contentViewType === ContentViewType.Lab) {
       if (this._sessionConfig.isRemote) {
@@ -229,12 +247,15 @@ export class SessionWindow implements IDisposable {
       this._resizeViewsDelayed();
     });
     this._window.on('maximize', () => {
+      this._titleBarView.setMaximized(this._window.isMaximized());
       this._resizeViewsDelayed();
     });
     this._window.on('unmaximize', () => {
+      this._titleBarView.setMaximized(this._window.isMaximized());
       this._resizeViewsDelayed();
     });
     this._window.on('restore', () => {
+      this._titleBarView.setMaximized(this._window.isMaximized());
       this._resizeViewsDelayed();
     });
     this._window.on('move', () => {
@@ -362,15 +383,10 @@ export class SessionWindow implements IDisposable {
     });
     this._window.contentView.addChildView(labView.view);
 
-    // transfer focus to labView
-    this._window.webContents.on('focus', () => {
-      labView.view.webContents.focus();
-    });
-    this._titleBarView.view.webContents.on('focus', () => {
-      labView.view.webContents.focus();
-    });
     labView.view.webContents.on('did-finish-load', () => {
-      labView.view.webContents.focus();
+      if (this._window.isFocused()) {
+        labView.view.webContents.focus();
+      }
     });
 
     labView.load((errorCode: number, errorDescription: string) => {
@@ -1237,11 +1253,14 @@ export class SessionWindow implements IDisposable {
     // TODO: on linux, electron 22 does not repaint properly after resize
     // check if fixed in newer versions
     setTimeout(() => {
-      this._titleBarView.view.webContents.invalidate();
-      this.contentView?.webContents.invalidate();
-      if (this._envSelectPopup) {
-        this._envSelectPopup.view.view.webContents.invalidate();
-      }
+      const invalidate = (webContents?: Electron.WebContents) => {
+        if (webContents && !webContents.isDestroyed()) {
+          webContents.invalidate();
+        }
+      };
+      invalidate(this._titleBarView?.view?.webContents);
+      invalidate(this.contentView?.webContents);
+      invalidate(this._envSelectPopup?.view?.view?.webContents);
     }, 200);
   }
 
@@ -1349,8 +1368,13 @@ export class SessionWindow implements IDisposable {
     }
 
     const titleBarRect = this._titleBarView.view.getBounds();
-    const popupWidth = 600;
     const paddingRight = process.platform === 'darwin' ? 33 : 127;
+    // Anchor the popup's right edge near the env button and cap its width to
+    // what fits, so on a narrow window it shrinks (the popup content is
+    // responsive) instead of hanging off an edge with the search box or the
+    // env list clipped.
+    const rightEdge = titleBarRect.width - paddingRight;
+    const popupWidth = Math.min(600, rightEdge);
     // shorten browser view height if larger than max allowed
     const maxHeight = Math.min(
       this._envSelectPopup.getScrollHeight(),
@@ -1358,9 +1382,9 @@ export class SessionWindow implements IDisposable {
     );
 
     this._envSelectPopup.view.view.setBounds({
-      x: Math.round(titleBarRect.width - paddingRight - popupWidth),
+      x: Math.round(rightEdge - popupWidth),
       y: Math.round(titleBarRect.height),
-      width: popupWidth,
+      width: Math.round(popupWidth),
       height: Math.round(maxHeight)
     });
   }
