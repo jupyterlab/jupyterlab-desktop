@@ -29,6 +29,7 @@ describe('titlebarview preload', () => {
         'sendMouseEvent',
         'onSetTitle',
         'onSetActive',
+        'onSetMaximized',
         'onShowServerStatus',
         'onShowServerNotificationBadge'
       ].sort()
@@ -86,6 +87,14 @@ describe('titlebarview preload', () => {
     const cb = vi.fn();
     api.onSetActive(cb);
     rendererHandler(EventTypeRenderer.SetActive)({}, true);
+    expect(cb).toHaveBeenCalledWith(true);
+  });
+
+  it('onSetMaximized relays SetMaximized to the callback', async () => {
+    const api = await load();
+    const cb = vi.fn();
+    api.onSetMaximized(cb);
+    rendererHandler(EventTypeRenderer.SetMaximized)({}, true);
     expect(cb).toHaveBeenCalledWith(true);
   });
 
