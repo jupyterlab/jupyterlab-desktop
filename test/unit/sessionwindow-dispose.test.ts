@@ -126,3 +126,32 @@ describe('LabView.labUIReady', () => {
     expect(settled).toBe(false);
   });
 });
+
+describe('SessionWindow._resizeEnvSelectPopup', () => {
+  it('keeps the popup on screen when the window is narrower than the popup', () => {
+    // Arrange: a 400px title bar (the window minWidth) is narrower than the
+    // 600px popup, so an unclamped x would place the popup off the left edge.
+    const setBounds = vi.fn();
+    const win = makeWindow({
+      _envSelectPopupVisible: true,
+      _titleBarView: {
+        view: { getBounds: () => ({ width: 400, height: 60 }) }
+      },
+      _envSelectPopup: {
+        getScrollHeight: () => 300,
+        view: { view: { setBounds } }
+      }
+    });
+
+    // Act
+    win._resizeEnvSelectPopup();
+
+    // Assert: the whole popup fits inside the window, so neither the search box
+    // on the left nor the env list on the right is clipped. Clamping x alone
+    // would only move the clipping to the other edge, so the width is capped too.
+    expect(setBounds).toHaveBeenCalledTimes(1);
+    const bounds = setBounds.mock.calls[0][0];
+    expect(bounds.x).toBeGreaterThanOrEqual(0);
+    expect(bounds.x + bounds.width).toBeLessThanOrEqual(400);
+  });
+});
