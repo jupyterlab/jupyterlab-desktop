@@ -170,13 +170,7 @@ export class SessionWindow implements IDisposable {
   load() {
     const titleBarView = new TitleBarView({ isDarkTheme: this._isDarkTheme });
     this._window.contentView.addChildView(titleBarView.view);
-    const { width: contentWidth } = this._window.getContentBounds();
-    titleBarView.view.setBounds({
-      x: 0,
-      y: 0,
-      width: contentWidth,
-      height: titleBarHeight
-    });
+    titleBarView.view.setBounds(this._titleBarBounds());
 
     this._window.on('focus', () => {
       titleBarView.activate();
@@ -1218,16 +1212,23 @@ export class SessionWindow implements IDisposable {
     }, 300);
   }
 
-  private _resizeViews() {
-    const { width, height } = this._window.getContentBounds();
-    // add padding to allow resizing around title bar
+  // Title bar bounds, shared by load() and _resizeViews() so the first paint
+  // matches every later resize. Non-macOS insets by 1px so the frame stays
+  // grabbable for resizing around the title bar.
+  private _titleBarBounds(): Electron.Rectangle {
+    const { width } = this._window.getContentBounds();
     const padding = process.platform === 'darwin' ? 0 : 1;
-    this._titleBarView.view.setBounds({
+    return {
       x: padding,
       y: padding,
       width: width - 2 * padding,
       height: titleBarHeight - padding
-    });
+    };
+  }
+
+  private _resizeViews() {
+    const { width, height } = this._window.getContentBounds();
+    this._titleBarView.view.setBounds(this._titleBarBounds());
     const contentRect: Electron.Rectangle = {
       x: 0,
       y: titleBarHeight,
