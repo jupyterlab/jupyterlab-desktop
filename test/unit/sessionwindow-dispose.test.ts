@@ -75,7 +75,7 @@ describe('SessionWindow._restartServerInPythonEnvironment', () => {
     const hideProgressView = vi.fn();
     const win = makeWindow({
       _restartingServer: false,
-      _progressGeneration: 0,
+      _restartAttemptId: 0,
       _wsSettings: { setValue: vi.fn(), save: vi.fn() },
       _sessionConfig: {},
       _disposeSession: vi.fn().mockResolvedValue(undefined),
@@ -97,15 +97,15 @@ describe('SessionWindow._restartServerInPythonEnvironment', () => {
     expect(hideProgressView).toHaveBeenCalledTimes(1);
   });
 
-  it('does not hide the progress view when a newer progress screen has been shown', async () => {
-    // Arrange: a restart whose lab view has not painted; before it does, a newer
-    // progress screen is shown (a superseding restart still loading, or a
-    // "Failed to restart server" message from a later attempt that rejected).
+  it('does not hide the progress view when a later restart has superseded it', async () => {
+    // Arrange: a restart whose lab view has not painted; before it does, a later
+    // restart attempt starts (which, whether it keeps loading or fails and shows
+    // a recovery message, must not have its screen wiped by this stale hide).
     let paint: (v: boolean) => void = () => undefined;
     const hideProgressView = vi.fn();
     const win = makeWindow({
       _restartingServer: false,
-      _progressGeneration: 0,
+      _restartAttemptId: 0,
       _wsSettings: { setValue: vi.fn(), save: vi.fn() },
       _sessionConfig: {},
       _disposeSession: vi.fn().mockResolvedValue(undefined),
@@ -117,11 +117,11 @@ describe('SessionWindow._restartServerInPythonEnvironment', () => {
       }
     });
 
-    // Act: run the restart, show a newer progress screen, then let the first
-    // (now superseded) lab view finally paint.
+    // Act: run the restart, let a later restart attempt bump the id, then let
+    // the first (now superseded) lab view finally paint.
     win._restartServerInPythonEnvironment('/path/to/python');
     await new Promise(resolve => setTimeout(resolve, 0));
-    win._progressGeneration++;
+    win._restartAttemptId++;
     paint(true);
     await new Promise(resolve => setTimeout(resolve, 0));
 
