@@ -848,7 +848,7 @@ export class SessionWindow implements IDisposable {
         this._hideEnvSelectPopup();
 
         this._showProgressView(
-          'Restarting server using the selected Python enviroment'
+          'Restarting server using the selected Python environment'
         );
 
         try {
@@ -1105,7 +1105,7 @@ export class SessionWindow implements IDisposable {
         this._hideEnvSelectPopup();
 
         this._showProgressView(
-          'Restarting server using the selected Python enviroment'
+          'Restarting server using the selected Python environment'
         );
 
         this._restartServerInPythonEnvironment(currentPythonPath);
@@ -1168,11 +1168,13 @@ export class SessionWindow implements IDisposable {
           this._updateContentView();
           // hide the progress view once JupyterLab has actually painted, not at
           // server-ready, otherwise the new lab view shows a blank flash while
-          // it loads over the just-removed spinner.
+          // it loads over the just-removed spinner. A later restart disposes
+          // this labView, and labUIReady never resolves after dispose (#1031),
+          // so a superseded restart cannot hide the current one's progress.
           this._labView.labUIReady.then(() => this._hideProgressView());
         } catch (error) {
           const escapedError = ejs.escapeXML(String(error));
-          this._setProgress(
+          this._showProgressView(
             'Failed to create session',
             `<div class="message-row">${escapedError}</div>
         <div class="message-row">
@@ -1185,7 +1187,7 @@ export class SessionWindow implements IDisposable {
       })
       .catch(error => {
         const escapedError = ejs.escapeXML(String(error));
-        this._setProgress(
+        this._showProgressView(
           'Failed to restart server',
           `<div class="message-row">${escapedError}</div><div class="message-row"><a href="javascript:void(0);" onclick="sendMessageToMain('${EventTypeMain.ShowWelcomeView}')">Go to Welcome Page</a></div>`,
           false

@@ -28,21 +28,22 @@ describe('SessionWindow._disposeSession', () => {
 describe('SessionWindow._restartServerInPythonEnvironment', () => {
   it('shows a recovery message when disposing the wedged session rejects', async () => {
     // Arrange: dispose rejects (e.g. a wedged server that will not stop).
-    const setProgress = vi.fn();
+    const showProgressView = vi.fn();
     const win = makeWindow({
       _restartingServer: false,
       _wsSettings: { setValue: vi.fn(), save: vi.fn() },
       _sessionConfig: {},
       _disposeSession: vi.fn().mockRejectedValue(new Error('stop failed')),
-      _setProgress: setProgress
+      _showProgressView: showProgressView
     });
 
     // Act: trigger the restart and let the rejected promise settle.
     win._restartServerInPythonEnvironment('/path/to/python');
     await new Promise(resolve => setTimeout(resolve, 0));
 
-    // Assert: the recovery path surfaces a visible error and clears the guard.
-    expect(setProgress).toHaveBeenCalledWith(
+    // Assert: the recovery path surfaces a visible error via the progress view
+    // (which attaches it if needed) and clears the guard.
+    expect(showProgressView).toHaveBeenCalledWith(
       'Failed to restart server',
       expect.stringContaining('stop failed'),
       false
