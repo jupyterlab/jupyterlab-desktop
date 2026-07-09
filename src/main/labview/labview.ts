@@ -292,6 +292,11 @@ export class LabView implements IDisposable {
   get labUIReady(): Promise<boolean> {
     return new Promise<boolean>(resolve => {
       const checkIfReady = () => {
+        if (this._isDisposed) {
+          // stop polling on dispose; leave the promise unsettled so a stale
+          // continuation cannot run against an already null labView.
+          return;
+        }
         if (this._labUIReady) {
           resolve(true);
         } else {
@@ -306,6 +311,7 @@ export class LabView implements IDisposable {
   }
 
   async dispose(): Promise<void> {
+    this._isDisposed = true;
     this._evm.dispose();
 
     // if local or remote with no data persistence, clear session data
@@ -554,6 +560,7 @@ export class LabView implements IDisposable {
   private _jlabBaseUrl: string;
   private _wsSettings: WorkspaceSettings;
   private _labUIReady = false;
+  private _isDisposed = false;
   private _evm = new EventManager();
   private _uiMode: UIMode = UIMode.ManagedByWebApp;
 }
