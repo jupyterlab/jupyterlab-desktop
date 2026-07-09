@@ -361,6 +361,7 @@ export class SessionWindow implements IDisposable {
     detail?: string,
     showAnimation?: boolean
   ) {
+    this._progressGeneration++;
     if (!this._progressViewVisible) {
       this._window.contentView.addChildView(this._progressView.view.view);
       this._progressViewVisible = true;
@@ -373,6 +374,7 @@ export class SessionWindow implements IDisposable {
   }
 
   private _setProgress(title: string, detail: string, showAnimation: boolean) {
+    this._progressGeneration++;
     this._progressView.setProgress(title, detail, showAnimation);
   }
 
@@ -606,18 +608,27 @@ export class SessionWindow implements IDisposable {
         this._sessionConfigChanged.emit();
 
         if (type === 'notebook') {
+          const notebookProgressGeneration = this._progressGeneration;
           this.labView.labUIReady.then(async () => {
             await this.labView.newNotebook();
             this._setUIMode(
               userSettings.getValue(SettingType.uiModeForSingleFileOpen),
               false
             );
-            this._hideProgressView();
+            if (this._progressGeneration === notebookProgressGeneration) {
+              this._hideProgressView();
+            }
           });
         } else {
           // wait for the lab UI to paint before hiding the spinner, so a new
-          // non-notebook session does not flash blank while it loads.
-          this.labView.labUIReady.then(() => this._hideProgressView());
+          // non-notebook session does not flash blank while it loads. Skip if a
+          // newer progress screen has been shown since (see the restart path).
+          const sessionProgressGeneration = this._progressGeneration;
+          this.labView.labUIReady.then(() => {
+            if (this._progressGeneration === sessionProgressGeneration) {
+              this._hideProgressView();
+            }
+          });
         }
         appData.addSessionToRecents({
           workingDirectory: sessionConfig.resolvedWorkingDirectory,
@@ -1168,12 +1179,13 @@ export class SessionWindow implements IDisposable {
           this._updateContentView();
           // hide the progress view once JupyterLab has actually painted, not at
           // server-ready, otherwise the new lab view shows a blank flash while
-          // it loads over the just-removed spinner. Skip the hide if another
-          // restart is already in flight: this labView keeps loading while the
-          // next restart shuts the old server down, so it can still paint during
-          // that window and would otherwise hide the new restart's progress.
+          // it loads over the just-removed spinner. Capture the progress
+          // generation and skip the hide if a newer screen has been shown since
+          // (a superseding restart still loading, or a failure message from a
+          // later attempt), which this stale continuation would otherwise wipe.
+          const progressGeneration = this._progressGeneration;
           this._labView.labUIReady.then(() => {
-            if (!this._restartingServer) {
+            if (this._progressGeneration === progressGeneration) {
               this._hideProgressView();
             }
           });
@@ -1823,6 +1835,10 @@ export class SessionWindow implements IDisposable {
   private _progressView: ProgressView;
   private _progressViewVisible: boolean = false;
   private _restartingServer = false;
+  // bumped every time the progress view content changes, so a deferred
+  // "hide once the lab view paints" continuation can tell whether the screen it
+  // was scheduled against is still the one showing.
+  private _progressGeneration = 0;
   private _labView: LabView;
   private _contentViewType: ContentViewType = ContentViewType.Welcome;
   private _serverFactory: IServerFactory;
