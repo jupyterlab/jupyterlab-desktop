@@ -228,9 +228,10 @@ export class SessionWindow implements IDisposable {
             });
           })
           .catch(error => {
+            const escapedError = ejs.escapeXML(String(error));
             this._showProgressView(
               'Failed to create session',
-              `<div class="message-row">${ejs.escapeXML(String(error))}</div>
+              `<div class="message-row">${escapedError}</div>
           <div class="message-row">
             <a href="javascript:void(0);" onclick="sendMessageToMain('${EventTypeMain.ShowWelcomeView}')">Go to Welcome Page</a>
           </div>`,
@@ -563,10 +564,11 @@ export class SessionWindow implements IDisposable {
             filesToOpen: [...this._sessionConfig.filesToOpen]
           });
         } catch (error) {
+          const escapedError = ejs.escapeXML(String(error));
           this._showProgressView(
             'Failed to create session!',
             `
-            <div class="message-row">${ejs.escapeXML(String(error))}</div>
+            <div class="message-row">${escapedError}</div>
             <div class="message-row">
               <a href="javascript:void(0);" onclick="sendMessageToMain('${EventTypeMain.ShowWelcomeView}')">Go to Welcome Page</a>
             </div>
@@ -1152,9 +1154,10 @@ export class SessionWindow implements IDisposable {
           // it loads over the just-removed spinner.
           this._labView.labUIReady.then(() => this._hideProgressView());
         } catch (error) {
+          const escapedError = ejs.escapeXML(String(error));
           this._setProgress(
             'Failed to create session',
-            `<div class="message-row">${ejs.escapeXML(String(error))}</div>
+            `<div class="message-row">${escapedError}</div>
         <div class="message-row">
           <a href="javascript:void(0);" onclick="sendMessageToMain('${EventTypeMain.ShowWelcomeView}')">Go to Welcome Page</a>
         </div>`,
@@ -1164,9 +1167,10 @@ export class SessionWindow implements IDisposable {
         this._restartingServer = false;
       })
       .catch(error => {
+        const escapedError = ejs.escapeXML(String(error));
         this._setProgress(
           'Failed to restart server',
-          `<div class="message-row">${ejs.escapeXML(String(error))}</div><div class="message-row"><a href="javascript:void(0);" onclick="sendMessageToMain('${EventTypeMain.ShowWelcomeView}')">Go to Welcome Page</a></div>`,
+          `<div class="message-row">${escapedError}</div><div class="message-row"><a href="javascript:void(0);" onclick="sendMessageToMain('${EventTypeMain.ShowWelcomeView}')">Go to Welcome Page</a></div>`,
           false
         );
         this._restartingServer = false;
@@ -1447,9 +1451,10 @@ export class SessionWindow implements IDisposable {
         sessionConfig.filesToOpen,
         sessionConfig.pythonPath
       ).catch(error => {
+        const escapedError = ejs.escapeXML(String(error));
         this._setProgress(
           'Failed to create session',
-          `<div class="message-row">${ejs.escapeXML(String(error))}</div>
+          `<div class="message-row">${escapedError}</div>
           <div class="message-row">
             <a href="javascript:void(0);" onclick="sendMessageToMain('${EventTypeMain.ShowWelcomeView}')">Go to Welcome Page</a>
           </div>`,
@@ -1489,9 +1494,10 @@ export class SessionWindow implements IDisposable {
           sessionConfig.workingDirectory,
           sessionConfig.filesToOpen
         ).catch(error => {
+          const escapedError = ejs.escapeXML(String(error));
           this._setProgress(
             'Failed to create session',
-            `<div class="message-row">${ejs.escapeXML(String(error))}</div>
+            `<div class="message-row">${escapedError}</div>
             <div class="message-row">
               <a href="javascript:void(0);" onclick="sendMessageToMain('${EventTypeMain.ShowWelcomeView}')">Go to Welcome Page</a>
             </div>`,
@@ -1682,9 +1688,10 @@ export class SessionWindow implements IDisposable {
         sessionIndex,
         useDefaultPythonEnv
       ).catch(error => {
+        const escapedError = ejs.escapeXML(String(error));
         this._setProgress(
           'Failed to create session',
-          `<div class="message-row">${ejs.escapeXML(String(error))}</div>
+          `<div class="message-row">${escapedError}</div>
           <div class="message-row">
             <a href="javascript:void(0);" onclick="sendMessageToMain('${EventTypeMain.ShowWelcomeView}')">Go to Welcome Page</a>
           </div>`,
