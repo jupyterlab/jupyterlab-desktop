@@ -1168,10 +1168,15 @@ export class SessionWindow implements IDisposable {
           this._updateContentView();
           // hide the progress view once JupyterLab has actually painted, not at
           // server-ready, otherwise the new lab view shows a blank flash while
-          // it loads over the just-removed spinner. A later restart disposes
-          // this labView, and labUIReady never resolves after dispose (#1031),
-          // so a superseded restart cannot hide the current one's progress.
-          this._labView.labUIReady.then(() => this._hideProgressView());
+          // it loads over the just-removed spinner. Skip the hide if another
+          // restart is already in flight: this labView keeps loading while the
+          // next restart shuts the old server down, so it can still paint during
+          // that window and would otherwise hide the new restart's progress.
+          this._labView.labUIReady.then(() => {
+            if (!this._restartingServer) {
+              this._hideProgressView();
+            }
+          });
         } catch (error) {
           const escapedError = ejs.escapeXML(String(error));
           this._showProgressView(

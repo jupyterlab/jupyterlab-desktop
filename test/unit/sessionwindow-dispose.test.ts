@@ -68,6 +68,62 @@ describe('SessionWindow._restartServerInPythonEnvironment', () => {
     // Assert: the re-entrancy guard drops it before touching the session.
     expect(disposeSession).not.toHaveBeenCalled();
   });
+
+  it('hides the progress view once the restarted lab view paints', async () => {
+    // Arrange: a successful restart whose lab view has not painted yet.
+    let paint: (v: boolean) => void = () => undefined;
+    const hideProgressView = vi.fn();
+    const win = makeWindow({
+      _restartingServer: false,
+      _wsSettings: { setValue: vi.fn(), save: vi.fn() },
+      _sessionConfig: {},
+      _disposeSession: vi.fn().mockResolvedValue(undefined),
+      _createServerForSession: vi.fn().mockResolvedValue(undefined),
+      _updateContentView: vi.fn(),
+      _hideProgressView: hideProgressView,
+      _labView: {
+        labUIReady: new Promise<boolean>(resolve => (paint = resolve))
+      }
+    });
+
+    // Act: run the restart, then let the lab view paint with no newer restart.
+    win._restartServerInPythonEnvironment('/path/to/python');
+    await new Promise(resolve => setTimeout(resolve, 0));
+    paint(true);
+    await new Promise(resolve => setTimeout(resolve, 0));
+
+    // Assert: the spinner is hidden.
+    expect(hideProgressView).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not hide the progress view when a newer restart is already in flight', async () => {
+    // Arrange: same, but a second restart starts before the first lab view paints.
+    let paint: (v: boolean) => void = () => undefined;
+    const hideProgressView = vi.fn();
+    const win = makeWindow({
+      _restartingServer: false,
+      _wsSettings: { setValue: vi.fn(), save: vi.fn() },
+      _sessionConfig: {},
+      _disposeSession: vi.fn().mockResolvedValue(undefined),
+      _createServerForSession: vi.fn().mockResolvedValue(undefined),
+      _updateContentView: vi.fn(),
+      _hideProgressView: hideProgressView,
+      _labView: {
+        labUIReady: new Promise<boolean>(resolve => (paint = resolve))
+      }
+    });
+
+    // Act: run the restart, mark a newer restart in flight, then let the first
+    // (now superseded) lab view paint during the newer restart's shutdown.
+    win._restartServerInPythonEnvironment('/path/to/python');
+    await new Promise(resolve => setTimeout(resolve, 0));
+    win._restartingServer = true;
+    paint(true);
+    await new Promise(resolve => setTimeout(resolve, 0));
+
+    // Assert: the superseded continuation does not hide the newer progress.
+    expect(hideProgressView).not.toHaveBeenCalled();
+  });
 });
 
 describe('SessionWindow.dispose', () => {
