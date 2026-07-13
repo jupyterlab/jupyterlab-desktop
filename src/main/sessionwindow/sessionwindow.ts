@@ -50,6 +50,7 @@ import { ISignal, Signal } from '@lumino/signaling';
 import { EventTypeMain } from '../eventtypes';
 import { EventManager } from '../eventmanager';
 import { runCommandInEnvironment } from '../env';
+import * as ejs from 'ejs';
 
 export enum ContentViewType {
   Welcome = 'welcome',
@@ -222,9 +223,10 @@ export class SessionWindow implements IDisposable {
             });
           })
           .catch(error => {
-            this._setProgress(
+            const escapedError = ejs.escapeXML(String(error));
+            this._showProgressView(
               'Failed to create session',
-              `<div class="message-row">${error}</div>
+              `<div class="message-row">${escapedError}</div>
           <div class="message-row">
             <a href="javascript:void(0);" onclick="sendMessageToMain('${EventTypeMain.ShowWelcomeView}')">Go to Welcome Page</a>
           </div>`,
@@ -579,10 +581,11 @@ export class SessionWindow implements IDisposable {
             filesToOpen: [...this._sessionConfig.filesToOpen]
           });
         } catch (error) {
+          const escapedError = ejs.escapeXML(String(error));
           this._showProgressView(
             'Failed to create session!',
             `
-            <div class="message-row">${error}</div>
+            <div class="message-row">${escapedError}</div>
             <div class="message-row">
               <a href="javascript:void(0);" onclick="sendMessageToMain('${EventTypeMain.ShowWelcomeView}')">Go to Welcome Page</a>
             </div>
@@ -612,7 +615,9 @@ export class SessionWindow implements IDisposable {
             this._hideProgressView();
           });
         } else {
-          this._hideProgressView();
+          // wait for the lab UI to paint before hiding the spinner, so a new
+          // non-notebook session does not flash blank while it loads.
+          this.labView.labUIReady.then(() => this._hideProgressView());
         }
         appData.addSessionToRecents({
           workingDirectory: sessionConfig.resolvedWorkingDirectory,
@@ -843,7 +848,7 @@ export class SessionWindow implements IDisposable {
         this._hideEnvSelectPopup();
 
         this._showProgressView(
-          'Restarting server using the selected Python enviroment'
+          'Restarting server using the selected Python environment'
         );
 
         try {
@@ -1098,6 +1103,11 @@ export class SessionWindow implements IDisposable {
         }
 
         this._hideEnvSelectPopup();
+
+        this._showProgressView(
+          'Restarting server using the selected Python environment'
+        );
+
         this._restartServerInPythonEnvironment(currentPythonPath);
       }
     );
@@ -1142,26 +1152,55 @@ export class SessionWindow implements IDisposable {
   }
 
   private _restartServerInPythonEnvironment(pythonPath: string) {
+    if (this._restartingServer) {
+      return;
+    }
+    this._restartingServer = true;
+    const restartAttemptId = ++this._restartAttemptId;
+
     this._wsSettings.setValue(SettingType.pythonPath, pythonPath);
     this._sessionConfig.pythonPath = pythonPath;
 
-    this._disposeSession().then(async () => {
-      try {
-        await this._createServerForSession();
-        this._contentViewType = ContentViewType.Lab;
-        this._updateContentView();
-        this._hideProgressView();
-      } catch (error) {
-        this._setProgress(
-          'Failed to create session',
-          `<div class="message-row">${error}</div>
+    this._disposeSession()
+      .then(async () => {
+        try {
+          await this._createServerForSession();
+          this._contentViewType = ContentViewType.Lab;
+          this._updateContentView();
+          // hide the progress view once JupyterLab has actually painted, not at
+          // server-ready, otherwise the new lab view shows a blank flash while
+          // it loads over the just-removed spinner. Skip the hide if a later
+          // restart has superseded this one: the previous lab view keeps loading
+          // during the next restart's server shutdown, and if it paints (or a
+          // later attempt failed and showed a recovery message) this stale
+          // continuation would otherwise wipe that newer screen.
+          this._labView.labUIReady.then(() => {
+            if (this._restartAttemptId === restartAttemptId) {
+              this._hideProgressView();
+            }
+          });
+        } catch (error) {
+          const escapedError = ejs.escapeXML(String(error));
+          this._showProgressView(
+            'Failed to create session',
+            `<div class="message-row">${escapedError}</div>
         <div class="message-row">
           <a href="javascript:void(0);" onclick="sendMessageToMain('${EventTypeMain.ShowWelcomeView}')">Go to Welcome Page</a>
         </div>`,
+            false
+          );
+        }
+        this._restartingServer = false;
+      })
+      .catch(error => {
+        const escapedError = ejs.escapeXML(String(error));
+        this._showProgressView(
+          'Failed to restart server',
+          `<div class="message-row">${escapedError}</div><div class="message-row"><a href="javascript:void(0);" onclick="sendMessageToMain('${EventTypeMain.ShowWelcomeView}')">Go to Welcome Page</a></div>`,
           false
         );
-      }
-    });
+        this._restartingServer = false;
+      });
   }
 
   getPythonEnvironment(): IPythonEnvironment {
@@ -1446,9 +1485,10 @@ export class SessionWindow implements IDisposable {
         sessionConfig.filesToOpen,
         sessionConfig.pythonPath
       ).catch(error => {
+        const escapedError = ejs.escapeXML(String(error));
         this._setProgress(
           'Failed to create session',
-          `<div class="message-row">${error}</div>
+          `<div class="message-row">${escapedError}</div>
           <div class="message-row">
             <a href="javascript:void(0);" onclick="sendMessageToMain('${EventTypeMain.ShowWelcomeView}')">Go to Welcome Page</a>
           </div>`,
@@ -1488,9 +1528,10 @@ export class SessionWindow implements IDisposable {
           sessionConfig.workingDirectory,
           sessionConfig.filesToOpen
         ).catch(error => {
+          const escapedError = ejs.escapeXML(String(error));
           this._setProgress(
             'Failed to create session',
-            `<div class="message-row">${error}</div>
+            `<div class="message-row">${escapedError}</div>
             <div class="message-row">
               <a href="javascript:void(0);" onclick="sendMessageToMain('${EventTypeMain.ShowWelcomeView}')">Go to Welcome Page</a>
             </div>`,
@@ -1681,9 +1722,10 @@ export class SessionWindow implements IDisposable {
         sessionIndex,
         useDefaultPythonEnv
       ).catch(error => {
+        const escapedError = ejs.escapeXML(String(error));
         this._setProgress(
           'Failed to create session',
-          `<div class="message-row">${error}</div>
+          `<div class="message-row">${escapedError}</div>
           <div class="message-row">
             <a href="javascript:void(0);" onclick="sendMessageToMain('${EventTypeMain.ShowWelcomeView}')">Go to Welcome Page</a>
           </div>`,
@@ -1782,6 +1824,10 @@ export class SessionWindow implements IDisposable {
   private _welcomeView: WelcomeView;
   private _progressView: ProgressView;
   private _progressViewVisible: boolean = false;
+  private _restartingServer = false;
+  // bumped on every accepted restart so a deferred "hide once the lab view
+  // paints" continuation can tell whether a later restart has superseded it.
+  private _restartAttemptId = 0;
   private _labView: LabView;
   private _contentViewType: ContentViewType = ContentViewType.Welcome;
   private _serverFactory: IServerFactory;

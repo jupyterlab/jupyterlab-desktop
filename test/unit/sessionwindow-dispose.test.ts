@@ -25,6 +25,112 @@ describe('SessionWindow._disposeSession', () => {
   });
 });
 
+describe('SessionWindow._restartServerInPythonEnvironment', () => {
+  it('shows a recovery message when disposing the wedged session rejects', async () => {
+    // Arrange: dispose rejects (e.g. a wedged server that will not stop).
+    const showProgressView = vi.fn();
+    const win = makeWindow({
+      _restartingServer: false,
+      _restartAttemptId: 0,
+      _wsSettings: { setValue: vi.fn(), save: vi.fn() },
+      _sessionConfig: {},
+      _disposeSession: vi.fn().mockRejectedValue(new Error('stop failed')),
+      _showProgressView: showProgressView
+    });
+
+    // Act: trigger the restart and let the rejected promise settle.
+    win._restartServerInPythonEnvironment('/path/to/python');
+    await new Promise(resolve => setTimeout(resolve, 0));
+
+    // Assert: the recovery path surfaces a visible error via the progress view
+    // (which attaches it if needed) and clears the guard.
+    expect(showProgressView).toHaveBeenCalledWith(
+      'Failed to restart server',
+      expect.stringContaining('stop failed'),
+      false
+    );
+    expect(win._restartingServer).toBe(false);
+  });
+
+  it('ignores a second restart dispatched while one is already running', () => {
+    // Arrange: a restart is already in flight.
+    const disposeSession = vi.fn();
+    const win = makeWindow({
+      _restartingServer: true,
+      _wsSettings: { setValue: vi.fn(), save: vi.fn() },
+      _sessionConfig: {},
+      _disposeSession: disposeSession,
+      _setProgress: vi.fn()
+    });
+
+    // Act: a concurrent restart request arrives.
+    win._restartServerInPythonEnvironment('/path/to/python');
+
+    // Assert: the re-entrancy guard drops it before touching the session.
+    expect(disposeSession).not.toHaveBeenCalled();
+  });
+
+  it('hides the progress view once the restarted lab view paints', async () => {
+    // Arrange: a successful restart whose lab view has not painted yet.
+    let paint: (v: boolean) => void = () => undefined;
+    const hideProgressView = vi.fn();
+    const win = makeWindow({
+      _restartingServer: false,
+      _restartAttemptId: 0,
+      _wsSettings: { setValue: vi.fn(), save: vi.fn() },
+      _sessionConfig: {},
+      _disposeSession: vi.fn().mockResolvedValue(undefined),
+      _createServerForSession: vi.fn().mockResolvedValue(undefined),
+      _updateContentView: vi.fn(),
+      _hideProgressView: hideProgressView,
+      _labView: {
+        labUIReady: new Promise<boolean>(resolve => (paint = resolve))
+      }
+    });
+
+    // Act: run the restart, then let the lab view paint with nothing newer shown.
+    win._restartServerInPythonEnvironment('/path/to/python');
+    await new Promise(resolve => setTimeout(resolve, 0));
+    paint(true);
+    await new Promise(resolve => setTimeout(resolve, 0));
+
+    // Assert: the spinner is hidden.
+    expect(hideProgressView).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not hide the progress view when a later restart has superseded it', async () => {
+    // Arrange: a restart whose lab view has not painted; before it does, a later
+    // restart attempt starts (which, whether it keeps loading or fails and shows
+    // a recovery message, must not have its screen wiped by this stale hide).
+    let paint: (v: boolean) => void = () => undefined;
+    const hideProgressView = vi.fn();
+    const win = makeWindow({
+      _restartingServer: false,
+      _restartAttemptId: 0,
+      _wsSettings: { setValue: vi.fn(), save: vi.fn() },
+      _sessionConfig: {},
+      _disposeSession: vi.fn().mockResolvedValue(undefined),
+      _createServerForSession: vi.fn().mockResolvedValue(undefined),
+      _updateContentView: vi.fn(),
+      _hideProgressView: hideProgressView,
+      _labView: {
+        labUIReady: new Promise<boolean>(resolve => (paint = resolve))
+      }
+    });
+
+    // Act: run the restart, let a later restart attempt bump the id, then let
+    // the first (now superseded) lab view finally paint.
+    win._restartServerInPythonEnvironment('/path/to/python');
+    await new Promise(resolve => setTimeout(resolve, 0));
+    win._restartAttemptId++;
+    paint(true);
+    await new Promise(resolve => setTimeout(resolve, 0));
+
+    // Assert: the stale continuation does not wipe the newer screen.
+    expect(hideProgressView).not.toHaveBeenCalled();
+  });
+});
+
 describe('SessionWindow.dispose', () => {
   it('closes the persistent aux-view webContents that _disposeSession leaves alive', async () => {
     // Arrange: the labView teardown is out of scope here, so stub
