@@ -31,6 +31,7 @@ describe('SessionWindow._restartServerInPythonEnvironment', () => {
     const showProgressView = vi.fn();
     const win = makeWindow({
       _restartingServer: false,
+      _restartAttemptId: 0,
       _wsSettings: { setValue: vi.fn(), save: vi.fn() },
       _sessionConfig: {},
       _disposeSession: vi.fn().mockRejectedValue(new Error('stop failed')),
