@@ -50,6 +50,7 @@ import { ISignal, Signal } from '@lumino/signaling';
 import { EventTypeMain } from '../eventtypes';
 import { EventManager } from '../eventmanager';
 import { runCommandInEnvironment } from '../env';
+import * as ejs from 'ejs';
 
 export enum ContentViewType {
   Welcome = 'welcome',
@@ -170,22 +171,35 @@ export class SessionWindow implements IDisposable {
   load() {
     const titleBarView = new TitleBarView({ isDarkTheme: this._isDarkTheme });
     this._window.contentView.addChildView(titleBarView.view);
-    titleBarView.view.setBounds({
-      x: 0,
-      y: 0,
-      width: DEFAULT_WIN_WIDTH,
-      height: titleBarHeight
-    });
+    titleBarView.view.setBounds(this._titleBarBounds());
 
     this._window.on('focus', () => {
       titleBarView.activate();
     });
     this._window.on('blur', () => {
       titleBarView.deactivate();
+      this._hideEnvSelectPopup();
     });
 
     titleBarView.load();
     this._titleBarView = titleBarView;
+
+    // transfer focus to the current labView. Registered once on the persistent
+    // window and titlebar webContents (they outlive every labView); dereferencing
+    // this._labView freshly means an env switch that recreates the labView cannot
+    // leave a stale, disposed webContents behind, nor accumulate a handler per switch.
+    this._window.webContents.on('focus', () => {
+      const wc = this.contentView?.webContents;
+      if (wc && !wc.isDestroyed()) {
+        wc.focus();
+      }
+    });
+    this._titleBarView.view.webContents.on('focus', () => {
+      const wc = this.contentView?.webContents;
+      if (wc && !wc.isDestroyed()) {
+        wc.focus();
+      }
+    });
 
     if (this._contentViewType === ContentViewType.Lab) {
       if (this._sessionConfig.isRemote) {
@@ -209,9 +223,10 @@ export class SessionWindow implements IDisposable {
             });
           })
           .catch(error => {
-            this._setProgress(
+            const escapedError = ejs.escapeXML(String(error));
+            this._showProgressView(
               'Failed to create session',
-              `<div class="message-row">${error}</div>
+              `<div class="message-row">${escapedError}</div>
           <div class="message-row">
             <a href="javascript:void(0);" onclick="sendMessageToMain('${EventTypeMain.ShowWelcomeView}')">Go to Welcome Page</a>
           </div>`,
@@ -229,12 +244,15 @@ export class SessionWindow implements IDisposable {
       this._resizeViewsDelayed();
     });
     this._window.on('maximize', () => {
+      this._titleBarView.setMaximized(this._window.isMaximized());
       this._resizeViewsDelayed();
     });
     this._window.on('unmaximize', () => {
+      this._titleBarView.setMaximized(this._window.isMaximized());
       this._resizeViewsDelayed();
     });
     this._window.on('restore', () => {
+      this._titleBarView.setMaximized(this._window.isMaximized());
       this._resizeViewsDelayed();
     });
     this._window.on('move', () => {
@@ -289,6 +307,18 @@ export class SessionWindow implements IDisposable {
       );
 
       this._disposeSession().then(() => {
+        // _disposeSession only closes the labView. The persistent titlebar,
+        // progress and env-select views (and a still-mounted welcome view)
+        // keep their renderers alive on window close (electron/electron#42884),
+        // so close each one that is still alive.
+        const closeIfAlive = (wc?: Electron.WebContents) => {
+          if (wc && !wc.isDestroyed()) wc.close();
+        };
+        closeIfAlive(this._titleBarView?.view?.webContents);
+        closeIfAlive(this._progressView?.view?.view?.webContents);
+        closeIfAlive(this._envSelectPopup?.view?.view?.webContents);
+        closeIfAlive(this._welcomeView?.view?.webContents);
+
         this._disposePromise = null;
         resolve();
       });
@@ -303,11 +333,15 @@ export class SessionWindow implements IDisposable {
       isDarkTheme: this._isDarkTheme
     });
     this._window.contentView.addChildView(welcomeView.view);
+    const {
+      width: contentWidth,
+      height: contentHeight
+    } = this._window.getContentBounds();
     welcomeView.view.setBounds({
       x: 0,
       y: titleBarHeight,
-      width: DEFAULT_WIN_WIDTH,
-      height: DEFAULT_WIN_HEIGHT
+      width: contentWidth,
+      height: contentHeight - titleBarHeight
     });
 
     welcomeView.load();
@@ -355,6 +389,12 @@ export class SessionWindow implements IDisposable {
   }
 
   private _loadLabView() {
+    if (this._labView) {
+      this._window.contentView.removeChildView(this._labView.view);
+      void this._labView.dispose();
+      this._labView = null;
+    }
+
     const labView = new LabView({
       isDarkTheme: this._isDarkTheme,
       parent: this,
@@ -362,15 +402,10 @@ export class SessionWindow implements IDisposable {
     });
     this._window.contentView.addChildView(labView.view);
 
-    // transfer focus to labView
-    this._window.webContents.on('focus', () => {
-      labView.view.webContents.focus();
-    });
-    this._titleBarView.view.webContents.on('focus', () => {
-      labView.view.webContents.focus();
-    });
     labView.view.webContents.on('did-finish-load', () => {
-      labView.view.webContents.focus();
+      if (this._window.isFocused()) {
+        labView.view.webContents.focus();
+      }
     });
 
     labView.load((errorCode: number, errorDescription: string) => {
@@ -546,10 +581,11 @@ export class SessionWindow implements IDisposable {
             filesToOpen: [...this._sessionConfig.filesToOpen]
           });
         } catch (error) {
+          const escapedError = ejs.escapeXML(String(error));
           this._showProgressView(
             'Failed to create session!',
             `
-            <div class="message-row">${error}</div>
+            <div class="message-row">${escapedError}</div>
             <div class="message-row">
               <a href="javascript:void(0);" onclick="sendMessageToMain('${EventTypeMain.ShowWelcomeView}')">Go to Welcome Page</a>
             </div>
@@ -579,7 +615,9 @@ export class SessionWindow implements IDisposable {
             this._hideProgressView();
           });
         } else {
-          this._hideProgressView();
+          // wait for the lab UI to paint before hiding the spinner, so a new
+          // non-notebook session does not flash blank while it loads.
+          this.labView.labUIReady.then(() => this._hideProgressView());
         }
         appData.addSessionToRecents({
           workingDirectory: sessionConfig.resolvedWorkingDirectory,
@@ -810,7 +848,7 @@ export class SessionWindow implements IDisposable {
         this._hideEnvSelectPopup();
 
         this._showProgressView(
-          'Restarting server using the selected Python enviroment'
+          'Restarting server using the selected Python environment'
         );
 
         try {
@@ -1065,6 +1103,11 @@ export class SessionWindow implements IDisposable {
         }
 
         this._hideEnvSelectPopup();
+
+        this._showProgressView(
+          'Restarting server using the selected Python environment'
+        );
+
         this._restartServerInPythonEnvironment(currentPythonPath);
       }
     );
@@ -1109,26 +1152,55 @@ export class SessionWindow implements IDisposable {
   }
 
   private _restartServerInPythonEnvironment(pythonPath: string) {
+    if (this._restartingServer) {
+      return;
+    }
+    this._restartingServer = true;
+    const restartAttemptId = ++this._restartAttemptId;
+
     this._wsSettings.setValue(SettingType.pythonPath, pythonPath);
     this._sessionConfig.pythonPath = pythonPath;
 
-    this._disposeSession().then(async () => {
-      try {
-        await this._createServerForSession();
-        this._contentViewType = ContentViewType.Lab;
-        this._updateContentView();
-        this._hideProgressView();
-      } catch (error) {
-        this._setProgress(
-          'Failed to create session',
-          `<div class="message-row">${error}</div>
+    this._disposeSession()
+      .then(async () => {
+        try {
+          await this._createServerForSession();
+          this._contentViewType = ContentViewType.Lab;
+          this._updateContentView();
+          // hide the progress view once JupyterLab has actually painted, not at
+          // server-ready, otherwise the new lab view shows a blank flash while
+          // it loads over the just-removed spinner. Skip the hide if a later
+          // restart has superseded this one: the previous lab view keeps loading
+          // during the next restart's server shutdown, and if it paints (or a
+          // later attempt failed and showed a recovery message) this stale
+          // continuation would otherwise wipe that newer screen.
+          this._labView.labUIReady.then(() => {
+            if (this._restartAttemptId === restartAttemptId) {
+              this._hideProgressView();
+            }
+          });
+        } catch (error) {
+          const escapedError = ejs.escapeXML(String(error));
+          this._showProgressView(
+            'Failed to create session',
+            `<div class="message-row">${escapedError}</div>
         <div class="message-row">
           <a href="javascript:void(0);" onclick="sendMessageToMain('${EventTypeMain.ShowWelcomeView}')">Go to Welcome Page</a>
         </div>`,
+            false
+          );
+        }
+        this._restartingServer = false;
+      })
+      .catch(error => {
+        const escapedError = ejs.escapeXML(String(error));
+        this._showProgressView(
+          'Failed to restart server',
+          `<div class="message-row">${escapedError}</div><div class="message-row"><a href="javascript:void(0);" onclick="sendMessageToMain('${EventTypeMain.ShowWelcomeView}')">Go to Welcome Page</a></div>`,
           false
         );
-      }
-    });
+        this._restartingServer = false;
+      });
   }
 
   getPythonEnvironment(): IPythonEnvironment {
@@ -1209,16 +1281,23 @@ export class SessionWindow implements IDisposable {
     }, 300);
   }
 
-  private _resizeViews() {
-    const { width, height } = this._window.getContentBounds();
-    // add padding to allow resizing around title bar
+  // Title bar bounds, shared by load() and _resizeViews() so the first paint
+  // matches every later resize. Non-macOS insets by 1px so the frame stays
+  // grabbable for resizing around the title bar.
+  private _titleBarBounds(): Electron.Rectangle {
+    const { width } = this._window.getContentBounds();
     const padding = process.platform === 'darwin' ? 0 : 1;
-    this._titleBarView.view.setBounds({
+    return {
       x: padding,
       y: padding,
       width: width - 2 * padding,
       height: titleBarHeight - padding
-    });
+    };
+  }
+
+  private _resizeViews() {
+    const { width, height } = this._window.getContentBounds();
+    this._titleBarView.view.setBounds(this._titleBarBounds());
     const contentRect: Electron.Rectangle = {
       x: 0,
       y: titleBarHeight,
@@ -1237,11 +1316,15 @@ export class SessionWindow implements IDisposable {
     // TODO: on linux, electron 22 does not repaint properly after resize
     // check if fixed in newer versions
     setTimeout(() => {
-      this._titleBarView.view.webContents.invalidate();
-      this.contentView?.webContents.invalidate();
-      if (this._envSelectPopup) {
-        this._envSelectPopup.view.view.webContents.invalidate();
-      }
+      const invalidate = (webContents?: Electron.WebContents) => {
+        if (webContents && !webContents.isDestroyed()) {
+          webContents.invalidate();
+        }
+      };
+      invalidate(this._titleBarView?.view?.webContents);
+      invalidate(this.contentView?.webContents);
+      invalidate(this._progressView?.view?.view?.webContents);
+      invalidate(this._envSelectPopup?.view?.view?.webContents);
     }, 200);
   }
 
@@ -1349,8 +1432,13 @@ export class SessionWindow implements IDisposable {
     }
 
     const titleBarRect = this._titleBarView.view.getBounds();
-    const popupWidth = 600;
     const paddingRight = process.platform === 'darwin' ? 33 : 127;
+    // Anchor the popup's right edge near the env button and cap its width to
+    // what fits, so on a narrow window it shrinks (the popup content is
+    // responsive) instead of hanging off an edge with the search box or the
+    // env list clipped.
+    const rightEdge = titleBarRect.width - paddingRight;
+    const popupWidth = Math.min(600, rightEdge);
     // shorten browser view height if larger than max allowed
     const maxHeight = Math.min(
       this._envSelectPopup.getScrollHeight(),
@@ -1358,9 +1446,9 @@ export class SessionWindow implements IDisposable {
     );
 
     this._envSelectPopup.view.view.setBounds({
-      x: Math.round(titleBarRect.width - paddingRight - popupWidth),
+      x: Math.round(rightEdge - popupWidth),
       y: Math.round(titleBarRect.height),
-      width: popupWidth,
+      width: Math.round(popupWidth),
       height: Math.round(maxHeight)
     });
   }
@@ -1397,9 +1485,10 @@ export class SessionWindow implements IDisposable {
         sessionConfig.filesToOpen,
         sessionConfig.pythonPath
       ).catch(error => {
+        const escapedError = ejs.escapeXML(String(error));
         this._setProgress(
           'Failed to create session',
-          `<div class="message-row">${error}</div>
+          `<div class="message-row">${escapedError}</div>
           <div class="message-row">
             <a href="javascript:void(0);" onclick="sendMessageToMain('${EventTypeMain.ShowWelcomeView}')">Go to Welcome Page</a>
           </div>`,
@@ -1439,9 +1528,10 @@ export class SessionWindow implements IDisposable {
           sessionConfig.workingDirectory,
           sessionConfig.filesToOpen
         ).catch(error => {
+          const escapedError = ejs.escapeXML(String(error));
           this._setProgress(
             'Failed to create session',
-            `<div class="message-row">${error}</div>
+            `<div class="message-row">${escapedError}</div>
             <div class="message-row">
               <a href="javascript:void(0);" onclick="sendMessageToMain('${EventTypeMain.ShowWelcomeView}')">Go to Welcome Page</a>
             </div>`,
@@ -1632,9 +1722,10 @@ export class SessionWindow implements IDisposable {
         sessionIndex,
         useDefaultPythonEnv
       ).catch(error => {
+        const escapedError = ejs.escapeXML(String(error));
         this._setProgress(
           'Failed to create session',
-          `<div class="message-row">${error}</div>
+          `<div class="message-row">${escapedError}</div>
           <div class="message-row">
             <a href="javascript:void(0);" onclick="sendMessageToMain('${EventTypeMain.ShowWelcomeView}')">Go to Welcome Page</a>
           </div>`,
@@ -1733,6 +1824,10 @@ export class SessionWindow implements IDisposable {
   private _welcomeView: WelcomeView;
   private _progressView: ProgressView;
   private _progressViewVisible: boolean = false;
+  private _restartingServer = false;
+  // bumped on every accepted restart so a deferred "hide once the lab view
+  // paints" continuation can tell whether a later restart has superseded it.
+  private _restartAttemptId = 0;
   private _labView: LabView;
   private _contentViewType: ContentViewType = ContentViewType.Welcome;
   private _serverFactory: IServerFactory;

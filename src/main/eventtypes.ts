@@ -96,6 +96,7 @@ export enum EventTypeRenderer {
   SetRunningServerList = 'set-running-server-list',
   SetTitle = 'set-title',
   SetActive = 'set-active',
+  SetMaximized = 'set-maximized',
   ShowServerStatus = 'show-server-status',
   ShowServerNotificationBadge = 'show-server-notification-badge',
   SetRecentSessionList = 'set-recent-session-list',

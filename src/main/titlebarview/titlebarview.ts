@@ -62,6 +62,10 @@ export class TitleBarView {
     );
   }
 
+  setMaximized(isMaximized: boolean) {
+    this._view.webContents.send(EventTypeRenderer.SetMaximized, isMaximized);
+  }
+
   showServerStatus(show: boolean) {
     this._view.webContents.send(EventTypeRenderer.ShowServerStatus, show);
   }

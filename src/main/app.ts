@@ -1257,9 +1257,15 @@ export class JupyterApplication implements IApplication, IDisposable {
       )
       .then(async response => {
         try {
+          if (!response.ok) {
+            throw new Error(`Update check failed: ${response.status}`);
+          }
           const data = await response.text();
           const latestReleaseData = yaml.load(data);
           const latestVersion = (latestReleaseData as any).version;
+          if (!latestVersion || !semver.valid(latestVersion)) {
+            throw new Error('No valid version in update metadata');
+          }
           const currentVersion = app.getVersion();
           const newVersionAvailable =
             semver.compare(currentVersion, latestVersion) === -1;
