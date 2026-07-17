@@ -3,10 +3,7 @@ const fs = require('fs');
 const path = require('path');
 const semver = require('semver');
 const yaml = require('js-yaml');
-
-// Native replacements for the fs-extra helpers this script used.
-const readJSONSync = p => JSON.parse(fs.readFileSync(p, 'utf8'));
-const copySync = (src, dest) => fs.cpSync(src, dest, { recursive: true });
+const { copySync, readJSONSync } = require('./fsutil');
 
 const pkgjsonFilePath = path.resolve(__dirname, '../package.json');
 
