@@ -10,19 +10,26 @@ const copySync = (src, dest) => fs.cpSync(src, dest, { recursive: true });
 
 const pkgjsonFilePath = path.resolve(__dirname, '../package.json');
 
-// node buildutil <options>
-//   --check-version-match         check for JupyterLab version match
-//   --update-binary-sign-list     update binary list to sign for macOS
-//   --copy-extras-to-bundled-env  copy extras into the bundled environment
-//   --platform <osx-64|osx-arm64> platform for --update-binary-sign-list
+const usage = `node buildutil <options>
+  --check-version-match         check for JupyterLab version match
+  --update-binary-sign-list     update binary list to sign for macOS
+  --copy-extras-to-bundled-env  copy extras into the bundled environment
+  --platform <osx-64|osx-arm64> platform for --update-binary-sign-list`;
+
 const { values: flags } = parseArgs({
   options: {
     'check-version-match': { type: 'boolean', default: false },
     'update-binary-sign-list': { type: 'boolean', default: false },
     'copy-extras-to-bundled-env': { type: 'boolean', default: false },
-    platform: { type: 'string', default: 'osx-64' }
+    platform: { type: 'string', default: 'osx-64' },
+    help: { type: 'boolean', default: false }
   }
 });
+
+if (flags.help) {
+  console.log(usage);
+  process.exit(0);
+}
 
 if (flags['check-version-match']) {
   // parse application version

@@ -182,6 +182,9 @@
   "homepage": "https://github.com/jupyterlab/jupyterlab-desktop#readme",
   "repository": "https://github.com/jupyterlab/jupyterlab-desktop",
   "license": "BSD-3-Clause",
+  "engines": {
+    "node": ">=22"
+  },
   "devDependencies": {
     "@electron/notarize": "^3.1.1",
     "@eslint/js": "^10.0.1",

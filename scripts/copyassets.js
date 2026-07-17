@@ -111,12 +111,16 @@ copyAssests();
 
 if (process.argv.length > 2 && process.argv[2] == 'watch') {
   // native fs.watch replaces node-watch; recursive watch works on macOS,
-  // Windows, and Linux (Node 19+ walks the tree itself). srcDir is small so
+  // Windows, and Linux (Node 20+ walks the tree itself). srcDir is small so
   // the per-directory inotify watches on Linux are not a concern.
+  let watchTimer;
   fs.watch(srcDir, { recursive: true }, function (evt, name) {
     if (name && /(\.css$)|(\.html$)/.test(name)) {
-      console.log('Asset change detected.');
-      copyAssests();
+      clearTimeout(watchTimer);
+      watchTimer = setTimeout(() => {
+        console.log('Asset change detected.');
+        copyAssests();
+      }, 100);
     }
   });
 }
