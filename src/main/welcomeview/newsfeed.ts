@@ -17,10 +17,20 @@ export function parseNewsFeed(xml: string, maxNewsToShow = 10): INewsItem[] {
   const feed = parser.parse(xml);
   const items = feed?.rss?.channel?.item ?? [];
   const newsList: INewsItem[] = [];
+  // Accept only primitive text: a title or link that parsed to an object
+  // (nested markup, attributes) becomes '' and the item is skipped rather than
+  // rendered as "[object Object]".
+  const asText = (value: unknown): string =>
+    typeof value === 'string' || typeof value === 'number' ? String(value) : '';
   for (const item of items) {
+    const title = asText(item?.title);
+    const link = asText(item?.link);
+    if (!title || !link) {
+      continue;
+    }
     newsList.push({
-      title: item.title,
-      link: encodeURIComponent(item.link)
+      title,
+      link: encodeURIComponent(link)
     });
     if (newsList.length === maxNewsToShow) {
       break;

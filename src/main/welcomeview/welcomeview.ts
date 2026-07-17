@@ -738,14 +738,19 @@ export class WelcomeView {
           const data = await response.text();
           const newsList = parseNewsFeed(data, maxNewsToShow);
 
+          // An empty result (feed down, maintenance page, schema change) must
+          // not blank the cached list the user already sees, so keep the
+          // current state instead of overwriting it.
+          if (newsList.length === 0) {
+            return;
+          }
+
           this._view.webContents.send(EventTypeRenderer.SetNewsList, newsList);
 
           WelcomeView._newsList = newsList;
           appData.newsList = [...newsList];
           appData.save();
-          if (newsList.length > 0) {
-            WelcomeView._newsListFetched = true;
-          }
+          WelcomeView._newsListFetched = true;
         } catch (error) {
           console.error('Failed to parse news list:', error);
         }

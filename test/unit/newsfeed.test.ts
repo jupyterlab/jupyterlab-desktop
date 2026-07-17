@@ -66,4 +66,32 @@ describe('parseNewsFeed', () => {
   it('returns an empty list rather than throwing on unexpected XML', () => {
     expect(parseNewsFeed('<not-a-feed/>')).toEqual([]);
   });
+
+  it('skips an item that has no link', () => {
+    const xml = feed('<item><title>No link</title></item>');
+    expect(parseNewsFeed(xml)).toEqual([]);
+  });
+
+  it('skips an item that has no title', () => {
+    const xml = feed('<item><link>https://blog.jupyter.org/x</link></item>');
+    expect(parseNewsFeed(xml)).toEqual([]);
+  });
+
+  it('skips an item whose title parsed to nested markup rather than text', () => {
+    const xml = feed(
+      '<item><title><b>Bold</b></title><link>https://blog.jupyter.org/x</link></item>'
+    );
+
+    expect(parseNewsFeed(xml)).toEqual([]);
+  });
+
+  it('keeps an item whose title parsed to a number', () => {
+    const xml = feed(
+      '<item><title>2024</title><link>https://blog.jupyter.org/y</link></item>'
+    );
+
+    const [news] = parseNewsFeed(xml);
+
+    expect(news.title).toBe('2024');
+  });
 });
