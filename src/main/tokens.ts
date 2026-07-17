@@ -26,6 +26,10 @@ export enum IEnvironmentType {
    * This environment type is for environments that were derived from the WindowsRegistry
    */
   WindowsReg = 'windows-reg',
+  /**
+   * This environment type is for project-local pixi environments
+   */
+  PixiEnv = 'pixi-env',
   VirtualEnv = 'venv'
 }
 
@@ -34,6 +38,7 @@ export const EnvironmentTypeName: { [key in IEnvironmentType]: string } = {
   [IEnvironmentType.CondaRoot]: 'conda',
   [IEnvironmentType.CondaEnv]: 'conda',
   [IEnvironmentType.WindowsReg]: 'win',
+  [IEnvironmentType.PixiEnv]: 'pixi',
   [IEnvironmentType.VirtualEnv]: 'venv'
 };
 
