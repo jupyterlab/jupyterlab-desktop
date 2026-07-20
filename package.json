@@ -220,7 +220,7 @@
     "electron-log": "^5.4.4",
     "fast-xml-parser": "^5.9.0",
     "fix-path": "^3.0.0",
-    "js-yaml": "^5.2.0",
+    "js-yaml": "^5.2.1",
     "semver": "^7.8.4",
     "tar": "^7.5.16",
     "update-electron-app": "^3.2.0",
