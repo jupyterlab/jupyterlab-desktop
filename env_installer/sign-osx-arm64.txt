@@ -35,12 +35,6 @@ bin/gencnval
 bin/gendict
 bin/genrb
 bin/gss-client
-bin/hb-info
-bin/hb-raster
-bin/hb-shape
-bin/hb-subset
-bin/hb-vector
-bin/hb-view
 bin/icuexportdata
 bin/icuinfo
 bin/infocmp
@@ -130,7 +124,6 @@ lib/girepository-1.0/GModule-2.0.typelib
 lib/girepository-1.0/GObject-2.0.typelib
 lib/girepository-1.0/Gio-2.0.typelib
 lib/girepository-1.0/GioUnix-2.0.typelib
-lib/girepository-1.0/HarfBuzz-0.0.typelib
 lib/itcl4.2.3/libitcl4.2.3.dylib
 lib/krb5/plugins/kdb/db2.so
 lib/krb5/plugins/preauth/otp.so
@@ -151,7 +144,7 @@ lib/libc++.1.0.dylib
 lib/libcairo-gobject.2.dylib
 lib/libcairo-script-interpreter.2.dylib
 lib/libcairo.2.dylib
-lib/libcares.2.19.5.dylib
+lib/libcares.2.19.7.dylib
 lib/libcharset.1.dylib
 lib/libcom_err.3.0.dylib
 lib/libcrypto.3.dylib
@@ -225,6 +218,7 @@ lib/libpcre2-8.0.15.0.dylib
 lib/libpcre2-posix.3.0.7.dylib
 lib/libpixman-1.0.dylib
 lib/libpng16.16.dylib
+lib/libpsl.5.dylib
 lib/libpython3.12.dylib
 lib/libqhull_r.8.0.2.dylib
 lib/libquadmath.0.dylib
@@ -247,7 +241,7 @@ lib/libtiffxx.6.dylib
 lib/libtinfo.6.dylib
 lib/libtinfow.6.dylib
 lib/libtk8.6.dylib
-lib/libturbojpeg.0.4.0.dylib
+lib/libturbojpeg.0.5.0.dylib
 lib/libverto.0.0.dylib
 lib/libwebp.7.2.0.dylib
 lib/libwebpdecoder.3.2.0.dylib
