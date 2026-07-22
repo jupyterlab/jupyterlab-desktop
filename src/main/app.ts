@@ -24,6 +24,7 @@ import {
   getBundledPythonPath,
   installBundledEnvironment,
   isDarkTheme,
+  isSameServerOrigin,
   pythonPathForEnvPath,
   setupJlabCLICommandWithElevatedRights,
   waitForDuration
@@ -1155,13 +1156,27 @@ export class JupyterApplication implements IApplication, IDisposable {
       EventTypeMain.GetServerInfo,
       (event): IServerInfo => {
         for (const sessionWindow of this._sessionWindowManager.windows) {
-          if (
-            event.sender === sessionWindow.titleBarView?.view?.webContents ||
-            event.sender === sessionWindow.labView?.view?.webContents
-          ) {
+          // The title bar is app-owned chrome loaded from a bundled source and
+          // never renders untrusted content, so object identity is enough.
+          if (event.sender === sessionWindow.titleBarView?.view?.webContents) {
             return sessionWindow.getServerInfo();
           }
+
+          // The lab view renders untrusted notebook content and its top-level
+          // frame can be navigated off the Jupyter origin. The webContents
+          // object stays the same across that navigation, so identity alone
+          // must not release the server URL and auth token: require the sender
+          // frame's current origin to still be the Jupyter server origin.
+          if (event.sender === sessionWindow.labView?.view?.webContents) {
+            const serverInfo = sessionWindow.getServerInfo();
+            const senderUrl = event.senderFrame?.url ?? event.sender.getURL();
+            if (isSameServerOrigin(senderUrl, serverInfo?.url)) {
+              return serverInfo;
+            }
+            return undefined;
+          }
         }
+        return undefined;
       }
     );
 

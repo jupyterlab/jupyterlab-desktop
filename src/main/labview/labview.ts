@@ -6,6 +6,7 @@ import {
   dialog,
   Menu,
   MenuItemConstructorOptions,
+  shell,
   WebContentsView
 } from 'electron';
 import log from 'electron-log';
@@ -15,6 +16,7 @@ import {
   clearSession,
   DarkThemeBGColor,
   isDarkTheme,
+  isSameServerOrigin,
   LightThemeBGColor
 } from '../utils';
 import { SessionWindow } from '../sessionwindow/sessionwindow';
@@ -68,6 +70,7 @@ export class LabView implements IDisposable {
     );
 
     this._registerBrowserEventHandlers();
+    this._registerNavigationGuard();
     this._addFallbackContextMenu();
 
     if (!this._sessionConfig.isRemote) {
@@ -327,6 +330,52 @@ export class LabView implements IDisposable {
     // close (electron/electron#42884); close it so the dropped view frees its renderer.
     if (!this._view.webContents.isDestroyed()) {
       this._view.webContents.close();
+    }
+  }
+
+  /**
+   * Keep the lab view pinned to the Jupyter server origin. Untrusted notebook
+   * content can trigger a top-level navigation (a link without target=_blank,
+   * for instance), which would otherwise load an attacker page inside the
+   * privileged lab view where the getServerInfo IPC hands out the server URL
+   * and auth token. Anything off-origin goes to the system browser instead.
+   * Server-initiated cross-origin redirects (remote hub OAuth, say) are not
+   * blocked here; the origin check on the IPC itself is the authoritative one.
+   */
+  private _registerNavigationGuard(): void {
+    const isServerOrigin = (url: string): boolean =>
+      isSameServerOrigin(url, this._sessionConfig.url?.href);
+
+    this._view.webContents.on('will-navigate', (event, url) => {
+      if (!isServerOrigin(url)) {
+        event.preventDefault();
+        this._openUrlInExternalBrowser(url);
+      }
+    });
+
+    this._view.webContents.setWindowOpenHandler(({ url }) => {
+      if (isServerOrigin(url)) {
+        return { action: 'allow' };
+      }
+      this._openUrlInExternalBrowser(url);
+      return { action: 'deny' };
+    });
+  }
+
+  private _openUrlInExternalBrowser(url: string): void {
+    try {
+      const { protocol, href } = new URL(url);
+      // http/https for ordinary links, mailto for notebook contact links
+      // (a tutor's address, say); everything else is left unopened.
+      if (
+        protocol === 'https:' ||
+        protocol === 'http:' ||
+        protocol === 'mailto:'
+      ) {
+        shell.openExternal(href);
+      }
+    } catch {
+      // unparseable target, nothing safe to open
     }
   }
 

@@ -62,6 +62,7 @@ import {
   isDarkTheme,
   isEnvInstalledByDesktopApp,
   isPortInUse,
+  isSameServerOrigin,
   jlabCLICommandIsSetup,
   jupyterEnvInstallInfoPathForEnvPath,
   LightThemeBGColor,
@@ -777,5 +778,45 @@ describe('getFreePort', () => {
     vi.mocked(net.createServer).mockReturnValue(mockServer as any);
     const port = await getFreePort();
     expect(port).toBe(54321);
+  });
+});
+
+describe('isSameServerOrigin', () => {
+  const server = 'http://localhost:8888/lab?token=secret';
+
+  it('accepts the same origin regardless of path or query', () => {
+    expect(isSameServerOrigin('http://localhost:8888/lab/tree', server)).toBe(
+      true
+    );
+  });
+
+  it('rejects a different port', () => {
+    expect(isSameServerOrigin('http://localhost:9999/lab', server)).toBe(false);
+  });
+
+  it('rejects a different host', () => {
+    expect(isSameServerOrigin('http://evil.example/lab', server)).toBe(false);
+  });
+
+  it('rejects a different scheme on the same host and port', () => {
+    expect(isSameServerOrigin('https://localhost:8888/lab', server)).toBe(
+      false
+    );
+  });
+
+  it('rejects opaque origins', () => {
+    expect(isSameServerOrigin('about:blank', server)).toBe(false);
+    expect(isSameServerOrigin('data:text/html,<h1>hi</h1>', server)).toBe(
+      false
+    );
+  });
+
+  it('rejects missing or unparseable URLs instead of throwing', () => {
+    expect(isSameServerOrigin(undefined, server)).toBe(false);
+    expect(isSameServerOrigin(null, server)).toBe(false);
+    expect(isSameServerOrigin('not a url', server)).toBe(false);
+    expect(isSameServerOrigin('http://localhost:8888/lab', undefined)).toBe(
+      false
+    );
   });
 });
