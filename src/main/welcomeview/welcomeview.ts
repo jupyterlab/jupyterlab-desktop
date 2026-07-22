@@ -62,6 +62,7 @@ export class WelcomeView {
       <html>
         <head>
           <meta charset="utf-8" />
+          <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'unsafe-inline'; img-src 'self' data:; require-trusted-types-for 'script'" />
           <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0">
           <title>Welcome</title>
           <style>
@@ -287,6 +288,14 @@ export class WelcomeView {
             #notification-panel-message a {
               margin: 0 4px;
             }
+            #notification-panel-env-not-found {
+              flex-grow: 1;
+              display: none;
+              align-items: center;
+            }
+            #notification-panel-env-not-found a {
+              margin: 0 4px;
+            }
             #notification-panel .close-button {
               width: 20px;
               height: 20px;
@@ -338,13 +347,13 @@ export class WelcomeView {
                     Start
                   </div>
                   <div class="row action-row new-notebook-action-row">
-                    <a id="new-notebook-link" href="javascript:void(0)" title="Create new notebook in the default working directory" onclick="handleNewSessionClick('notebook');">
+                    <a id="new-notebook-link" href="#" title="Create new notebook in the default working directory" onclick="handleNewSessionClick('notebook'); return false;">
                       <span class="action-icon">${notebookIcon}</span>
                       New notebook...
                     </a>
                   </div>
                   <div class="row action-row new-session-action-row">
-                    <a id="new-session-link" href="javascript:void(0)" title="Launch new JupyterLab session in the default working directory" onclick="handleNewSessionClick('blank');">
+                    <a id="new-session-link" href="#" title="Launch new JupyterLab session in the default working directory" onclick="handleNewSessionClick('blank'); return false;">
                       <span class="action-icon">${labIcon}</span>
                       New session...
                     </a>
@@ -352,26 +361,26 @@ export class WelcomeView {
                   ${
                     process.platform === 'darwin'
                       ? `<div class="row action-row">
-                      <a id="open-file-or-folder-link" href="javascript:void(0)" title="Open a notebook or folder in JupyterLab" onclick="handleNewSessionClick('open');">
+                      <a id="open-file-or-folder-link" href="#" title="Open a notebook or folder in JupyterLab" onclick="handleNewSessionClick('open'); return false;">
                         <span class="action-icon">${openIcon}</span>
                         Open...
                       </a>
                     </div>`
                       : `<div class="row action-row">
-                      <a id="open-file-link" href="javascript:void(0)" title="Open a notebook or file in JupyterLab" onclick="handleNewSessionClick('open-file');">
+                      <a id="open-file-link" href="#" title="Open a notebook or file in JupyterLab" onclick="handleNewSessionClick('open-file'); return false;">
                         <span class="action-icon">${openIcon}</span>
                         Open File...
                       </a>
                     </div>
                     <div class="row action-row">
-                      <a id="open-folder-link" href="javascript:void(0)" title="Open a folder in JupyterLab" onclick="handleNewSessionClick('open-folder');">
+                      <a id="open-folder-link" href="#" title="Open a folder in JupyterLab" onclick="handleNewSessionClick('open-folder'); return false;">
                         <span class="action-icon">${openIcon}</span>
                         Open Folder...
                       </a>
                     </div>`
                   }
                   <div class="row action-row">
-                    <a href="javascript:void(0)" title="Connect to an existing local or remote JupyterLab server" onclick="handleNewSessionClick('remote');">
+                    <a href="#" title="Connect to an existing local or remote JupyterLab server" onclick="handleNewSessionClick('remote'); return false;">
                       <span class="action-icon">  
                       ${serverIcon}
                       </span>
@@ -387,7 +396,7 @@ export class WelcomeView {
                 </div>
                 <div id="recent-expander-col" class="col recent-expander-col">
                   <div class="row action-row more-row news-col-footer">
-                    <a id="expand-collapse-recents" href="javascript:void(0)" onclick='handleExpandCollapseRecents();'>
+                    <a id="expand-collapse-recents" href="#" onclick='handleExpandCollapseRecents(); return false;'>
                       More...
                     </a>
                   </div>
@@ -399,21 +408,13 @@ export class WelcomeView {
                   Jupyter News
                 </div>
 
-                <div id="news-list" class="news-list-col">
-                ${
-                  // populate news list from cache
-                  WelcomeView._newsList
-                    .map((news: INewsItem) => {
-                      return `<div class="row">
-                        <a href="javascript:void(0)" onclick=\'handleNewsClick("${news.link}");\' title="${news.title}">${news.title}</a>
-                      </div>`;
-                    })
-                    .join('')
-                }
-                </div>
+                <!-- Populated from the main process via SetNewsList, built with
+                     createElement/textContent so a hostile feed title or link
+                     cannot inject markup. Never interpolate news items here. -->
+                <div id="news-list" class="news-list-col"></div>
 
                 <div class="row action-row more-row news-col-footer">
-                  <a href="javascript:void(0)" onclick='handleNewsClick("https://blog.jupyter.org");'>
+                  <a href="#" onclick='handleNewsClick("https://blog.jupyter.org"); return false;'>
                     <span class="action-icon">${externalLinkIcon}</span>
                     Jupyter Blog
                   </a>
@@ -423,6 +424,17 @@ export class WelcomeView {
           </div>
           <div id="notification-panel">
             <div id="notification-panel-message">
+            </div>
+            <!-- Static markup shown via showNotificationPanel({ type: 'env-not-found' }).
+                 Kept in the page source (not innerHTML) so it works with the
+                 require-trusted-types-for CSP, which blocks HTML sinks. -->
+            <div id="notification-panel-env-not-found">
+              <div>
+                <svg style="width: 20px; height: 20px; fill: orange; margin-right: 6px;">
+                  <use href="#triangle-exclamation" />
+                </svg>
+              </div>
+              Python environment not found. <a href="#" onclick="sendMessageToMain('${EventTypeMain.InstallBundledPythonEnv}'); return false;">Install using the bundled installer</a> or <a href="#" onclick="sendMessageToMain('${EventTypeMain.ShowManagePythonEnvironmentsDialog}', 'settings'); return false;">Change the default Python environment</a>
             </div>
             <div id="notification-panel-close" title="Close" onclick="closeNotificationPanel(event)">
               <svg class="close-button" version="2.0">
@@ -435,6 +447,7 @@ export class WelcomeView {
           const newsListContainer = document.getElementById('news-list');
           const notificationPanel = document.getElementById('notification-panel');
           const notificationPanelMessage = document.getElementById('notification-panel-message');
+          const notificationPanelEnvNotFound = document.getElementById('notification-panel-env-not-found');
           const notificationPanelCloseButton = document.getElementById('notification-panel-close');
           const recentSessionsCol = document.getElementById('recent-sessions-col');
           const recentSessionsTitle = document.getElementById('recent-sessions-title');
@@ -456,14 +469,38 @@ export class WelcomeView {
               recentSessionRow.classList.add("row");
               recentSessionRow.classList.add("recent-session-row");
               recentSessionRow.dataset.sessionIndex = recentSessionCount;
-              recentSessionRow.innerHTML = \`
-                  <div class="recent-session-link\$\{!isRemote ? ' recent-item-local' : ''\}" onclick='handleRecentSessionClick(event);' title="\$\{linkTooltip\}">\$\{linkLabel\}</div>
-                  \$\{linkDetail ? \`<div class="recent-session-detail" title="\$\{linkDetail\}">\$\{linkDetail\}</div>\`: ''}
-                  <div class="recent-session-delete" title="Remove" onclick="handleRecentSesssionDeleteClick(event)">
-                    <svg class="delete-button" version="2.0">
-                      <use href="#circle-xmark" />
-                    </svg>
-                  </div>\`;
+              const linkDiv = document.createElement('div');
+              linkDiv.className = \`recent-session-link\${!isRemote ? ' recent-item-local' : ''}\`;
+              linkDiv.addEventListener('click', event => {
+                handleRecentSessionClick(event);
+              });
+              linkDiv.setAttribute('title', linkTooltip);
+              linkDiv.textContent = linkLabel;
+              recentSessionRow.appendChild(linkDiv);
+
+              if (linkDetail) {
+                const detailDiv = document.createElement('div');
+                detailDiv.className = 'recent-session-detail';
+                detailDiv.setAttribute('title', linkDetail);
+                detailDiv.textContent = linkDetail;
+                recentSessionRow.appendChild(detailDiv);
+              }
+
+              const deleteDiv = document.createElement('div');
+              deleteDiv.className = 'recent-session-delete';
+              deleteDiv.setAttribute('title', 'Remove');
+              deleteDiv.addEventListener('click', event => {
+                handleRecentSesssionDeleteClick(event);
+              });
+              const svgNS = 'http://www.w3.org/2000/svg';
+              const deleteSvg = document.createElementNS(svgNS, 'svg');
+              deleteSvg.classList.add('delete-button');
+              deleteSvg.setAttribute('version', '2.0');
+              const deleteUse = document.createElementNS(svgNS, 'use');
+              deleteUse.setAttribute('href', '#circle-xmark');
+              deleteSvg.appendChild(deleteUse);
+              deleteDiv.appendChild(deleteSvg);
+              recentSessionRow.appendChild(deleteDiv);
 
               fragment.append(recentSessionRow);
 
@@ -508,10 +545,18 @@ export class WelcomeView {
             const fragment = new DocumentFragment();
             for (const news of newsList) {
               const newsRow = document.createElement('div');
-              newsRow.innerHTML = \`
-                <div class="row">
-                  <a href="javascript:void(0)" onclick=\'handleNewsClick("\$\{news.link\}");\' title="\$\{news.title\}">\$\{news.title\}</a>
-                </div>\`;
+              const rowDiv = document.createElement('div');
+              rowDiv.className = 'row';
+              const anchor = document.createElement('a');
+              anchor.href = '#';
+              anchor.setAttribute('title', news.title);
+              anchor.textContent = news.title;
+              anchor.addEventListener('click', event => {
+                event.preventDefault();
+                handleNewsClick(news.link);
+              });
+              rowDiv.appendChild(anchor);
+              newsRow.appendChild(rowDiv);
               fragment.append(newsRow);
             }
 
@@ -581,9 +626,16 @@ export class WelcomeView {
           }
 
           function showNotificationPanel(message, closable) {
-            notificationPanelMessage.innerHTML = message;
-            notificationPanelCloseButton.style.display = closable ? 'block' : 'none'; 
-            notificationPanel.style.display = message === "" ? "none" : "flex";
+            // message is either a plain-text string, or { type: 'env-not-found' }
+            // which reveals the pre-rendered markup above; never HTML.
+            const isEnvNotFound = !!(message && typeof message === 'object' && message.type === 'env-not-found');
+            notificationPanelEnvNotFound.style.display = isEnvNotFound ? 'flex' : 'none';
+            // hide the (empty) text container too; it would otherwise still
+            // flex-grow and push the env-not-found content off to the side
+            notificationPanelMessage.style.display = isEnvNotFound ? 'none' : 'flex';
+            notificationPanelMessage.textContent = isEnvNotFound ? '' : message;
+            notificationPanelCloseButton.style.display = closable ? 'block' : 'none';
+            notificationPanel.style.display = isEnvNotFound || message !== "" ? "flex" : "none";
           }
 
           function closeNotificationPanel() {
@@ -690,7 +742,10 @@ export class WelcomeView {
     });
   }
 
-  showNotification(message: string, closable: boolean) {
+  showNotification(
+    message: string | { type: 'env-not-found' },
+    closable: boolean
+  ) {
     this._viewReady.then(() => {
       this._view.webContents.send(
         EventTypeRenderer.SetNotificationMessage,
@@ -709,21 +764,24 @@ export class WelcomeView {
       })
       .catch(() => {
         this.enableLocalServerActions(false);
-        this.showNotification(
-          `
-        <div>
-          <svg style="width: 20px; height: 20px; fill: orange; margin-right: 6px;">
-            <use href="#triangle-exclamation" />
-          </svg>
-        </div>
-        Python environment not found. <a href="javascript:void(0);" onclick="sendMessageToMain('${EventTypeMain.InstallBundledPythonEnv}')">Install using the bundled installer</a> or <a href="javascript:void(0);" onclick="sendMessageToMain('${EventTypeMain.ShowManagePythonEnvironmentsDialog}', 'settings')">Change the default Python environment</a>
-        `,
-          true
-        );
+        this.showNotification({ type: 'env-not-found' }, true);
       });
   }
 
+  private _sendNewsList(newsList: INewsItem[]) {
+    this._viewReady.then(() => {
+      this._view.webContents.send(EventTypeRenderer.SetNewsList, newsList);
+    });
+  }
+
   private _updateNewsList() {
+    // Render the cached feed through the renderer's safe DOM path (createElement
+    // + textContent) rather than interpolating it into the page HTML, so a
+    // hostile title or link in the cache cannot inject markup.
+    if (WelcomeView._newsList.length > 0) {
+      this._sendNewsList(WelcomeView._newsList);
+    }
+
     if (WelcomeView._newsListFetched) {
       return;
     }
@@ -738,7 +796,7 @@ export class WelcomeView {
           const data = await response.text();
           const newsList = parseNewsFeed(data, maxNewsToShow);
 
-          this._view.webContents.send(EventTypeRenderer.SetNewsList, newsList);
+          this._sendNewsList(newsList);
 
           WelcomeView._newsList = newsList;
           appData.newsList = [...newsList];
