@@ -81,7 +81,7 @@ function copyAssests() {
       ),
       path.join(buildDir, 'entitlements.plist')
     );
-    fs.copySync(
+    copySync(
       path.join(
         path.resolve('./'),
         'dist-resources',
