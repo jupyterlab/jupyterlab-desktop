@@ -41,7 +41,7 @@ yarn create_env_installer:osx-arm64 && yarn update_binary_sign_list --platform o
 
 ## Release Workflow
 
-Releases are driven by manually dispatched GitHub Actions workflows. They must be run from the main repo (they rely on repo secrets), on the `master` branch. The release version is always read from [package.json](package.json).
+Releases are driven by manually dispatched GitHub Actions workflows. They must be run from the main repo (they authenticate as a GitHub App configured in the `release` environment), on the `master` branch. The release version is always read from [package.json](package.json).
 
 1. If the version in `package.json` has already been released, bump the version first. A new JupyterLab version is normally bumped by the sync workflow PR described above; to re-release the same JupyterLab version, increment the build number locally with tbump and merge that change (for example, bump from `3.1.12-2` to `3.1.12-3`):
 
