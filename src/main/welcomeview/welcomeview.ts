@@ -434,7 +434,11 @@ export class WelcomeView {
                   <use href="#triangle-exclamation" />
                 </svg>
               </div>
-              Python environment not found. <a href="#" onclick="sendMessageToMain('${EventTypeMain.InstallBundledPythonEnv}'); return false;">Install using the bundled installer</a> or <a href="#" onclick="sendMessageToMain('${EventTypeMain.ShowManagePythonEnvironmentsDialog}', 'settings'); return false;">Change the default Python environment</a>
+              Python environment not found. <a href="#" onclick="sendMessageToMain('${
+                EventTypeMain.InstallBundledPythonEnv
+              }'); return false;">Install using the bundled installer</a> or <a href="#" onclick="sendMessageToMain('${
+      EventTypeMain.ShowManagePythonEnvironmentsDialog
+    }', 'settings'); return false;">Change the default Python environment</a>
             </div>
             <div id="notification-panel-close" title="Close" onclick="closeNotificationPanel(event)">
               <svg class="close-button" version="2.0">
