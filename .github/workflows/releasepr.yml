@@ -9,7 +9,9 @@ permissions:
 jobs:
   createPR:
     runs-on: ubuntu-latest
-    environment: release
+    # Uses the sync app rather than the release one: opening the release PR
+    # needs the pull-requests permission, which only the sync app is granted.
+    environment: sync
     steps:
       - uses: actions/create-github-app-token@fee1f7d63c2ff003460e3d139729b119787bc349 # v2
         id: app-token
