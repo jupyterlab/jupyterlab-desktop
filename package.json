@@ -201,7 +201,7 @@
     "eslint-config-prettier": "^10.1.8",
     "globals": "^17.6.0",
     "istextorbinary": "^9.5.0",
-    "prettier": "~2.1.1",
+    "prettier": "~3.8.4",
     "read-package-tree": "^5.1.6",
     "shx": "^0.4.0",
     "typescript": "^6.0.0",
