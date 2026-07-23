@@ -129,7 +129,22 @@ jobs:
           security import certificate.p12 -k build.keychain -P $CSC_KEY_PASSWORD -T /usr/bin/codesign
           security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k $ENV_INSTALLER_KEYCHAIN_PASS build.keychain
           echo "Signing env binaries"
-          while read line; do /usr/bin/codesign --force --options=runtime --deep -s "Developer ID Application" ./env_installer/jlab_server_extracted/"$line" -v; done < ./env_installer/sign-${{ matrix.cfg.platform }}.txt
+          # Signing with --options=runtime contacts Apple's timestamp service
+          # for every file; under thousands of sequential requests it
+          # intermittently fails, so retry each file with backoff.
+          while read line; do
+            for attempt in 1 2 3 4 5; do
+              if /usr/bin/codesign --force --options=runtime --deep -s "Developer ID Application" ./env_installer/jlab_server_extracted/"$line" -v; then
+                break
+              elif [ "$attempt" -eq 5 ]; then
+                echo "Failed to sign $line after $attempt attempts"
+                exit 1
+              else
+                echo "Signing $line failed (attempt $attempt), retrying..."
+                sleep $((attempt * 10))
+              fi
+            done
+          done < ./env_installer/sign-${{ matrix.cfg.platform }}.txt
           rm certificate.p12
           security delete-keychain build.keychain
 

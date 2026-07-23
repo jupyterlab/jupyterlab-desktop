@@ -16,7 +16,7 @@ yarn check_version_match
 
 ## Updating the bundled JupyterLab
 
-Updating to a new JupyterLab release is automated by the [`Check for new JupyterLab releases`](.github/workflows/sync_lab_release.yml) workflow. It runs daily (and can be dispatched manually from the Actions tab), and when a new JupyterLab release is found it:
+Updating to a new JupyterLab release is automated by the [`Check for new JupyterLab releases`](https://github.com/jupyterlab/jupyterlab-desktop/actions/workflows/sync_lab_release.yml) workflow. It runs daily (and can be dispatched manually from the Actions tab), and when a new JupyterLab release is found it:
 
 1. Bumps the application version to `<new-jlab-version>-1` using [tbump](https://github.com/your-tools/tbump)
 2. Updates the conda lock files (`yarn update_conda_lock`)
@@ -51,14 +51,18 @@ Releases are driven by manually dispatched GitHub Actions workflows. They must b
 
    If the version in `package.json` has not been released yet, there is nothing to bump.
 
-2. Dispatch the [`Create Pre-release`](.github/workflows/prerelease.yml) workflow. It creates a GitHub release of type `pre-release` with tag `v<version>` (for example `v3.1.12-3`), unless a release with that tag already exists. Edit the release description to add the release notes; they can be refined at any time before publishing. The release needs to stay as `pre-release` for GitHub Actions to be able to attach installers to it.
+2. Dispatch the [`Create Pre-release`](https://github.com/jupyterlab/jupyterlab-desktop/actions/workflows/prerelease.yml) workflow. It creates a GitHub release of type `pre-release` with tag `v<version>` (for example `v3.1.12-3`), unless a release with that tag already exists. Edit the release description to add the release notes; they can be refined at any time before publishing. The release needs to stay as `pre-release` for GitHub Actions to be able to attach installers to it.
 
-3. Dispatch the [`Create Release PR`](.github/workflows/releasepr.yml) workflow. It verifies that the pre-release exists, then creates a `release-v<version>` branch with a placeholder commit and opens a `Release v<version>` PR.
+3. Dispatch the [`Create Release PR`](https://github.com/jupyterlab/jupyterlab-desktop/actions/workflows/releasepr.yml) workflow. It verifies that the pre-release exists, then creates a `release-v<version>` branch with a placeholder commit and opens a `Release v<version>` PR.
 
-4. The [`Publish`](.github/workflows/publish.yml) workflow runs on the PR (and on any push to `master`). When it finds a draft or pre-release with a tag matching the version in `package.json`, it builds signed installers for each platform (Linux, macOS, Windows) and uploads them as assets to that release. New runs overwrite the existing installer assets.
+4. The [`Publish`](https://github.com/jupyterlab/jupyterlab-desktop/actions/workflows/publish.yml) workflow runs on the PR (and on any push to `master`). When it finds a draft or pre-release with a tag matching the version in `package.json`, it builds signed installers for each platform (Linux, macOS, Windows) and uploads them as assets to that release. New runs overwrite the existing installer assets. Release builds also publish the snap installer to the `latest/candidate` channel in the Snap Store.
 
 5. Make sure that application is building, installing and running properly by following the [distribution build instructions](dev.md#building-for-distribution) locally, or by testing the installers attached to the pre-release.
 
 6. Once all the changes are complete, installers are uploaded and the release notes are ready, merge the release PR and publish the release.
 
-7. After publishing, dispatch the [`Publish to WinGet`](.github/workflows/winget.yml) workflow with the release tag (for example `v3.1.12-3`) as the version input to submit the Windows installer to the WinGet package registry.
+7. After publishing, dispatch the [`Publish to WinGet`](https://github.com/jupyterlab/jupyterlab-desktop/actions/workflows/winget.yml) workflow with the release tag (for example `v3.1.12-3`) as the version input to submit the Windows installer to the WinGet package registry.
+
+   The submission PR to [microsoft/winget-pkgs](https://github.com/microsoft/winget-pkgs) is opened from the fork owned by the dedicated `jupyterlab-winget-bot` machine account. The account name and its classic PAT (`public_repo` scope) are configured in the `winget` environment as the `WINGET_USER` variable and `WINGET_TOKEN` secret. The token expires and needs to be regenerated on the bot account every 9 months, then updated in the environment.
+
+8. Promote the snap from `latest/candidate` to `latest/stable`. This is a manual step: CI only publishes to the candidate channel. Open the [Releases page of the snap listing](https://snapcraft.io/jupyterlab-desktop/releases) in the Snapcraft UI and promote the candidate revision to stable.
