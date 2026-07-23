@@ -63,4 +63,6 @@ Releases are driven by manually dispatched GitHub Actions workflows. They must b
 
 7. After publishing, dispatch the [`Publish to WinGet`](https://github.com/jupyterlab/jupyterlab-desktop/actions/workflows/winget.yml) workflow with the release tag (for example `v3.1.12-3`) as the version input to submit the Windows installer to the WinGet package registry.
 
+   The submission PR to [microsoft/winget-pkgs](https://github.com/microsoft/winget-pkgs) is opened from the fork owned by the dedicated `jupyterlab-winget-bot` machine account. The account name and its classic PAT (`public_repo` scope) are configured in the `winget` environment as the `WINGET_USER` variable and `WINGET_TOKEN` secret. The token expires and needs to be regenerated on the bot account every 9 months, then updated in the environment.
+
 8. Promote the snap from `latest/candidate` to `latest/stable`. This is a manual step: CI only publishes to the candidate channel. Open the [Releases page of the snap listing](https://snapcraft.io/jupyterlab-desktop/releases) in the Snapcraft UI and promote the candidate revision to stable.
