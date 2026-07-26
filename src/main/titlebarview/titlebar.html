@@ -230,6 +230,11 @@ Distributed under the terms of the Modified BSD License.
         }
       });
 
+      window.electronAPI.onSetMaximized((isMaximized) => {
+        maximizeButton.style.display = isMaximized ? 'none' : 'block';
+        restoreButton.style.display = isMaximized ? 'block' : 'none';
+      });
+
       window.electronAPI.onShowServerStatus((show) => {
         serverButton.style.display = show ? 'flex' : 'none';
 
@@ -255,15 +260,11 @@ Distributed under the terms of the Modified BSD License.
       maximizeButton.onclick = (ev) => {
         ev.stopPropagation();
         window.electronAPI.maximizeWindow();
-        maximizeButton.style.display = 'none';
-        restoreButton.style.display = 'block';
       };
 
       restoreButton.onclick = (ev) => {
         ev.stopPropagation();
         window.electronAPI.restoreWindow();
-        restoreButton.style.display = 'none';
-        maximizeButton.style.display = 'block';
       };
 
       closeButton.onclick = (ev) => {
