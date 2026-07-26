@@ -372,8 +372,14 @@ export async function installCondaPackEnvironment(
     });
 
     let unpackCommand = isWin
-      ? `${installPath}\\Scripts\\activate.bat && conda-unpack`
-      : `source "${installPath}/bin/activate" && conda-unpack`;
+      ? `${shellQuotePath(
+          `${installPath}\\Scripts\\activate.bat`,
+          true
+        )} && conda-unpack`
+      : `source ${shellQuotePath(
+          `${installPath}/bin/activate`,
+          false
+        )} && conda-unpack`;
 
     // only unsign when installing from bundled installer
     if (platform === 'darwin' && isBundledInstaller) {
@@ -538,18 +544,9 @@ export function isBaseCondaEnv(envPath: string): boolean {
   return fs.existsSync(condaBinPath) && fs.lstatSync(condaBinPath).isFile();
 }
 
-/**
- * Quote a path for embedding in a generated shell script.
- *
- * POSIX uses single quotes because double quotes still evaluate `$(...)` and
- * backticks, so a prefix containing either would run during activation. An
- * embedded quote is closed, escaped and reopened, which is the standard
- * '\'' idiom.
- *
- * cmd.exe has no command substitution, so double quotes are enough there, and
- * they are what makes a path with spaces work at all (see #837). Windows does
- * not allow `"` in a path, so there is nothing to escape.
- */
+// POSIX single-quotes because double quotes still evaluate $(...) and backticks;
+// the '\'' idiom closes, escapes and reopens. cmd has no substitution, so quotes
+// there are about spaces (#837), and Windows paths cannot contain a quote.
 export function shellQuotePath(value: string, isWin: boolean): string {
   return isWin ? `"${value}"` : `'${value.split("'").join(`'\\''`)}'`;
 }
@@ -649,14 +646,15 @@ export function createUnsignScriptInEnv(envPath: string): string {
 
   fileContents.split(/\r?\n/).forEach(line => {
     if (line) {
-      signList.push(`"${line}"`);
+      signList.push(shellQuotePath(line, false));
     }
   });
 
   // sign all binaries with ad-hoc signature
-  return `cd ${envPath} && codesign -s - -o 0x2 -f ${signList.join(
-    ' '
-  )} && cd -`;
+  return `cd ${shellQuotePath(
+    envPath,
+    false
+  )} && codesign -s - -o 0x2 -f ${signList.join(' ')} && cd -`;
 }
 
 export function getLogFilePath(processType: 'main' | 'renderer' = 'main') {
@@ -725,7 +723,9 @@ export function openDirectoryInExplorer(dirPath: string): boolean {
       ? 'explorer'
       : 'xdg-open';
 
-  exec(`${openCommand} "${dirPath}"`);
+  // execFile, not exec: passing argv directly means no shell parses dirPath,
+  // so quoting and substitution never come up.
+  execFile(openCommand, [dirPath]);
 
   return true;
 }
@@ -744,24 +744,29 @@ export function launchTerminalInDirectory(options: {
   let commands = options.commands;
 
   if (platform === 'darwin') {
-    let callCommands = '';
-    if (commands) {
-      // replace " with '
-      commands = commands.split('"').join("'");
-      callCommands = `&& ${commands}`;
-    }
+    // Build the shell line first, then hand osascript its argv directly. Going
+    // through exec() would let /bin/sh parse this string too, and that outer
+    // pass expands $(...) in the paths before Terminal ever sees them.
+    const shellLine = commands
+      ? `cd ${shellQuotePath(dirPath, false)} && ${commands}`
+      : `cd ${shellQuotePath(dirPath, false)}`;
+    // AppleScript string literal: only \ and " need escaping.
+    const asString = shellLine.split('\\').join('\\\\').split('"').join('\\"');
 
-    exec(
-      `osascript -e 'tell application "Terminal" to do script "cd '${dirPath}' ${callCommands}"' -e 'tell application "Terminal" to activate'`
-    );
+    execFile('osascript', [
+      '-e',
+      `tell application "Terminal" to do script "${asString}"`,
+      '-e',
+      'tell application "Terminal" to activate'
+    ]);
   } else if (platform === 'win32') {
     if (commands) {
       const activateFilePath = createTempFile(
         `activate.bat`,
-        `cd /D "${dirPath}"\n${commands}`
+        `cd /D ${shellQuotePath(dirPath, true)}\n${commands}`
       );
 
-      exec(`start cmd.exe /K ${activateFilePath}`);
+      execFile('cmd', ['/c', 'start', 'cmd.exe', '/K', activateFilePath]);
 
       setTimeout(() => {
         try {
@@ -771,18 +776,21 @@ export function launchTerminalInDirectory(options: {
         }
       }, 2000);
     } else {
-      exec(`start cmd.exe /K cd /D "${dirPath}"`);
+      execFile('cmd', ['/c', 'start', 'cmd.exe', '/K', 'cd', '/D', dirPath]);
     }
   } else {
-    let callCommands = '';
+    const args = [`--working-directory=${dirPath}`];
     if (commands) {
-      // note that calling "exec bash" at the end will cause .bashrc to be reloaded,
-      // which could possibly override python path (e.g. base conda initialization)
-      callCommands = ` -- bash -c "${commands}${
-        interactive ? '; exec bash' : ''
-      }"`;
+      // "exec bash" at the end reloads .bashrc, which could override the python
+      // path (e.g. base conda initialization)
+      args.push(
+        '--',
+        'bash',
+        '-c',
+        `${commands}${interactive ? '; exec bash' : ''}`
+      );
     }
-    exec(`gnome-terminal --working-directory="${dirPath}"${callCommands}`);
+    execFile('gnome-terminal', args);
   }
 }
 
@@ -843,24 +851,35 @@ export async function setupJlabCLICommandWithElevatedRights(): Promise<
   const shellCommands: string[] = [];
   const symlinkParentDir = path.dirname(symlinkPath);
 
+  // this runs as root, so quote every path rather than relying on them being tame
+  const q = (p: string) => shellQuotePath(p, false);
+
   // create parent directory
   if (!fs.existsSync(symlinkParentDir)) {
-    shellCommands.push(`mkdir -p ${symlinkParentDir}`);
+    shellCommands.push(`mkdir -p ${q(symlinkParentDir)}`);
   }
 
   // create symlink
-  shellCommands.push(`ln -f -s \\"${targetPath}\\" \\"${symlinkPath}\\"`);
+  shellCommands.push(`ln -f -s ${q(targetPath)} ${q(symlinkPath)}`);
 
   // make files executable
-  shellCommands.push(`chmod 755 \\"${symlinkPath}\\"`);
-  shellCommands.push(`chmod 755 \\"${targetPath}\\"`);
+  shellCommands.push(`chmod 755 ${q(symlinkPath)}`);
+  shellCommands.push(`chmod 755 ${q(targetPath)}`);
 
-  const command = `do shell script "${shellCommands.join(
-    ' && '
-  )}" with administrator privileges`;
+  // AppleScript string literal: escape \ and " only
+  const asString = shellCommands
+    .join(' && ')
+    .split('\\')
+    .join('\\\\')
+    .split('"')
+    .join('\\"');
 
   return new Promise<boolean>((resolve, reject) => {
-    const cliSetupProc = exec(`osascript -e '${command}'`);
+    // execFile, so /bin/sh never gets a chance to parse the composed command
+    const cliSetupProc = execFile('osascript', [
+      '-e',
+      `do shell script "${asString}" with administrator privileges`
+    ]);
 
     cliSetupProc.on('exit', (exitCode: number) => {
       if (exitCode === 0) {
