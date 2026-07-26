@@ -14,11 +14,22 @@ jobs:
   publish:
     # Action can only be run on windows
     runs-on: windows-latest
+    # The winget environment holds the credentials of the dedicated
+    # jupyterlab-winget-bot machine account (WINGET_USER variable and
+    # WINGET_TOKEN secret). The submission PR to microsoft/winget-pkgs is
+    # opened from that account's fork of winget-pkgs, which is why this needs
+    # a classic PAT (public_repo scope) instead of a GitHub App token: an app
+    # token cannot open PRs on repos the app is not installed on.
+    # The token expires and MUST be regenerated every 9 months on the bot
+    # account, then updated in the winget environment.
+    environment: winget
+    # generous: the release asset it downloads and hashes is large
+    timeout-minutes: 30
     steps:
       - uses: vedantmgoyal9/winget-releaser@4ffc7888bffd451b357355dc214d43bb9f23917e # v2
 # https://github.com/vedantmgoyal9/winget-releaser
         with:
           identifier: ProjectJupyter.JupyterLab
           token: ${{ secrets.WINGET_TOKEN }}
-          fork-user: mbektas
+          fork-user: ${{ vars.WINGET_USER }}
           release-tag: ${{ inputs.version }}

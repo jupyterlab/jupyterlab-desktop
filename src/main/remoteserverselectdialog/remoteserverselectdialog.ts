@@ -107,8 +107,8 @@ export class RemoteServerSelectDialog {
               <jp-menu-item class="recent-server" disabled>No recent connection history yet</jp-menu-item>  
             <% } %>
             <% recentServers.forEach((remote, index) => { %>
-              <jp-menu-item class="recent-server" onclick="onRecentServerClicked(event, <%- index %>);"><%- remote.url %>
-                <svg class="delete-button" version="2.0" slot="end" onclick="onDeleteRecentRemoteURLClicked(event, <%- index %>)">
+              <jp-menu-item class="recent-server" onclick="onRecentServerClicked(event, <%= index %>);"><%= remote.url %>
+                <svg class="delete-button" version="2.0" slot="end" onclick="onDeleteRecentRemoteURLClicked(event, <%= index %>)">
                   <use href="#circle-xmark" />
                 </svg>
               </jp-menu-item>
@@ -125,7 +125,7 @@ export class RemoteServerSelectDialog {
       </div>
 
       <script>
-        let recentServers = <%- JSON.stringify(recentServers) %>;
+        let recentServers = <%- recentServersJson %>;
         const serverUrlInput = document.getElementById('server-url');
         const persistSessionDataCheckbox = document.getElementById('persist-session-data');
         const serverList = document.getElementById('server-list');
@@ -165,9 +165,19 @@ export class RemoteServerSelectDialog {
             menuItem.addEventListener('click', () => {
               onRecentServerClicked(menuItem, index);
             });
-            menuItem.innerHTML = server.url + \`<svg class="delete-button" version="2.0" slot="end" onclick="onDeleteRecentRemoteURLClicked(event, \$\{index\})">
-                <use href="#circle-xmark" />
-              </svg>\`;
+            menuItem.appendChild(document.createTextNode(server.url));
+            const svgNS = 'http://www.w3.org/2000/svg';
+            const deleteSvg = document.createElementNS(svgNS, 'svg');
+            deleteSvg.classList.add('delete-button');
+            deleteSvg.setAttribute('version', '2.0');
+            deleteSvg.setAttribute('slot', 'end');
+            deleteSvg.addEventListener('click', event => {
+              onDeleteRecentRemoteURLClicked(event, index);
+            });
+            const deleteUse = document.createElementNS(svgNS, 'use');
+            deleteUse.setAttribute('href', '#circle-xmark');
+            deleteSvg.appendChild(deleteUse);
+            menuItem.appendChild(deleteSvg);
             fragment.append(menuItem);
           });
 
@@ -225,6 +235,9 @@ export class RemoteServerSelectDialog {
         `;
     this._pageBody = ejs.render(template, {
       recentServers,
+      // Serialize for the inline <script> with `<` escaped so a stored URL
+      // containing `</script>` cannot break out of the script context.
+      recentServersJson: JSON.stringify(recentServers).replace(/</g, '\\u003c'),
       persistSessionData
     });
 

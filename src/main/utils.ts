@@ -117,6 +117,33 @@ export function isDarkTheme(themeType: string) {
   }
 }
 
+// data:, about:blank and other opaque sources serialize to the literal "null"
+// origin, which must never be treated as a real origin.
+function originOf(url: string | undefined | null): string | null {
+  if (!url) {
+    return null;
+  }
+  try {
+    const { origin } = new URL(url);
+    return origin === 'null' ? null : origin;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Strict same-origin check between two URLs. False when either URL is absent,
+ * unparseable, or has an opaque origin. Never throws.
+ */
+export function isSameServerOrigin(
+  senderUrl: string | undefined | null,
+  serverUrl: string | undefined | null
+): boolean {
+  const sender = originOf(senderUrl);
+  const server = originOf(serverUrl);
+  return sender !== null && server !== null && sender === server;
+}
+
 export function clearSession(session: Electron.Session): Promise<void> {
   // best-effort teardown: callers await this before closing windows, so a
   // failure to clear one cache must not reject and skip that cleanup, nor hang

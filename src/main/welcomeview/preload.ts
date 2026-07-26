@@ -8,8 +8,9 @@ type SetRecentSessionListListener = (
   recentCollapseState: boolean
 ) => void;
 type SetNewsListListener = (list: any[]) => void;
+type NotificationMessage = string | { type: 'env-not-found' };
 type SetNotificationMessageListener = (
-  message: string,
+  message: NotificationMessage,
   closable: boolean
 ) => void;
 type EnableLocalServerActionsListener = (enable: boolean) => void;
@@ -103,7 +104,7 @@ ipcRenderer.on(EventTypeRenderer.SetNewsList, (event, list) => {
 
 ipcRenderer.on(
   EventTypeRenderer.SetNotificationMessage,
-  (event, message: string, closable: boolean) => {
+  (event, message: NotificationMessage, closable: boolean) => {
     if (onSetNotificationMessageListener) {
       onSetNotificationMessageListener(message, closable);
     }

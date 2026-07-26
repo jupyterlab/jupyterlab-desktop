@@ -5,11 +5,13 @@ const { contextBridge, ipcRenderer } = electron;
 
 type SetTitleListener = (title: string) => void;
 type SetActiveListener = (active: boolean) => void;
+type SetMaximizedListener = (isMaximized: boolean) => void;
 type ShowServerStatusListener = (show: boolean) => void;
 type ShowServerNotificationBadgeListener = (show: boolean) => void;
 
 let onSetTitleListener: SetTitleListener;
 let onSetActiveListener: SetActiveListener;
+let onSetMaximizedListener: SetMaximizedListener;
 let onShowServerStatusListener: ShowServerStatusListener;
 let onShowServerNotificationBadgeListener: ShowServerNotificationBadgeListener;
 
@@ -52,6 +54,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   onSetActive: (callback: SetActiveListener) => {
     onSetActiveListener = callback;
   },
+  onSetMaximized: (callback: SetMaximizedListener) => {
+    onSetMaximizedListener = callback;
+  },
   onShowServerStatus: (callback: ShowServerStatusListener) => {
     onShowServerStatusListener = callback;
   },
@@ -71,6 +76,12 @@ ipcRenderer.on(EventTypeRenderer.SetTitle, (event, title) => {
 ipcRenderer.on(EventTypeRenderer.SetActive, (event, active) => {
   if (onSetActiveListener) {
     onSetActiveListener(active);
+  }
+});
+
+ipcRenderer.on(EventTypeRenderer.SetMaximized, (event, isMaximized) => {
+  if (onSetMaximizedListener) {
+    onSetMaximizedListener(isMaximized);
   }
 });
 
