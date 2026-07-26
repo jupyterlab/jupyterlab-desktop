@@ -173,9 +173,7 @@ function createPythonEnvsDirectory() {
   const envsDir = getPythonEnvsDirectory();
 
   try {
-    if (!fs.existsSync(envsDir)) {
-      fs.mkdirSync(envsDir, { recursive: true });
-    }
+    fs.mkdirSync(envsDir, { recursive: true });
   } catch (error) {
     log.error(error);
   }
