@@ -47,12 +47,10 @@ export function getUserHomeDir(): string {
 export function getUserDataDir(): string {
   const userDataDir = app.getPath('userData');
 
-  if (!fs.existsSync(userDataDir)) {
-    try {
-      fs.mkdirSync(userDataDir, { recursive: true });
-    } catch (error) {
-      log.error(error);
-    }
+  try {
+    fs.mkdirSync(userDataDir, { recursive: true });
+  } catch (error) {
+    log.error(error);
   }
 
   return userDataDir;
@@ -86,12 +84,10 @@ export function getBundledPythonInstallDir(): string {
       ? path.normalize(path.join(app.getPath('home'), 'Library', app.getName()))
       : app.getPath('userData');
 
-  if (!fs.existsSync(installDir)) {
-    try {
-      fs.mkdirSync(installDir, { recursive: true });
-    } catch (error) {
-      log.error(error);
-    }
+  try {
+    fs.mkdirSync(installDir, { recursive: true });
+  } catch (error) {
+    log.error(error);
   }
 
   return installDir;
@@ -420,11 +416,7 @@ export function markEnvironmentAsJupyterInstalled(
   };
 
   try {
-    const dirPath = path.dirname(envInstallInfoPath);
-    if (!fs.existsSync(dirPath)) {
-      fs.mkdirSync(dirPath, { recursive: true });
-    }
-
+    fs.mkdirSync(path.dirname(envInstallInfoPath), { recursive: true });
     fs.writeFileSync(envInstallInfoPath, JSON.stringify(data, null, 2));
   } catch (error) {
     console.error('Failed to create file', envInstallInfoPath, error);

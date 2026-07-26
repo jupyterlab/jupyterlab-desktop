@@ -213,7 +213,6 @@
     "webpack-cli": "^4.5.0"
   },
   "resolutions": {
-    "serialize-javascript": "^6.0.2",
     "micromatch": "^4.0.8"
   },
   "dependencies": {
