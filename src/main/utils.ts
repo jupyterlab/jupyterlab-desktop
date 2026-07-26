@@ -538,12 +538,27 @@ export function isBaseCondaEnv(envPath: string): boolean {
   return fs.existsSync(condaBinPath) && fs.lstatSync(condaBinPath).isFile();
 }
 
+/**
+ * Quote a path for embedding in a generated shell script.
+ *
+ * POSIX uses single quotes because double quotes still evaluate `$(...)` and
+ * backticks, so a prefix containing either would run during activation. An
+ * embedded quote is closed, escaped and reopened, which is the standard
+ * '\'' idiom.
+ *
+ * cmd.exe has no command substitution, so double quotes are enough there, and
+ * they are what makes a path with spaces work at all (see #837). Windows does
+ * not allow `"` in a path, so there is nothing to escape.
+ */
+export function shellQuotePath(value: string, isWin: boolean): string {
+  return isWin ? `"${value}"` : `'${value.split("'").join(`'\\''`)}'`;
+}
+
 export function createCommandScriptInEnv(
   envPath: string,
   baseCondaEnvPath: string,
   options?: {
     command?: string;
-    quoteChar?: string;
     joinStr?: string;
   }
 ): string {
@@ -556,7 +571,6 @@ export function createCommandScriptInEnv(
     //
   }
 
-  const quoteChar = options?.quoteChar || '"';
   const joinStr = options?.joinStr || '\n';
   let command = options?.command;
   const isWin = process.platform === 'win32';
@@ -570,7 +584,7 @@ export function createCommandScriptInEnv(
   // instead call using conda from the base environment with -p parameter
   const isCondaCommand = isConda && command?.startsWith('conda ');
   if (isCondaCommand && !isBaseCondaEnv(envPath)) {
-    command = `${command} -p ${envPath}`;
+    command = `${command} -p ${shellQuotePath(envPath, isWin)}`;
   }
 
   // conda activate is only available in base conda environments or
@@ -591,20 +605,22 @@ export function createCommandScriptInEnv(
 
   const scriptLines: string[] = [];
 
+  const quote = (value: string) => shellQuotePath(value, isWin);
+
   if (isWin) {
-    scriptLines.push(`CALL ${activatePath}`);
+    scriptLines.push(`CALL ${quote(activatePath)}`);
     if (isConda && isBaseCondaActivate) {
-      scriptLines.push(`CALL conda activate ${envPath}`);
+      scriptLines.push(`CALL conda activate ${quote(envPath)}`);
     }
     if (command) {
       scriptLines.push(`CALL ${command}`);
     }
   } else {
-    scriptLines.push(`source ${quoteChar}${activatePath}${quoteChar}`);
+    scriptLines.push(`source ${quote(activatePath)}`);
     if (isConda && isBaseCondaActivate) {
-      scriptLines.push(`source ${quoteChar}${condaSourcePath}${quoteChar}`);
+      scriptLines.push(`source ${quote(condaSourcePath)}`);
       if (!isCondaCommand) {
-        scriptLines.push(`conda activate ${quoteChar}${envPath}${quoteChar}`);
+        scriptLines.push(`conda activate ${quote(envPath)}`);
       }
     }
     if (command) {

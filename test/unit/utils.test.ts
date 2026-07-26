@@ -69,6 +69,7 @@ import {
   markEnvironmentAsJupyterInstalled,
   openDirectoryInExplorer,
   pythonPathForEnvPath,
+  shellQuotePath,
   versionWithoutSuffix,
   waitForDuration,
   waitForFunction
@@ -540,7 +541,7 @@ describe('createCommandScriptInEnv', () => {
     expect(script).toContain('activate');
   });
 
-  it('uses custom quoteChar and joinStr', () => {
+  it('uses custom joinStr', () => {
     Object.defineProperty(process, 'platform', { value: 'linux' });
     mockFs.lstatSync = vi.fn(() => ({ isDirectory: () => true } as fs.Stats));
     mockFs.existsSync = vi.fn((p: fs.PathLike) =>
@@ -548,11 +549,55 @@ describe('createCommandScriptInEnv', () => {
     );
     const script = createCommandScriptInEnv('/env', '/base', {
       command: 'echo hello',
-      quoteChar: "'",
       joinStr: ' ; '
     });
-    expect(script).toContain("'");
     expect(script).toContain(' ; ');
+  });
+
+  it('keeps a command substitution in the env path inert on posix', () => {
+    Object.defineProperty(process, 'platform', { value: 'linux' });
+    mockFs.lstatSync = vi.fn(() => ({ isDirectory: () => true } as fs.Stats));
+    mockFs.existsSync = vi.fn((p: fs.PathLike) =>
+      p.toString().includes('activate')
+    );
+    const script = createCommandScriptInEnv('/env/$(id -u)', '/base', {});
+    // single quotes, so the shell never evaluates it. Double quotes would.
+    expect(script).toContain("source '/env/$(id -u)/bin/activate'");
+    expect(script).not.toContain('"');
+  });
+
+  it('quotes a path containing spaces on windows', () => {
+    Object.defineProperty(process, 'platform', { value: 'win32' });
+    mockFs.lstatSync = vi.fn(() => ({ isDirectory: () => true } as fs.Stats));
+    mockFs.existsSync = vi.fn((p: fs.PathLike) =>
+      p.toString().includes('activate')
+    );
+    const script = createCommandScriptInEnv(
+      'C:/Users/First Last/env',
+      '/base',
+      {
+        command: 'pip install numpy'
+      }
+    );
+    // unquoted, cmd splits at the space and cannot find activate (see #837)
+    expect(script).toContain('CALL "C:/Users/First Last/env');
+  });
+});
+
+describe('shellQuotePath', () => {
+  it('single quotes on posix so substitutions stay literal', () => {
+    expect(shellQuotePath('/a/$(whoami)/b', false)).toBe("'/a/$(whoami)/b'");
+    expect(shellQuotePath('/a/`id`/b', false)).toBe("'/a/`id`/b'");
+  });
+
+  it('closes, escapes and reopens an embedded single quote on posix', () => {
+    expect(shellQuotePath("/a/it's/b", false)).toBe("'/a/it'\\''s/b'");
+  });
+
+  it('double quotes on windows, where spaces are the problem', () => {
+    expect(shellQuotePath('C:/First Last/env', true)).toBe(
+      '"C:/First Last/env"'
+    );
   });
 });
 
