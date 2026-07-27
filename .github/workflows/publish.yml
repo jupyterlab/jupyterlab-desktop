@@ -197,18 +197,12 @@ jobs:
           command -v unsquashfs >/dev/null || sudo apt-get install -y --no-install-recommends squashfs-tools
           rm -rf snap-check
           unsquashfs -q -d snap-check dist/JupyterLab.snap command.sh
-          unsquashfs -l dist/JupyterLab.snap > snap-contents.txt
-          status=0
-          # whatever the launcher execs has to be in the image: the 4.6.2-1 snap
-          # shipped the template as a tarball and died on a missing script
-          for target in $(grep -oE '\$SNAP/[A-Za-z0-9._/-]+' snap-check/command.sh | sort -u); do
-            entry="squashfs-root/${target#\$SNAP/}"
-            if ! grep -qx "$entry" snap-contents.txt; then
-              echo "::error::command.sh execs $target but it is not in the snap"
-              status=1
-            fi
-          done
-          exit $status
+          unsquashfs -l dist/JupyterLab.snap | sort > snap-contents.txt
+          # 4.6.2-1 shipped the template as a tarball, so the launcher died on a
+          # missing script: whatever command.sh execs has to be in the image
+          grep -oE '\$SNAP/[^" ]+' snap-check/command.sh | sed 's|\$SNAP|squashfs-root|' | sort -u > snap-needs.txt
+          comm -23 snap-needs.txt snap-contents.txt | tee snap-missing.txt
+          [ ! -s snap-missing.txt ]
 
       - name: Upload Snap Installer
         if: matrix.cfg.platform == 'linux-64'
