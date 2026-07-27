@@ -194,21 +194,21 @@ jobs:
       - name: Verify the snap can actually launch
         if: matrix.cfg.platform == 'linux-64'
         run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y --no-install-recommends squashfs-tools
+          command -v unsquashfs >/dev/null || sudo apt-get install -y --no-install-recommends squashfs-tools
+          rm -rf snap-check
+          unsquashfs -q -d snap-check dist/JupyterLab.snap command.sh
           unsquashfs -l dist/JupyterLab.snap > snap-contents.txt
-          missing=0
-          for script in desktop-init.sh desktop-common.sh desktop-gnome-specific.sh; do
-            if ! grep -qx "squashfs-root/$script" snap-contents.txt; then
-              echo "::error::$script is missing from the snap; command.sh execs it, so the app cannot start"
-              missing=1
+          status=0
+          # whatever the launcher execs has to be in the image: the 4.6.2-1 snap
+          # shipped the template as a tarball and died on a missing script
+          for target in $(grep -oE '\$SNAP/[A-Za-z0-9._/-]+' snap-check/command.sh | sort -u); do
+            entry="squashfs-root/${target#\$SNAP/}"
+            if ! grep -qx "$entry" snap-contents.txt; then
+              echo "::error::command.sh execs $target but it is not in the snap"
+              status=1
             fi
           done
-          if grep -qE '^squashfs-root/snap-template-.*\.tar$' snap-contents.txt; then
-            echo "::error::the snap template was packed as a tarball instead of being extracted"
-            missing=1
-          fi
-          exit $missing
+          exit $status
 
       - name: Upload Snap Installer
         if: matrix.cfg.platform == 'linux-64'
