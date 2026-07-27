@@ -3,6 +3,7 @@
 
 import { BrowserWindow, Cookie } from 'electron';
 import { clearSession } from './utils';
+import { markGuarded } from './navigationguard';
 
 export let connectWindow: BrowserWindow;
 
@@ -55,6 +56,8 @@ export async function connectAndGetServerInfo(
     }
 
     const window = new BrowserWindow(browserOptions);
+    // this window exists to follow a login wherever the server sends it
+    markGuarded(window.webContents);
 
     const timeout = options?.timeout || 30000;
 
