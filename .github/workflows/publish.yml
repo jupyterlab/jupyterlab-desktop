@@ -191,6 +191,25 @@ jobs:
           path: |
             dist/JupyterLab.rpm
       
+      - name: Verify the snap can actually launch
+        if: matrix.cfg.platform == 'linux-64'
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends squashfs-tools
+          unsquashfs -l dist/JupyterLab.snap > snap-contents.txt
+          missing=0
+          for script in desktop-init.sh desktop-common.sh desktop-gnome-specific.sh; do
+            if ! grep -qx "squashfs-root/$script" snap-contents.txt; then
+              echo "::error::$script is missing from the snap; command.sh execs it, so the app cannot start"
+              missing=1
+            fi
+          done
+          if grep -qE '^squashfs-root/snap-template-.*\.tar$' snap-contents.txt; then
+            echo "::error::the snap template was packed as a tarball instead of being extracted"
+            missing=1
+          fi
+          exit $missing
+
       - name: Upload Snap Installer
         if: matrix.cfg.platform == 'linux-64'
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
