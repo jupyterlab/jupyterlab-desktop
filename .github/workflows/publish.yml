@@ -214,7 +214,10 @@ jobs:
           fi
           # --dangerous skips assertion checks for a locally built snap, --classic
           # matches the confinement we ship with
-          sudo snap install --dangerous --classic dist/JupyterLab.snap
+          # snap install is known to hang on hosted runners
+          # (actions/runner-images#11170), so bound it rather than let it eat the
+          # job's budget
+          sudo timeout 300 snap install --dangerous --classic dist/JupyterLab.snap
           # --version quits before any window is created, so this exercises
           # command.sh and every launcher script it execs, without needing a UI
           xvfb-run -a timeout 120 jupyterlab-desktop --version
