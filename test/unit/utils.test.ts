@@ -575,11 +575,15 @@ describe('markEnvironmentAsJupyterInstalled', () => {
     );
   });
 
-  it('skips mkdirSync when .jupyter dir already exists', () => {
+  it('still writes env.json when the .jupyter dir already exists', () => {
     mockFs.existsSync = vi.fn(() => true);
     markEnvironmentAsJupyterInstalled('/env/myenv');
-    expect(mockFs.mkdirSync).not.toHaveBeenCalled();
-    expect(mockFs.writeFileSync).toHaveBeenCalled();
+    // mkdir runs unconditionally: recursive mode is a no-op on an existing
+    // directory, so there is no reason to check first and race on the answer.
+    expect(mockFs.writeFileSync).toHaveBeenCalledWith(
+      expect.stringContaining('env.json'),
+      expect.stringContaining('jupyterlab-desktop')
+    );
   });
 
   it('merges extraData into written JSON', () => {
