@@ -204,6 +204,28 @@ jobs:
           path: |
             dist/JupyterLab.snap
 
+      - name: Verify the snap can actually launch
+        if: matrix.cfg.platform == 'linux-64'
+        run: |
+          command -v unsquashfs >/dev/null || { sudo apt-get update -qq && sudo apt-get install -y --no-install-recommends squashfs-tools; }
+          # 4.6.2-1 shipped the template as a tarball and died on a missing script
+          unsquashfs -q -d "$RUNNER_TEMP/snap-check" dist/JupyterLab.snap command.sh
+          unsquashfs -l -d squashfs-root dist/JupyterLab.snap | sort > "$RUNNER_TEMP/snap-have.txt"
+          grep -oE '\$SNAP/[A-Za-z0-9._/-]+' "$RUNNER_TEMP/snap-check/command.sh" | sed 's|\$SNAP|squashfs-root|' | sort -u > "$RUNNER_TEMP/snap-need.txt"
+          if [ ! -s "$RUNNER_TEMP/snap-need.txt" ]; then
+            echo "::error::no \$SNAP path was read out of command.sh, so this check would pass without verifying anything"
+            exit 1
+          fi
+          missing="$(comm -23 "$RUNNER_TEMP/snap-need.txt" "$RUNNER_TEMP/snap-have.txt")"
+          if [ -n "$missing" ]; then
+            echo "::error::command.sh execs paths that are not in the snap: $missing"
+            exit 1
+          fi
+          if grep -qE '^squashfs-root/snap-template-.*\.tar$' "$RUNNER_TEMP/snap-have.txt"; then
+            echo "::error::the snap template was packed as a tarball instead of being extracted"
+            exit 1
+          fi
+
       - name: Upload macOS x64 Installer
         if: matrix.cfg.platform == 'osx-64'
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
