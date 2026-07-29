@@ -238,8 +238,10 @@ jobs:
           # the runner is Ubuntu, so the rpm needs a RHEL-family userland of its
           # own. AlmaLinux 9 is a maintained rebuild sitting above every floor
           # Electron states for Linux, which are Debian 10, Fedora 32 and
-          # Ubuntu 18.04
-          docker run --rm -v "$PWD/dist:/dist:ro" almalinux:9 bash -c '
+          # Ubuntu 18.04. Rocky's Docker Official Image stopped being rebuilt in
+          # 2024, and quay serves the same AlmaLinux image without Docker Hub's
+          # anonymous pull limit, which hosted runners share an IP pool against
+          docker run --rm -v "$PWD/dist:/dist:ro" quay.io/almalinuxorg/almalinux:9 bash -c '
             set -e
             dnf -y install /dist/JupyterLab.rpm xorg-x11-server-Xvfb
             Xvfb :99 -screen 0 1024x768x24 &
