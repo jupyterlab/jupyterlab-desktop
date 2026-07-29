@@ -22,6 +22,7 @@ import {
   WorkspaceSettings
 } from '../config/settings';
 import { TitleBarView } from '../titlebarview/titlebarview';
+import { guardAppOwnedView } from '../navigationguard';
 import {
   DarkThemeBGColor,
   envPathForPythonPath,
@@ -133,6 +134,8 @@ export class SessionWindow implements IDisposable {
         devTools: false
       }
     });
+
+    guardAppOwnedView(this._window.webContents);
 
     this._window.setMenuBarVisibility(false);
     this._window.show();

@@ -19,6 +19,7 @@ import {
   isSameServerOrigin,
   LightThemeBGColor
 } from '../utils';
+import { markGuarded } from '../navigationguard';
 import { SessionWindow } from '../sessionwindow/sessionwindow';
 import {
   CtrlWBehavior,
@@ -64,6 +65,8 @@ export class LabView implements IDisposable {
         partition
       }
     });
+    // this view decides per origin in _registerNavigationGuard
+    markGuarded(this._view.webContents);
 
     this._view.setBackgroundColor(
       options.isDarkTheme ? DarkThemeBGColor : LightThemeBGColor

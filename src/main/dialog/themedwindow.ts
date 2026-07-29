@@ -5,6 +5,7 @@ import { BrowserWindow } from 'electron';
 import * as fs from 'fs';
 import * as path from 'path';
 import { DarkThemeBGColor, LightThemeBGColor } from '../utils';
+import { guardAppOwnedView } from '../navigationguard';
 
 export class ThemedWindow {
   constructor(options: ThemedWindow.IOptions) {
@@ -26,6 +27,8 @@ export class ThemedWindow {
         preload: options.preload || path.join(__dirname, './preload.js')
       }
     });
+
+    guardAppOwnedView(this._window.webContents);
 
     // hide the traffic lights
     if (process.platform === 'darwin') {
