@@ -222,6 +222,32 @@ jobs:
           # command.sh and every launcher script it execs, without needing a UI
           xvfb-run -a timeout 120 jupyterlab-desktop --version
 
+      - name: Verify the deb can actually launch
+        if: matrix.cfg.platform == 'linux-64'
+        run: |
+          # apt resolves the Depends the deb declares, so an under-declared
+          # dependency fails here rather than on a user's machine
+          sudo apt-get install -y ./dist/JupyterLab.deb
+          # the deb keeps its binary under /opt and only symlinks jlab into
+          # /usr/bin, so name the path and do not race the snap installed above
+          xvfb-run -a timeout 120 /opt/JupyterLab/jupyterlab-desktop --version
+
+      - name: Verify the rpm can actually launch
+        if: matrix.cfg.platform == 'linux-64'
+        run: |
+          # the runner is Ubuntu, so the rpm needs a RHEL-family userland of its
+          # own. AlmaLinux 9 is a maintained rebuild sitting above every floor
+          # Electron states for Linux, which are Debian 10, Fedora 32 and
+          # Ubuntu 18.04
+          docker run --rm -v "$PWD/dist:/dist:ro" almalinux:9 bash -c '
+            set -e
+            dnf -y install /dist/JupyterLab.rpm xorg-x11-server-Xvfb
+            Xvfb :99 -screen 0 1024x768x24 &
+            # Chromium cannot set up its sandbox as root inside a container, and
+            # this only needs to answer whether the binary runs on this libc
+            DISPLAY=:99 timeout 120 /opt/JupyterLab/jupyterlab-desktop --version --no-sandbox
+          '
+
       - name: Upload macOS x64 Installer
         if: matrix.cfg.platform == 'osx-64'
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
