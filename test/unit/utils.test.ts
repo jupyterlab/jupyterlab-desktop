@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import * as fs from 'fs';
 import * as path from 'path';
-import { nativeTheme } from 'electron';
+import { app, nativeTheme } from 'electron';
 import log from 'electron-log';
 
 vi.mock('fs', async () => {
@@ -60,6 +60,7 @@ import {
   isBaseCondaEnv,
   isCondaEnv,
   isDarkTheme,
+  isDevMode,
   isEnvInstalledByDesktopApp,
   isPortInUse,
   isSameServerOrigin,
@@ -404,10 +405,30 @@ describe('getJlabCLICommandTargetPath', () => {
     Object.defineProperty(process, 'platform', { value: originalPlatform });
   });
 
-  // darwin path requires require.main via isDevMode() — only test the non-darwin case here
   it('returns undefined on non-darwin', () => {
     Object.defineProperty(process, 'platform', { value: 'linux' });
     expect(getJlabCLICommandTargetPath()).toBeUndefined();
+  });
+
+  it('points at the app directory on darwin', () => {
+    Object.defineProperty(process, 'platform', { value: 'darwin' });
+    expect(getJlabCLICommandTargetPath()).toBe(`${app.getAppPath()}/app/jlab`);
+  });
+});
+
+describe('isDevMode', () => {
+  afterEach(() => {
+    (app as any).isPackaged = false;
+  });
+
+  it('is true when the app is not packaged', () => {
+    (app as any).isPackaged = false;
+    expect(isDevMode()).toBe(true);
+  });
+
+  it('is false when the app is packaged', () => {
+    (app as any).isPackaged = true;
+    expect(isDevMode()).toBe(false);
   });
 });
 

@@ -13,6 +13,7 @@ export const app = {
   getPath: vi.fn((name: string) => join(userDataPath, name)),
   getVersion: vi.fn(() => '4.4.7'),
   getName: vi.fn(() => 'JupyterLab'),
+  getAppPath: vi.fn(() => '/opt/JupyterLab/resources/app'),
   isPackaged: false,
   whenReady: vi.fn(() => Promise.resolve())
 };
