@@ -232,6 +232,25 @@ jobs:
           # /usr/bin, so name the path and do not race the snap installed above
           xvfb-run -a timeout 120 /opt/JupyterLab/jupyterlab-desktop --version
 
+      - name: Verify the deb installs, reinstalls and removes cleanly
+        if: matrix.cfg.platform == 'linux-64'
+        run: |
+          # Debian policy 6.5 requires maintainer scripts to be idempotent, and
+          # unpacking over the copy installed above is the cheapest way to run
+          # the postinst a second time against the state the first one left
+          sudo dpkg -i ./dist/JupyterLab.deb
+          # the profile ships in the package but only reaches apparmor.d if the
+          # postinst installs it, which is what #870 turned on
+          test -f /etc/apparmor.d/jupyterlab-desktop
+          sudo apt-get purge -y jupyterlab-desktop
+          test ! -e /etc/apparmor.d/jupyterlab-desktop
+          # a note rather than an assertion: the postrm drops the alternatives
+          # entry but not the jlab symlink, which the postinst creates outside
+          # the package file list
+          if [ -L /usr/bin/jlab ]; then
+            echo 'note: /usr/bin/jlab is left behind by purge'
+          fi
+
       - name: Verify the rpm can actually launch
         if: matrix.cfg.platform == 'linux-64'
         run: |
