@@ -35,6 +35,9 @@ jobs:
       release_exists: ${{ steps.release-exists.outputs.result }}
       version: ${{ steps.package-info.outputs.version }}
     strategy:
+      # Each leg builds an independent installer, so a flake on one platform
+      # must not cancel the other three and throw away their artifacts.
+      fail-fast: false
       matrix:
         cfg:
         - { platform: linux-64, platform_name: Linux x64,  os: ubuntu-latest, build_platform: linux-64, conda_platform: linux-64 }
