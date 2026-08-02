@@ -5,6 +5,7 @@ import { WebContentsView } from 'electron';
 import * as fs from 'fs';
 import * as path from 'path';
 import { DarkThemeBGColor, LightThemeBGColor } from '../utils';
+import { guardAppOwnedView } from '../navigationguard';
 
 export class ThemedView {
   constructor(options: ThemedView.IOptions) {
@@ -14,6 +15,7 @@ export class ThemedView {
         preload: options.preload || path.join(__dirname, './preload.js')
       }
     });
+    guardAppOwnedView(this._view.webContents);
     this._view.setBackgroundColor(
       this._isDarkTheme ? DarkThemeBGColor : LightThemeBGColor
     );

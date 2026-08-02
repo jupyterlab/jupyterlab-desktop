@@ -197,7 +197,7 @@
     "@types/yargs": "^17.0.35",
     "@vitest/coverage-v8": "^4.1.9",
     "electron": "^42.4.0",
-    "electron-builder": "^26.15.3",
+    "electron-builder": "^26.15.7",
     "electron-playwright-helpers": "^2.1.0",
     "eslint": "^10.5.0",
     "eslint-config-prettier": "^10.1.8",
@@ -213,7 +213,6 @@
     "webpack-cli": "^4.5.0"
   },
   "resolutions": {
-    "serialize-javascript": "^6.0.2",
     "micromatch": "^4.0.8"
   },
   "dependencies": {

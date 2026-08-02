@@ -29,6 +29,7 @@ import {
   setupJlabCLICommandWithElevatedRights,
   waitForDuration
 } from './utils';
+import { installGlobalNavigationGuard } from './navigationguard';
 import { IServerFactory, JupyterServerFactory } from './server';
 import { connectAndGetServerInfo, IJupyterServerInfo } from './connect';
 import { UpdateDialog } from './updatedialog/updatedialog';
@@ -279,6 +280,7 @@ export class JupyterApplication implements IApplication, IDisposable {
     this._serverFactory.createFreeServer().catch(error => {
       console.error('Failed to create free server', error);
     });
+    installGlobalNavigationGuard();
     this._registerListeners();
 
     if (
