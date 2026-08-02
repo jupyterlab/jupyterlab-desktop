@@ -8,6 +8,7 @@ import {
   BrowserWindow,
   dialog,
   net,
+  Session,
   session,
   shell
 } from 'electron';
@@ -30,6 +31,7 @@ import {
   waitForDuration
 } from './utils';
 import { installGlobalNavigationGuard } from './navigationguard';
+import { isPermissionAllowed } from './permissionpolicy';
 import { IServerFactory, JupyterServerFactory } from './server';
 import { connectAndGetServerInfo, IJupyterServerInfo } from './connect';
 import { UpdateDialog } from './updatedialog/updatedialog';
@@ -282,6 +284,7 @@ export class JupyterApplication implements IApplication, IDisposable {
     });
     installGlobalNavigationGuard();
     this._registerListeners();
+    this._applyPermissionPolicies();
 
     if (
       userSettings.getValue(SettingType.checkForUpdatesAutomatically) !== false
@@ -572,6 +575,67 @@ export class JupyterApplication implements IApplication, IDisposable {
     });
 
     updateElectronApp();
+  }
+
+  /**
+   * Refuse permission requests unless they come from a Jupyter server origin.
+   * Sessions are hooked as they are created, since a remote session builds its
+   * own partition, and the default session is hooked directly because it
+   * already exists by the time the application is constructed.
+   */
+  private _applyPermissionPolicies() {
+    const apply = (ses: Session) => {
+      ses.setPermissionRequestHandler(
+        (webContents, permission, callback, details) => {
+          const requestingUrl = details?.requestingUrl ?? webContents?.getURL();
+          const allowed = isPermissionAllowed({
+            permission,
+            requestingUrl,
+            serverUrl: this._serverUrlForWebContents(webContents)
+          });
+          if (!allowed) {
+            // a refusal is silent in the page, so leave a trail for whoever has
+            // to work out why a feature stopped working
+            log.debug(`Denied ${permission} requested by ${requestingUrl}`);
+          }
+          callback(allowed);
+        }
+      );
+
+      ses.setPermissionCheckHandler(
+        (webContents, permission, requestingOrigin) =>
+          isPermissionAllowed({
+            permission,
+            requestingUrl: requestingOrigin,
+            serverUrl: this._serverUrlForWebContents(webContents)
+          })
+      );
+    };
+
+    apply(session.defaultSession);
+    app.on('session-created', apply);
+  }
+
+  /**
+   * The lab view of a session window is the only content served by a Jupyter
+   * server; every other view is a bundled document. Local sessions share the
+   * default session while listening on different ports, so the origin has to be
+   * resolved per webContents rather than captured once.
+   */
+  private _serverUrlForWebContents(
+    webContents: Electron.WebContents | null
+  ): string | undefined {
+    if (!webContents) {
+      return undefined;
+    }
+
+    for (const sessionWindow of this._sessionWindowManager.windows) {
+      if (webContents === sessionWindow.labView?.view?.webContents) {
+        return sessionWindow.getServerInfo()?.url;
+      }
+    }
+
+    return undefined;
   }
 
   private _validateRemoteServerUrl(url: string): Promise<IJupyterServerInfo> {
