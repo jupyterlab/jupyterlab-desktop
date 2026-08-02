@@ -16,7 +16,9 @@ vi.mock('fs', async () => {
     mkdtempSync: vi.fn(),
     writeFileSync: vi.fn(),
     mkdirSync: vi.fn(),
-    rmSync: vi.fn()
+    rmSync: vi.fn(),
+    readFileSync: vi.fn(),
+    renameSync: vi.fn()
   };
 });
 vi.mock('net', async () => {
@@ -69,6 +71,7 @@ import {
   markEnvironmentAsJupyterInstalled,
   openDirectoryInExplorer,
   pythonPathForEnvPath,
+  readJsonConfigFile,
   versionWithoutSuffix,
   waitForDuration,
   waitForFunction
@@ -90,6 +93,8 @@ beforeEach(() => {
   mockFs.writeFileSync = vi.fn();
   mockFs.mkdirSync = vi.fn();
   mockFs.rmSync = vi.fn();
+  mockFs.readFileSync = vi.fn();
+  mockFs.renameSync = vi.fn();
 });
 
 describe('isDarkTheme', () => {
@@ -822,5 +827,63 @@ describe('isSameServerOrigin', () => {
     expect(isSameServerOrigin('http://localhost:8888/lab', undefined)).toBe(
       false
     );
+  });
+});
+
+describe('readJsonConfigFile', () => {
+  it('returns the parsed object for a readable config', () => {
+    mockFs.existsSync = vi.fn(() => true);
+    mockFs.readFileSync = vi.fn(() => Buffer.from('{"theme":"dark"}')) as any;
+
+    expect(readJsonConfigFile('/data/settings.json')).toEqual({
+      theme: 'dark'
+    });
+    expect(mockFs.renameSync).not.toHaveBeenCalled();
+  });
+
+  it('returns undefined when the file is not there', () => {
+    mockFs.existsSync = vi.fn(() => false);
+
+    expect(readJsonConfigFile('/data/settings.json')).toBeUndefined();
+    expect(mockFs.readFileSync).not.toHaveBeenCalled();
+  });
+
+  it('survives malformed JSON and moves the file aside', () => {
+    mockFs.existsSync = vi.fn(() => true);
+    mockFs.readFileSync = vi.fn(() => Buffer.from('{"theme": }')) as any;
+
+    expect(readJsonConfigFile('/data/settings.json')).toBeUndefined();
+    expect(mockFs.renameSync).toHaveBeenCalledWith(
+      '/data/settings.json',
+      '/data/settings.json.corrupt'
+    );
+  });
+
+  it('rejects valid JSON that is not an object, which callers cannot walk', () => {
+    mockFs.existsSync = vi.fn(() => true);
+    mockFs.readFileSync = vi.fn(() => Buffer.from('42')) as any;
+
+    expect(readJsonConfigFile('/data/settings.json')).toBeUndefined();
+    expect(mockFs.renameSync).toHaveBeenCalled();
+  });
+
+  it('survives an unreadable file without moving it', () => {
+    mockFs.existsSync = vi.fn(() => true);
+    mockFs.readFileSync = vi.fn(() => {
+      throw new Error('EACCES');
+    }) as any;
+
+    expect(readJsonConfigFile('/data/settings.json')).toBeUndefined();
+    expect(mockFs.renameSync).not.toHaveBeenCalled();
+  });
+
+  it('still returns undefined when moving the file aside also fails', () => {
+    mockFs.existsSync = vi.fn(() => true);
+    mockFs.readFileSync = vi.fn(() => Buffer.from('nope')) as any;
+    mockFs.renameSync = vi.fn(() => {
+      throw new Error('EPERM');
+    });
+
+    expect(readJsonConfigFile('/data/settings.json')).toBeUndefined();
   });
 });

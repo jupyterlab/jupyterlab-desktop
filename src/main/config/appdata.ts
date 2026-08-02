@@ -3,7 +3,7 @@
 
 import * as path from 'path';
 import * as fs from 'fs';
-import { clearSession, getUserDataDir } from '../utils';
+import { clearSession, getUserDataDir, readJsonConfigFile } from '../utils';
 import { IPythonEnvironment } from '../tokens';
 import { SessionConfig } from './sessionconfig';
 import { session as electronSession } from 'electron';
@@ -55,11 +55,10 @@ export class ApplicationData {
 
   read() {
     const appDataPath = ApplicationData.getAppDataPath();
-    if (!fs.existsSync(appDataPath)) {
+    const jsonData = readJsonConfigFile(appDataPath);
+    if (!jsonData) {
       return;
     }
-    const data = fs.readFileSync(appDataPath);
-    const jsonData = JSON.parse(data.toString());
 
     if ('pythonPath' in jsonData) {
       this.pythonPath = jsonData.pythonPath;

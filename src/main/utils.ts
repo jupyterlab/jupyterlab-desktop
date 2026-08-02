@@ -60,6 +60,48 @@ export function getSchemasDir(): string {
   return path.normalize(path.join(getAppDir(), './build/schemas'));
 }
 
+/**
+ * Read a JSON config file, or undefined when it is absent or unusable. Config
+ * is read while the modules that hold it are still being imported, so throwing
+ * here kills the app before a window exists (#824). An unusable file is moved
+ * aside rather than left for the next save to overwrite.
+ */
+export function readJsonConfigFile(
+  filePath: string
+): Record<string, any> | undefined {
+  let contents: string;
+  try {
+    if (!fs.existsSync(filePath)) {
+      return undefined;
+    }
+    contents = fs.readFileSync(filePath).toString();
+  } catch (error) {
+    log.error(`Failed to read ${filePath}, continuing with defaults`, error);
+    return undefined;
+  }
+
+  try {
+    const parsed = JSON.parse(contents);
+    // callers walk this with `key in parsed`, which throws on a primitive, so
+    // a bare number or string is as unusable to them as a parse failure
+    if (parsed !== null && typeof parsed === 'object') {
+      return parsed;
+    }
+  } catch (error) {
+    log.error(`Failed to parse ${filePath}, continuing with defaults`, error);
+  }
+
+  const quarantinePath = `${filePath}.corrupt`;
+  try {
+    fs.renameSync(filePath, quarantinePath);
+    log.error(`Moved the unusable config to ${quarantinePath}`);
+  } catch (error) {
+    log.error(`Failed to move ${filePath} aside`, error);
+  }
+
+  return undefined;
+}
+
 export function getRelativePathToUserHome(absolutePath: string): string {
   const home = getUserHomeDir();
   if (absolutePath.startsWith(home)) {

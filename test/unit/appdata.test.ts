@@ -10,7 +10,8 @@ vi.mock('fs', async () => {
       throw new Error('ENOENT');
     }),
     writeFileSync: vi.fn(),
-    mkdirSync: vi.fn()
+    mkdirSync: vi.fn(),
+    renameSync: vi.fn()
   };
 });
 
@@ -56,6 +57,16 @@ describe('ApplicationData.read', () => {
     // the missing-file guard must short-circuit before parsing anything
     expect(mockFs.readFileSync).not.toHaveBeenCalled();
     expect(appData.pythonPath).toBe(pythonPathBefore);
+  });
+
+  it('keeps its state instead of throwing when the file is corrupt', () => {
+    mockFs.existsSync = vi.fn(() => true);
+    mockFs.readFileSync = vi.fn(() => Buffer.from('{"pythonPath": '));
+    appData.pythonPath = '/usr/bin/python3';
+
+    appData.read();
+
+    expect(appData.pythonPath).toBe('/usr/bin/python3');
   });
 
   it('reads pythonPath from JSON', () => {

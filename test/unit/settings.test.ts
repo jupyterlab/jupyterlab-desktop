@@ -8,7 +8,9 @@ vi.mock('fs', async () => {
     existsSync: vi.fn(),
     lstatSync: vi.fn(),
     mkdirSync: vi.fn(),
-    writeFileSync: vi.fn()
+    writeFileSync: vi.fn(),
+    readFileSync: vi.fn(),
+    renameSync: vi.fn()
   };
 });
 
@@ -177,6 +179,26 @@ describe('UserSettings', () => {
     us.setValue(SettingType.theme, ThemeType.Light);
     us.unsetValue(SettingType.theme);
     expect(us.getValue(SettingType.theme)).toBe(ThemeType.System);
+  });
+
+  it('starts on defaults instead of throwing when settings.json is corrupt', () => {
+    // reading is done while this module is still being imported, so a throw
+    // here takes the app down before a window exists (#824)
+    mockFs.existsSync = vi.fn(() => true);
+    mockFs.readFileSync = vi.fn(() => Buffer.from('{"theme": "dark",}')) as any;
+
+    const us = new UserSettings(true);
+
+    expect(us.getValue(SettingType.theme)).toBe(ThemeType.System);
+  });
+
+  it('applies the values it finds in a valid settings.json', () => {
+    mockFs.existsSync = vi.fn(() => true);
+    mockFs.readFileSync = vi.fn(() => Buffer.from('{"theme": "dark"}')) as any;
+
+    const us = new UserSettings(true);
+
+    expect(us.getValue(SettingType.theme)).toBe(ThemeType.Dark);
   });
 
   it('save persists only settings that differ from their default', () => {

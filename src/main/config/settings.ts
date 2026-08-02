@@ -3,7 +3,7 @@
 
 import * as path from 'path';
 import * as fs from 'fs';
-import { getUserDataDir, getUserHomeDir } from '../utils';
+import { getUserDataDir, getUserHomeDir, readJsonConfigFile } from '../utils';
 
 export const DEFAULT_WIN_WIDTH = 1024;
 export const DEFAULT_WIN_HEIGHT = 768;
@@ -207,11 +207,10 @@ export class UserSettings {
 
   read() {
     const userSettingsPath = UserSettings.getUserSettingsPath();
-    if (!fs.existsSync(userSettingsPath)) {
+    const jsonData = readJsonConfigFile(userSettingsPath);
+    if (!jsonData) {
       return;
     }
-    const data = fs.readFileSync(userSettingsPath);
-    const jsonData = JSON.parse(data.toString());
 
     for (let key in SettingType) {
       if (key in jsonData) {
@@ -286,11 +285,10 @@ export class WorkspaceSettings extends UserSettings {
     const wsSettingsPath = WorkspaceSettings.getWorkspaceSettingsPath(
       this._workingDirectory
     );
-    if (!fs.existsSync(wsSettingsPath)) {
+    const jsonData = readJsonConfigFile(wsSettingsPath);
+    if (!jsonData) {
       return;
     }
-    const data = fs.readFileSync(wsSettingsPath);
-    const jsonData = JSON.parse(data.toString());
 
     for (let key in SettingType) {
       if (key in jsonData) {
