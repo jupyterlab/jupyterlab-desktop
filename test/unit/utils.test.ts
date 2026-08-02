@@ -650,6 +650,30 @@ describe('launchTerminalInDirectory', () => {
     expect(mockExecFile.mock.calls[0][0]).toBe('osascript');
     expect(args[1]).toContain("source '/env/$(id -u)/bin/activate'");
   });
+
+  it('reports success once a terminal has been spawned', () => {
+    Object.defineProperty(process, 'platform', { value: 'linux' });
+
+    const launched = launchTerminalInDirectory({
+      dirPath: '/envs',
+      interactive: false
+    });
+
+    expect(launched).toBe(true);
+  });
+
+  it('reports failure when the directory is not one', () => {
+    Object.defineProperty(process, 'platform', { value: 'linux' });
+    mockFs.statSync = vi.fn(() => ({ isDirectory: () => false } as fs.Stats));
+
+    const launched = launchTerminalInDirectory({
+      dirPath: '/envs/notes.txt',
+      interactive: false
+    });
+
+    expect(launched).toBe(false);
+    expect(mockExecFile).not.toHaveBeenCalled();
+  });
 });
 
 describe('shellQuotePath', () => {

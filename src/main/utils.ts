@@ -784,6 +784,8 @@ export function launchTerminalInDirectory(options: {
     }
     execFile('gnome-terminal', args);
   }
+
+  return true;
 }
 
 export function getJlabCLICommandSymlinkPath(): string {
