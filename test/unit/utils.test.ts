@@ -859,6 +859,14 @@ describe('readJsonConfigFile', () => {
     );
   });
 
+  it('survives a zero byte file, which is what a killed write leaves', () => {
+    mockFs.existsSync = vi.fn(() => true);
+    mockFs.readFileSync = vi.fn(() => Buffer.from('')) as any;
+
+    expect(readJsonConfigFile('/data/app-data.json')).toBeUndefined();
+    expect(mockFs.renameSync).toHaveBeenCalled();
+  });
+
   it('rejects valid JSON that is not an object, which callers cannot walk', () => {
     mockFs.existsSync = vi.fn(() => true);
     mockFs.readFileSync = vi.fn(() => Buffer.from('42')) as any;
