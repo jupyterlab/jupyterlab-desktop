@@ -39,3 +39,14 @@ describe('the Linux after-install script', () => {
     }
   });
 });
+
+// Naming even one dependency replaces electron-builder's whole default list
+// instead of adding to it, and those defaults are what Electron needs in order
+// to load at all. An rpm that named only libXScrnSaver could not find libnspr4.
+describe('the Linux runtime dependencies', () => {
+  it.each(['deb', 'rpm'])('are left to electron-builder for the %s', target => {
+    const build = JSON.parse(read('package.json')).build;
+
+    expect(build[target].depends).toBeUndefined();
+  });
+});

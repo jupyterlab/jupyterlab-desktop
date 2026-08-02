@@ -94,9 +94,6 @@
       "afterInstall": "build/linux_after_install.sh"
     },
     "rpm": {
-      "depends": [
-        "libXScrnSaver"
-      ],
       "afterInstall": "build/linux_after_install.sh"
     },
     "snap": {
