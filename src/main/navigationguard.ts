@@ -55,6 +55,20 @@ export function guardNavigation(
 
   contents.on('will-navigate', handle);
   contents.on('will-redirect', handle);
+
+  // the two above only fire for the main frame; a subframe navigating raises
+  // will-frame-navigate. A surface wired here renders either a bundled
+  // document or nothing anyone has claimed, so a subframe of it has no reason
+  // to move, and handing a subframe's target to the system browser would be
+  // worse than refusing it. Hence blocked rather than run through `handle`.
+  contents.on('will-frame-navigate', details => {
+    if (details.isMainFrame || decide(details.url) === 'allow') {
+      return;
+    }
+    details.preventDefault();
+    log.debug(`Blocked subframe navigation to ${details.url}`);
+  });
+
   contents.on('will-attach-webview', event => {
     event.preventDefault();
   });

@@ -266,6 +266,10 @@ export class JupyterApplication implements IApplication, IDisposable {
    * Construct the Jupyter application
    */
   constructor(cliArgs: ICLIArguments) {
+    // first, so that anything added to this constructor later is already
+    // covered by the time it can create a webContents
+    installGlobalNavigationGuard();
+
     this._cliArgs = cliArgs;
     this._registry = new Registry();
     this._serverFactory = new JupyterServerFactory(this._registry);
@@ -280,7 +284,6 @@ export class JupyterApplication implements IApplication, IDisposable {
     this._serverFactory.createFreeServer().catch(error => {
       console.error('Failed to create free server', error);
     });
-    installGlobalNavigationGuard();
     this._registerListeners();
 
     if (

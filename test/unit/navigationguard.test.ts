@@ -40,6 +40,13 @@ const navigationEvent = (url = 'https://example.com/') => ({
   url
 });
 
+// will-frame-navigate carries isMainFrame; will-navigate does not fire at all
+// for a subframe
+const frameNavigationEvent = (
+  isMainFrame: boolean,
+  url = 'https://example.com/'
+) => ({ preventDefault: vi.fn(), url, isMainFrame });
+
 describe('openUrlInSystemBrowser', () => {
   beforeEach(() => {
     vi.mocked(shell.openExternal).mockClear();
@@ -100,6 +107,28 @@ describe('guardAppOwnedView', () => {
     expect(shell.openExternal).toHaveBeenCalledOnce();
   });
 
+  it('blocks a subframe rather than handing its target to the browser', () => {
+    const contents = fakeContents();
+    guardAppOwnedView(contents as any);
+    const event = frameNavigationEvent(false);
+
+    contents.emit('will-frame-navigate', event);
+
+    expect(event.preventDefault).toHaveBeenCalledOnce();
+    expect(shell.openExternal).not.toHaveBeenCalled();
+  });
+
+  it('leaves the main frame to will-navigate so nothing opens twice', () => {
+    const contents = fakeContents();
+    guardAppOwnedView(contents as any);
+    const event = frameNavigationEvent(true);
+
+    contents.emit('will-frame-navigate', event);
+
+    expect(event.preventDefault).not.toHaveBeenCalled();
+    expect(shell.openExternal).not.toHaveBeenCalled();
+  });
+
   it('prevents navigation without opening anything for an unsafe scheme', () => {
     const contents = fakeContents();
     guardAppOwnedView(contents as any);
@@ -144,6 +173,27 @@ describe('installGlobalNavigationGuard', () => {
     const event = navigationEvent();
 
     contents.emit('will-navigate', event);
+
+    expect(event.preventDefault).not.toHaveBeenCalled();
+  });
+
+  it('prevents a subframe navigating in a view nobody claimed', () => {
+    const contents = fakeContents();
+    created(null, contents);
+    const event = frameNavigationEvent(false);
+
+    contents.emit('will-frame-navigate', event);
+
+    expect(event.preventDefault).toHaveBeenCalledOnce();
+  });
+
+  it('leaves a claimed view its own subframes', () => {
+    const contents = fakeContents();
+    created(null, contents);
+    markGuarded(contents as any);
+    const event = frameNavigationEvent(false);
+
+    contents.emit('will-frame-navigate', event);
 
     expect(event.preventDefault).not.toHaveBeenCalled();
   });
