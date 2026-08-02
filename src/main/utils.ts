@@ -113,9 +113,13 @@ export function isDarkTheme(themeType: string) {
   }
 }
 
-// data:, about:blank and other opaque sources serialize to the literal "null"
-// origin, which must never be treated as a real origin.
-function originOf(url: string | undefined | null): string | null {
+/**
+ * The origin of a URL, or null when there is not one to speak of: no URL at
+ * all, one that does not parse, or an opaque source. data:, about:blank and
+ * friends serialize to the literal "null" origin, which must never be treated
+ * as a real one. Never throws.
+ */
+export function originOf(url: string | undefined | null): string | null {
   if (!url) {
     return null;
   }
@@ -124,6 +128,20 @@ function originOf(url: string | undefined | null): string | null {
     return origin === 'null' ? null : origin;
   } catch {
     return null;
+  }
+}
+
+/**
+ * Whether a URL uses one of the given schemes, written as URL.protocol does,
+ * with the colon. False when the URL does not parse. Callers name the set they
+ * accept at the point of use rather than sharing a list, since what may be
+ * loaded in a view and what may be handed to the OS are different questions.
+ */
+export function matchesScheme(url: string, ...schemes: string[]): boolean {
+  try {
+    return schemes.includes(new URL(url).protocol);
+  } catch {
+    return false;
   }
 }
 

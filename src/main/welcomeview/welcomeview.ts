@@ -2,7 +2,12 @@
 // Distributed under the terms of the Modified BSD License.
 
 import { net, WebContentsView } from 'electron';
-import { DarkThemeBGColor, getUserHomeDir, LightThemeBGColor } from '../utils';
+import {
+  DarkThemeBGColor,
+  getUserHomeDir,
+  LightThemeBGColor,
+  originOf
+} from '../utils';
 import { guardAppOwnedView } from '../navigationguard';
 import * as path from 'path';
 import * as fs from 'fs';
@@ -830,8 +835,10 @@ export class WelcomeView {
       let tooltip = '';
       let parent = '';
       if (recentSession.remoteURL) {
-        const url = new URL(recentSession.remoteURL);
-        sessionItem = url.origin;
+        // a recent entry comes back from disk, so a URL that no longer parses
+        // must not take the whole list down with it
+        sessionItem =
+          originOf(recentSession.remoteURL) ?? recentSession.remoteURL;
         tooltip = `${recentSession.remoteURL}\nSession data ${
           recentSession.persistSessionData ? '' : 'not '
         }persisted`;

@@ -3,11 +3,15 @@
 
 import { app, shell, WebContents } from 'electron';
 import log from 'electron-log';
-
-// http/https for ordinary links, mailto for contact links
-const EXTERNAL_SCHEMES = ['https:', 'http:', 'mailto:'];
+import { matchesScheme } from './utils';
 
 const guarded = new WeakSet<WebContents>();
+
+/**
+ * What to do with a navigation a surface is about to make: let it happen, hand
+ * it to the system browser, or refuse it.
+ */
+export type NavigationDecision = 'allow' | 'external' | 'deny';
 
 /**
  * Declare that this webContents carries its own navigation policy, so the
@@ -20,14 +24,40 @@ export function markGuarded(contents: WebContents): void {
 }
 
 export function openUrlInSystemBrowser(url: string): void {
-  try {
-    const { protocol, href } = new URL(url);
-    if (EXTERNAL_SCHEMES.includes(protocol)) {
-      shell.openExternal(href);
-    }
-  } catch {
-    // unparseable target, nothing safe to open
+  // http and https for ordinary links, mailto for contact links
+  if (matchesScheme(url, 'http:', 'https:', 'mailto:')) {
+    shell.openExternal(url);
   }
+}
+
+/**
+ * Apply a navigation policy to a webContents. Every surface wires the same
+ * three hooks and differs only in the decision, so the wiring lives here and
+ * the caller brings the rule. Window creation is left to the caller, since what
+ * a surface does with a popup varies more than a verdict can express.
+ */
+export function guardNavigation(
+  contents: WebContents,
+  decide: (url: string) => NavigationDecision
+): void {
+  const handle = (details: Electron.Event & { url: string }) => {
+    const decision = decide(details.url);
+    if (decision === 'allow') {
+      return;
+    }
+    details.preventDefault();
+    if (decision === 'external') {
+      openUrlInSystemBrowser(details.url);
+    } else {
+      log.debug(`Blocked navigation to ${details.url}`);
+    }
+  };
+
+  contents.on('will-navigate', handle);
+  contents.on('will-redirect', handle);
+  contents.on('will-attach-webview', event => {
+    event.preventDefault();
+  });
 }
 
 /**
@@ -38,14 +68,7 @@ export function openUrlInSystemBrowser(url: string): void {
  */
 export function guardAppOwnedView(contents: WebContents): void {
   markGuarded(contents);
-
-  const sendToBrowser = (event: Electron.Event, url: string) => {
-    event.preventDefault();
-    openUrlInSystemBrowser(url);
-  };
-
-  contents.on('will-navigate', sendToBrowser);
-  contents.on('will-redirect', sendToBrowser);
+  guardNavigation(contents, () => 'external');
   contents.setWindowOpenHandler(({ url }) => {
     openUrlInSystemBrowser(url);
     return { action: 'deny' };
@@ -61,20 +84,7 @@ export function guardAppOwnedView(contents: WebContents): void {
  */
 export function installGlobalNavigationGuard(): void {
   app.on('web-contents-created', (_event, contents) => {
-    contents.on('will-attach-webview', event => {
-      event.preventDefault();
-    });
-
-    const denyUnclaimed = (event: Electron.Event, url: string) => {
-      if (guarded.has(contents)) {
-        return;
-      }
-      event.preventDefault();
-      log.warn(`Blocked navigation to ${url} in an unguarded view`);
-    };
-
-    contents.on('will-navigate', denyUnclaimed);
-    contents.on('will-redirect', denyUnclaimed);
+    guardNavigation(contents, () => (guarded.has(contents) ? 'allow' : 'deny'));
 
     // an owner that sets its own handler replaces this one, which is what
     // claiming a view looks like for window creation

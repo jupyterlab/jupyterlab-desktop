@@ -34,7 +34,11 @@ function fakeContents(): IFakeContents {
   };
 }
 
-const navigationEvent = () => ({ preventDefault: vi.fn() });
+// electron passes the event object carrying the url, not positional arguments
+const navigationEvent = (url = 'https://example.com/') => ({
+  preventDefault: vi.fn(),
+  url
+});
 
 describe('openUrlInSystemBrowser', () => {
   beforeEach(() => {
@@ -70,7 +74,7 @@ describe('guardAppOwnedView', () => {
     guardAppOwnedView(contents as any);
     const event = navigationEvent();
 
-    contents.emit('will-navigate', event, 'https://example.com/');
+    contents.emit('will-navigate', event);
 
     expect(event.preventDefault).toHaveBeenCalledOnce();
     expect(shell.openExternal).toHaveBeenCalledOnce();
@@ -81,7 +85,7 @@ describe('guardAppOwnedView', () => {
     guardAppOwnedView(contents as any);
     const event = navigationEvent();
 
-    contents.emit('will-redirect', event, 'https://example.com/');
+    contents.emit('will-redirect', event);
 
     expect(event.preventDefault).toHaveBeenCalledOnce();
   });
@@ -99,9 +103,9 @@ describe('guardAppOwnedView', () => {
   it('prevents navigation without opening anything for an unsafe scheme', () => {
     const contents = fakeContents();
     guardAppOwnedView(contents as any);
-    const event = navigationEvent();
+    const event = navigationEvent('file:///etc/passwd');
 
-    contents.emit('will-navigate', event, 'file:///etc/passwd');
+    contents.emit('will-navigate', event);
 
     expect(event.preventDefault).toHaveBeenCalledOnce();
     expect(shell.openExternal).not.toHaveBeenCalled();
@@ -128,7 +132,7 @@ describe('installGlobalNavigationGuard', () => {
     created(null, contents);
     const event = navigationEvent();
 
-    contents.emit('will-navigate', event, 'https://example.com/');
+    contents.emit('will-navigate', event);
 
     expect(event.preventDefault).toHaveBeenCalledOnce();
   });
@@ -139,7 +143,7 @@ describe('installGlobalNavigationGuard', () => {
     markGuarded(contents as any);
     const event = navigationEvent();
 
-    contents.emit('will-navigate', event, 'https://example.com/');
+    contents.emit('will-navigate', event);
 
     expect(event.preventDefault).not.toHaveBeenCalled();
   });

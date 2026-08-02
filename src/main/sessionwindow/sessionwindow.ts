@@ -391,6 +391,29 @@ export class SessionWindow implements IDisposable {
     );
   }
 
+  private _showSignInCancelled(reason: string) {
+    // the sign-in window is a child of this one, so a teardown that closes the
+    // parent first lands here with nothing left to draw on
+    if (this._window.isDestroyed()) {
+      return;
+    }
+
+    const escapedReason = ejs.escapeXML(String(reason));
+    this._showProgressView(
+      'Sign-in was not completed',
+      `
+      <div class="message-row">${escapedReason}</div>
+        <div class="message-row">
+          <a href="javascript:void(0);" onclick="sendMessageToMain('${EventTypeMain.RetrySignIn}')">Try signing in again</a>
+        </div>
+        <div class="message-row">
+          <a href="javascript:void(0);" onclick="sendMessageToMain('${EventTypeMain.ShowWelcomeView}')">Go to Welcome Page</a>
+        </div>
+      `,
+      false
+    );
+  }
+
   private _loadLabView() {
     if (this._labView) {
       this._window.contentView.removeChildView(this._labView.view);
@@ -401,7 +424,8 @@ export class SessionWindow implements IDisposable {
     const labView = new LabView({
       isDarkTheme: this._isDarkTheme,
       parent: this,
-      sessionConfig: this._sessionConfig
+      sessionConfig: this._sessionConfig,
+      onAuthCancelled: (reason: string) => this._showSignInCancelled(reason)
     });
     this._window.contentView.addChildView(labView.view);
 
@@ -1054,6 +1078,23 @@ export class SessionWindow implements IDisposable {
         this._showWelcomeView();
       }
     );
+
+    this._evm.registerEventHandler(EventTypeMain.RetrySignIn, async event => {
+      if (event.sender !== this._progressView?.view?.view?.webContents) {
+        return;
+      }
+
+      if (!this._labView) {
+        return;
+      }
+
+      this._hideProgressView();
+      void this._labView.view.webContents
+        .loadURL(this._sessionConfig.url.href)
+        .catch(error => {
+          console.warn('Sign-in retry reload failed', error);
+        });
+    });
 
     this._evm.registerEventHandler(
       EventTypeMain.ShowServerSettings,

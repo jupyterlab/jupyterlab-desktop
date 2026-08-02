@@ -16,10 +16,12 @@ import {
   clearSession,
   DarkThemeBGColor,
   isDarkTheme,
-  isSameServerOrigin,
-  LightThemeBGColor
+  LightThemeBGColor,
+  matchesScheme
 } from '../utils';
+import { classifyNavigation, NavigationVerdict } from '../navigationpolicy';
 import { markGuarded } from '../navigationguard';
+import { AuthWindow } from '../authwindow/authwindow';
 import { SessionWindow } from '../sessionwindow/sessionwindow';
 import {
   CtrlWBehavior,
@@ -40,10 +42,14 @@ export type ILoadErrorCallback = (
 
 const DESKTOP_APP_ASSETS_PATH = 'desktop-app-assets';
 
+// net::ERR_ABORTED, what Chromium reports for a navigation cancelled in flight
+const ERR_ABORTED = -3;
+
 export class LabView implements IDisposable {
   constructor(options: LabView.IOptions) {
     this._parent = options.parent;
     this._sessionConfig = options.sessionConfig;
+    this._onAuthCancelled = options.onAuthCancelled;
     const sessionConfig = this._sessionConfig;
     this._wsSettings = new WorkspaceSettings(sessionConfig.workingDirectory);
     this._jlabBaseUrl = `${sessionConfig.url.protocol}//${sessionConfig.url.host}${sessionConfig.url.pathname}`;
@@ -139,22 +145,30 @@ export class LabView implements IDisposable {
   load(errorCallback?: ILoadErrorCallback) {
     const sessionConfig = this._sessionConfig;
 
-    this._view.webContents.once(
-      'did-fail-load',
-      (
-        event: Electron.Event,
-        errorCode: number,
-        errorDescription: string,
-        validatedURL: string,
-        isMainFrame: boolean
-      ) => {
-        if (isMainFrame && errorCallback) {
-          errorCallback(errorCode, errorDescription);
-        } else {
-          console.warn('Failed to load labview', errorDescription);
-        }
+    const onFailLoad = (
+      event: Electron.Event,
+      errorCode: number,
+      errorDescription: string,
+      validatedURL: string,
+      isMainFrame: boolean
+    ) => {
+      // the navigation guard cancels a redirect that starts a sign-in chain,
+      // which surfaces here as ERR_ABORTED; the sign-in window owns that
+      // outcome, so reporting it would paint a load failure over a live flow
+      if (errorCode === ERR_ABORTED) {
+        return;
       }
-    );
+
+      this._view.webContents.off('did-fail-load', onFailLoad);
+
+      if (isMainFrame && errorCallback) {
+        errorCallback(errorCode, errorDescription);
+      } else {
+        console.warn('Failed to load labview', errorDescription);
+      }
+    };
+
+    this._view.webContents.on('did-fail-load', onFailLoad);
 
     this._view.webContents.loadURL(sessionConfig.url.href);
   }
@@ -320,6 +334,12 @@ export class LabView implements IDisposable {
     this._isDisposed = true;
     this._evm.dispose();
 
+    // the sign-in window outlives nothing, it belongs to this view's session
+    if (this._authWindow) {
+      await this._authWindow.dispose();
+      this._authWindow = null;
+    }
+
     // if local or remote with no data persistence, clear session data
     if (
       this._sessionConfig.isRemote &&
@@ -337,48 +357,108 @@ export class LabView implements IDisposable {
   }
 
   /**
-   * Keep the lab view pinned to the Jupyter server origin. Untrusted notebook
-   * content can trigger a top-level navigation (a link without target=_blank,
-   * for instance), which would otherwise load an attacker page inside the
-   * privileged lab view where the getServerInfo IPC hands out the server URL
-   * and auth token. Anything off-origin goes to the system browser instead.
-   * Server-initiated cross-origin redirects (remote hub OAuth, say) are not
-   * blocked here; the origin check on the IPC itself is the authoritative one.
+   * Route lab view navigations according to classifyNavigation, which every
+   * hook shares so they cannot drift apart. The view stays on the Jupyter
+   * server origin: notebook content can trigger a top-level navigation (a link
+   * without target=_blank, for instance), which would otherwise load an
+   * arbitrary page inside the privileged view where the getServerInfo IPC
+   * hands out the server URL and auth token, so those go to the system
+   * browser. A redirect the server itself issues off-origin starts a sign-in
+   * chain, which runs in an unprivileged window on the same session.
    */
   private _registerNavigationGuard(): void {
-    const isServerOrigin = (url: string): boolean =>
-      isSameServerOrigin(url, this._sessionConfig.url?.href);
+    const classify = (
+      target: string,
+      kind: 'navigate' | 'redirect'
+    ): NavigationVerdict =>
+      classifyNavigation({
+        target,
+        serverUrl: this._sessionConfig.url?.href,
+        kind
+      });
 
-    this._view.webContents.on('will-navigate', (event, url) => {
-      if (!isServerOrigin(url)) {
-        event.preventDefault();
+    const act = (verdict: NavigationVerdict, url: string): void => {
+      if (verdict === 'auth-window') {
+        this._runAuthChain(url);
+      } else if (verdict === 'external') {
         this._openUrlInExternalBrowser(url);
       }
+    };
+
+    this._view.webContents.on('will-redirect', details => {
+      // subframes (HTML output, the PDF viewer, proxied extension panels) are
+      // not the privileged surface and must keep following their own redirects
+      if (!details.isMainFrame) {
+        return;
+      }
+      const verdict = classify(details.url, 'redirect');
+      if (verdict === 'in-view') {
+        return;
+      }
+      details.preventDefault();
+      act(verdict, details.url);
+    });
+
+    // no frame check here: will-navigate only fires for the main frame, a
+    // subframe navigating raises will-frame-navigate instead
+    this._view.webContents.on('will-navigate', details => {
+      const verdict = classify(details.url, 'navigate');
+      if (verdict === 'in-view') {
+        return;
+      }
+      details.preventDefault();
+      act(verdict, details.url);
     });
 
     this._view.webContents.setWindowOpenHandler(({ url }) => {
-      if (isServerOrigin(url)) {
+      const verdict = classify(url, 'navigate');
+      if (verdict === 'in-view') {
         return { action: 'allow' };
       }
-      this._openUrlInExternalBrowser(url);
+      act(verdict, url);
       return { action: 'deny' };
     });
   }
 
-  private _openUrlInExternalBrowser(url: string): void {
-    try {
-      const { protocol, href } = new URL(url);
-      // http/https for ordinary links, mailto for notebook contact links
-      // (a tutor's address, say); everything else is left unopened.
-      if (
-        protocol === 'https:' ||
-        protocol === 'http:' ||
-        protocol === 'mailto:'
-      ) {
-        shell.openExternal(href);
+  private _runAuthChain(url: string): void {
+    // dispose already tore down any sign-in window; a late redirect must not
+    // build a new one that nothing is left to close
+    if (this._isDisposed) {
+      return;
+    }
+
+    if (this._authWindow) {
+      this._authWindow.navigate(url);
+      return;
+    }
+
+    this._authWindow = new AuthWindow({
+      session: this._view.webContents.session,
+      parent: this._parent.window,
+      startUrl: url,
+      serverUrl: this._sessionConfig.url.href,
+      onComplete: () => {
+        this._authWindow = null;
+        this._reloadServerUrl();
+      },
+      onCancel: reason => {
+        this._authWindow = null;
+        this._onAuthCancelled?.(reason);
       }
-    } catch {
-      // unparseable target, nothing safe to open
+    });
+  }
+
+  private _reloadServerUrl(): void {
+    void this._view.webContents
+      .loadURL(this._sessionConfig.url.href)
+      .catch(error => {
+        log.debug('lab view reload after sign-in failed', error);
+      });
+  }
+
+  private _openUrlInExternalBrowser(url: string): void {
+    if (matchesScheme(url, 'http:', 'https:', 'mailto:')) {
+      shell.openExternal(url);
     }
   }
 
@@ -612,6 +692,8 @@ export class LabView implements IDisposable {
   private _jlabBaseUrl: string;
   private _wsSettings: WorkspaceSettings;
   private _labUIReady = false;
+  private _authWindow: AuthWindow | null = null;
+  private _onAuthCancelled: ((reason: string) => void) | undefined;
   private _isDisposed = false;
   private _evm = new EventManager();
   private _uiMode: UIMode = UIMode.ManagedByWebApp;
@@ -622,5 +704,6 @@ export namespace LabView {
     isDarkTheme: boolean;
     parent: SessionWindow;
     sessionConfig: SessionConfig;
+    onAuthCancelled?: (reason: string) => void;
   }
 }
