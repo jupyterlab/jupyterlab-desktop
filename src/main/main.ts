@@ -1,4 +1,4 @@
-import { app, Menu, MenuItem } from 'electron';
+import { app, dialog, Menu, MenuItem, shell } from 'electron';
 
 // Update paths to prevent Snap saving persistent data to version specific paths.
 // (Must be called before any other initialization)
@@ -11,6 +11,7 @@ import {
   EnvironmentInstallStatus,
   getBundledPythonEnvPath,
   getBundledPythonPath,
+  getQuarantinedConfigFiles,
   installBundledEnvironment,
   isDevMode,
   jlabCLICommandIsSetup,
@@ -229,11 +230,47 @@ app.on('ready', async () => {
     createPythonEnvsDirectory();
     argv.cwd = process.cwd();
     jupyterApp = new JupyterApplication((argv as unknown) as ICLIArguments);
+    reportUnreadableConfig();
   } catch (error) {
     log.error(error);
     app.quit();
   }
 });
+
+/**
+ * Say so when config could not be read. Falling back to defaults is not a
+ * neutral act: which interpreter runs, which conda channels packages come
+ * from, and whether updates install by themselves all revert with it, so this
+ * is worth interrupting for rather than leaving in a log nobody opens.
+ */
+function reportUnreadableConfig(): void {
+  const files = getQuarantinedConfigFiles();
+  if (files.length === 0) {
+    return;
+  }
+
+  dialog
+    .showMessageBox({
+      type: 'warning',
+      title: 'Settings could not be read',
+      message:
+        files.length === 1
+          ? 'A settings file could not be read, so this session started with defaults.'
+          : 'Some settings files could not be read, so this session started with defaults.',
+      detail: `Nothing was deleted. A copy of each is kept next to the original:\n\n${files.join(
+        '\n'
+      )}`,
+      buttons: ['Show in Folder', 'Continue'],
+      defaultId: 1,
+      cancelId: 1
+    })
+    .then(({ response }) => {
+      if (response === 0) {
+        shell.showItemInFolder(files[0]);
+      }
+    })
+    .catch(error => log.error(error));
+}
 
 function processArgs(): Promise<void> {
   return new Promise<void>(resolve => {

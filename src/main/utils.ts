@@ -60,6 +60,17 @@ export function getSchemasDir(): string {
   return path.normalize(path.join(getAppDir(), './build/schemas'));
 }
 
+const quarantinedConfigFiles: string[] = [];
+
+/**
+ * Config files that could not be read this run and were moved aside. Reading
+ * happens during module import, long before a window exists, so whoever wants
+ * to tell the user has to ask afterwards.
+ */
+export function getQuarantinedConfigFiles(): readonly string[] {
+  return quarantinedConfigFiles;
+}
+
 /**
  * Read a JSON config file, or undefined when it is absent or unusable. Config
  * is read while the modules that hold it are still being imported, so throwing
@@ -95,6 +106,7 @@ export function readJsonConfigFile(
   try {
     fs.renameSync(filePath, quarantinePath);
     log.error(`Moved the unusable config to ${quarantinePath}`);
+    quarantinedConfigFiles.push(quarantinePath);
   } catch (error) {
     log.error(`Failed to move ${filePath} aside`, error);
   }

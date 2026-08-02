@@ -57,6 +57,7 @@ import {
   getJlabCLICommandSymlinkPath,
   getJlabCLICommandTargetPath,
   getLogFilePath,
+  getQuarantinedConfigFiles,
   getRelativePathToUserHome,
   getUserHomeDir,
   isBaseCondaEnv,
@@ -883,6 +884,31 @@ describe('readJsonConfigFile', () => {
 
     expect(readJsonConfigFile('/data/settings.json')).toBeUndefined();
     expect(mockFs.renameSync).not.toHaveBeenCalled();
+  });
+
+  it('records what it moved so startup can say so once a window exists', () => {
+    mockFs.existsSync = vi.fn(() => true);
+    mockFs.readFileSync = vi.fn(() => Buffer.from('{')) as any;
+
+    readJsonConfigFile('/data/app-data.json');
+
+    expect(getQuarantinedConfigFiles()).toContain(
+      '/data/app-data.json.corrupt'
+    );
+  });
+
+  it('records nothing when the file could not be moved', () => {
+    mockFs.existsSync = vi.fn(() => true);
+    mockFs.readFileSync = vi.fn(() => Buffer.from('{')) as any;
+    mockFs.renameSync = vi.fn(() => {
+      throw new Error('EPERM');
+    });
+
+    readJsonConfigFile('/data/never-moved.json');
+
+    expect(getQuarantinedConfigFiles()).not.toContain(
+      '/data/never-moved.json.corrupt'
+    );
   });
 
   it('still returns undefined when moving the file aside also fails', () => {
