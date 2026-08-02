@@ -29,7 +29,8 @@ import {
   getBundledPythonPath,
   getLogFilePath,
   isDarkTheme,
-  LightThemeBGColor
+  LightThemeBGColor,
+  matchesScheme
 } from '../utils';
 import { IServerFactory, JupyterServer, JupyterServerFactory } from '../server';
 import {
@@ -549,9 +550,11 @@ export class SessionWindow implements IDisposable {
         }
 
         try {
-          const url = new URL(decodeURIComponent(link));
-          if (url.protocol === 'https:' || url.protocol === 'http:') {
-            shell.openExternal(url.href);
+          // news links are web links only, so this stays narrower than the
+          // welcome view's own links, which may be mailto
+          const target = decodeURIComponent(link);
+          if (matchesScheme(target, 'http:', 'https:')) {
+            shell.openExternal(target);
           }
         } catch (error) {
           console.error('Invalid news URL');
