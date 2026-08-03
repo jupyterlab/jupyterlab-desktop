@@ -162,7 +162,20 @@ jobs:
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: false # disable code signing if not release asset
         run: |
-          yarn dist:${{ matrix.cfg.platform }}
+          # dmgbuild intermittently cannot detach its disk image on hosted mac
+          # runners ("hdiutil: couldn't eject disk2 - Resource busy", upstream
+          # electron-builder#4606 and dmgbuild#26). Three separate PRs hit it in
+          # one day, so retry once rather than spend a full matrix rerun on it.
+          # Same shape as the codesign retry above.
+          for attempt in 1 2; do
+            if yarn dist:${{ matrix.cfg.platform }}; then
+              exit 0
+            elif [ "$attempt" -eq 2 ]; then
+              exit 1
+            fi
+            echo "dist failed (attempt $attempt), retrying"
+            sleep 15
+          done
         if: steps.release-exists.outputs.result == 'false'
 
       - name: Create Application Installer for Release
@@ -175,7 +188,20 @@ jobs:
           CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
           CSC_LINK: ${{ secrets.CSC_LINK }}
         run: |
-          yarn dist:${{ matrix.cfg.platform }}
+          # dmgbuild intermittently cannot detach its disk image on hosted mac
+          # runners ("hdiutil: couldn't eject disk2 - Resource busy", upstream
+          # electron-builder#4606 and dmgbuild#26). Three separate PRs hit it in
+          # one day, so retry once rather than spend a full matrix rerun on it.
+          # Same shape as the codesign retry above.
+          for attempt in 1 2; do
+            if yarn dist:${{ matrix.cfg.platform }}; then
+              exit 0
+            elif [ "$attempt" -eq 2 ]; then
+              exit 1
+            fi
+            echo "dist failed (attempt $attempt), retrying"
+            sleep 15
+          done
         if: steps.release-exists.outputs.result == 'true'
 
       - name: Upload Debian x64 Installer
