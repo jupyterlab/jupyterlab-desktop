@@ -85,13 +85,19 @@ describe('parseNewsFeed', () => {
     expect(parseNewsFeed(xml)).toEqual([]);
   });
 
-  it('keeps an item whose title parsed to a number', () => {
-    const xml = feed(
-      '<item><title>2024</title><link>https://blog.jupyter.org/y</link></item>'
-    );
+  it('keeps a numeric title exactly as published, leading zeros included', () => {
+    const xml = feed(item('0755', 'https://blog.jupyter.org/y'));
 
     const [news] = parseNewsFeed(xml);
 
-    expect(news.title).toBe('2024');
+    expect(news.title).toBe('0755');
+  });
+
+  it('keeps a title the parser would otherwise read as a boolean', () => {
+    const xml = feed(item('true', 'https://blog.jupyter.org/z'));
+
+    const [news] = parseNewsFeed(xml);
+
+    expect(news.title).toBe('true');
   });
 });
