@@ -6,7 +6,6 @@ import {
   dialog,
   Menu,
   MenuItemConstructorOptions,
-  shell,
   WebContentsView
 } from 'electron';
 import log from 'electron-log';
@@ -16,11 +15,10 @@ import {
   clearSession,
   DarkThemeBGColor,
   isDarkTheme,
-  LightThemeBGColor,
-  matchesScheme
+  LightThemeBGColor
 } from '../utils';
 import { classifyNavigation, NavigationVerdict } from '../navigationpolicy';
-import { markGuarded } from '../navigationguard';
+import { markGuarded, openUrlInSystemBrowser } from '../navigationguard';
 import { AuthWindow } from '../authwindow/authwindow';
 import { SessionWindow } from '../sessionwindow/sessionwindow';
 import {
@@ -381,7 +379,7 @@ export class LabView implements IDisposable {
       if (verdict === 'auth-window') {
         this._runAuthChain(url);
       } else if (verdict === 'external') {
-        this._openUrlInExternalBrowser(url);
+        openUrlInSystemBrowser(url);
       }
     };
 
@@ -454,12 +452,6 @@ export class LabView implements IDisposable {
       .catch(error => {
         log.debug('lab view reload after sign-in failed', error);
       });
-  }
-
-  private _openUrlInExternalBrowser(url: string): void {
-    if (matchesScheme(url, 'http:', 'https:', 'mailto:')) {
-      shell.openExternal(url);
-    }
   }
 
   /**
