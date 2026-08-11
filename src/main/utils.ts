@@ -95,16 +95,27 @@ export function readJsonConfigFile(
     // a settings.json saved by Notepad or PowerShell's Out-File carries a BOM,
     // which JSON.parse rejects; that file is fine and must not be quarantined
     const parsed = JSON.parse(contents.replace(/^\uFEFF/, ''));
-    // callers walk this with `key in parsed`, which throws on a primitive, so
-    // a bare number or string is as unusable to them as a parse failure
-    if (parsed !== null && typeof parsed === 'object') {
+    // callers walk this with `key in parsed`, which throws on a primitive and
+    // finds nothing on an array, so neither is any more usable than a parse
+    // failure and both belong on the same path
+    if (
+      parsed !== null &&
+      typeof parsed === 'object' &&
+      !Array.isArray(parsed)
+    ) {
       return parsed;
     }
   } catch (error) {
     log.error(`Failed to parse ${filePath}, continuing with defaults`, error);
   }
 
-  const quarantinePath = `${filePath}.corrupt`;
+  // a fixed suffix would overwrite the copy kept from an earlier corruption,
+  // which is the one thing the notice promises will not happen. Bounded: after
+  // enough of them the oldest is worth less than a loop that cannot end.
+  let quarantinePath = `${filePath}.corrupt`;
+  for (let n = 1; n <= 20 && fs.existsSync(quarantinePath); n++) {
+    quarantinePath = `${filePath}.corrupt.${n}`;
+  }
   try {
     fs.renameSync(filePath, quarantinePath);
     log.error(`Moved the unusable config to ${quarantinePath}`);

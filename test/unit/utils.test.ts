@@ -832,8 +832,12 @@ describe('isSameServerOrigin', () => {
 });
 
 describe('readJsonConfigFile', () => {
+  // the real existsSync distinguishes paths; a blanket true makes every free
+  // quarantine slot look taken
+  const onlyTheConfigExists = (path: any) => !String(path).includes('.corrupt');
+
   it('returns the parsed object for a readable config', () => {
-    mockFs.existsSync = vi.fn(() => true);
+    mockFs.existsSync = vi.fn(onlyTheConfigExists) as any;
     mockFs.readFileSync = vi.fn(() => Buffer.from('{"theme":"dark"}')) as any;
 
     expect(readJsonConfigFile('/data/settings.json')).toEqual({
@@ -843,7 +847,7 @@ describe('readJsonConfigFile', () => {
   });
 
   it('reads a config a Windows editor saved with a byte order mark', () => {
-    mockFs.existsSync = vi.fn(() => true);
+    mockFs.existsSync = vi.fn(onlyTheConfigExists) as any;
     mockFs.readFileSync = vi.fn(() =>
       Buffer.from('\ufeff{"theme":"dark"}')
     ) as any;
@@ -862,7 +866,7 @@ describe('readJsonConfigFile', () => {
   });
 
   it('survives malformed JSON and moves the file aside', () => {
-    mockFs.existsSync = vi.fn(() => true);
+    mockFs.existsSync = vi.fn(onlyTheConfigExists) as any;
     mockFs.readFileSync = vi.fn(() => Buffer.from('{"theme": }')) as any;
 
     expect(readJsonConfigFile('/data/settings.json')).toBeUndefined();
@@ -873,15 +877,37 @@ describe('readJsonConfigFile', () => {
   });
 
   it('survives a zero byte file, which is what a killed write leaves', () => {
-    mockFs.existsSync = vi.fn(() => true);
+    mockFs.existsSync = vi.fn(onlyTheConfigExists) as any;
     mockFs.readFileSync = vi.fn(() => Buffer.from('')) as any;
 
     expect(readJsonConfigFile('/data/app-data.json')).toBeUndefined();
     expect(mockFs.renameSync).toHaveBeenCalled();
   });
 
+  it('rejects an array, which callers walk without finding anything', () => {
+    mockFs.existsSync = vi.fn(onlyTheConfigExists) as any;
+    mockFs.readFileSync = vi.fn(() => Buffer.from('[]')) as any;
+
+    expect(readJsonConfigFile('/data/settings.json')).toBeUndefined();
+    expect(mockFs.renameSync).toHaveBeenCalled();
+  });
+
+  it('keeps the copy from an earlier corruption instead of overwriting it', () => {
+    mockFs.existsSync = vi.fn(
+      (path: any) => !String(path).endsWith('.corrupt.1')
+    ) as any;
+    mockFs.readFileSync = vi.fn(() => Buffer.from('{')) as any;
+
+    readJsonConfigFile('/data/settings.json');
+
+    expect(mockFs.renameSync).toHaveBeenCalledWith(
+      '/data/settings.json',
+      '/data/settings.json.corrupt.1'
+    );
+  });
+
   it('rejects valid JSON that is not an object, which callers cannot walk', () => {
-    mockFs.existsSync = vi.fn(() => true);
+    mockFs.existsSync = vi.fn(onlyTheConfigExists) as any;
     mockFs.readFileSync = vi.fn(() => Buffer.from('42')) as any;
 
     expect(readJsonConfigFile('/data/settings.json')).toBeUndefined();
@@ -889,7 +915,7 @@ describe('readJsonConfigFile', () => {
   });
 
   it('survives an unreadable file without moving it', () => {
-    mockFs.existsSync = vi.fn(() => true);
+    mockFs.existsSync = vi.fn(onlyTheConfigExists) as any;
     mockFs.readFileSync = vi.fn(() => {
       throw new Error('EACCES');
     }) as any;
@@ -899,7 +925,7 @@ describe('readJsonConfigFile', () => {
   });
 
   it('records what it moved so startup can say so once a window exists', () => {
-    mockFs.existsSync = vi.fn(() => true);
+    mockFs.existsSync = vi.fn(onlyTheConfigExists) as any;
     mockFs.readFileSync = vi.fn(() => Buffer.from('{')) as any;
 
     readJsonConfigFile('/data/app-data.json');
@@ -910,7 +936,7 @@ describe('readJsonConfigFile', () => {
   });
 
   it('records nothing when the file could not be moved', () => {
-    mockFs.existsSync = vi.fn(() => true);
+    mockFs.existsSync = vi.fn(onlyTheConfigExists) as any;
     mockFs.readFileSync = vi.fn(() => Buffer.from('{')) as any;
     mockFs.renameSync = vi.fn(() => {
       throw new Error('EPERM');
@@ -924,7 +950,7 @@ describe('readJsonConfigFile', () => {
   });
 
   it('still returns undefined when moving the file aside also fails', () => {
-    mockFs.existsSync = vi.fn(() => true);
+    mockFs.existsSync = vi.fn(onlyTheConfigExists) as any;
     mockFs.readFileSync = vi.fn(() => Buffer.from('nope')) as any;
     mockFs.renameSync = vi.fn(() => {
       throw new Error('EPERM');
