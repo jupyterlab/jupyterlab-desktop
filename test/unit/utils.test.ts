@@ -842,6 +842,18 @@ describe('readJsonConfigFile', () => {
     expect(mockFs.renameSync).not.toHaveBeenCalled();
   });
 
+  it('reads a config a Windows editor saved with a byte order mark', () => {
+    mockFs.existsSync = vi.fn(() => true);
+    mockFs.readFileSync = vi.fn(() =>
+      Buffer.from('\ufeff{"theme":"dark"}')
+    ) as any;
+
+    expect(readJsonConfigFile('/data/settings.json')).toEqual({
+      theme: 'dark'
+    });
+    expect(mockFs.renameSync).not.toHaveBeenCalled();
+  });
+
   it('returns undefined when the file is not there', () => {
     mockFs.existsSync = vi.fn(() => false);
 

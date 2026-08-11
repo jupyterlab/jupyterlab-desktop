@@ -257,7 +257,7 @@ function reportUnreadableConfig(): void {
         files.length === 1
           ? 'A settings file could not be read, so this session started with defaults.'
           : 'Some settings files could not be read, so this session started with defaults.',
-      detail: `Nothing was deleted. A copy of each is kept next to the original:\n\n${files.join(
+      detail: `Each was renamed rather than deleted, so its contents are still here:\n\n${files.join(
         '\n'
       )}`,
       buttons: ['Show in Folder', 'Continue'],

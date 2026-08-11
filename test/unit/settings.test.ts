@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import * as fs from 'fs';
 
 vi.mock('fs', async () => {
@@ -31,6 +31,18 @@ import {
 } from '../../src/main/config/settings';
 
 const mockFs = vi.mocked(fs);
+
+// readFileSync is stubbed for the whole file now, so an existsSync left set to
+// true by one test would feed the next one whatever the previous body returned.
+beforeEach(() => {
+  vi.clearAllMocks();
+  mockFs.existsSync = vi.fn();
+  mockFs.lstatSync = vi.fn();
+  mockFs.mkdirSync = vi.fn();
+  mockFs.writeFileSync = vi.fn();
+  mockFs.readFileSync = vi.fn();
+  mockFs.renameSync = vi.fn();
+});
 
 describe('constants', () => {
   it('DEFAULT_WIN_WIDTH is 1024', () => expect(DEFAULT_WIN_WIDTH).toBe(1024));

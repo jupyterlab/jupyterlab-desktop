@@ -92,7 +92,9 @@ export function readJsonConfigFile(
   }
 
   try {
-    const parsed = JSON.parse(contents);
+    // a settings.json saved by Notepad or PowerShell's Out-File carries a BOM,
+    // which JSON.parse rejects; that file is fine and must not be quarantined
+    const parsed = JSON.parse(contents.replace(/^\uFEFF/, ''));
     // callers walk this with `key in parsed`, which throws on a primitive, so
     // a bare number or string is as unusable to them as a parse failure
     if (parsed !== null && typeof parsed === 'object') {
