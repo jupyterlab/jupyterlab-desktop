@@ -115,7 +115,7 @@ export function isDarkTheme(themeType: string) {
 
 // data:, about:blank and other opaque sources serialize to the literal "null"
 // origin, which must never be treated as a real origin.
-function originOf(url: string | undefined | null): string | null {
+export function originOf(url: string | undefined | null): string | null {
   if (!url) {
     return null;
   }

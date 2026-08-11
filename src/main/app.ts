@@ -26,6 +26,7 @@ import {
   installBundledEnvironment,
   isDarkTheme,
   isSameServerOrigin,
+  originOf,
   pythonPathForEnvPath,
   setupJlabCLICommandWithElevatedRights,
   waitForDuration
@@ -597,8 +598,14 @@ export class JupyterApplication implements IApplication, IDisposable {
             serverUrl: this._serverUrlForWebContents(webContents)
           });
           if (!allowed) {
-            // a refusal is silent in the page, so leave a trail behind
-            log.debug(`Denied ${permission} requested by ${requestingUrl}`);
+            // a refusal is silent in the page, so leave a trail behind. Only
+            // the origin: a Jupyter URL carries its token in the query string
+            // and this line would put it in the log file.
+            log.debug(
+              `Denied ${permission} requested by ${
+                originOf(requestingUrl) ?? 'an unknown origin'
+              }`
+            );
           }
           callback(allowed);
         }

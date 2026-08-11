@@ -63,6 +63,7 @@ import {
   isEnvInstalledByDesktopApp,
   isPortInUse,
   isSameServerOrigin,
+  originOf,
   jlabCLICommandIsSetup,
   jupyterEnvInstallInfoPathForEnvPath,
   LightThemeBGColor,
@@ -782,6 +783,20 @@ describe('getFreePort', () => {
     vi.mocked(net.createServer).mockReturnValue(mockServer as any);
     const port = await getFreePort();
     expect(port).toBe(54321);
+  });
+});
+
+describe('originOf', () => {
+  it('drops the query string, where a Jupyter URL carries its token', () => {
+    expect(originOf('http://localhost:8888/lab?token=secret')).toBe(
+      'http://localhost:8888'
+    );
+  });
+
+  it('returns null for an opaque or unparseable source', () => {
+    expect(originOf('data:text/html,<p>x')).toBeNull();
+    expect(originOf('not a url')).toBeNull();
+    expect(originOf(undefined)).toBeNull();
   });
 });
 
