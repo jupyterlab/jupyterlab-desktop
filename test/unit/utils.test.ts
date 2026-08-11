@@ -884,6 +884,18 @@ describe('readJsonConfigFile', () => {
     expect(mockFs.renameSync).toHaveBeenCalled();
   });
 
+  it('still names the file when moving it aside fails', () => {
+    mockFs.existsSync = vi.fn(onlyTheConfigExists) as any;
+    mockFs.readFileSync = vi.fn(() => Buffer.from('{')) as any;
+    mockFs.renameSync = vi.fn(() => {
+      throw new Error('EPERM');
+    }) as any;
+
+    readJsonConfigFile('/data/locked.json');
+
+    expect(getQuarantinedConfigFiles()).toContain('/data/locked.json');
+  });
+
   it('rejects an array, which callers walk without finding anything', () => {
     mockFs.existsSync = vi.fn(onlyTheConfigExists) as any;
     mockFs.readFileSync = vi.fn(() => Buffer.from('[]')) as any;

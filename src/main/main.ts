@@ -229,8 +229,10 @@ app.on('ready', async () => {
     setupJLabCommand();
     createPythonEnvsDirectory();
     argv.cwd = process.cwd();
-    jupyterApp = new JupyterApplication((argv as unknown) as ICLIArguments);
+    // before the constructor: if that throws, the catch quits, and a user whose
+    // settings were just quarantined would get the silent exit twice over
     reportUnreadableConfig();
+    jupyterApp = new JupyterApplication((argv as unknown) as ICLIArguments);
   } catch (error) {
     log.error(error);
     app.quit();
@@ -257,7 +259,7 @@ function reportUnreadableConfig(): void {
         files.length === 1
           ? 'A settings file could not be read, so this session started with defaults.'
           : 'Some settings files could not be read, so this session started with defaults.',
-      detail: `Each was renamed rather than deleted, so its contents are still here:\n\n${files.join(
+      detail: `Nothing was deleted. Each is still on disk, here:\n\n${files.join(
         '\n'
       )}`,
       buttons: ['Show in Folder', 'Continue'],

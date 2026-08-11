@@ -63,7 +63,8 @@ export function getSchemasDir(): string {
 const quarantinedConfigFiles: string[] = [];
 
 /**
- * Config files that could not be read this run and were moved aside. Reading
+ * Where each config file that could not be read this run now sits: its
+ * quarantine name, or its original path when moving it aside failed. Reading
  * happens during module import, long before a window exists, so whoever wants
  * to tell the user has to ask afterwards.
  */
@@ -121,7 +122,10 @@ export function readJsonConfigFile(
     log.error(`Moved the unusable config to ${quarantinePath}`);
     quarantinedConfigFiles.push(quarantinePath);
   } catch (error) {
+    // the file stays where it is, so the next startup hits it again: the case
+    // that most needs saying out loud, not the one to stay quiet about
     log.error(`Failed to move ${filePath} aside`, error);
+    quarantinedConfigFiles.push(filePath);
   }
 
   return undefined;
