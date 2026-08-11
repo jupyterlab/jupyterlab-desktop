@@ -268,6 +268,9 @@ export class JupyterApplication implements IApplication, IDisposable {
    * Construct the Jupyter application
    */
   constructor(cliArgs: ICLIArguments) {
+    // before anything that can create a session or a webContents
+    this._applyPermissionPolicies();
+
     this._cliArgs = cliArgs;
     this._registry = new Registry();
     this._serverFactory = new JupyterServerFactory(this._registry);
@@ -284,7 +287,6 @@ export class JupyterApplication implements IApplication, IDisposable {
     });
     installGlobalNavigationGuard();
     this._registerListeners();
-    this._applyPermissionPolicies();
 
     if (
       userSettings.getValue(SettingType.checkForUpdatesAutomatically) !== false
@@ -579,23 +581,23 @@ export class JupyterApplication implements IApplication, IDisposable {
 
   /**
    * Refuse permission requests unless they come from a Jupyter server origin.
-   * Sessions are hooked as they are created, since a remote session builds its
-   * own partition, and the default session is hooked directly because it
-   * already exists by the time the application is constructed.
+   * A remote session builds its own partition, so sessions are hooked as they
+   * are created rather than only the default one.
    */
   private _applyPermissionPolicies() {
     const apply = (ses: Session) => {
       ses.setPermissionRequestHandler(
         (webContents, permission, callback, details) => {
-          const requestingUrl = details?.requestingUrl ?? webContents?.getURL();
+          // never webContents.getURL(): that is the top frame, and the request
+          // may be coming from an off-origin frame inside it
+          const requestingUrl = details?.requestingUrl;
           const allowed = isPermissionAllowed({
             permission,
             requestingUrl,
             serverUrl: this._serverUrlForWebContents(webContents)
           });
           if (!allowed) {
-            // a refusal is silent in the page, so leave a trail for whoever has
-            // to work out why a feature stopped working
+            // a refusal is silent in the page, so leave a trail behind
             log.debug(`Denied ${permission} requested by ${requestingUrl}`);
           }
           callback(allowed);
@@ -617,10 +619,9 @@ export class JupyterApplication implements IApplication, IDisposable {
   }
 
   /**
-   * The lab view of a session window is the only content served by a Jupyter
-   * server; every other view is a bundled document. Local sessions share the
-   * default session while listening on different ports, so the origin has to be
-   * resolved per webContents rather than captured once.
+   * The lab view of a session window is the only content a Jupyter server
+   * serves. Local sessions share one session while listening on different
+   * ports, so the origin is resolved per webContents rather than captured once.
    */
   private _serverUrlForWebContents(
     webContents: Electron.WebContents | null

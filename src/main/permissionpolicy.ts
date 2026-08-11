@@ -23,11 +23,9 @@ export interface IPermissionRequest {
 }
 
 /**
- * Decide a permission request. Nothing is granted to content that is not on the
- * Jupyter server origin, which covers both a page a sign-in chain left behind
- * and the app's own views, since those are bundled documents that ask for
- * nothing. With no handler at all Electron grants these silently, so an
- * off-origin page could raise system notifications on the user's desktop.
+ * Decide a permission request. Electron grants everything silently when no
+ * handler is installed, so anything off the Jupyter server origin is refused
+ * here.
  */
 export function isPermissionAllowed({
   permission,
