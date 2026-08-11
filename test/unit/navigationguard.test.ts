@@ -268,6 +268,19 @@ describe('every surface that claims navigation also declares a popup policy', ()
     }
   );
 
+  it('connect.ts marks the popup it allows, not just the window itself', () => {
+    // a popup is a fresh webContents nobody claimed, so allowing it without
+    // marking it leaves the global guard blocking its own start URL: the
+    // window opens on a blank document and the login never renders
+    const source = readFileSync(
+      join(__dirname, '../../src/main/connect.ts'),
+      'utf8'
+    );
+
+    expect(source).toContain("on('did-create-window'");
+    expect(source).toMatch(/did-create-window[\s\S]{0,160}markGuarded\(/);
+  });
+
   it('names every direct caller of markGuarded', () => {
     const root = join(__dirname, '../../src/main');
     const callers = walk(root).filter(file => {
