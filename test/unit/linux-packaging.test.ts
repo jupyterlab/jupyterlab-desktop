@@ -17,7 +17,9 @@ describe('the Linux after-install script', () => {
 
     const ours = read('electron-builder-scripts/linux_after_install.sh');
 
-    expect(ours.startsWith(upstream)).toBe(true);
+    // compare the slice rather than assert startsWith, so the electron-builder
+    // bump that breaks this gets shown what drifted
+    expect(ours.slice(0, upstream.length)).toBe(upstream);
   });
 
   it('links jlab into the PATH on top of what the template does', () => {

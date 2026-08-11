@@ -236,6 +236,10 @@ jobs:
           # snap install is known to hang on hosted runners
           # (actions/runner-images#11170), so bound it rather than let it eat the
           # job's budget
+          # a snapd that apt just installed may still be seeding, and installing
+          # during that fails with "too early for operation". best effort: if
+          # snapd is not answering yet this cannot wait for it either
+          sudo snap wait system seed.loaded || true
           sudo timeout 300 snap install --dangerous --classic dist/JupyterLab.snap
           # --version quits before any window is created, so this exercises
           # command.sh and every launcher script it execs, without needing a UI
@@ -250,6 +254,12 @@ jobs:
           # the deb keeps its binary under /opt and only symlinks jlab into
           # /usr/bin, so name the path and do not race the snap installed above
           xvfb-run -a timeout 120 /opt/JupyterLab/jupyterlab-desktop --version
+          # the postinst's own two lines are the jlab symlink, and nothing else
+          # here would notice if they pointed at a path the package does not
+          # ship. pin the target, since the snap installed above also claims
+          # /usr/bin/jlab and would satisfy a bare "is it executable" check
+          test "$(readlink -f /usr/bin/jlab)" = /opt/JupyterLab/resources/app/jlab
+          test -x /usr/bin/jlab
 
       - name: Verify the deb installs, reinstalls and removes cleanly
         if: matrix.cfg.platform == 'linux-64'
@@ -283,6 +293,11 @@ jobs:
             set -e
             dnf -y install /dist/JupyterLab.rpm xorg-x11-server-Xvfb
             Xvfb :99 -screen 0 1024x768x24 &
+            # Electron needs the display to reach ready, and Xvfb takes a moment
+            # to bind its socket, so waiting is the difference between this
+            # gating the rpm and it failing at random
+            for i in $(seq 50); do [ -e /tmp/.X11-unix/X99 ] && break; sleep 0.2; done
+            test -e /tmp/.X11-unix/X99
             # Chromium cannot set up its sandbox as root inside a container, and
             # this only needs to answer whether the binary runs on this libc
             DISPLAY=:99 timeout 120 /opt/JupyterLab/jupyterlab-desktop --version --no-sandbox

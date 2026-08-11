@@ -57,7 +57,7 @@ if apparmor_status --enabled > /dev/null 2>&1; then
 fi
 
 # Everything above is app-builder-lib's after-install.tpl verbatim; only what
-# follows is ours. test/unit/linux-after-install.test.ts fails if they diverge.
+# follows is ours. test/unit/linux-packaging.test.ts fails if they diverge.
 
 ln -sf '/opt/${sanitizedProductName}/resources/app/jlab' /usr/bin/jlab
 chmod 755 '/opt/${sanitizedProductName}/resources/app/jlab'
