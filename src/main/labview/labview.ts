@@ -141,7 +141,16 @@ export class LabView implements IDisposable {
   }
 
   load(errorCallback?: ILoadErrorCallback) {
-    const sessionConfig = this._sessionConfig;
+    const contents = this._view.webContents;
+
+    // only the first load answers "did JupyterLab come up", so the watch is
+    // dropped once the answer is in; a broken image in a notebook must not
+    // spend it, and a blip an hour later must not paint an error over a live
+    // session
+    const stopWatching = () => {
+      contents.off('did-fail-load', onFailLoad);
+      contents.off('did-finish-load', stopWatching);
+    };
 
     const onFailLoad = (
       event: Electron.Event,
@@ -150,25 +159,30 @@ export class LabView implements IDisposable {
       validatedURL: string,
       isMainFrame: boolean
     ) => {
-      // the navigation guard cancels a redirect that starts a sign-in chain,
-      // which surfaces here as ERR_ABORTED; the sign-in window owns that
-      // outcome, so reporting it would paint a load failure over a live flow
-      if (errorCode === ERR_ABORTED) {
+      if (!isMainFrame) {
+        console.warn('Failed to load labview', errorDescription);
         return;
       }
 
-      this._view.webContents.off('did-fail-load', onFailLoad);
+      // diverting a redirect into the sign-in window aborts this load, and
+      // that window owns the outcome from there
+      if (errorCode === ERR_ABORTED && this._authWindow) {
+        return;
+      }
 
-      if (isMainFrame && errorCallback) {
+      stopWatching();
+
+      if (errorCallback) {
         errorCallback(errorCode, errorDescription);
       } else {
         console.warn('Failed to load labview', errorDescription);
       }
     };
 
-    this._view.webContents.on('did-fail-load', onFailLoad);
+    contents.on('did-fail-load', onFailLoad);
+    contents.once('did-finish-load', stopWatching);
 
-    this._view.webContents.loadURL(sessionConfig.url.href);
+    contents.loadURL(this._sessionConfig.url.href);
   }
 
   get jlabBaseUrl(): string {
@@ -332,7 +346,6 @@ export class LabView implements IDisposable {
     this._isDisposed = true;
     this._evm.dispose();
 
-    // the sign-in window outlives nothing, it belongs to this view's session
     if (this._authWindow) {
       await this._authWindow.dispose();
       this._authWindow = null;
@@ -355,14 +368,10 @@ export class LabView implements IDisposable {
   }
 
   /**
-   * Route lab view navigations according to classifyNavigation, which every
-   * hook shares so they cannot drift apart. The view stays on the Jupyter
-   * server origin: notebook content can trigger a top-level navigation (a link
-   * without target=_blank, for instance), which would otherwise load an
-   * arbitrary page inside the privileged view where the getServerInfo IPC
-   * hands out the server URL and auth token, so those go to the system
-   * browser. A redirect the server itself issues off-origin starts a sign-in
-   * chain, which runs in an unprivileged window on the same session.
+   * Route every lab view navigation through classifyNavigation, so the three
+   * hooks cannot drift apart. The view is privileged, since the getServerInfo
+   * IPC hands the server URL and auth token to whatever it is showing, so it
+   * stays on the Jupyter server origin and anything else is placed elsewhere.
    */
   private _registerNavigationGuard(): void {
     const classify = (
@@ -383,30 +392,30 @@ export class LabView implements IDisposable {
       }
     };
 
-    this._view.webContents.on('will-redirect', details => {
-      // subframes (HTML output, the PDF viewer, proxied extension panels) are
-      // not the privileged surface and must keep following their own redirects
-      if (!details.isMainFrame) {
-        return;
-      }
-      const verdict = classify(details.url, 'redirect');
+    const handle = (
+      details: Electron.Event & { url: string },
+      kind: 'navigate' | 'redirect'
+    ): void => {
+      const verdict = classify(details.url, kind);
       if (verdict === 'in-view') {
         return;
       }
       details.preventDefault();
       act(verdict, details.url);
+    };
+
+    this._view.webContents.on('will-redirect', details => {
+      // a subframe (HTML output, the PDF viewer, a proxied panel) is not the
+      // privileged surface and keeps following its own redirects
+      if (details.isMainFrame) {
+        handle(details, 'redirect');
+      }
     });
 
-    // no frame check here: will-navigate only fires for the main frame, a
-    // subframe navigating raises will-frame-navigate instead
-    this._view.webContents.on('will-navigate', details => {
-      const verdict = classify(details.url, 'navigate');
-      if (verdict === 'in-view') {
-        return;
-      }
-      details.preventDefault();
-      act(verdict, details.url);
-    });
+    // will-navigate only fires for the main frame
+    this._view.webContents.on('will-navigate', details =>
+      handle(details, 'navigate')
+    );
 
     this._view.webContents.setWindowOpenHandler(({ url }) => {
       const verdict = classify(url, 'navigate');
@@ -419,8 +428,8 @@ export class LabView implements IDisposable {
   }
 
   private _runAuthChain(url: string): void {
-    // dispose already tore down any sign-in window; a late redirect must not
-    // build a new one that nothing is left to close
+    // dispose already took the sign-in window down; nothing is left to close a
+    // new one
     if (this._isDisposed) {
       return;
     }
@@ -437,7 +446,7 @@ export class LabView implements IDisposable {
       serverUrl: this._sessionConfig.url.href,
       onComplete: () => {
         this._authWindow = null;
-        this._reloadServerUrl();
+        this.reload();
       },
       onCancel: reason => {
         this._authWindow = null;
@@ -446,11 +455,14 @@ export class LabView implements IDisposable {
     });
   }
 
-  private _reloadServerUrl(): void {
+  /**
+   * Put the view back on the Jupyter server URL, wherever it has been taken.
+   */
+  reload(): void {
     void this._view.webContents
       .loadURL(this._sessionConfig.url.href)
       .catch(error => {
-        log.debug('lab view reload after sign-in failed', error);
+        log.debug('lab view reload failed', error);
       });
   }
 

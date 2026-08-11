@@ -87,16 +87,16 @@ JupyterLab Desktop bundles JupyterLab front-end and a conda environment as Jupyt
 
 ## Shared seams in the main process
 
-Several questions have one answer already. Reaching for it beats answering it again locally, and a review will ask for a hand-rolled copy to be replaced anyway.
+These questions already have one answer, so please do not write a second one:
 
-| Question                                            | Where it is answered                                                                                                      |
-| --------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
-| What origin is this URL, and do two URLs share one? | `originOf`, `isSameServerOrigin` in `src/main/utils.ts`                                                                   |
-| Does this URL use a scheme I accept?                | `matchesScheme` in `src/main/utils.ts`                                                                                    |
-| May this surface navigate there?                    | `guardNavigation` in `src/main/navigationguard.ts`, with the lab view's richer verdicts in `src/main/navigationpolicy.ts` |
-| Should this link leave the app?                     | `openUrlInSystemBrowser` in `src/main/navigationguard.ts`                                                                 |
+| Question                         | Where it is answered                                                      |
+| -------------------------------- | ------------------------------------------------------------------------- |
+| What origin is this URL?         | `originOf`, `isSameServerOrigin` in `src/main/utils.ts`                   |
+| Is this a scheme I accept?       | `matchesScheme` in `src/main/utils.ts`                                    |
+| May this surface navigate there? | `guardNavigation` in `src/main/navigationguard.ts`, `navigationpolicy.ts` |
+| Should this link leave the app?  | `openUrlInSystemBrowser` in `src/main/navigationguard.ts`                 |
 
-A webContents nobody claims cannot navigate at all: `installGlobalNavigationGuard` denies by default and a surface opts into its own policy with `markGuarded`. A new view is therefore safe until someone decides what it should be allowed to do.
+A webContents nobody claims cannot navigate at all, so a new view is safe until `markGuarded` opts it into a policy of its own.
 
 ## Review guidance
 

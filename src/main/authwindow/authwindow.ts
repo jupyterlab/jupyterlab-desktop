@@ -22,11 +22,10 @@ export namespace AuthWindow {
 }
 
 /**
- * Runs a sign-in chain the server started, outside the lab view. The window
- * shares the lab view session so the cookie the provider sets is the one the
- * lab view will send, but it carries no preload and no IPC, so the page the
- * provider renders never sits in front of the privileged surface. It closes
- * itself as soon as the chain lands back on the server origin.
+ * Runs a sign-in chain the server started, outside the lab view. It shares the
+ * lab view session so the provider's cookie is the one the lab view will send,
+ * but carries no preload and no IPC, and closes itself as soon as the chain
+ * lands back on the server origin.
  */
 export class AuthWindow implements IDisposable {
   constructor(options: AuthWindow.IOptions) {
@@ -48,7 +47,10 @@ export class AuthWindow implements IDisposable {
     });
 
     this._window.setMenuBarVisibility(false);
-    this._window.once('ready-to-show', () => this._window?.show());
+    this._window.once('ready-to-show', () => this._show());
+    // a first load that fails never paints, and an invisible window would leave
+    // the user with a lab view that went quiet and nothing to close
+    this._window.webContents.once('did-fail-load', () => this._show());
     this._window.on('closed', () => {
       this._window = null;
       this._clearTimeout();
@@ -82,12 +84,17 @@ export class AuthWindow implements IDisposable {
     return Promise.resolve();
   }
 
+  private _show(): void {
+    if (this._window && !this._window.isDestroyed()) {
+      this._window.show();
+    }
+  }
+
   private _wire(window: BrowserWindow): void {
     const contents = window.webContents;
 
     contents.on('did-navigate', (_event, url) => {
-      // a settled chain has already cleared its timer, and an orphaned popup
-      // navigating must not arm a new one that outlives the window
+      // an orphaned popup must not arm a timer that outlives the window
       if (!this._settled) {
         this._resetTimeout(this._timeoutMs);
       }
@@ -97,16 +104,15 @@ export class AuthWindow implements IDisposable {
       }
     });
 
-    // the title is the only thing telling the user whose sign-in page this is,
-    // so keep the page from renaming the window out from under it
+    // the title is the only thing naming whose sign-in page this is, so the
+    // page does not get to rename the window
     window.on('page-title-updated', event => {
       event.preventDefault();
       this._showCurrentHost(window);
     });
 
-    // the policy only lets an http(s) redirect open this window, and the window
-    // keeps that true for the rest of the chain: a provider page must not send
-    // it, or anything it opens, to file:, data: or a custom scheme
+    // only an http(s) redirect opens this window; it stays that way for the
+    // rest of the chain
     markGuarded(contents);
     guardNavigation(contents, url =>
       matchesScheme(url, 'http:', 'https:') ? 'allow' : 'deny'
@@ -169,8 +175,7 @@ export class AuthWindow implements IDisposable {
     onComplete();
   }
 
-  // every exit takes the popups with it: the chain can finish or stall in one
-  // of them, and nothing else owns their lifetime
+  // nothing else owns the popups, so every exit takes them along
   private _teardown(): void {
     this._clearTimeout();
     this._destroyPopups();

@@ -12,18 +12,15 @@ export type NavigationVerdict =
 export interface INavigationRequest {
   target: string;
   serverUrl: string | undefined | null;
-  // renderer initiated (link click, window.open, location assignment) versus
-  // server initiated (an HTTP redirect the page did not ask for)
+  // renderer initiated (a link, window.open) versus server initiated (a
+  // redirect the page did not ask for)
   kind: 'navigate' | 'redirect';
 }
 
 /**
- * Decide where a lab view navigation should happen. The lab view is privileged
- * and stays on the Jupyter server origin: content the server serves loads in
- * it, and a link the user follows out of that content goes to the system
- * browser. A redirect the server itself issues to another origin is the start
- * of a sign-in chain, which runs in a separate unprivileged window on the same
- * session so the cookie lands where the lab view will read it.
+ * Decide where a lab view navigation should happen. The view stays on the
+ * Jupyter server origin, a link followed out of that content goes to the
+ * system browser, and a server-issued redirect off-origin is a sign-in chain.
  */
 export function classifyNavigation({
   target,

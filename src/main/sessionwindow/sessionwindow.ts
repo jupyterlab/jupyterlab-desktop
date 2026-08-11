@@ -393,17 +393,17 @@ export class SessionWindow implements IDisposable {
   }
 
   private _showSignInCancelled(reason: string) {
-    // the sign-in window is a child of this one, so a teardown that closes the
-    // parent first lands here with nothing left to draw on
+    // closing this window tears the sign-in window down with it, and that
+    // cancellation arrives with nothing left to draw on
     if (this._window.isDestroyed()) {
       return;
     }
 
-    const escapedReason = ejs.escapeXML(String(reason));
+    const escapedReason = ejs.escapeXML(reason);
     this._showProgressView(
       'Sign-in was not completed',
       `
-      <div class="message-row">${escapedReason}</div>
+        <div class="message-row">${escapedReason}</div>
         <div class="message-row">
           <a href="javascript:void(0);" onclick="sendMessageToMain('${EventTypeMain.RetrySignIn}')">Try signing in again</a>
         </div>
@@ -1092,11 +1092,7 @@ export class SessionWindow implements IDisposable {
       }
 
       this._hideProgressView();
-      void this._labView.view.webContents
-        .loadURL(this._sessionConfig.url.href)
-        .catch(error => {
-          console.warn('Sign-in retry reload failed', error);
-        });
+      this._labView.reload();
     });
 
     this._evm.registerEventHandler(

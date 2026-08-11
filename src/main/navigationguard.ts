@@ -7,10 +7,6 @@ import { matchesScheme } from './utils';
 
 const guarded = new WeakSet<WebContents>();
 
-/**
- * What to do with a navigation a surface is about to make: let it happen, hand
- * it to the system browser, or refuse it.
- */
 export type NavigationDecision = 'allow' | 'external' | 'deny';
 
 /**
@@ -26,47 +22,46 @@ export function markGuarded(contents: WebContents): void {
 export function openUrlInSystemBrowser(url: string): void {
   // http and https for ordinary links, mailto for contact links
   if (matchesScheme(url, 'http:', 'https:', 'mailto:')) {
-    shell.openExternal(url);
+    // the parsed href, so whitespace and control characters never reach the OS
+    shell.openExternal(new URL(url).href);
   }
 }
 
 /**
- * Apply a navigation policy to a webContents. Every surface wires the same
- * three hooks and differs only in the decision, so the wiring lives here and
- * the caller brings the rule. Window creation is left to the caller, since what
- * a surface does with a popup varies more than a verdict can express.
+ * Apply a navigation policy to a webContents: the wiring lives here, the caller
+ * brings the rule. Window creation stays with the caller, since what a surface
+ * does with a popup varies more than a verdict can express.
  */
 export function guardNavigation(
   contents: WebContents,
   decide: (url: string) => NavigationDecision
 ): void {
-  const handle = (details: Electron.Event & { url: string }) => {
+  const handle = (
+    details: Electron.Event & { url: string; isMainFrame: boolean }
+  ) => {
     const decision = decide(details.url);
     if (decision === 'allow') {
       return;
     }
     details.preventDefault();
-    if (decision === 'external') {
+    // only the main frame's target is a place the user asked to go; a subframe
+    // is part of a page's own layout, so its target is refused, not handed out
+    if (decision === 'external' && details.isMainFrame) {
       openUrlInSystemBrowser(details.url);
     } else {
-      log.debug(`Blocked navigation to ${details.url}`);
+      log.warn(`Blocked navigation to ${details.url}`);
     }
   };
 
   contents.on('will-navigate', handle);
   contents.on('will-redirect', handle);
 
-  // the two above only fire for the main frame; a subframe navigating raises
-  // will-frame-navigate. A surface wired here renders either a bundled
-  // document or nothing anyone has claimed, so a subframe of it has no reason
-  // to move, and handing a subframe's target to the system browser would be
-  // worse than refusing it. Hence blocked rather than run through `handle`.
+  // will-navigate never fires for a subframe, will-frame-navigate fires for
+  // every frame, so the main frame would otherwise be handled twice
   contents.on('will-frame-navigate', details => {
-    if (details.isMainFrame || decide(details.url) === 'allow') {
-      return;
+    if (!details.isMainFrame) {
+      handle(details);
     }
-    details.preventDefault();
-    log.debug(`Blocked subframe navigation to ${details.url}`);
   });
 
   contents.on('will-attach-webview', event => {

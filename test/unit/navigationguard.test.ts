@@ -35,17 +35,14 @@ function fakeContents(): IFakeContents {
 }
 
 // electron passes the event object carrying the url, not positional arguments
-const navigationEvent = (url = 'https://example.com/') => ({
+const navigationEvent = (url = 'https://example.com/', isMainFrame = true) => ({
   preventDefault: vi.fn(),
-  url
+  url,
+  isMainFrame
 });
 
-// will-frame-navigate carries isMainFrame; will-navigate does not fire at all
-// for a subframe
-const frameNavigationEvent = (
-  isMainFrame: boolean,
-  url = 'https://example.com/'
-) => ({ preventDefault: vi.fn(), url, isMainFrame });
+const subframeEvent = (url = 'https://example.com/') =>
+  navigationEvent(url, false);
 
 describe('openUrlInSystemBrowser', () => {
   beforeEach(() => {
@@ -110,9 +107,20 @@ describe('guardAppOwnedView', () => {
   it('blocks a subframe rather than handing its target to the browser', () => {
     const contents = fakeContents();
     guardAppOwnedView(contents as any);
-    const event = frameNavigationEvent(false);
+    const event = subframeEvent();
 
     contents.emit('will-frame-navigate', event);
+
+    expect(event.preventDefault).toHaveBeenCalledOnce();
+    expect(shell.openExternal).not.toHaveBeenCalled();
+  });
+
+  it('blocks a subframe redirect rather than opening it in the browser', () => {
+    const contents = fakeContents();
+    guardAppOwnedView(contents as any);
+    const event = subframeEvent();
+
+    contents.emit('will-redirect', event);
 
     expect(event.preventDefault).toHaveBeenCalledOnce();
     expect(shell.openExternal).not.toHaveBeenCalled();
@@ -121,7 +129,7 @@ describe('guardAppOwnedView', () => {
   it('leaves the main frame to will-navigate so nothing opens twice', () => {
     const contents = fakeContents();
     guardAppOwnedView(contents as any);
-    const event = frameNavigationEvent(true);
+    const event = navigationEvent();
 
     contents.emit('will-frame-navigate', event);
 
@@ -180,7 +188,7 @@ describe('installGlobalNavigationGuard', () => {
   it('prevents a subframe navigating in a view nobody claimed', () => {
     const contents = fakeContents();
     created(null, contents);
-    const event = frameNavigationEvent(false);
+    const event = subframeEvent();
 
     contents.emit('will-frame-navigate', event);
 
@@ -191,7 +199,7 @@ describe('installGlobalNavigationGuard', () => {
     const contents = fakeContents();
     created(null, contents);
     markGuarded(contents as any);
-    const event = frameNavigationEvent(false);
+    const event = subframeEvent();
 
     contents.emit('will-frame-navigate', event);
 
