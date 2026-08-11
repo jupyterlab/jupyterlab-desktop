@@ -48,6 +48,9 @@ export function guardNavigation(
     // is part of a page's own layout, so its target is refused, not handed out
     if (decision === 'external' && details.isMainFrame) {
       openUrlInSystemBrowser(details.url);
+    } else if (!details.isMainFrame) {
+      // a surface refusing a subframe is the policy working, not a fault
+      log.debug(`Blocked subframe navigation to ${details.url}`);
     } else {
       log.warn(`Blocked navigation to ${details.url}`);
     }
