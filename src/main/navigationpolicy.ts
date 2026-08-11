@@ -37,9 +37,15 @@ export function classifyNavigation({
     return 'in-view';
   }
 
-  // a sign-in chain is only ever carried over the web
+  // a sign-in chain is only ever carried over the web, and never drops to
+  // cleartext from a server reached over TLS: that window is where credentials
+  // get typed. A server already on http is cleartext either way, so refusing
+  // there would buy nothing.
   if (kind === 'redirect' && matchesScheme(target, 'http:', 'https:')) {
-    return 'auth-window';
+    const leavesTLS =
+      matchesScheme(serverUrl ?? '', 'https:') &&
+      matchesScheme(target, 'http:');
+    return leavesTLS ? 'block' : 'auth-window';
   }
 
   // http and https for ordinary links, mailto for notebook contact links

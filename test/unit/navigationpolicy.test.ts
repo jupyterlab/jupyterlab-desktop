@@ -69,3 +69,25 @@ describe('classifyNavigation', () => {
     ).toBe('block');
   });
 });
+
+describe('a sign-in chain may not leave TLS behind', () => {
+  const secure = 'https://hub.example.org/lab';
+  const redirectFrom = (server: string) => (target: string) =>
+    classifyNavigation({ target, serverUrl: server, kind: 'redirect' });
+
+  it('blocks a redirect from an https server to an http sign-in page', () => {
+    expect(redirectFrom(secure)('http://idp.example.org/login')).toBe('block');
+  });
+
+  it('still runs an https sign-in chain from an https server', () => {
+    expect(redirectFrom(secure)('https://idp.example.org/login')).toBe(
+      'auth-window'
+    );
+  });
+
+  it('leaves an http server alone, since it is cleartext either way', () => {
+    expect(redirectFrom('http://localhost:8888/lab')('http://idp/login')).toBe(
+      'auth-window'
+    );
+  });
+});
