@@ -800,9 +800,7 @@ export class WelcomeView {
           const data = await response.text();
           const newsList = parseNewsFeed(data, maxNewsToShow);
 
-          // An empty result (feed down, maintenance page, schema change) must
-          // not blank the cached list the user already sees, so keep the
-          // current state instead of overwriting it.
+          // a feed that came back empty must not blank what the user sees
           if (newsList.length === 0) {
             return;
           }
