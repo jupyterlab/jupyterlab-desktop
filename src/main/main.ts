@@ -254,11 +254,11 @@ function reportUnreadableConfig(): void {
   dialog
     .showMessageBox({
       type: 'warning',
-      title: 'Settings could not be read',
+      title: 'Configuration could not be read',
       message:
         files.length === 1
-          ? 'A settings file could not be read, so this session started with defaults.'
-          : 'Some settings files could not be read, so this session started with defaults.',
+          ? 'A configuration file could not be read, so this session started with defaults.'
+          : 'Some configuration files could not be read, so this session started with defaults.',
       detail: `Nothing was deleted. Each is still on disk, here:\n\n${files.join(
         '\n'
       )}`,
