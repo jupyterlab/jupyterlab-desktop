@@ -1,4 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { readdirSync, readFileSync, statSync } from 'fs';
+import { join, relative } from 'path';
 import { app, shell } from 'electron';
 import {
   guardAppOwnedView,
@@ -6,6 +8,16 @@ import {
   markGuarded,
   openUrlInSystemBrowser
 } from '../../src/main/navigationguard';
+
+function walk(dir: string): string[] {
+  return readdirSync(dir).flatMap(entry => {
+    const full = join(dir, entry);
+    if (statSync(full).isDirectory()) {
+      return walk(full);
+    }
+    return full.endsWith('.ts') ? [full] : [];
+  });
+}
 
 interface IFakeContents {
   on: (name: string, listener: (...args: any[]) => void) => void;
@@ -224,5 +236,51 @@ describe('installGlobalNavigationGuard', () => {
     contents.emit('will-attach-webview', event);
 
     expect(event.preventDefault).toHaveBeenCalledOnce();
+  });
+
+  it('still denies window creation from a view that claimed navigation', () => {
+    const contents = fakeContents();
+    created(null, contents);
+    markGuarded(contents as any);
+
+    // marking a view exempts its navigations, not its popups: the owner has to
+    // set its own handler, which is what the source check below is about
+    expect(contents.openWindow('https://example.com/')).toEqual({
+      action: 'deny'
+    });
+  });
+});
+
+describe('every surface that claims navigation also declares a popup policy', () => {
+  // markGuarded only exempts navigation. A view that claims it and then leaves
+  // setWindowOpenHandler alone keeps the global deny-all, so a login that pops
+  // a window dies with nothing on screen. connect.ts shipped that way.
+  it.each(['connect.ts', 'labview/labview.ts', 'authwindow/authwindow.ts'])(
+    '%s sets its own window open handler',
+    file => {
+      const source = readFileSync(
+        join(__dirname, '../../src/main', file),
+        'utf8'
+      );
+
+      expect(source).toContain('markGuarded(');
+      expect(source).toContain('setWindowOpenHandler(');
+    }
+  );
+
+  it('names every direct caller of markGuarded', () => {
+    const root = join(__dirname, '../../src/main');
+    const callers = walk(root).filter(file => {
+      const source = readFileSync(file, 'utf8');
+      return (
+        !file.endsWith('navigationguard.ts') && /\bmarkGuarded\(/.test(source)
+      );
+    });
+
+    expect(callers.map(file => relative(root, file)).sort()).toEqual([
+      'authwindow/authwindow.ts',
+      'connect.ts',
+      'labview/labview.ts'
+    ]);
   });
 });
