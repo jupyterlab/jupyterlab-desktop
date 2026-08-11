@@ -637,7 +637,10 @@ export class JupyterApplication implements IApplication, IDisposable {
       return undefined;
     }
 
-    for (const sessionWindow of this._sessionWindowManager.windows) {
+    // the handlers go up before the manager exists, and a permission request
+    // cannot arrive mid-constructor today, but only because nothing in between
+    // pumps the event loop
+    for (const sessionWindow of this._sessionWindowManager?.windows ?? []) {
       if (webContents === sessionWindow.labView?.view?.webContents) {
         return sessionWindow.getServerInfo()?.url;
       }
