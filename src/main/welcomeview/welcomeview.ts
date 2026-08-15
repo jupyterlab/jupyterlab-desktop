@@ -3,6 +3,7 @@
 
 import { net, WebContentsView } from 'electron';
 import { DarkThemeBGColor, getUserHomeDir, LightThemeBGColor } from '../utils';
+import { guardAppOwnedView } from '../navigationguard';
 import * as path from 'path';
 import * as fs from 'fs';
 import { parseNewsFeed } from './newsfeed';
@@ -30,6 +31,8 @@ export class WelcomeView {
         devTools: process.env.NODE_ENV === 'development'
       }
     });
+
+    guardAppOwnedView(this._view.webContents);
 
     this._view.setBackgroundColor(
       this._isDarkTheme ? DarkThemeBGColor : LightThemeBGColor
