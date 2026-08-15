@@ -3,11 +3,11 @@
 
 import { app, shell, WebContents } from 'electron';
 import log from 'electron-log';
-
-// http/https for ordinary links, mailto for contact links
-const EXTERNAL_SCHEMES = ['https:', 'http:', 'mailto:'];
+import { matchesScheme } from './utils';
 
 const guarded = new WeakSet<WebContents>();
+
+export type NavigationDecision = 'allow' | 'external' | 'deny';
 
 /**
  * Declare that this webContents carries its own navigation policy, so the
@@ -20,14 +20,56 @@ export function markGuarded(contents: WebContents): void {
 }
 
 export function openUrlInSystemBrowser(url: string): void {
-  try {
-    const { protocol, href } = new URL(url);
-    if (EXTERNAL_SCHEMES.includes(protocol)) {
-      shell.openExternal(href);
-    }
-  } catch {
-    // unparseable target, nothing safe to open
+  // http and https for ordinary links, mailto for contact links
+  if (matchesScheme(url, 'http:', 'https:', 'mailto:')) {
+    // the parsed href, so whitespace and control characters never reach the OS
+    shell.openExternal(new URL(url).href);
   }
+}
+
+/**
+ * Apply a navigation policy to a webContents: the wiring lives here, the caller
+ * brings the rule. Window creation stays with the caller, since what a surface
+ * does with a popup varies more than a verdict can express.
+ */
+export function guardNavigation(
+  contents: WebContents,
+  decide: (url: string) => NavigationDecision
+): void {
+  const handle = (
+    details: Electron.Event & { url: string; isMainFrame: boolean }
+  ) => {
+    const decision = decide(details.url);
+    if (decision === 'allow') {
+      return;
+    }
+    details.preventDefault();
+    // only the main frame's target is a place the user asked to go; a subframe
+    // is part of a page's own layout, so its target is refused, not handed out
+    if (decision === 'external' && details.isMainFrame) {
+      openUrlInSystemBrowser(details.url);
+    } else if (!details.isMainFrame) {
+      // a surface refusing a subframe is the policy working, not a fault
+      log.debug(`Blocked subframe navigation to ${details.url}`);
+    } else {
+      log.warn(`Blocked navigation to ${details.url}`);
+    }
+  };
+
+  contents.on('will-navigate', handle);
+  contents.on('will-redirect', handle);
+
+  // will-navigate never fires for a subframe, will-frame-navigate fires for
+  // every frame, so the main frame would otherwise be handled twice
+  contents.on('will-frame-navigate', details => {
+    if (!details.isMainFrame) {
+      handle(details);
+    }
+  });
+
+  contents.on('will-attach-webview', event => {
+    event.preventDefault();
+  });
 }
 
 /**
@@ -38,14 +80,7 @@ export function openUrlInSystemBrowser(url: string): void {
  */
 export function guardAppOwnedView(contents: WebContents): void {
   markGuarded(contents);
-
-  const sendToBrowser = (event: Electron.Event, url: string) => {
-    event.preventDefault();
-    openUrlInSystemBrowser(url);
-  };
-
-  contents.on('will-navigate', sendToBrowser);
-  contents.on('will-redirect', sendToBrowser);
+  guardNavigation(contents, () => 'external');
   contents.setWindowOpenHandler(({ url }) => {
     openUrlInSystemBrowser(url);
     return { action: 'deny' };
@@ -61,20 +96,7 @@ export function guardAppOwnedView(contents: WebContents): void {
  */
 export function installGlobalNavigationGuard(): void {
   app.on('web-contents-created', (_event, contents) => {
-    contents.on('will-attach-webview', event => {
-      event.preventDefault();
-    });
-
-    const denyUnclaimed = (event: Electron.Event, url: string) => {
-      if (guarded.has(contents)) {
-        return;
-      }
-      event.preventDefault();
-      log.warn(`Blocked navigation to ${url} in an unguarded view`);
-    };
-
-    contents.on('will-navigate', denyUnclaimed);
-    contents.on('will-redirect', denyUnclaimed);
+    guardNavigation(contents, () => (guarded.has(contents) ? 'allow' : 'deny'));
 
     // an owner that sets its own handler replaces this one, which is what
     // claiming a view looks like for window creation

@@ -68,7 +68,9 @@ import {
   jupyterEnvInstallInfoPathForEnvPath,
   LightThemeBGColor,
   markEnvironmentAsJupyterInstalled,
+  matchesScheme,
   openDirectoryInExplorer,
+  originOf,
   pythonPathForEnvPath,
   versionWithoutSuffix,
   waitForDuration,
@@ -843,5 +845,52 @@ describe('isSameServerOrigin', () => {
     expect(isSameServerOrigin('http://localhost:8888/lab', undefined)).toBe(
       false
     );
+  });
+});
+
+describe('originOf', () => {
+  it('returns the origin of a parseable URL', () => {
+    expect(originOf('http://localhost:8888/lab?token=secret')).toBe(
+      'http://localhost:8888'
+    );
+  });
+
+  it.each(['about:blank', 'data:text/html,<h1>hi</h1>'])(
+    'returns null for the opaque origin of %s',
+    url => {
+      expect(originOf(url)).toBeNull();
+    }
+  );
+
+  it.each(['not a url', '', undefined, null])(
+    'returns null instead of throwing for %s',
+    url => {
+      expect(originOf(url as string | undefined | null)).toBeNull();
+    }
+  );
+});
+
+describe('matchesScheme', () => {
+  it('accepts a URL whose scheme is in the given set', () => {
+    expect(matchesScheme('https://example.com/x', 'http:', 'https:')).toBe(
+      true
+    );
+    expect(matchesScheme('mailto:a@b.c', 'http:', 'https:', 'mailto:')).toBe(
+      true
+    );
+  });
+
+  it('rejects a scheme the caller did not ask for', () => {
+    expect(matchesScheme('mailto:a@b.c', 'http:', 'https:')).toBe(false);
+    expect(matchesScheme('file:///etc/passwd', 'http:', 'https:')).toBe(false);
+    expect(matchesScheme('javascript:alert(1)', 'http:', 'https:')).toBe(false);
+  });
+
+  it('rejects a URL that does not parse instead of throwing', () => {
+    expect(matchesScheme('not a url', 'http:', 'https:')).toBe(false);
+  });
+
+  it('rejects when no scheme is accepted', () => {
+    expect(matchesScheme('https://example.com/')).toBe(false);
   });
 });

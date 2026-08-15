@@ -29,7 +29,8 @@ import {
   getBundledPythonPath,
   getLogFilePath,
   isDarkTheme,
-  LightThemeBGColor
+  LightThemeBGColor,
+  matchesScheme
 } from '../utils';
 import { IServerFactory, JupyterServer, JupyterServerFactory } from '../server';
 import {
@@ -391,6 +392,29 @@ export class SessionWindow implements IDisposable {
     );
   }
 
+  private _showSignInCancelled(reason: string) {
+    // closing this window tears the sign-in window down with it, and that
+    // cancellation arrives with nothing left to draw on
+    if (this._window.isDestroyed()) {
+      return;
+    }
+
+    const escapedReason = ejs.escapeXML(reason);
+    this._showProgressView(
+      'Sign-in was not completed',
+      `
+        <div class="message-row">${escapedReason}</div>
+        <div class="message-row">
+          <a href="javascript:void(0);" onclick="sendMessageToMain('${EventTypeMain.RetrySignIn}')">Try signing in again</a>
+        </div>
+        <div class="message-row">
+          <a href="javascript:void(0);" onclick="sendMessageToMain('${EventTypeMain.ShowWelcomeView}')">Go to Welcome Page</a>
+        </div>
+      `,
+      false
+    );
+  }
+
   private _loadLabView() {
     if (this._labView) {
       this._window.contentView.removeChildView(this._labView.view);
@@ -401,7 +425,8 @@ export class SessionWindow implements IDisposable {
     const labView = new LabView({
       isDarkTheme: this._isDarkTheme,
       parent: this,
-      sessionConfig: this._sessionConfig
+      sessionConfig: this._sessionConfig,
+      onAuthCancelled: (reason: string) => this._showSignInCancelled(reason)
     });
     this._window.contentView.addChildView(labView.view);
 
@@ -525,9 +550,11 @@ export class SessionWindow implements IDisposable {
         }
 
         try {
-          const url = new URL(decodeURIComponent(link));
-          if (url.protocol === 'https:' || url.protocol === 'http:') {
-            shell.openExternal(url.href);
+          // news links are web links only, so this stays narrower than the
+          // welcome view's own links, which may be mailto
+          const target = decodeURIComponent(link);
+          if (matchesScheme(target, 'http:', 'https:')) {
+            shell.openExternal(target);
           }
         } catch (error) {
           console.error('Invalid news URL');
@@ -1054,6 +1081,19 @@ export class SessionWindow implements IDisposable {
         this._showWelcomeView();
       }
     );
+
+    this._evm.registerEventHandler(EventTypeMain.RetrySignIn, async event => {
+      if (event.sender !== this._progressView?.view?.view?.webContents) {
+        return;
+      }
+
+      if (!this._labView) {
+        return;
+      }
+
+      this._hideProgressView();
+      this._labView.reload();
+    });
 
     this._evm.registerEventHandler(
       EventTypeMain.ShowServerSettings,
