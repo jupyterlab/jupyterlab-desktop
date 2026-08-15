@@ -35,6 +35,9 @@ jobs:
       release_exists: ${{ steps.release-exists.outputs.result }}
       version: ${{ steps.package-info.outputs.version }}
     strategy:
+      # Each leg builds an independent installer, so a flake on one platform
+      # must not cancel the other three and throw away their artifacts.
+      fail-fast: false
       matrix:
         cfg:
         - { platform: linux-64, platform_name: Linux x64,  os: ubuntu-latest, build_platform: linux-64, conda_platform: linux-64 }
@@ -159,7 +162,15 @@ jobs:
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: false # disable code signing if not release asset
         run: |
-          yarn dist:${{ matrix.cfg.platform }}
+          # dmgbuild intermittently cannot detach its disk image on hosted mac
+          # runners ("hdiutil: couldn't eject disk2 - Resource busy", upstream
+          # electron-builder#4606 and dmgbuild#26). Three separate PRs hit it in
+          # one day, so retry once rather than spend a full matrix rerun on it.
+          yarn dist:${{ matrix.cfg.platform }} || {
+            echo "installer build failed, retrying once"
+            sleep 15
+            yarn dist:${{ matrix.cfg.platform }}
+          }
         if: steps.release-exists.outputs.result == 'false'
 
       - name: Create Application Installer for Release
@@ -172,7 +183,15 @@ jobs:
           CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
           CSC_LINK: ${{ secrets.CSC_LINK }}
         run: |
-          yarn dist:${{ matrix.cfg.platform }}
+          # dmgbuild intermittently cannot detach its disk image on hosted mac
+          # runners ("hdiutil: couldn't eject disk2 - Resource busy", upstream
+          # electron-builder#4606 and dmgbuild#26). Three separate PRs hit it in
+          # one day, so retry once rather than spend a full matrix rerun on it.
+          yarn dist:${{ matrix.cfg.platform }} || {
+            echo "installer build failed, retrying once"
+            sleep 15
+            yarn dist:${{ matrix.cfg.platform }}
+          }
         if: steps.release-exists.outputs.result == 'true'
 
       - name: Upload Debian x64 Installer
@@ -203,24 +222,86 @@ jobs:
       - name: Verify the snap can actually launch
         if: matrix.cfg.platform == 'linux-64'
         run: |
-          command -v unsquashfs >/dev/null || { sudo apt-get update -qq && sudo apt-get install -y --no-install-recommends squashfs-tools; }
-          # 4.6.2-1 shipped the template as a tarball and died on a missing script
-          unsquashfs -q -d "$RUNNER_TEMP/snap-check" dist/JupyterLab.snap command.sh
-          unsquashfs -l -d squashfs-root dist/JupyterLab.snap | sort > "$RUNNER_TEMP/snap-have.txt"
-          grep -oE '\$SNAP/[A-Za-z0-9._/-]+' "$RUNNER_TEMP/snap-check/command.sh" | sed 's|\$SNAP|squashfs-root|' | sort -u > "$RUNNER_TEMP/snap-need.txt"
-          if [ ! -s "$RUNNER_TEMP/snap-need.txt" ]; then
-            echo "::error::no \$SNAP path was read out of command.sh, so this check would pass without verifying anything"
-            exit 1
-          fi
-          missing="$(comm -23 "$RUNNER_TEMP/snap-need.txt" "$RUNNER_TEMP/snap-have.txt")"
+          # neither snapd nor xvfb is listed in the runner image manifest, so do
+          # not assume either is there
+          missing=""
+          command -v snap >/dev/null || missing="$missing snapd"
+          command -v xvfb-run >/dev/null || missing="$missing xvfb"
           if [ -n "$missing" ]; then
-            echo "::error::command.sh execs paths that are not in the snap: $missing"
-            exit 1
+            sudo apt-get update -qq
+            sudo apt-get install -y --no-install-recommends $missing
           fi
-          if grep -qE '^squashfs-root/snap-template-.*\.tar$' "$RUNNER_TEMP/snap-have.txt"; then
-            echo "::error::the snap template was packed as a tarball instead of being extracted"
-            exit 1
+          # --dangerous skips assertion checks for a locally built snap, --classic
+          # matches the confinement we ship with
+          # snap install is known to hang on hosted runners
+          # (actions/runner-images#11170), so bound it rather than let it eat the
+          # job's budget
+          # a snapd that apt just installed may still be seeding, and installing
+          # during that fails with "too early for operation". best effort: if
+          # snapd is not answering yet this cannot wait for it either
+          sudo snap wait system seed.loaded || true
+          sudo timeout 300 snap install --dangerous --classic dist/JupyterLab.snap
+          # --version quits before any window is created, so this exercises
+          # command.sh and every launcher script it execs, without needing a UI
+          xvfb-run -a timeout 120 jupyterlab-desktop --version
+
+      - name: Verify the deb can actually launch
+        if: matrix.cfg.platform == 'linux-64'
+        run: |
+          # apt resolves the Depends the deb declares, so an under-declared
+          # dependency fails here rather than on a user's machine
+          sudo apt-get install -y ./dist/JupyterLab.deb
+          # the deb keeps its binary under /opt and only symlinks jlab into
+          # /usr/bin, so name the path and do not race the snap installed above
+          xvfb-run -a timeout 120 /opt/JupyterLab/jupyterlab-desktop --version
+          # the postinst's own two lines are the jlab symlink, and nothing else
+          # here would notice if they pointed at a path the package does not
+          # ship. pin the target, since the snap installed above also claims
+          # /usr/bin/jlab and would satisfy a bare "is it executable" check
+          test "$(readlink -f /usr/bin/jlab)" = /opt/JupyterLab/resources/app/jlab
+          test -x /usr/bin/jlab
+
+      - name: Verify the deb installs, reinstalls and removes cleanly
+        if: matrix.cfg.platform == 'linux-64'
+        run: |
+          # Debian policy 6.5 requires maintainer scripts to be idempotent, and
+          # unpacking over the copy installed above is the cheapest way to run
+          # the postinst a second time against the state the first one left
+          sudo dpkg -i ./dist/JupyterLab.deb
+          # the profile ships in the package but only reaches apparmor.d if the
+          # postinst installs it, which is what #870 turned on
+          test -f /etc/apparmor.d/jupyterlab-desktop
+          sudo apt-get purge -y jupyterlab-desktop
+          test ! -e /etc/apparmor.d/jupyterlab-desktop
+          # a note rather than an assertion: the postrm drops the alternatives
+          # entry but not the jlab symlink, which the postinst creates outside
+          # the package file list
+          if [ -L /usr/bin/jlab ]; then
+            echo 'note: /usr/bin/jlab is left behind by purge'
           fi
+
+      - name: Verify the rpm can actually launch
+        if: matrix.cfg.platform == 'linux-64'
+        run: |
+          # the runner is Ubuntu, so the rpm needs a RHEL-family userland of its
+          # own. AlmaLinux 9 is a maintained rebuild sitting above every floor
+          # Electron states for Linux, which are Debian 10, Fedora 32 and
+          # Ubuntu 18.04. Rocky's Docker Official Image stopped being rebuilt in
+          # 2024, and quay serves the same AlmaLinux image without Docker Hub's
+          # anonymous pull limit, which hosted runners share an IP pool against
+          docker run --rm -v "$PWD/dist:/dist:ro" quay.io/almalinuxorg/almalinux:9 bash -c '
+            set -e
+            dnf -y install /dist/JupyterLab.rpm xorg-x11-server-Xvfb
+            Xvfb :99 -screen 0 1024x768x24 &
+            # Electron needs the display to reach ready, and Xvfb takes a moment
+            # to bind its socket, so waiting is the difference between this
+            # gating the rpm and it failing at random
+            for i in $(seq 50); do [ -e /tmp/.X11-unix/X99 ] && break; sleep 0.2; done
+            test -e /tmp/.X11-unix/X99
+            # Chromium cannot set up its sandbox as root inside a container, and
+            # this only needs to answer whether the binary runs on this libc
+            DISPLAY=:99 timeout 120 /opt/JupyterLab/jupyterlab-desktop --version --no-sandbox
+          '
 
       - name: Upload macOS x64 Installer
         if: matrix.cfg.platform == 'osx-64'
