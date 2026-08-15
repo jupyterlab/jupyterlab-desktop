@@ -142,7 +142,30 @@ Make sure you installed JupyterLab Desktop following the steps outlined above in
 - In order to use the newly installed package you need to restart your active notebook's kernel or create a new notebook
 - If you install a new JupyterLab extension with UI components, then you will need to create a new session for changes to take effect
 
+## Using Alternative Kernels
+
+JupyterLab Desktop supports any Jupyter-compatible kernel, not just Python.
+
+### Installing an alternative kernel
+
+Install the desired kernel package in your environment. For example:
+
+- **Wolfram Language kernel**:  
+  https://github.com/WolframResearch/WolframLanguageForJupyter
+
+- **SageMath kernel**:  
+  Ensure SageMath is installed and properly configured with Jupyter.
+
+### Example: Installing R kernel
+
+You can install the R kernel using conda:
+
+```bash
+conda install -c conda-forge r-irkernel
+``` 
+
 # Configuration and data files
+
 
 JupyterLab Desktop stores user settings, project settings and application data in different locations as JSON files. Below are the storage locations and type of data they contain.
 
@@ -268,3 +291,4 @@ On Windows, JupyterLab Desktop is installed in two parts, one for the python env
 <img src="media/uninstall-windows-application.png" alt="Uninstall the application" height=200 />
 
 In order to remove application cache, delete `%APPDATA%\jupyterlab-desktop` directory.
+
