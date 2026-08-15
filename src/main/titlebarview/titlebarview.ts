@@ -6,6 +6,7 @@ import * as path from 'path';
 import * as fs from 'fs';
 import * as ejs from 'ejs';
 import { DarkThemeBGColor, LightThemeBGColor } from '../utils';
+import { guardAppOwnedView } from '../navigationguard';
 import { EventTypeRenderer } from '../eventtypes';
 
 export class TitleBarView {
@@ -17,6 +18,8 @@ export class TitleBarView {
         devTools: process.env.NODE_ENV === 'development'
       }
     });
+
+    guardAppOwnedView(this._view.webContents);
 
     this._view.setBackgroundColor(
       this._isDarkTheme ? DarkThemeBGColor : LightThemeBGColor

@@ -10,6 +10,7 @@ import { join } from 'path';
 const userDataPath = join(tmpdir(), 'jlab-test-userdata');
 
 export const app = {
+  on: vi.fn(),
   getPath: vi.fn((name: string) => join(userDataPath, name)),
   getVersion: vi.fn(() => '4.4.7'),
   getName: vi.fn(() => 'JupyterLab'),
