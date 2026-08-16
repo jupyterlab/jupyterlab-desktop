@@ -85,6 +85,19 @@ JupyterLab Desktop bundles JupyterLab front-end and a conda environment as Jupyt
 
   Application Installer will be created in `dist/JupyterLab.dmg` (macOS), `dist/JupyterLab.deb` (Debian, Ubuntu), `dist/JupyterLab.rpm` (Red Hat, Fedora) and `dist/JupyterLab-Setup.exe` (Windows) based on the platform
 
+## Shared seams in the main process
+
+These questions already have one answer, so please do not write a second one:
+
+| Question                         | Where it is answered                                                      |
+| -------------------------------- | ------------------------------------------------------------------------- |
+| What origin is this URL?         | `originOf`, `isSameServerOrigin` in `src/main/utils.ts`                   |
+| Is this a scheme I accept?       | `matchesScheme` in `src/main/utils.ts`                                    |
+| May this surface navigate there? | `guardNavigation` in `src/main/navigationguard.ts`, `navigationpolicy.ts` |
+| Should this link leave the app?  | `openUrlInSystemBrowser` in `src/main/navigationguard.ts`                 |
+
+A webContents nobody claims cannot navigate at all, so a new view is safe until `markGuarded` opts it into a policy of its own.
+
 ## Review guidance
 
 Expected manual testing coverage depends on the PR, when pulling:
