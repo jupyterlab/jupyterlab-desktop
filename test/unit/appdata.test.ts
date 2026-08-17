@@ -225,7 +225,7 @@ describe('ApplicationData.read', () => {
     expect(appData.userSetPythonEnvs[0].versions).toEqual({});
   });
 
-  it('drops an environment path that is not a string', () => {
+  it('drops an environment whose path is not a string', () => {
     mockFs.existsSync = vi.fn(() => true);
     mockFs.readFileSync = vi.fn(() =>
       Buffer.from(
@@ -237,7 +237,8 @@ describe('ApplicationData.read', () => {
 
     appData.read();
 
-    expect(appData.userSetPythonEnvs[0].path).toBeUndefined();
+    // kept with an undefined path it would still be offered as an environment
+    expect(appData.userSetPythonEnvs).toEqual([]);
   });
 
   it('ignores a non-boolean updateBundledEnvOnRestart', () => {
@@ -275,6 +276,65 @@ describe('ApplicationData.read', () => {
     expect(() => appData.read()).not.toThrow();
     expect(appData.recentSessions).toHaveLength(0);
     expect(appData.newsList).toHaveLength(0);
+  });
+
+  it('drops a recent session naming neither a directory nor a URL', () => {
+    mockFs.existsSync = vi.fn(() => true);
+    mockFs.readFileSync = vi.fn(() =>
+      Buffer.from(
+        JSON.stringify({
+          recentSessions: [
+            { date: '2024-01-01' },
+            { workingDirectory: '/nb' },
+            { remoteURL: 'https://example.com' }
+          ]
+        })
+      )
+    ) as any;
+
+    appData.read();
+
+    // the first names nothing to reopen, and the welcome view draws a row per
+    // entry whatever is in it
+    expect(appData.recentSessions).toHaveLength(2);
+  });
+
+  it('drops a recent remote URL without a url', () => {
+    mockFs.existsSync = vi.fn(() => true);
+    mockFs.readFileSync = vi.fn(() =>
+      Buffer.from(
+        JSON.stringify({
+          recentRemoteURLs: [{ date: '2024-01-01' }, { url: 'https://ok.test' }]
+        })
+      )
+    ) as any;
+
+    appData.read();
+
+    expect(appData.recentRemoteURLs.map(entry => entry.url)).toEqual([
+      'https://ok.test'
+    ]);
+  });
+
+  it('drops a news item missing its title or its link', () => {
+    mockFs.existsSync = vi.fn(() => true);
+    mockFs.readFileSync = vi.fn(() =>
+      Buffer.from(
+        JSON.stringify({
+          newsList: [
+            { link: 'https://example.com' },
+            { title: 'no link' },
+            { title: 'kept', link: 'https://example.org' }
+          ]
+        })
+      )
+    ) as any;
+
+    appData.read();
+
+    expect(appData.newsList).toEqual([
+      { title: 'kept', link: 'https://example.org' }
+    ]);
   });
 
   it('drops a filesToOpen that is not a list', () => {

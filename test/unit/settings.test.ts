@@ -257,6 +257,30 @@ describe('UserSettings', () => {
     expect(us.getValue(SettingType.condaChannels)).toEqual(['conda-forge']);
   });
 
+  it('ignores a string that names no member of the setting', () => {
+    mockFs.existsSync = vi.fn(() => true);
+    mockFs.readFileSync = vi.fn(() =>
+      Buffer.from(JSON.stringify({ startupMode: 'restore' }))
+    ) as any;
+
+    const us = new UserSettings(true);
+
+    // a plausible typo for restore-sessions, and typeof calls it a match, so
+    // it would reach the startup switch and take no branch at all
+    expect(us.getValue(SettingType.startupMode)).toBe(StartupMode.WelcomePage);
+  });
+
+  it('keeps a member that is spelled correctly', () => {
+    mockFs.existsSync = vi.fn(() => true);
+    mockFs.readFileSync = vi.fn(() =>
+      Buffer.from(JSON.stringify({ startupMode: 'restore-sessions' }))
+    ) as any;
+
+    const us = new UserSettings(true);
+
+    expect(us.getValue(SettingType.startupMode)).toBe(StartupMode.LastSessions);
+  });
+
   it('ignores null, which typeof calls an object', () => {
     mockFs.existsSync = vi.fn(() => true);
     mockFs.readFileSync = vi.fn(() =>

@@ -22,6 +22,7 @@ import * as path from 'path';
 import { appData, ApplicationData } from './config/appdata';
 import { IEnvironmentType, IPythonEnvironment } from './tokens';
 import {
+  resolveWorkingDirectory,
   SettingType,
   UserSettings,
   userSettings,
@@ -886,9 +887,14 @@ export async function handleEnvSetPythonEnvsPathCommand(argv: any) {
   );
 }
 
+// resolved the way the constructor does, or this names a file that was never
+// written: a project directory that is a symlink fails the lstat there and
+// falls back to the home directory
 function settingsFilePathFor(projectPath?: string): string {
   return projectPath
-    ? WorkspaceSettings.getWorkspaceSettingsPath(projectPath)
+    ? WorkspaceSettings.getWorkspaceSettingsPath(
+        resolveWorkingDirectory(projectPath)
+      )
     : UserSettings.getUserSettingsPath();
 }
 

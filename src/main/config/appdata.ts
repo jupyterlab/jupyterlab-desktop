@@ -41,6 +41,14 @@ function pythonEnvFromConfig(entry: any): IPythonEnvironment {
   };
 }
 
+// an environment with no path cannot be launched, and the path is what reaches
+// path.dirname and the existence checks in the registry
+function pythonEnvsIn(value: unknown): IPythonEnvironment[] {
+  return objectsIn(value)
+    .map(pythonEnvFromConfig)
+    .filter(env => env.path !== undefined);
+}
+
 export interface INewsItem {
   title: string;
   link: string;
@@ -126,10 +134,17 @@ export class ApplicationData {
 
     this.recentSessions = [];
     for (const recentSession of objectsIn(jsonData.recentSessions)) {
+      const workingDirectory = stringFromConfig(recentSession.workingDirectory);
+      const remoteURL = stringFromConfig(recentSession.remoteURL);
+      // an entry naming neither has nothing to reopen, and the welcome view
+      // would draw a row for it anyway
+      if (workingDirectory === undefined && remoteURL === undefined) {
+        continue;
+      }
       this.recentSessions.push({
-        workingDirectory: stringFromConfig(recentSession.workingDirectory),
+        workingDirectory,
         filesToOpen: stringsFromConfig(recentSession.filesToOpen),
-        remoteURL: stringFromConfig(recentSession.remoteURL),
+        remoteURL,
         persistSessionData: recentSession.persistSessionData === true,
         // startsWith is called on this without a guard in two places
         partition: stringFromConfig(recentSession.partition),
@@ -140,27 +155,27 @@ export class ApplicationData {
 
     this.recentRemoteURLs = [];
     for (const remoteURL of objectsIn(jsonData.recentRemoteURLs)) {
-      this.recentRemoteURLs.push({
-        url: stringFromConfig(remoteURL.url),
-        date: dateFromConfig(remoteURL.date)
-      });
+      const url = stringFromConfig(remoteURL.url);
+      if (url === undefined) {
+        continue;
+      }
+      this.recentRemoteURLs.push({ url, date: dateFromConfig(remoteURL.date) });
     }
     this._sortRecentItems(this.recentRemoteURLs);
 
-    this.discoveredPythonEnvs = objectsIn(jsonData.discoveredPythonEnvs).map(
-      pythonEnvFromConfig
-    );
+    this.discoveredPythonEnvs = pythonEnvsIn(jsonData.discoveredPythonEnvs);
 
-    this.userSetPythonEnvs = objectsIn(jsonData.userSetPythonEnvs).map(
-      pythonEnvFromConfig
-    );
+    this.userSetPythonEnvs = pythonEnvsIn(jsonData.userSetPythonEnvs);
 
     this.newsList = [];
     for (const newsItem of objectsIn(jsonData.newsList)) {
-      this.newsList.push({
-        title: stringFromConfig(newsItem.title),
-        link: stringFromConfig(newsItem.link)
-      });
+      const title = stringFromConfig(newsItem.title);
+      const link = stringFromConfig(newsItem.link);
+      // both are rendered, one as the anchor's text and the other as its href
+      if (title === undefined || link === undefined) {
+        continue;
+      }
+      this.newsList.push({ title, link });
     }
 
     if (typeof jsonData.updateBundledEnvOnRestart === 'boolean') {

@@ -97,6 +97,9 @@ export function readJsonConfigFile(
     if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
       return undefined;
     }
+    // marked even when the cause looks temporary, a lock or a descriptor
+    // limit: the values in memory are defaults either way, and letting a save
+    // through would put those over a file that is still perfectly good
     log.error(`Failed to read ${filePath}, continuing with defaults`, error);
     unreadableConfigFiles.add(filePath);
     return undefined;
@@ -163,17 +166,28 @@ export function writeJsonConfigFile(filePath: string, data: unknown): boolean {
     // recursive is a no-op when the directory is already there, and checking
     // first only opens a race window
     fs.mkdirSync(path.dirname(targetPath), { recursive: true });
-    fd = fs.openSync(tempPath, 'w');
-    if (existing) {
-      // chmod, not openSync's mode, which the umask narrows on the way through
-      fs.fchmodSync(fd, existing.mode & 0o777);
+    // opened at the mode it will end up with, so the file is never briefly
+    // wider than the one it replaces. The umask can only narrow that, which is
+    // what the chmod undoes; widening is the only direction left with a gap,
+    // and a file that was already the wider one has nothing to leak in it
+    const mode = existing ? existing.mode & 0o777 : undefined;
+    fd =
+      mode === undefined
+        ? fs.openSync(tempPath, 'w')
+        : fs.openSync(tempPath, 'w', mode);
+    if (mode !== undefined) {
+      fs.fchmodSync(fd, mode);
     }
     fs.writeFileSync(fd, contents);
     // rename publishes the name, not the bytes: without this a power cut can
     // leave a good filename on an empty file
     fs.fsyncSync(fd);
-    fs.closeSync(fd);
+    // cleared before the close, not after: close releases the descriptor even
+    // when it reports an error, so a throw here must not send the catch back
+    // to close a number that now belongs to somebody else
+    const toClose = fd;
     fd = undefined;
+    fs.closeSync(toClose);
     carryOwnership(tempPath, existing);
     fs.renameSync(tempPath, targetPath);
     syncDirectoryEntry(targetPath);

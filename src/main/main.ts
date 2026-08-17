@@ -255,7 +255,7 @@ function reportUnreadableConfig(): void {
   const them = files.length === 1 ? 'it' : 'them';
   const detail =
     `Nothing was moved or deleted, and settings will not be saved over ${them} ` +
-    `until the problem is gone. Editing by hand and restarting picks the ` +
+    `until the app is restarted. Editing by hand and restarting picks the ` +
     `values back up.\n\n${fileList}\n\n` +
     `Reset to Defaults keeps a copy alongside, with a .corrupt suffix.`;
 
@@ -291,10 +291,23 @@ function reportUnreadableConfig(): void {
     );
 }
 
-/** The parent a message box needs so that showing it does not block startup. */
+/**
+ * The parent a message box needs so that showing it does not block startup.
+ * Bounded, and destroyed windows are skipped: the notice is worth losing to
+ * the log, and a parent that has gone away leaves the box without one, which
+ * is the case that hangs.
+ */
 async function firstWindow(): Promise<BrowserWindow> {
-  await waitForFunction(() => BrowserWindow.getAllWindows().length > 0);
-  return BrowserWindow.getAllWindows()[0];
+  await waitForFunction(() => liveWindows().length > 0, 30000);
+  const parent = liveWindows()[0];
+  if (!parent) {
+    throw new Error('every window closed before the notice could be shown');
+  }
+  return parent;
+}
+
+function liveWindows(): BrowserWindow[] {
+  return BrowserWindow.getAllWindows().filter(win => !win.isDestroyed());
 }
 
 function revealConfigFiles(files: readonly string[]): void {

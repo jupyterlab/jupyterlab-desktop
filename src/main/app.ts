@@ -848,7 +848,7 @@ export class JupyterApplication implements IApplication, IDisposable {
       EventTypeMain.SetPythonEnvironmentInstallDirectory,
       async (event, dirPath) => {
         userSettings.setValue(SettingType.pythonEnvsPath, dirPath);
-        this._saveUserSettingsOrWarn();
+        this._saveUserSettingsOrWarn(event.sender);
       }
     );
 
@@ -856,7 +856,7 @@ export class JupyterApplication implements IApplication, IDisposable {
       EventTypeMain.SetCondaPath,
       async (event, condaPath) => {
         userSettings.setValue(SettingType.condaPath, condaPath);
-        this._saveUserSettingsOrWarn();
+        this._saveUserSettingsOrWarn(event.sender);
       }
     );
 
@@ -866,7 +866,7 @@ export class JupyterApplication implements IApplication, IDisposable {
         const channelList =
           condaChannels.trim() === '' ? [] : condaChannels.split(' ');
         userSettings.setValue(SettingType.condaChannels, channelList);
-        this._saveUserSettingsOrWarn();
+        this._saveUserSettingsOrWarn(event.sender);
       }
     );
 
@@ -874,7 +874,7 @@ export class JupyterApplication implements IApplication, IDisposable {
       EventTypeMain.SetSystemPythonPath,
       async (event, pythonPath) => {
         userSettings.setValue(SettingType.systemPythonPath, pythonPath);
-        this._saveUserSettingsOrWarn();
+        this._saveUserSettingsOrWarn(event.sender);
       }
     );
 
@@ -1025,7 +1025,7 @@ export class JupyterApplication implements IApplication, IDisposable {
       EventTypeMain.SetDefaultPythonPath,
       (event, path) => {
         userSettings.setValue(SettingType.pythonPath, path);
-        this._saveUserSettingsOrWarn();
+        this._saveUserSettingsOrWarn(event.sender);
         this._registry.setDefaultPythonPath(path);
       }
     );
@@ -1320,17 +1320,25 @@ export class JupyterApplication implements IApplication, IDisposable {
    * A refused write is silent otherwise: the dialog closes as if the change
    * took, and the only trace is a log line. The CLI reports the same case.
    */
-  private _saveUserSettingsOrWarn(): void {
+  private _saveUserSettingsOrWarn(sender: Electron.WebContents): void {
     if (userSettings.save()) {
       return;
     }
 
-    dialog.showMessageBox({
+    const options: Electron.MessageBoxOptions = {
       type: 'warning',
       title: 'Setting was not saved',
       message: 'The settings file could not be written, so the change is lost.',
       detail: `${UserSettings.getUserSettingsPath()}\n\nSee the log for the reason. A file that could not be read at startup is left alone until it is repaired or reset.`
-    });
+    };
+
+    // parented, because a box without one runs synchronously on macOS by
+    // Electron's own note, and this is called from inside an IPC handler
+    const parent = BrowserWindow.fromWebContents(sender);
+    const shown = parent
+      ? dialog.showMessageBox(parent, options)
+      : dialog.showMessageBox(options);
+    shown.catch(error => log.error(error));
   }
 
   private _quit(): void {

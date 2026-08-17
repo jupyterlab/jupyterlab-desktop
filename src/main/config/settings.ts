@@ -130,6 +130,10 @@ export class Setting<T> {
     return this?._options?.wsOverridable;
   }
 
+  get allowed(): readonly unknown[] | undefined {
+    return this?._options?.allowed;
+  }
+
   setToDefault() {
     this._value = this._defaultValue;
   }
@@ -143,6 +147,9 @@ export class Setting<T> {
 export namespace Setting {
   export interface IOptions {
     wsOverridable?: boolean;
+    // the members a value has to be one of, for settings whose type is an enum
+    // the config file cannot carry
+    allowed?: readonly unknown[];
   }
 }
 
@@ -160,7 +167,9 @@ export class UserSettings {
       Also, JupyterLab theme is stored as user settings in {USER_DATA}/jupyterlab-desktop/lab/.
       An individual working-dir cannot have a different theme with common lab settings.
       */
-      theme: new Setting<ThemeType>(ThemeType.System),
+      theme: new Setting<ThemeType>(ThemeType.System, {
+        allowed: Object.values(ThemeType)
+      }),
       syncJupyterLabTheme: new Setting<boolean>(true),
 
       defaultWorkingDirectory: new Setting<string>(''),
@@ -171,11 +180,17 @@ export class UserSettings {
       }),
       serverEnvVars: new Setting<KeyValueMap>({}, { wsOverridable: true }),
 
-      startupMode: new Setting<StartupMode>(StartupMode.WelcomePage),
+      startupMode: new Setting<StartupMode>(StartupMode.WelcomePage, {
+        allowed: Object.values(StartupMode)
+      }),
 
-      ctrlWBehavior: new Setting<CtrlWBehavior>(CtrlWBehavior.CloseTab),
+      ctrlWBehavior: new Setting<CtrlWBehavior>(CtrlWBehavior.CloseTab, {
+        allowed: Object.values(CtrlWBehavior)
+      }),
 
-      logLevel: new Setting<string>(LogLevel.Warn),
+      logLevel: new Setting<string>(LogLevel.Warn, {
+        allowed: Object.values(LogLevel)
+      }),
 
       condaPath: new Setting<string>(''),
       systemPythonPath: new Setting<string>(''),
@@ -183,9 +198,12 @@ export class UserSettings {
       condaChannels: new Setting<string[]>(['conda-forge']),
 
       uiMode: new Setting<UIMode>(UIMode.ManagedByWebApp, {
-        wsOverridable: true
+        wsOverridable: true,
+        allowed: Object.values(UIMode)
       }),
-      uiModeForSingleFileOpen: new Setting<UIMode>(UIMode.Zen),
+      uiModeForSingleFileOpen: new Setting<UIMode>(UIMode.Zen, {
+        allowed: Object.values(UIMode)
+      }),
       showTOCInZenMode: new Setting<boolean>(false)
     };
 
@@ -256,11 +274,16 @@ export class UserSettings {
    * for every object-valued setting.
    */
   protected _hasShapeOf(value: any, key: string): boolean {
-    const reference = this._settings[key].defaultValue;
+    const setting = this._settings[key];
+    const reference = setting.defaultValue;
+    const allowed = setting.allowed;
     const matches =
       value !== null &&
       typeof value === typeof reference &&
-      Array.isArray(value) === Array.isArray(reference);
+      Array.isArray(value) === Array.isArray(reference) &&
+      // the type alone lets any string stand in for an enum, and one that
+      // matches no branch is taken silently by whatever switches on it
+      (allowed === undefined || allowed.includes(value));
 
     if (!matches) {
       log.error(`Ignoring "${key}", its value has the wrong shape`);

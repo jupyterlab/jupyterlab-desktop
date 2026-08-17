@@ -25,8 +25,13 @@ async function launchWith(files: { [name: string]: string }) {
     args: ['.', `--user-data-dir=${userDataDir}`],
     env: { ...process.env, HOME: jupyterDir }
   });
+  // same order and the same retry as helpers.ts launchApp: stubAllDialogs
+  // evaluates the main process, and at launch a window can be mid-navigation
   await app.firstWindow();
-  await stubAllDialogs(app);
+  await stubAllDialogs(app).catch(async () => {
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    await stubAllDialogs(app);
+  });
 
   return {
     app,
