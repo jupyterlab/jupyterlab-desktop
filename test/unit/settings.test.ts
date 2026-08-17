@@ -190,4 +190,23 @@ describe('UserSettings', () => {
     expect(written).toHaveProperty('theme', ThemeType.Light);
     expect(written).not.toHaveProperty('logLevel');
   });
+
+  it('writes back a key it has no setting for', () => {
+    // save rebuilds the file, so a key left out of it is a key deleted from
+    // disk: a settings.json written by a newer build loses whatever this one
+    // does not recognise, and troubleshoot.md sends people to edit this by hand
+    mockFs.existsSync = vi.fn(() => true);
+    mockFs.readFileSync = vi.fn(() =>
+      Buffer.from(JSON.stringify({ futureSetting: 42, theme: 'dark' }))
+    ) as any;
+    mockFs.writeFileSync = vi.fn();
+
+    const us = new UserSettings(true);
+    us.save();
+
+    const written = JSON.parse(
+      (mockFs.writeFileSync as any).mock.calls[0][1] as string
+    );
+    expect(written).toEqual({ futureSetting: 42, theme: 'dark' });
+  });
 });

@@ -169,3 +169,65 @@ describe('WorkspaceSettings save', () => {
     expect(mockFs.writeFileSync).not.toHaveBeenCalled();
   });
 });
+
+describe('WorkspaceSettings — keys it does not claim', () => {
+  const written = () =>
+    JSON.parse(vi.mocked(fs.writeFileSync).mock.calls[0][1] as string);
+
+  beforeEach(() => {
+    mockFs.existsSync = vi.fn(() => true);
+    mockFs.writeFileSync = vi.fn();
+    mockFs.mkdirSync = vi.fn();
+    mockFs.readFileSync = vi.fn((p: fs.PathLike | fs.promises.FileHandle) => {
+      if (p.toString().includes('desktop-settings.json')) {
+        // uiMode is overridable, theme is not, futureProjectSetting is unknown
+        return Buffer.from(
+          JSON.stringify({
+            uiMode: 'zen',
+            theme: 'dark',
+            futureProjectSetting: 7
+          })
+        );
+      }
+      return Buffer.from(JSON.stringify({ futureGlobalSetting: 42 }));
+    });
+  });
+
+  it('writes back a key this build has no setting for', () => {
+    const ws = new WorkspaceSettings('/data/nb');
+
+    ws.save();
+
+    expect(written().futureProjectSetting).toBe(7);
+  });
+
+  it('writes back a key that is not overridable by a project', () => {
+    const ws = new WorkspaceSettings('/data/nb');
+
+    ws.save();
+
+    // meaningless in a project file, but deleting somebody's line is worse
+    expect(written().theme).toBe('dark');
+  });
+
+  it('keeps the global file-s leftovers out of the project file', () => {
+    const ws = new WorkspaceSettings('/data/nb');
+
+    ws.save();
+
+    // super.read() fills the base class from settings.json, and this class
+    // writes desktop-settings.json: one set each, or they cross over
+    expect('futureGlobalSetting' in written()).toBe(false);
+  });
+
+  it('drops a leftover when that key is explicitly unset', () => {
+    const ws = new WorkspaceSettings('/data/nb');
+
+    // theme, because the CLI refuses a key outside SettingType, so a name this
+    // build does not know is not a reachable input to unsetValue
+    ws.unsetValue(SettingType.theme);
+    ws.save();
+
+    expect('theme' in written()).toBe(false);
+  });
+});

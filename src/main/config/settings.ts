@@ -213,17 +213,19 @@ export class UserSettings {
     const data = fs.readFileSync(userSettingsPath);
     const jsonData = JSON.parse(data.toString());
 
-    for (let key in SettingType) {
-      if (key in jsonData) {
-        const setting = this._settings[key];
-        setting.value = jsonData[key];
+    this._unclaimed = {};
+    for (const key of Object.keys(jsonData)) {
+      if (key in SettingType) {
+        this._settings[key].value = jsonData[key];
+      } else {
+        this._unclaimed[key] = jsonData[key];
       }
     }
   }
 
   save() {
     const userSettingsPath = UserSettings.getUserSettingsPath();
-    const userSettings: { [key: string]: any } = {};
+    const userSettings: { [key: string]: any } = { ...this._unclaimed };
 
     for (let key in SettingType) {
       const setting = this._settings[key];
@@ -241,6 +243,9 @@ export class UserSettings {
     );
   }
 
+  // what the file held and this build had no setting for. Kept because save
+  // rebuilds the file, so a key left out of it is a key deleted from disk.
+  protected _unclaimed: { [key: string]: any } = {};
   protected _settings: { [key: string]: Setting<any> };
 }
 
@@ -278,6 +283,7 @@ export class WorkspaceSettings extends UserSettings {
 
   unsetValue(setting: SettingType) {
     delete this._wsSettings[setting];
+    delete this._wsUnclaimed[setting];
   }
 
   read() {
@@ -292,13 +298,15 @@ export class WorkspaceSettings extends UserSettings {
     const data = fs.readFileSync(wsSettingsPath);
     const jsonData = JSON.parse(data.toString());
 
-    for (let key in SettingType) {
-      if (key in jsonData) {
-        const userSetting = this._settings[key];
-        if (userSetting.wsOverridable) {
-          this._wsSettings[key] = Object.assign({}, userSetting);
-          this._wsSettings[key].value = jsonData[key];
-        }
+    this._wsUnclaimed = {};
+    for (const key of Object.keys(jsonData)) {
+      const userSetting = key in SettingType ? this._settings[key] : undefined;
+      if (userSetting?.wsOverridable) {
+        this._wsSettings[key] = Object.assign({}, userSetting);
+        this._wsSettings[key].value = jsonData[key];
+      } else {
+        // not overridable by a project, or not a setting this build knows
+        this._wsUnclaimed[key] = jsonData[key];
       }
     }
   }
@@ -307,7 +315,7 @@ export class WorkspaceSettings extends UserSettings {
     const wsSettingsPath = WorkspaceSettings.getWorkspaceSettingsPath(
       this._workingDirectory
     );
-    const wsSettings: { [key: string]: any } = {};
+    const wsSettings: { [key: string]: any } = { ...this._wsUnclaimed };
 
     // uiMode needs special handling, it needs to be saved even if same as global default.
     // this is due to automatically setting uiMode to Zen for default for opening single file
@@ -348,6 +356,7 @@ export class WorkspaceSettings extends UserSettings {
     return path.join(workingDirectory, '.jupyter', 'desktop-settings.json');
   }
 
+  private _wsUnclaimed: { [key: string]: any } = {};
   private _workingDirectory: string;
   private _wsSettings: { [key: string]: Setting<any> } = {};
 }
