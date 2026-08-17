@@ -1,4 +1,4 @@
-import { app, dialog, Menu, MenuItem, shell } from 'electron';
+import { app, BrowserWindow, dialog, Menu, MenuItem, shell } from 'electron';
 
 // Update paths to prevent Snap saving persistent data to version specific paths.
 // (Must be called before any other initialization)
@@ -225,9 +225,6 @@ app.on('ready', async () => {
 
   try {
     await handleMultipleAppInstances();
-    // first, since the log level, the environments directory and the bundled
-    // env decision below all read settings that just reverted to defaults
-    reportUnreadableConfig();
     await updateBundledPythonEnvInstallation();
     redirectConsoleToLog();
     setApplicationMenu();
@@ -235,6 +232,7 @@ app.on('ready', async () => {
     createPythonEnvsDirectory();
     argv.cwd = process.cwd();
     jupyterApp = new JupyterApplication((argv as unknown) as ICLIArguments);
+    reportUnreadableConfig();
   } catch (error) {
     log.error(error);
     app.quit();
@@ -261,55 +259,73 @@ function reportUnreadableConfig(): void {
     `values back up.\n\n${fileList}\n\n` +
     `Reset to Defaults keeps a copy alongside, with a .corrupt suffix.`;
 
-  // sync, so the answer lands before the constructor runs, and caught, since
-  // the ready handler's catch would turn a display-less box into "do not start"
-  let response: number;
+  // Waits for a window and hands it over as the parent. Electron's dialog docs
+  // note that on macOS a message box with no parent "runs synchronously due to
+  // platform limitations", so showing this before the first window blocks the
+  // whole startup until somebody clicks: an app launched at login or over a
+  // remote session never comes up, and the e2e harness cannot get past it.
+  firstWindow()
+    .then(parent =>
+      dialog.showMessageBox(parent, {
+        type: 'warning',
+        title: 'Configuration could not be read',
+        message:
+          files.length === 1
+            ? 'A configuration file could not be read, so this session started with defaults.'
+            : 'Some configuration files could not be read, so this session started with defaults.',
+        detail,
+        buttons: ['Show in Folder', 'Reset to Defaults', 'Continue'],
+        defaultId: 2,
+        cancelId: 2
+      })
+    )
+    .then(({ response }) => {
+      if (response === 0) {
+        revealConfigFiles(files);
+      } else if (response === 1) {
+        reportFailedResets(files.filter(file => !resetConfigFile(file)));
+      }
+    })
+    .catch(error =>
+      log.error('Could not show the unreadable configuration notice', error)
+    );
+}
+
+/** The parent a message box needs so that showing it does not block startup. */
+async function firstWindow(): Promise<BrowserWindow> {
+  await waitForFunction(() => BrowserWindow.getAllWindows().length > 0);
+  return BrowserWindow.getAllWindows()[0];
+}
+
+function revealConfigFiles(files: readonly string[]): void {
   try {
-    response = dialog.showMessageBoxSync({
-      type: 'warning',
-      title: 'Configuration could not be read',
-      message:
-        files.length === 1
-          ? 'A configuration file could not be read, so this session started with defaults.'
-          : 'Some configuration files could not be read, so this session started with defaults.',
-      detail,
-      buttons: ['Show in Folder', 'Reset to Defaults', 'Continue'],
-      defaultId: 2,
-      cancelId: 2
-    });
+    // one window per folder, since two config files can share a directory
+    new Map(
+      files.map(filePath => [path.dirname(filePath), filePath])
+    ).forEach(filePath => shell.showItemInFolder(filePath));
   } catch (error) {
-    log.error('Could not show the unreadable configuration notice', error);
+    log.error('Could not reveal the configuration files', error);
+  }
+}
+
+function reportFailedResets(stuck: string[]): void {
+  if (stuck.length === 0) {
     return;
   }
 
-  if (response === 0) {
-    // one window per folder, since two config files can share a directory.
-    // Guarded like the dialogs: this runs inside the ready handler's try
-    try {
-      new Map(
-        files.map(filePath => [path.dirname(filePath), filePath])
-      ).forEach(filePath => shell.showItemInFolder(filePath));
-    } catch (error) {
-      log.error('Could not reveal the configuration files', error);
-    }
-  } else if (response === 1) {
-    const stuck = files.filter(filePath => !resetConfigFile(filePath));
-    if (stuck.length > 0) {
-      try {
-        dialog.showMessageBoxSync({
-          type: 'error',
-          title: 'Configuration could not be moved aside',
-          message:
-            stuck.length === 1
-              ? 'The file is still in place, so this session keeps its defaults.'
-              : 'The files are still in place, so this session keeps its defaults.',
-          detail: `${stuck.join('\n')}\n\nSee the log for the reason.`
-        });
-      } catch (error) {
-        log.error('Could not show the failed reset notice', error);
-      }
-    }
-  }
+  firstWindow()
+    .then(parent =>
+      dialog.showMessageBox(parent, {
+        type: 'error',
+        title: 'Configuration could not be moved aside',
+        message:
+          stuck.length === 1
+            ? 'The file is still in place, so this session keeps its defaults.'
+            : 'The files are still in place, so this session keeps its defaults.',
+        detail: `${stuck.join('\n')}\n\nSee the log for the reason.`
+      })
+    )
+    .catch(error => log.error('Could not show the failed reset notice', error));
 }
 
 function processArgs(): Promise<void> {
