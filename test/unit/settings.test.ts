@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import * as fs from 'fs';
 
 vi.mock('fs', async () => {
@@ -10,7 +10,14 @@ vi.mock('fs', async () => {
     mkdirSync: vi.fn(),
     writeFileSync: vi.fn(),
     readFileSync: vi.fn(),
-    renameSync: vi.fn()
+    renameSync: vi.fn(),
+    realpathSync: vi.fn((target: any) => target),
+    chownSync: vi.fn(),
+    fchmodSync: vi.fn(),
+    openSync: vi.fn(() => 7),
+    fsyncSync: vi.fn(),
+    closeSync: vi.fn(),
+    unlinkSync: vi.fn()
   };
 });
 
@@ -29,6 +36,7 @@ import {
   UIMode,
   UserSettings
 } from '../../src/main/config/settings';
+import { resetConfigFile } from '../../src/main/utils';
 
 const mockFs = vi.mocked(fs);
 
@@ -42,6 +50,18 @@ beforeEach(() => {
   mockFs.writeFileSync = vi.fn();
   mockFs.readFileSync = vi.fn();
   mockFs.renameSync = vi.fn();
+  mockFs.realpathSync = vi.fn((target: any) => target) as any;
+  mockFs.statSync = vi.fn(() => {
+    throw Object.assign(new Error('ENOENT'), { code: 'ENOENT' });
+  }) as any;
+  mockFs.chownSync = vi.fn();
+  mockFs.fchmodSync = vi.fn();
+  // the config write goes to a sibling temporary and is renamed over the
+  // target, so these three stand between save() and the real filesystem
+  mockFs.openSync = vi.fn(() => 7) as any;
+  mockFs.fsyncSync = vi.fn();
+  mockFs.closeSync = vi.fn();
+  mockFs.unlinkSync = vi.fn();
 });
 
 describe('constants', () => {
@@ -129,7 +149,7 @@ describe('resolveWorkingDirectory', () => {
 
   it('resets to home when path does not exist', () => {
     mockFs.lstatSync = vi.fn(() => {
-      throw new Error('ENOENT');
+      throw Object.assign(new Error('ENOENT'), { code: 'ENOENT' });
     });
     const result = resolveWorkingDirectory('/nonexistent/path');
     expect(result).not.toBe('/nonexistent/path');
@@ -137,7 +157,7 @@ describe('resolveWorkingDirectory', () => {
 
   it('keeps invalid path when resetIfInvalid is false', () => {
     mockFs.lstatSync = vi.fn(() => {
-      throw new Error('ENOENT');
+      throw Object.assign(new Error('ENOENT'), { code: 'ENOENT' });
     });
     const result = resolveWorkingDirectory('/bad/path', false);
     expect(result).toBe('/bad/path');
@@ -175,6 +195,15 @@ describe('Setting', () => {
 });
 
 describe('UserSettings', () => {
+  // the unreadable-config list is module state keyed by path, and every
+  // UserSettings here reads the same path, so a test that leaves one marked
+  // would decide the outcome of the next
+  afterEach(() => {
+    mockFs.existsSync = vi.fn(() => false);
+    mockFs.renameSync = vi.fn();
+    resetConfigFile(UserSettings.getUserSettingsPath());
+  });
+
   it('getValue returns the default before any change', () => {
     const us = new UserSettings(false);
     expect(us.getValue(SettingType.theme)).toBe(ThemeType.System);
@@ -202,6 +231,42 @@ describe('UserSettings', () => {
     const us = new UserSettings(true);
 
     expect(us.getValue(SettingType.theme)).toBe(ThemeType.System);
+  });
+
+  it('does not save defaults over a settings.json it could not read', () => {
+    mockFs.existsSync = vi.fn(() => true);
+    mockFs.readFileSync = vi.fn(() => Buffer.from('{"theme": "dark",}')) as any;
+
+    const us = new UserSettings(true);
+    us.save();
+
+    expect(mockFs.openSync).not.toHaveBeenCalled();
+    expect(mockFs.writeFileSync).not.toHaveBeenCalled();
+    expect(mockFs.renameSync).not.toHaveBeenCalled();
+  });
+
+  it('ignores a value whose shape does not match the default', () => {
+    mockFs.existsSync = vi.fn(() => true);
+    mockFs.readFileSync = vi.fn(() =>
+      Buffer.from(JSON.stringify({ condaChannels: 'conda-forge' }))
+    ) as any;
+
+    const us = new UserSettings(true);
+
+    // a string here would reach join() later and throw there instead
+    expect(us.getValue(SettingType.condaChannels)).toEqual(['conda-forge']);
+  });
+
+  it('ignores null, which typeof calls an object', () => {
+    mockFs.existsSync = vi.fn(() => true);
+    mockFs.readFileSync = vi.fn(() =>
+      Buffer.from(JSON.stringify({ serverEnvVars: null }))
+    ) as any;
+
+    const us = new UserSettings(true);
+
+    // the settings dialog runs Object.keys on this
+    expect(us.getValue(SettingType.serverEnvVars)).toEqual({});
   });
 
   it('applies the values it finds in a valid settings.json', () => {

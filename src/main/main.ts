@@ -5,16 +5,18 @@ import { app, dialog, Menu, MenuItem, shell } from 'electron';
 updatePathsForSnap();
 
 import * as fs from 'fs';
+import * as path from 'path';
 import * as semver from 'semver';
 import {
   bundledEnvironmentIsInstalled,
   EnvironmentInstallStatus,
   getBundledPythonEnvPath,
   getBundledPythonPath,
-  getQuarantinedConfigFiles,
+  getUnreadableConfigFiles,
   installBundledEnvironment,
   isDevMode,
   jlabCLICommandIsSetup,
+  resetConfigFile,
   setupJlabCommandWithUserRights,
   versionWithoutSuffix,
   waitForDuration,
@@ -223,15 +225,15 @@ app.on('ready', async () => {
 
   try {
     await handleMultipleAppInstances();
+    // first, since the log level, the environments directory and the bundled
+    // env decision below all read settings that just reverted to defaults
+    reportUnreadableConfig();
     await updateBundledPythonEnvInstallation();
     redirectConsoleToLog();
     setApplicationMenu();
     setupJLabCommand();
     createPythonEnvsDirectory();
     argv.cwd = process.cwd();
-    // before the constructor: if that throws, the catch quits, and a user whose
-    // settings were just quarantined would get the silent exit twice over
-    reportUnreadableConfig();
     jupyterApp = new JupyterApplication((argv as unknown) as ICLIArguments);
   } catch (error) {
     log.error(error);
@@ -246,32 +248,68 @@ app.on('ready', async () => {
  * is worth interrupting for rather than leaving in a log nobody opens.
  */
 function reportUnreadableConfig(): void {
-  const files = getQuarantinedConfigFiles();
+  const files = getUnreadableConfigFiles();
   if (files.length === 0) {
     return;
   }
 
-  dialog
-    .showMessageBox({
+  const fileList = files.join('\n');
+  const them = files.length === 1 ? 'it' : 'them';
+  const detail =
+    `Nothing was moved or deleted, and settings will not be saved over ${them} ` +
+    `until the problem is gone. Editing by hand and restarting picks the ` +
+    `values back up.\n\n${fileList}\n\n` +
+    `Reset to Defaults keeps a copy alongside, with a .corrupt suffix.`;
+
+  // sync, so the answer lands before the constructor runs, and caught, since
+  // the ready handler's catch would turn a display-less box into "do not start"
+  let response: number;
+  try {
+    response = dialog.showMessageBoxSync({
       type: 'warning',
       title: 'Configuration could not be read',
       message:
         files.length === 1
           ? 'A configuration file could not be read, so this session started with defaults.'
           : 'Some configuration files could not be read, so this session started with defaults.',
-      detail: `Nothing was deleted. Each is still on disk, here:\n\n${files.join(
-        '\n'
-      )}`,
-      buttons: ['Show in Folder', 'Continue'],
-      defaultId: 1,
-      cancelId: 1
-    })
-    .then(({ response }) => {
-      if (response === 0) {
-        shell.showItemInFolder(files[0]);
+      detail,
+      buttons: ['Show in Folder', 'Reset to Defaults', 'Continue'],
+      defaultId: 2,
+      cancelId: 2
+    });
+  } catch (error) {
+    log.error('Could not show the unreadable configuration notice', error);
+    return;
+  }
+
+  if (response === 0) {
+    // one window per folder, since two config files can share a directory.
+    // Guarded like the dialogs: this runs inside the ready handler's try
+    try {
+      new Map(
+        files.map(filePath => [path.dirname(filePath), filePath])
+      ).forEach(filePath => shell.showItemInFolder(filePath));
+    } catch (error) {
+      log.error('Could not reveal the configuration files', error);
+    }
+  } else if (response === 1) {
+    const stuck = files.filter(filePath => !resetConfigFile(filePath));
+    if (stuck.length > 0) {
+      try {
+        dialog.showMessageBoxSync({
+          type: 'error',
+          title: 'Configuration could not be moved aside',
+          message:
+            stuck.length === 1
+              ? 'The file is still in place, so this session keeps its defaults.'
+              : 'The files are still in place, so this session keeps its defaults.',
+          detail: `${stuck.join('\n')}\n\nSee the log for the reason.`
+        });
+      } catch (error) {
+        log.error('Could not show the failed reset notice', error);
       }
-    })
-    .catch(error => log.error(error));
+    }
+  }
 }
 
 function processArgs(): Promise<void> {

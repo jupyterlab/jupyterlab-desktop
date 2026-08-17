@@ -62,75 +62,283 @@ export function getSchemasDir(): string {
   return path.normalize(path.join(getAppDir(), './build/schemas'));
 }
 
-const quarantinedConfigFiles: string[] = [];
+const unreadableConfigFiles = new Set<string>();
 
-/**
- * Where each config file that could not be read this run now sits: its
- * quarantine name, or its original path when moving it aside failed. Reading
- * happens during module import, long before a window exists, so whoever wants
- * to tell the user has to ask afterwards.
- */
-export function getQuarantinedConfigFiles(): readonly string[] {
-  return quarantinedConfigFiles;
+/** Reading happens during module import, so the notice is pulled afterwards. */
+export function getUnreadableConfigFiles(): readonly string[] {
+  return [...unreadableConfigFiles];
+}
+
+export function configFileIsUnreadable(filePath: string): boolean {
+  return unreadableConfigFiles.has(filePath);
 }
 
 /**
- * Read a JSON config file, or undefined when it is absent or unusable. Config
- * is read while the modules that hold it are still being imported, so throwing
- * here kills the app before a window exists (#824). An unusable file is moved
- * aside rather than left for the next save to overwrite.
+ * Config is read while the modules holding it are still being imported, so
+ * throwing here kills the app before a window exists (#824).
+ *
+ * A marked file yields nothing for the rest of the run, whatever it holds
+ * later: the object built at import still has defaults, and two readers of one
+ * file must not disagree. Only a restart, or Reset to Defaults, clears it.
  */
 export function readJsonConfigFile(
   filePath: string
 ): Record<string, any> | undefined {
+  // handing a later reader the repaired values while the object built at
+  // import still holds defaults would leave two views of the same file
+  if (unreadableConfigFiles.has(filePath)) {
+    return undefined;
+  }
+
   let contents: string;
   try {
-    if (!fs.existsSync(filePath)) {
-      return undefined;
-    }
     contents = fs.readFileSync(filePath).toString();
   } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+      return undefined;
+    }
     log.error(`Failed to read ${filePath}, continuing with defaults`, error);
+    unreadableConfigFiles.add(filePath);
+    return undefined;
+  }
+
+  // an empty file has nothing worth protecting, so it is not marked; neither
+  // is the mark lifted, since an editor mid truncate-then-write looks like this
+  if (contents.trim() === '') {
     return undefined;
   }
 
   try {
-    // a settings.json saved by Notepad or PowerShell's Out-File carries a BOM,
-    // which JSON.parse rejects; that file is fine and must not be quarantined
+    // Notepad and Set-Content -Encoding UTF8 leave a UTF-8 BOM JSON.parse rejects
     const parsed = JSON.parse(contents.replace(/^\uFEFF/, ''));
-    // callers walk this with `key in parsed`, which throws on a primitive and
-    // finds nothing on an array, so neither is any more usable than a parse
-    // failure and both belong on the same path
-    if (
-      parsed !== null &&
-      typeof parsed === 'object' &&
-      !Array.isArray(parsed)
-    ) {
+    // callers walk it with `key in parsed`, which an array or a primitive survives
+    if (isPlainObject(parsed)) {
       return parsed;
     }
+    log.error(`${filePath} holds no JSON object, continuing with defaults`);
   } catch (error) {
     log.error(`Failed to parse ${filePath}, continuing with defaults`, error);
   }
 
-  // a fixed suffix would overwrite the copy kept from an earlier corruption,
-  // which is the one thing the notice promises will not happen. Bounded: after
-  // enough of them the oldest is worth less than a loop that cannot end.
-  let quarantinePath = `${filePath}.corrupt`;
-  for (let n = 1; n <= 20 && fs.existsSync(quarantinePath); n++) {
-    quarantinePath = `${filePath}.corrupt.${n}`;
-  }
-  try {
-    fs.renameSync(filePath, quarantinePath);
-    log.error(`Moved the unusable config to ${quarantinePath}`);
-    quarantinedConfigFiles.push(quarantinePath);
-  } catch (error) {
-    // the file stays where it is, so the next startup hits it again: the case
-    // that most needs saying out loud, not the one to stay quiet about
-    log.error(`Failed to move ${filePath} aside`, error);
-    quarantinedConfigFiles.push(filePath);
+  unreadableConfigFiles.add(filePath);
+  return undefined;
+}
+
+/**
+ * Write through a sibling temporary and rename, so a process that dies halfway
+ * leaves the previous file whole rather than the truncated one #824 is made
+ * of. A file that could not be read is skipped: it still holds what the user
+ * put there, and every value in memory is a default.
+ *
+ * The target is resolved first, so a config symlinked into a dotfiles repo
+ * keeps its link and its atomicity instead of trading one for the other;
+ * write-file-atomic and atomically both resolve the same way.
+ *
+ * Reports failure rather than throwing, since will-quit calls this between
+ * preventDefault and quit.
+ */
+export function writeJsonConfigFile(filePath: string, data: unknown): boolean {
+  if (unreadableConfigFiles.has(filePath)) {
+    log.error(`Not writing ${filePath}, it could not be read this session`);
+    return false;
   }
 
-  return undefined;
+  // one lstat answers both "is it a link" and "what mode and owner does it
+  // have"; realpath walks the path with an lstat per component
+  let targetPath = filePath;
+  let existing = statOrUndefined(filePath, fs.lstatSync);
+  if (existing?.isSymbolicLink()) {
+    targetPath = resolveConfigPath(filePath);
+    existing = statOrUndefined(targetPath);
+  }
+
+  // the pid keeps a second instance from writing through the same temporary
+  const tempPath = `${targetPath}.${process.pid}.tmp`;
+  let fd: number | undefined;
+
+  try {
+    // inside the try: a getter that throws would otherwise escape a function
+    // whose callers are documented not to have to catch
+    const contents = JSON.stringify(data, null, 2);
+    // recursive is a no-op when the directory is already there, and checking
+    // first only opens a race window
+    fs.mkdirSync(path.dirname(targetPath), { recursive: true });
+    fd = fs.openSync(tempPath, 'w');
+    if (existing) {
+      // chmod, not openSync's mode, which the umask narrows on the way through
+      fs.fchmodSync(fd, existing.mode & 0o777);
+    }
+    fs.writeFileSync(fd, contents);
+    // rename publishes the name, not the bytes: without this a power cut can
+    // leave a good filename on an empty file
+    fs.fsyncSync(fd);
+    fs.closeSync(fd);
+    fd = undefined;
+    carryOwnership(tempPath, existing);
+    fs.renameSync(tempPath, targetPath);
+    syncDirectoryEntry(targetPath);
+    return true;
+  } catch (error) {
+    closeQuietly(fd);
+    try {
+      fs.unlinkSync(tempPath);
+    } catch {
+      // it may never have been created
+    }
+    log.error(`Failed to write ${filePath}`, error);
+    return false;
+  }
+}
+
+/**
+ * The rename writes a new directory entry, and https://lwn.net/Articles/457667/
+ * notes that on some filesystems that entry only survives a power cut once the
+ * directory itself is flushed. Best effort: Windows cannot open a directory for
+ * reading, and by this point the contents are already on disk either way.
+ */
+function syncDirectoryEntry(filePath: string): void {
+  if (process.platform === 'win32') {
+    return;
+  }
+
+  let fd: number | undefined;
+  try {
+    fd = fs.openSync(path.dirname(filePath), 'r');
+    fs.fsyncSync(fd);
+  } catch (error) {
+    // best effort by design, and a filesystem that refuses would otherwise put
+    // a line in the log on every single save
+    log.debug(`Could not flush the directory of ${filePath}`, error);
+  } finally {
+    closeQuietly(fd);
+  }
+}
+
+/**
+ * Config files hold values a person can edit, and each one is handed to
+ * something that assumes its type. These live here because appdata.ts and
+ * sessionconfig.ts both need them and already import a cycle apart.
+ */
+export function dateFromConfig(value: unknown): Date {
+  const date = new Date(value as any);
+  // the epoch sorts to the bottom of the recent lists, which is where an entry
+  // that lost its timestamp belongs
+  return isNaN(date.getTime()) ? new Date(0) : date;
+}
+
+export function isPlainObject(value: unknown): value is Record<string, any> {
+  return value !== null && typeof value === 'object' && !Array.isArray(value);
+}
+
+export function stringFromConfig(value: unknown): string | undefined {
+  return typeof value === 'string' ? value : undefined;
+}
+
+export function stringsFromConfig(value: unknown): string[] {
+  return Array.isArray(value)
+    ? value.filter((item): item is string => typeof item === 'string')
+    : [];
+}
+
+/** Closing is cleanup on paths that already failed; only the leak matters. */
+function closeQuietly(fd: number | undefined): void {
+  if (fd === undefined) {
+    return;
+  }
+  try {
+    fs.closeSync(fd);
+  } catch {
+    // nothing left to salvage
+  }
+}
+
+/**
+ * Where the writing and the moving aside have to happen: the file a config
+ * symlink points at, whether or not that file exists yet. Renaming onto the
+ * link itself would unlink it and hand back a regular file, detaching the user
+ * from wherever it points.
+ */
+function resolveConfigPath(filePath: string): string {
+  try {
+    return fs.realpathSync(filePath);
+  } catch {
+    try {
+      // ENOENT covers nothing-there and a link whose target is missing; only
+      // the second has something left to follow
+      return path.resolve(path.dirname(filePath), fs.readlinkSync(filePath));
+    } catch {
+      return filePath;
+    }
+  }
+}
+
+function statOrUndefined(
+  filePath: string,
+  stat: (target: string) => fs.Stats = fs.statSync
+): fs.Stats | undefined {
+  try {
+    return stat(filePath);
+  } catch {
+    // nothing there yet, so nothing to carry across
+    return undefined;
+  }
+}
+
+/**
+ * A run as root would otherwise leave the config owned by root and the user
+ * unable to write their own settings again. write-file-atomic and atomically
+ * both carry the owner across for the same reason.
+ */
+function carryOwnership(tempPath: string, existing?: fs.Stats): void {
+  if (!existing || process.getuid?.() !== 0) {
+    return;
+  }
+
+  try {
+    fs.chownSync(tempPath, existing.uid, existing.gid);
+  } catch (error) {
+    log.error(`Failed to carry ownership onto ${tempPath}`, error);
+  }
+}
+
+/**
+ * Move an unreadable config aside so a fresh one can take its place. Only ever
+ * runs on request: a file the app moves by itself is one nobody agreed to lose.
+ *
+ * The link is resolved first, so a config symlinked into a dotfiles repo has
+ * the corrupt file moved rather than the link, which would leave the bad JSON
+ * in the repo and quietly detach the user from it.
+ */
+export function resetConfigFile(filePath: string): boolean {
+  const targetPath = resolveConfigPath(filePath);
+
+  // a fixed suffix would overwrite the copy kept from an earlier corruption
+  let quarantinePath = `${targetPath}.corrupt`;
+  for (let n = 1; n <= 20 && fs.existsSync(quarantinePath); n++) {
+    quarantinePath = `${targetPath}.corrupt.${n}`;
+  }
+  if (fs.existsSync(quarantinePath)) {
+    // the first copy is the one still holding real settings, and the rest are
+    // defaults written since, so refuse rather than pick one to destroy
+    log.error(`Every quarantine slot beside ${targetPath} is taken`);
+    return false;
+  }
+
+  try {
+    fs.renameSync(targetPath, quarantinePath);
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+      // already gone, which is the outcome the caller asked for
+      unreadableConfigFiles.delete(filePath);
+      return true;
+    }
+    log.error(`Failed to move ${targetPath} aside`, error);
+    return false;
+  }
+
+  log.info(`Moved the unusable config to ${quarantinePath}`);
+  unreadableConfigFiles.delete(filePath);
+  return true;
 }
 
 export function getRelativePathToUserHome(absolutePath: string): string {

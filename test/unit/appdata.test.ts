@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import * as fs from 'fs';
 
 vi.mock('fs', async () => {
@@ -6,18 +6,69 @@ vi.mock('fs', async () => {
   return {
     ...actual,
     existsSync: vi.fn(() => false),
+    lstatSync: vi.fn(() => {
+      throw Object.assign(new Error('ENOENT'), { code: 'ENOENT' });
+    }),
     readFileSync: vi.fn(() => {
-      throw new Error('ENOENT');
+      throw Object.assign(new Error('ENOENT'), { code: 'ENOENT' });
     }),
     writeFileSync: vi.fn(),
     mkdirSync: vi.fn(),
-    renameSync: vi.fn()
+    renameSync: vi.fn(),
+    realpathSync: vi.fn((target: any) => target),
+    chownSync: vi.fn(),
+    fchmodSync: vi.fn(),
+    openSync: vi.fn(() => 7),
+    fsyncSync: vi.fn(),
+    closeSync: vi.fn(),
+    unlinkSync: vi.fn()
   };
 });
 
 import { appData, ApplicationData } from '../../src/main/config/appdata';
+import {
+  getUnreadableConfigFiles,
+  resetConfigFile
+} from '../../src/main/utils';
 
 const mockFs = vi.mocked(fs);
+
+// Without this, an existsSync or readFileSync left set by one test feeds the
+// next one whatever the previous body returned.
+beforeEach(() => {
+  vi.clearAllMocks();
+  mockFs.existsSync = vi.fn(() => false);
+  mockFs.lstatSync = vi.fn(() => {
+    throw Object.assign(new Error('ENOENT'), { code: 'ENOENT' });
+  }) as any;
+  mockFs.readFileSync = vi.fn(() => {
+    throw Object.assign(new Error('ENOENT'), { code: 'ENOENT' });
+  }) as any;
+  mockFs.writeFileSync = vi.fn();
+  mockFs.mkdirSync = vi.fn();
+  mockFs.renameSync = vi.fn();
+  mockFs.realpathSync = vi.fn((target: any) => target) as any;
+  mockFs.statSync = vi.fn(() => {
+    throw Object.assign(new Error('ENOENT'), { code: 'ENOENT' });
+  }) as any;
+  mockFs.chownSync = vi.fn();
+  mockFs.fchmodSync = vi.fn();
+  mockFs.openSync = vi.fn(() => 7) as any;
+  mockFs.fsyncSync = vi.fn();
+  mockFs.closeSync = vi.fn();
+  mockFs.unlinkSync = vi.fn();
+});
+
+// the unreadable-config list is keyed by path and app-data.json has only one,
+// so a corrupt-read test would otherwise block every save that follows
+afterEach(() => {
+  // the mark now outlives any read, so clearing it takes the same route the
+  // Reset to Defaults button does
+  mockFs.existsSync = vi.fn(() => false);
+  mockFs.renameSync = vi.fn();
+  resetConfigFile(ApplicationData.getAppDataPath());
+  resetAppData();
+});
 
 function resetAppData() {
   appData.pythonPath = '';
@@ -49,14 +100,18 @@ describe('ApplicationData.read', () => {
     resetAppData();
   });
 
-  it('does not read or mutate state when the file does not exist', () => {
-    mockFs.existsSync = vi.fn(() => false);
-    mockFs.readFileSync = vi.fn();
+  it('keeps its state when the file does not exist', () => {
+    mockFs.readFileSync = vi.fn(() => {
+      throw Object.assign(new Error('ENOENT'), { code: 'ENOENT' });
+    }) as any;
     const pythonPathBefore = appData.pythonPath;
+
     appData.read();
-    // the missing-file guard must short-circuit before parsing anything
-    expect(mockFs.readFileSync).not.toHaveBeenCalled();
+
     expect(appData.pythonPath).toBe(pythonPathBefore);
+    expect(getUnreadableConfigFiles()).not.toContain(
+      ApplicationData.getAppDataPath()
+    );
   });
 
   it('keeps its state instead of throwing when the file is corrupt', () => {
@@ -67,6 +122,173 @@ describe('ApplicationData.read', () => {
     appData.read();
 
     expect(appData.pythonPath).toBe('/usr/bin/python3');
+  });
+
+  it('survives junk inside the arrays instead of throwing at import', () => {
+    mockFs.existsSync = vi.fn(() => true);
+    mockFs.readFileSync = vi.fn(() =>
+      Buffer.from(
+        JSON.stringify({
+          sessions: [null],
+          recentSessions: ['not an object'],
+          userSetPythonEnvs: [42],
+          newsList: [null, { title: 'kept', link: 'https://example.org' }]
+        })
+      )
+    ) as any;
+
+    expect(() => appData.read()).not.toThrow();
+    expect(appData.sessions).toHaveLength(0);
+    expect(appData.recentSessions).toHaveLength(0);
+    expect(appData.userSetPythonEnvs).toHaveLength(0);
+    expect(appData.newsList).toEqual([
+      { title: 'kept', link: 'https://example.org' }
+    ]);
+  });
+
+  it('survives a session whose filesToOpen is not a list', () => {
+    mockFs.existsSync = vi.fn(() => true);
+    mockFs.readFileSync = vi.fn(() =>
+      Buffer.from(JSON.stringify({ sessions: [{ filesToOpen: 3 }] }))
+    ) as any;
+
+    expect(() => appData.read()).not.toThrow();
+    expect(appData.sessions[0].filesToOpen).toEqual([]);
+  });
+
+  it('survives entries whose date is missing or unparseable', () => {
+    mockFs.existsSync = vi.fn(() => true);
+    mockFs.readFileSync = vi.fn(() =>
+      Buffer.from(
+        JSON.stringify({
+          recentSessions: [{ workingDirectory: '/nb' }],
+          recentRemoteURLs: [{ url: 'http://x', date: 'whenever' }],
+          sessions: [{ lastOpened: 'whenever' }]
+        })
+      )
+    ) as any;
+
+    appData.read();
+
+    // save() calls toISOString on each of these; an Invalid Date throws there,
+    // and save() runs from will-quit after preventDefault
+    expect(() => appData.save()).not.toThrow();
+  });
+
+  it('drops a partition that is not a string', () => {
+    mockFs.existsSync = vi.fn(() => true);
+    mockFs.readFileSync = vi.fn(() =>
+      Buffer.from(
+        JSON.stringify({
+          recentSessions: [
+            { workingDirectory: '/nb', partition: 42, date: '2024-01-01' }
+          ]
+        })
+      )
+    ) as any;
+
+    appData.read();
+
+    // startsWith is called on this when a recent session is removed
+    expect(appData.recentSessions[0].partition).toBeUndefined();
+  });
+
+  it('does not turn a mangled persistSessionData into persistence', () => {
+    mockFs.existsSync = vi.fn(() => true);
+    mockFs.readFileSync = vi.fn(() =>
+      Buffer.from(JSON.stringify({ sessions: [{ persistSessionData: null }] }))
+    ) as any;
+
+    appData.read();
+
+    // this decides whether a remote server's cookies land on disk
+    expect(appData.sessions[0].persistSessionData).toBe(false);
+  });
+
+  it('drops an environment type and versions of the wrong shape', () => {
+    mockFs.existsSync = vi.fn(() => true);
+    mockFs.readFileSync = vi.fn(() =>
+      Buffer.from(
+        JSON.stringify({
+          userSetPythonEnvs: [
+            { name: 'x', path: '/usr/bin/python3', type: 42, versions: '3.11' }
+          ]
+        })
+      )
+    ) as any;
+
+    appData.read();
+
+    // a number takes the wrong branch of every enum compare, and spreading a
+    // string gives { '0': '3', '1': '.' }
+    expect(appData.userSetPythonEnvs[0].type).toBeUndefined();
+    expect(appData.userSetPythonEnvs[0].versions).toEqual({});
+  });
+
+  it('drops an environment path that is not a string', () => {
+    mockFs.existsSync = vi.fn(() => true);
+    mockFs.readFileSync = vi.fn(() =>
+      Buffer.from(
+        JSON.stringify({
+          userSetPythonEnvs: [{ name: 'x', path: 42, type: 'path' }]
+        })
+      )
+    ) as any;
+
+    appData.read();
+
+    expect(appData.userSetPythonEnvs[0].path).toBeUndefined();
+  });
+
+  it('ignores a non-boolean updateBundledEnvOnRestart', () => {
+    mockFs.existsSync = vi.fn(() => true);
+    mockFs.readFileSync = vi.fn(() =>
+      Buffer.from(JSON.stringify({ updateBundledEnvOnRestart: 'false' }))
+    ) as any;
+    appData.updateBundledEnvOnRestart = false;
+
+    appData.read();
+
+    // the string is truthy, and a stray true reinstalls the bundled env
+    expect(appData.updateBundledEnvOnRestart).toBe(false);
+  });
+
+  it('ignores a scalar that is not a string', () => {
+    mockFs.existsSync = vi.fn(() => true);
+    mockFs.readFileSync = vi.fn(() =>
+      Buffer.from(JSON.stringify({ pythonPath: {}, condaPath: [1, 2] }))
+    ) as any;
+    appData.pythonPath = '';
+    appData.condaPath = '';
+
+    expect(() => appData.read()).not.toThrow();
+    expect(appData.pythonPath).toBe('');
+    expect(appData.condaPath).toBe('');
+  });
+
+  it('drops a nested array, which is an object as far as typeof knows', () => {
+    mockFs.existsSync = vi.fn(() => true);
+    mockFs.readFileSync = vi.fn(() =>
+      Buffer.from(JSON.stringify({ recentSessions: [[]], newsList: [[]] }))
+    ) as any;
+
+    expect(() => appData.read()).not.toThrow();
+    expect(appData.recentSessions).toHaveLength(0);
+    expect(appData.newsList).toHaveLength(0);
+  });
+
+  it('drops a filesToOpen that is not a list', () => {
+    mockFs.existsSync = vi.fn(() => true);
+    mockFs.readFileSync = vi.fn(() =>
+      Buffer.from(
+        JSON.stringify({
+          recentSessions: [{ workingDirectory: '/nb', filesToOpen: 3 }]
+        })
+      )
+    ) as any;
+
+    expect(() => appData.read()).not.toThrow();
+    expect(appData.recentSessions[0].filesToOpen).toEqual([]);
   });
 
   it('reads pythonPath from JSON', () => {
@@ -129,11 +351,11 @@ describe('ApplicationData.save', () => {
     mockFs.writeFileSync = vi.fn();
   });
 
-  it('calls writeFileSync with app-data.json path', () => {
+  it('lands on the app-data.json path', () => {
     appData.save();
-    expect(mockFs.writeFileSync).toHaveBeenCalledOnce();
-    const [writePath] = (mockFs.writeFileSync as any).mock.calls[0];
-    expect(writePath).toMatch(/app-data\.json$/);
+    expect(mockFs.renameSync).toHaveBeenCalledOnce();
+    const [, target] = (mockFs.renameSync as any).mock.calls[0];
+    expect(target).toMatch(/app-data\.json$/);
   });
 
   it('omits empty pythonPath from saved JSON', () => {

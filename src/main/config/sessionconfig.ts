@@ -11,6 +11,7 @@ import {
   userSettings
 } from './settings';
 import { ICLIArguments } from '../tokens';
+import { dateFromConfig, stringsFromConfig } from '../utils';
 import { appData } from './appdata';
 
 export class SessionConfig {
@@ -231,35 +232,35 @@ export class SessionConfig {
   }
 
   deserialize(jsonData: any) {
-    if ('x' in jsonData) {
-      this.x = jsonData.x;
-    }
-    if ('y' in jsonData) {
-      this.y = jsonData.y;
-    }
-    if ('width' in jsonData) {
-      this.width = jsonData.width;
-    }
-    if ('height' in jsonData) {
-      this.height = jsonData.height;
+    // every field here is copied out of a file a person can edit, and each one
+    // is handed to something that assumes its type: the geometry goes to
+    // BrowserWindow, lastOpened back to toISOString() on the next save
+    for (const key of ['x', 'y', 'width', 'height'] as const) {
+      if (typeof jsonData[key] === 'number' && isFinite(jsonData[key])) {
+        this[key] = jsonData[key];
+      }
     }
     if ('lastOpened' in jsonData) {
-      this.lastOpened = new Date(jsonData.lastOpened);
+      this.lastOpened = dateFromConfig(jsonData.lastOpened);
     }
-    if ('remoteURL' in jsonData) {
+    if (typeof jsonData.remoteURL === 'string') {
       this.remoteURL = jsonData.remoteURL;
     }
     if ('persistSessionData' in jsonData) {
-      this.persistSessionData = jsonData.persistSessionData;
+      // only a real boolean: this one decides whether a remote server's
+      // cookies land on disk, so anything else fails closed. Absent means true
+      // because serialize omits the key in that case
+      this.persistSessionData = jsonData.persistSessionData === true;
     }
-    if (this.persistSessionData && 'partition' in jsonData) {
+    if (this.persistSessionData && typeof jsonData.partition === 'string') {
       this.partition = jsonData.partition;
     }
-    if ('workingDirectory' in jsonData) {
+    if (typeof jsonData.workingDirectory === 'string') {
       this.workingDirectory = jsonData.workingDirectory;
     }
     if ('filesToOpen' in jsonData) {
-      this.filesToOpen = [...jsonData.filesToOpen];
+      // spreading anything else throws, and this runs during module import
+      this.filesToOpen = stringsFromConfig(jsonData.filesToOpen);
     }
   }
 

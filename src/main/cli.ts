@@ -1,5 +1,6 @@
 import { execFileSync, spawn } from 'child_process';
 import {
+  configFileIsUnreadable,
   createCommandScriptInEnv,
   createTempFile,
   EnvironmentInstallStatus,
@@ -406,7 +407,13 @@ export function addUserSetEnvironment(envPath: string, isConda: boolean) {
     versions: {},
     defaultKernel: 'python3'
   });
-  appData.save();
+  if (!appData.save()) {
+    // the default python path below is written to a different file, so this
+    // reports and carries on rather than skipping it
+    console.error(
+      'Could not write the application data file, so the environment was not added to the list.'
+    );
+  }
 
   // use as the default Python if not exists
   let defaultPythonPath = userSettings.getValue(SettingType.pythonPath);
@@ -416,11 +423,14 @@ export function addUserSetEnvironment(envPath: string, isConda: boolean) {
     if (!fs.existsSync(defaultPythonPath)) {
       defaultPythonPath = pythonPathForEnvPath(envPath, isConda);
       if (fs.existsSync(defaultPythonPath)) {
-        console.log(
-          `Setting "${defaultPythonPath}" as the default Python path`
-        );
         userSettings.setValue(SettingType.pythonPath, defaultPythonPath);
-        userSettings.save();
+        if (userSettings.save()) {
+          console.log(
+            `Setting "${defaultPythonPath}" as the default Python path`
+          );
+        } else {
+          reportUnsavedSetting('the default Python path');
+        }
       }
     }
   }
@@ -548,7 +558,11 @@ export async function handleEnvUpdateRegistryCommand(argv: any) {
   console.log(`Updating JupyterLab Desktop's Python environment registry...`);
   const registry = new Registry();
   await registry.ready;
-  appData.save();
+  if (!appData.save()) {
+    console.error(
+      'Could not write the application data file, so the registry was not updated.'
+    );
+  }
 }
 
 export interface ICreatePythonEnvironmentOptions {
@@ -861,11 +875,36 @@ export async function handleEnvSetPythonEnvsPathCommand(argv: any) {
     return;
   }
 
+  userSettings.setValue(SettingType.pythonEnvsPath, dirPath);
+  if (!userSettings.save()) {
+    reportUnsavedSetting('the Python environment install directory');
+    return;
+  }
+
   console.log(
     `Setting "${dirPath}" as the Python environment install directory`
   );
-  userSettings.setValue(SettingType.pythonEnvsPath, dirPath);
-  userSettings.save();
+}
+
+function settingsFilePathFor(projectPath?: string): string {
+  return projectPath
+    ? WorkspaceSettings.getWorkspaceSettingsPath(projectPath)
+    : UserSettings.getUserSettingsPath();
+}
+
+function reportUnsavedSetting(what: string, projectPath?: string): void {
+  const file = settingsFilePathFor(projectPath);
+
+  // the refusal is far more often the read guard than a failed write, and only
+  // one of the two has something the reader can do about it
+  if (configFileIsUnreadable(file)) {
+    console.error(
+      `${file} could not be read, so ${what} was not saved. Repair the JSON in it, or move it aside and let a fresh one be written.`
+    );
+    return;
+  }
+
+  console.error(`Could not write ${file}, so ${what} was not saved.`);
 }
 
 export async function handleEnvSetCondaPathCommand(argv: any) {
@@ -883,16 +922,24 @@ export async function handleEnvSetCondaPathCommand(argv: any) {
     return;
   }
 
-  console.log(`Setting "${condaPath}" as the conda path`);
   userSettings.setValue(SettingType.condaPath, condaPath);
-  userSettings.save();
+  if (!userSettings.save()) {
+    reportUnsavedSetting('the conda path');
+    return;
+  }
+
+  console.log(`Setting "${condaPath}" as the conda path`);
 }
 
 export async function handleEnvSetCondaChannelsCommand(argv: any) {
   const channelList = argv._.slice(1);
-  console.log(`Setting conda channels to "${channelList.join(' ')}"`);
   userSettings.setValue(SettingType.condaChannels, channelList);
-  userSettings.save();
+  if (!userSettings.save()) {
+    reportUnsavedSetting('the conda channels');
+    return;
+  }
+
+  console.log(`Setting conda channels to "${channelList.join(' ')}"`);
 }
 
 export async function handleEnvSetSystemPythonPathCommand(argv: any) {
@@ -910,9 +957,13 @@ export async function handleEnvSetSystemPythonPathCommand(argv: any) {
     return;
   }
 
-  console.log(`Setting "${systemPythonPath}" as the system Python path`);
   userSettings.setValue(SettingType.systemPythonPath, systemPythonPath);
-  userSettings.save();
+  if (!userSettings.save()) {
+    reportUnsavedSetting('the system Python path');
+    return;
+  }
+
+  console.log(`Setting "${systemPythonPath}" as the system Python path`);
 }
 
 function getProjectPathForConfigCommand(argv: any): string | undefined {
@@ -1028,6 +1079,7 @@ function handleConfigSetCommand(argv: any) {
     return;
   }
 
+  let saved: boolean;
   if (projectPath) {
     const setting = userSettings.settings[key];
     if (!setting.wsOverridable) {
@@ -1037,10 +1089,15 @@ function handleConfigSetCommand(argv: any) {
 
     const wsSettings = new WorkspaceSettings(projectPath);
     wsSettings.setValue(key as SettingType, value);
-    wsSettings.save();
+    saved = wsSettings.save();
   } else {
     userSettings.setValue(key as SettingType, value);
-    userSettings.save();
+    saved = userSettings.save();
+  }
+
+  if (!saved) {
+    reportUnsavedSetting(`"${key}"`, projectPath);
+    return;
   }
 
   console.log(
@@ -1073,6 +1130,7 @@ function handleConfigUnsetCommand(argv: any) {
     return;
   }
 
+  let saved: boolean;
   if (projectPath) {
     const setting = userSettings.settings[key];
     if (!setting.wsOverridable) {
@@ -1082,10 +1140,15 @@ function handleConfigUnsetCommand(argv: any) {
 
     const wsSettings = new WorkspaceSettings(projectPath);
     wsSettings.unsetValue(key as SettingType);
-    wsSettings.save();
+    saved = wsSettings.save();
   } else {
     userSettings.unsetValue(key as SettingType);
-    userSettings.save();
+    saved = userSettings.save();
+  }
+
+  if (!saved) {
+    reportUnsavedSetting(`the reset of "${key}"`, projectPath);
+    return;
   }
 
   console.log(
@@ -1097,9 +1160,7 @@ function handleConfigUnsetCommand(argv: any) {
 
 function handleConfigOpenFileCommand(argv: any) {
   const projectPath = getProjectPathForConfigCommand(argv);
-  const settingsFilePath = projectPath
-    ? WorkspaceSettings.getWorkspaceSettingsPath(projectPath)
-    : UserSettings.getUserSettingsPath();
+  const settingsFilePath = settingsFilePathFor(projectPath);
 
   console.log(`Settings file path: ${settingsFilePath}`);
 

@@ -2,14 +2,44 @@
 // Distributed under the terms of the Modified BSD License.
 
 import * as path from 'path';
-import * as fs from 'fs';
-import { clearSession, getUserDataDir, readJsonConfigFile } from '../utils';
-import { IPythonEnvironment } from '../tokens';
+import {
+  clearSession,
+  dateFromConfig,
+  getUserDataDir,
+  isPlainObject,
+  readJsonConfigFile,
+  stringFromConfig,
+  stringsFromConfig,
+  writeJsonConfigFile
+} from '../utils';
+import { IEnvironmentType, IPythonEnvironment } from '../tokens';
 import { SessionConfig } from './sessionconfig';
 import { session as electronSession } from 'electron';
 import { ISignal, Signal } from '@lumino/signaling';
 
 const MAX_RECENT_SESSIONS = 20;
+
+/**
+ * A file can parse into a perfectly good object and still hold junk inside its
+ * arrays. Every loop below walks properties off these entries, and one null
+ * among them used to throw during module import, which is #824 again by
+ * another route.
+ */
+function objectsIn(value: unknown): any[] {
+  return Array.isArray(value) ? value.filter(isPlainObject) : [];
+}
+
+function pythonEnvFromConfig(entry: any): IPythonEnvironment {
+  return {
+    name: stringFromConfig(entry.name),
+    path: stringFromConfig(entry.path),
+    // a number here silently takes the wrong branch of every enum compare, and
+    // spreading a string gives { '0': '3', '1': '.' }
+    type: stringFromConfig(entry.type) as IEnvironmentType,
+    versions: isPlainObject(entry.versions) ? { ...entry.versions } : {},
+    defaultKernel: 'python3'
+  };
+}
 
 export interface INewsItem {
   title: string;
@@ -60,7 +90,8 @@ export class ApplicationData {
       return;
     }
 
-    if ('pythonPath' in jsonData) {
+    // a non-string here is handed to path.dirname and to the env registry
+    if (typeof jsonData.pythonPath === 'string') {
       this.pythonPath = jsonData.pythonPath;
     }
 
@@ -74,107 +105,70 @@ export class ApplicationData {
           return path.join(envPath, 'bin', 'conda');
         }
       };
-      this.condaPath = condaExePathForEnvPath(jsonData.condaRootPath);
+      if (typeof jsonData.condaRootPath === 'string') {
+        this.condaPath = condaExePathForEnvPath(jsonData.condaRootPath);
+      }
     }
-    if ('condaPath' in jsonData) {
+    if (typeof jsonData.condaPath === 'string') {
       this.condaPath = jsonData.condaPath;
     }
 
-    if ('systemPythonPath' in jsonData) {
+    if (typeof jsonData.systemPythonPath === 'string') {
       this.systemPythonPath = jsonData.systemPythonPath;
     }
 
     this.sessions = [];
-    if ('sessions' in jsonData && Array.isArray(jsonData.sessions)) {
-      for (const session of jsonData.sessions) {
-        const sessionConfig = new SessionConfig();
-        sessionConfig.deserialize(session);
-        this.sessions.push(sessionConfig);
-      }
+    for (const session of objectsIn(jsonData.sessions)) {
+      const sessionConfig = new SessionConfig();
+      sessionConfig.deserialize(session);
+      this.sessions.push(sessionConfig);
     }
 
     this.recentSessions = [];
-    if (
-      'recentSessions' in jsonData &&
-      Array.isArray(jsonData.recentSessions)
-    ) {
-      for (const recentSession of jsonData.recentSessions) {
-        this.recentSessions.push({
-          workingDirectory: recentSession.workingDirectory,
-          filesToOpen: recentSession.filesToOpen
-            ? [...recentSession.filesToOpen]
-            : [],
-          remoteURL: recentSession.remoteURL,
-          persistSessionData: recentSession.persistSessionData,
-          partition: recentSession.partition,
-          date: new Date(recentSession.date)
-        });
-      }
+    for (const recentSession of objectsIn(jsonData.recentSessions)) {
+      this.recentSessions.push({
+        workingDirectory: stringFromConfig(recentSession.workingDirectory),
+        filesToOpen: stringsFromConfig(recentSession.filesToOpen),
+        remoteURL: stringFromConfig(recentSession.remoteURL),
+        persistSessionData: recentSession.persistSessionData === true,
+        // startsWith is called on this without a guard in two places
+        partition: stringFromConfig(recentSession.partition),
+        date: dateFromConfig(recentSession.date)
+      });
     }
     this._sortRecentItems(this.recentSessions);
 
     this.recentRemoteURLs = [];
-    if (
-      'recentRemoteURLs' in jsonData &&
-      Array.isArray(jsonData.recentRemoteURLs)
-    ) {
-      for (const remoteURL of jsonData.recentRemoteURLs) {
-        this.recentRemoteURLs.push({
-          url: remoteURL.url,
-          date: new Date(remoteURL.date)
-        });
-      }
+    for (const remoteURL of objectsIn(jsonData.recentRemoteURLs)) {
+      this.recentRemoteURLs.push({
+        url: stringFromConfig(remoteURL.url),
+        date: dateFromConfig(remoteURL.date)
+      });
     }
     this._sortRecentItems(this.recentRemoteURLs);
 
-    this.discoveredPythonEnvs = [];
-    if (
-      'discoveredPythonEnvs' in jsonData &&
-      Array.isArray(jsonData.discoveredPythonEnvs)
-    ) {
-      for (const pythonEnv of jsonData.discoveredPythonEnvs) {
-        this.discoveredPythonEnvs.push({
-          name: pythonEnv.name,
-          path: pythonEnv.path,
-          type: pythonEnv.type,
-          versions: { ...pythonEnv.versions },
-          defaultKernel: 'python3'
-        });
-      }
-    }
+    this.discoveredPythonEnvs = objectsIn(jsonData.discoveredPythonEnvs).map(
+      pythonEnvFromConfig
+    );
 
-    this.userSetPythonEnvs = [];
-    if (
-      'userSetPythonEnvs' in jsonData &&
-      Array.isArray(jsonData.userSetPythonEnvs)
-    ) {
-      for (const pythonEnv of jsonData.userSetPythonEnvs) {
-        this.userSetPythonEnvs.push({
-          name: pythonEnv.name,
-          path: pythonEnv.path,
-          type: pythonEnv.type,
-          versions: { ...pythonEnv.versions },
-          defaultKernel: 'python3'
-        });
-      }
-    }
+    this.userSetPythonEnvs = objectsIn(jsonData.userSetPythonEnvs).map(
+      pythonEnvFromConfig
+    );
 
     this.newsList = [];
-    if ('newsList' in jsonData && Array.isArray(jsonData.newsList)) {
-      for (const newsItem of jsonData.newsList) {
-        this.newsList.push({
-          title: newsItem.title,
-          link: newsItem.link
-        });
-      }
+    for (const newsItem of objectsIn(jsonData.newsList)) {
+      this.newsList.push({
+        title: stringFromConfig(newsItem.title),
+        link: stringFromConfig(newsItem.link)
+      });
     }
 
-    if ('updateBundledEnvOnRestart' in jsonData) {
+    if (typeof jsonData.updateBundledEnvOnRestart === 'boolean') {
       this.updateBundledEnvOnRestart = jsonData.updateBundledEnvOnRestart;
     }
   }
 
-  save() {
+  save(): boolean {
     const appDataPath = ApplicationData.getAppDataPath();
     const appDataJSON: { [key: string]: any } = {};
 
@@ -252,7 +246,7 @@ export class ApplicationData {
       appDataJSON.updateBundledEnvOnRestart = true;
     }
 
-    fs.writeFileSync(appDataPath, JSON.stringify(appDataJSON, null, 2));
+    return writeJsonConfigFile(appDataPath, appDataJSON);
   }
 
   addRemoteURLToRecents(url: string) {

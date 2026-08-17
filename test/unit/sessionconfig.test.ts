@@ -82,7 +82,7 @@ describe('SessionConfig.createLocal', () => {
 
   it('skips files that do not exist', () => {
     mockFs.lstatSync = vi.fn(() => {
-      throw new Error('ENOENT');
+      throw Object.assign(new Error('ENOENT'), { code: 'ENOENT' });
     });
     const s = SessionConfig.createLocal('/data', ['missing.ipynb']);
     expect(s.filesToOpen).toEqual([]);
@@ -192,7 +192,7 @@ describe('SessionConfig.createLocalForFilesOrFolders', () => {
 
   it('skips paths where lstatSync throws', () => {
     mockFs.lstatSync = vi.fn(() => {
-      throw new Error('ENOENT');
+      throw Object.assign(new Error('ENOENT'), { code: 'ENOENT' });
     });
     const s = SessionConfig.createLocalForFilesOrFolders([
       '/missing/path.ipynb'
@@ -221,7 +221,7 @@ describe('SessionConfig.createFromArgs', () => {
   beforeEach(() => {
     mockFs.existsSync = vi.fn(() => false);
     mockFs.lstatSync = vi.fn(() => {
-      throw new Error('ENOENT');
+      throw Object.assign(new Error('ENOENT'), { code: 'ENOENT' });
     });
   });
 

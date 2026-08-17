@@ -41,6 +41,7 @@ import {
   resolveWorkingDirectory,
   SettingType,
   StartupMode,
+  UserSettings,
   userSettings
 } from './config/settings';
 import {
@@ -639,8 +640,14 @@ export class JupyterApplication implements IApplication, IDisposable {
 
     app.on('will-quit', event => {
       event.preventDefault();
-      appData.save();
-      userSettings.save();
+      // preventDefault is already in effect, so anything that escapes here
+      // leaves the app unable to close at all
+      try {
+        appData.save();
+        userSettings.save();
+      } catch (error) {
+        log.error('Failed to save on quit', error);
+      }
 
       this._quit();
     });
@@ -841,7 +848,7 @@ export class JupyterApplication implements IApplication, IDisposable {
       EventTypeMain.SetPythonEnvironmentInstallDirectory,
       async (event, dirPath) => {
         userSettings.setValue(SettingType.pythonEnvsPath, dirPath);
-        userSettings.save();
+        this._saveUserSettingsOrWarn();
       }
     );
 
@@ -849,7 +856,7 @@ export class JupyterApplication implements IApplication, IDisposable {
       EventTypeMain.SetCondaPath,
       async (event, condaPath) => {
         userSettings.setValue(SettingType.condaPath, condaPath);
-        userSettings.save();
+        this._saveUserSettingsOrWarn();
       }
     );
 
@@ -859,7 +866,7 @@ export class JupyterApplication implements IApplication, IDisposable {
         const channelList =
           condaChannels.trim() === '' ? [] : condaChannels.split(' ');
         userSettings.setValue(SettingType.condaChannels, channelList);
-        userSettings.save();
+        this._saveUserSettingsOrWarn();
       }
     );
 
@@ -867,7 +874,7 @@ export class JupyterApplication implements IApplication, IDisposable {
       EventTypeMain.SetSystemPythonPath,
       async (event, pythonPath) => {
         userSettings.setValue(SettingType.systemPythonPath, pythonPath);
-        userSettings.save();
+        this._saveUserSettingsOrWarn();
       }
     );
 
@@ -1018,7 +1025,7 @@ export class JupyterApplication implements IApplication, IDisposable {
       EventTypeMain.SetDefaultPythonPath,
       (event, path) => {
         userSettings.setValue(SettingType.pythonPath, path);
-        userSettings.save();
+        this._saveUserSettingsOrWarn();
         this._registry.setDefaultPythonPath(path);
       }
     );
@@ -1307,6 +1314,23 @@ export class JupyterApplication implements IApplication, IDisposable {
         }
         console.error('Failed to check for updates:', error);
       });
+  }
+
+  /**
+   * A refused write is silent otherwise: the dialog closes as if the change
+   * took, and the only trace is a log line. The CLI reports the same case.
+   */
+  private _saveUserSettingsOrWarn(): void {
+    if (userSettings.save()) {
+      return;
+    }
+
+    dialog.showMessageBox({
+      type: 'warning',
+      title: 'Setting was not saved',
+      message: 'The settings file could not be written, so the change is lost.',
+      detail: `${UserSettings.getUserSettingsPath()}\n\nSee the log for the reason. A file that could not be read at startup is left alone until it is repaired or reset.`
+    });
   }
 
   private _quit(): void {
