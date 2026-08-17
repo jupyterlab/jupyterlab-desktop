@@ -9,7 +9,9 @@ vi.mock('fs', async () => {
     lstatSync: vi.fn(),
     mkdirSync: vi.fn(),
     writeFileSync: vi.fn(),
-    readFileSync: vi.fn(),
+    readFileSync: vi.fn(() => {
+      throw Object.assign(new Error('ENOENT'), { code: 'ENOENT' });
+    }),
     renameSync: vi.fn(),
     realpathSync: vi.fn((target: any) => target),
     chownSync: vi.fn(),
@@ -48,7 +50,11 @@ beforeEach(() => {
   mockFs.lstatSync = vi.fn();
   mockFs.mkdirSync = vi.fn();
   mockFs.writeFileSync = vi.fn();
-  mockFs.readFileSync = vi.fn();
+  // an undefined return makes readJsonConfigFile throw a TypeError with no
+  // code, which marks the path for every test that follows
+  mockFs.readFileSync = vi.fn(() => {
+    throw Object.assign(new Error('ENOENT'), { code: 'ENOENT' });
+  }) as any;
   mockFs.renameSync = vi.fn();
   mockFs.realpathSync = vi.fn((target: any) => target) as any;
   mockFs.statSync = vi.fn(() => {

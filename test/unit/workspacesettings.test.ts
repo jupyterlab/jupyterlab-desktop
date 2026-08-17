@@ -8,7 +8,9 @@ vi.mock('fs', async () => {
     ...actual,
     existsSync: vi.fn(),
     lstatSync: vi.fn(),
-    readFileSync: vi.fn(),
+    readFileSync: vi.fn(() => {
+      throw Object.assign(new Error('ENOENT'), { code: 'ENOENT' });
+    }),
     writeFileSync: vi.fn(),
     mkdirSync: vi.fn(),
     renameSync: vi.fn(),
