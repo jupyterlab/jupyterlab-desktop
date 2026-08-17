@@ -57,7 +57,9 @@ describe('writeJsonConfigFile on a real filesystem', () => {
     expect(siblings()).toEqual(['settings.json']);
   });
 
-  it('keeps a private file private', () => {
+  // Windows has no mode to keep: chmod there moves the read-only bit alone, so
+  // a file written 0600 reads back 0666 whatever the writer does.
+  posixOnly('keeps a private file private', () => {
     const target = path.join(dir, 'settings.json');
     fs.writeFileSync(target, '{}');
     fs.chmodSync(target, 0o600);

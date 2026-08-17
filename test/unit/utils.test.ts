@@ -1034,9 +1034,12 @@ describe('writeJsonConfigFile', () => {
 
     expect(writeJsonConfigFile('/data/dangling.json', {})).toBe(true);
 
+    // the target the link names, not the link's own directory. Resolved here
+    // because a bare '/dotfiles/...' picks up the current drive on Windows.
+    const target = path.resolve('/dotfiles/settings.json');
     expect(mockFs.renameSync).toHaveBeenCalledWith(
-      `/dotfiles/settings.json.${process.pid}.tmp`,
-      '/dotfiles/settings.json'
+      `${target}.${process.pid}.tmp`,
+      target
     );
   });
 
