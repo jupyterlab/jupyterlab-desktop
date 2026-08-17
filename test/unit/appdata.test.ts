@@ -83,7 +83,9 @@ describe('ApplicationData.read', () => {
     );
     appData.read();
     expect(appData.condaPath).toContain('conda');
-    expect(appData.condaPath).toContain('/opt/conda');
+    // the derived path keeps the root it migrated from, whichever slash the
+    // host joins it with
+    expect(appData.condaPath.replace(/\\/g, '/')).toContain('/opt/conda');
   });
 
   it('reads recentRemoteURLs list', () => {

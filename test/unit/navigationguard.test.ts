@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { readdirSync, readFileSync, statSync } from 'fs';
-import { join, relative } from 'path';
+import { join, relative, sep } from 'path';
 import { app, shell } from 'electron';
 import {
   guardAppOwnedView,
@@ -290,7 +290,11 @@ describe('every surface that claims navigation also declares a popup policy', ()
       );
     });
 
-    expect(callers.map(file => relative(root, file)).sort()).toEqual([
+    const named = callers.map(file =>
+      relative(root, file).split(sep).join('/')
+    );
+
+    expect(named.sort()).toEqual([
       'authwindow/authwindow.ts',
       'connect.ts',
       'labview/labview.ts'
