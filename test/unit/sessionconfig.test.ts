@@ -450,6 +450,27 @@ describe('SessionConfig.deserialize', () => {
     expect(s.height).toBe(600);
   });
 
+  it('keeps a negative x, which a second display to the left produces', () => {
+    const s = new SessionConfig();
+
+    s.deserialize({ x: -1200, y: 0 });
+
+    expect(s.x).toBe(-1200);
+    expect(s.y).toBe(0);
+  });
+
+  it('ignores a size that is zero, negative or fractional', () => {
+    const s = new SessionConfig();
+    const width = s.width;
+    const height = s.height;
+
+    s.deserialize({ width: 0, height: -5000 });
+    s.deserialize({ width: 800.5 });
+
+    expect(s.width).toBe(width);
+    expect(s.height).toBe(height);
+  });
+
   it('sets remoteURL', () => {
     const s = new SessionConfig();
     s.deserialize({ remoteURL: 'http://remote:8888/lab' });
@@ -471,6 +492,23 @@ describe('SessionConfig.deserialize', () => {
   it('ignores partition when persistSessionData is false', () => {
     const s = new SessionConfig();
     s.deserialize({ persistSessionData: false, partition: 'persist:xyz' });
+    expect(s.partition).toBe('');
+  });
+
+  it('gives a remote session a clearable partition when the file has none', () => {
+    const s = new SessionConfig();
+
+    s.deserialize({ remoteURL: 'https://example.com/lab', partition: 42 });
+
+    // left empty, its cookies land where neither caller of clearSession looks
+    expect(s.partition.startsWith('persist:')).toBe(true);
+  });
+
+  it('leaves a local session without a partition it never uses', () => {
+    const s = new SessionConfig();
+
+    s.deserialize({ workingDirectory: '/data/nb', partition: 42 });
+
     expect(s.partition).toBe('');
   });
 

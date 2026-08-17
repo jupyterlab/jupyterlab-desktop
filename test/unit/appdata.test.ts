@@ -205,13 +205,34 @@ describe('ApplicationData.read', () => {
     expect(appData.sessions[0].persistSessionData).toBe(false);
   });
 
-  it('drops an environment type and versions of the wrong shape', () => {
+  it('drops an environment whose type is not a string', () => {
+    mockFs.existsSync = vi.fn(() => true);
+    mockFs.readFileSync = vi.fn(() =>
+      Buffer.from(
+        JSON.stringify({
+          userSetPythonEnvs: [{ name: 'x', path: '/usr/bin/python3', type: 42 }]
+        })
+      )
+    ) as any;
+
+    appData.read();
+
+    // a number takes the else branch of every enum compare, silently
+    expect(appData.userSetPythonEnvs).toEqual([]);
+  });
+
+  it('empties versions of the wrong shape on an otherwise usable env', () => {
     mockFs.existsSync = vi.fn(() => true);
     mockFs.readFileSync = vi.fn(() =>
       Buffer.from(
         JSON.stringify({
           userSetPythonEnvs: [
-            { name: 'x', path: '/usr/bin/python3', type: 42, versions: '3.11' }
+            {
+              name: 'x',
+              path: '/usr/bin/python3',
+              type: 'path',
+              versions: '3.11'
+            }
           ]
         })
       )
@@ -219,9 +240,7 @@ describe('ApplicationData.read', () => {
 
     appData.read();
 
-    // a number takes the wrong branch of every enum compare, and spreading a
-    // string gives { '0': '3', '1': '.' }
-    expect(appData.userSetPythonEnvs[0].type).toBeUndefined();
+    // spreading a string gives { '0': '3', '1': '.' }
     expect(appData.userSetPythonEnvs[0].versions).toEqual({});
   });
 

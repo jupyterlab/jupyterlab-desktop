@@ -1,6 +1,12 @@
 import { _electron as electron, expect, test } from '@playwright/test';
 import { stubAllDialogs } from 'electron-playwright-helpers';
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'fs';
+import {
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  writeFileSync
+} from 'fs';
 import { join } from 'path';
 import { tmpdir } from 'os';
 import { pageByTitle } from './helpers';
@@ -55,6 +61,10 @@ test('starts and reaches the welcome view when settings.json is corrupt', async 
 
     // the file the app could not read is left exactly as it was
     expect(readFileSync(join(userDataDir, 'settings.json'), 'utf8')).toBe(body);
+    // this is the only place the real write runs, temporary and all
+    expect(
+      readdirSync(userDataDir).filter(name => name.endsWith('.tmp'))
+    ).toEqual([]);
   } finally {
     await app.close();
     cleanup();
@@ -72,6 +82,9 @@ test('starts when app-data.json is truncated, which is what #881 reports', async
     await expect(welcome.locator('#new-notebook-link')).toBeVisible();
 
     expect(readFileSync(join(userDataDir, 'app-data.json'), 'utf8')).toBe(body);
+    expect(
+      readdirSync(userDataDir).filter(name => name.endsWith('.tmp'))
+    ).toEqual([]);
   } finally {
     await app.close();
     cleanup();

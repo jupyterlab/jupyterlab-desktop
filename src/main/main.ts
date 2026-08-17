@@ -254,10 +254,11 @@ function reportUnreadableConfig(): void {
   const fileList = files.join('\n');
   const them = files.length === 1 ? 'it' : 'them';
   const detail =
-    `Nothing was moved or deleted, and settings will not be saved over ${them} ` +
-    `until the app is restarted. Editing by hand and restarting picks the ` +
-    `values back up.\n\n${fileList}\n\n` +
-    `Reset to Defaults keeps a copy alongside, with a .corrupt suffix.`;
+    `Nothing has been moved or deleted, and settings will not be saved over ` +
+    `${them} while this session runs.\n\n${fileList}\n\n` +
+    `Repair the JSON and restart to pick the values back up, or use Reset to ` +
+    `Defaults below, which moves ${them} aside with a .corrupt suffix and ` +
+    `saves normally from then on.`;
 
   // Waits for a window and hands it over as the parent. Electron's dialog docs
   // note that on macOS a message box with no parent "runs synchronously due to
@@ -299,7 +300,10 @@ function reportUnreadableConfig(): void {
  */
 async function firstWindow(): Promise<BrowserWindow> {
   await waitForFunction(() => liveWindows().length > 0, 30000);
-  const parent = liveWindows()[0];
+  // the focused one first: several windows are up by now, and attaching to a
+  // transient one means the sheet closes with it before anybody reads it
+  const focused = BrowserWindow.getFocusedWindow();
+  const parent = focused && !focused.isDestroyed() ? focused : liveWindows()[0];
   if (!parent) {
     throw new Error('every window closed before the notice could be shown');
   }

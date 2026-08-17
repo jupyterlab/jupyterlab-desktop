@@ -31,7 +31,10 @@ export enum LogLevel {
   Warn = 'warn',
   Info = 'info',
   Verbose = 'verbose',
-  Debug = 'debug'
+  Debug = 'debug',
+  // not in the settings dialog, which offers the five above, but electron-log
+  // takes it and troubleshoot.md sends people to edit this by hand
+  Silly = 'silly'
 }
 
 export enum CtrlWBehavior {

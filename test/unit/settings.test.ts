@@ -281,6 +281,19 @@ describe('UserSettings', () => {
     expect(us.getValue(SettingType.startupMode)).toBe(StartupMode.LastSessions);
   });
 
+  it('keeps a log level electron-log takes but the dialog does not offer', () => {
+    mockFs.existsSync = vi.fn(() => true);
+    mockFs.readFileSync = vi.fn(() =>
+      Buffer.from(JSON.stringify({ logLevel: 'silly' }))
+    ) as any;
+
+    const us = new UserSettings(true);
+
+    // troubleshoot.md sends people to set this by hand, and the select in the
+    // settings dialog lists five of the six the logger accepts
+    expect(us.getValue(SettingType.logLevel)).toBe('silly');
+  });
+
   it('ignores null, which typeof calls an object', () => {
     mockFs.existsSync = vi.fn(() => true);
     mockFs.readFileSync = vi.fn(() =>

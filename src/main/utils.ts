@@ -63,6 +63,10 @@ export function getSchemasDir(): string {
 }
 
 const unreadableConfigFiles = new Set<string>();
+// paths a read has already come back from with an object. The values in memory
+// are the user's own from then on, not defaults, so writing them back is the
+// right thing rather than the loss the mark exists to prevent
+const readConfigFiles = new Set<string>();
 
 /** Reading happens during module import, so the notice is pulled afterwards. */
 export function getUnreadableConfigFiles(): readonly string[] {
@@ -77,9 +81,10 @@ export function configFileIsUnreadable(filePath: string): boolean {
  * Config is read while the modules holding it are still being imported, so
  * throwing here kills the app before a window exists (#824).
  *
- * A marked file yields nothing for the rest of the run, whatever it holds
- * later: the object built at import still has defaults, and two readers of one
- * file must not disagree. Only a restart, or Reset to Defaults, clears it.
+ * A file that never came back with an object is marked, and then yields
+ * nothing for the rest of the run whatever it holds later: the object built at
+ * import still has defaults, and two readers of one file must not disagree.
+ * Only a restart, or Reset to Defaults, clears it.
  */
 export function readJsonConfigFile(
   filePath: string
@@ -101,13 +106,15 @@ export function readJsonConfigFile(
     // limit: the values in memory are defaults either way, and letting a save
     // through would put those over a file that is still perfectly good
     log.error(`Failed to read ${filePath}, continuing with defaults`, error);
-    unreadableConfigFiles.add(filePath);
+    markUnreadable(filePath);
     return undefined;
   }
 
-  // an empty file has nothing worth protecting, so it is not marked; neither
-  // is the mark lifted, since an editor mid truncate-then-write looks like this
-  if (contents.trim() === '') {
+  // nothing worth protecting, so not marked. NUL is stripped along with the
+  // whitespace because trim leaves it, and a file of the right length full of
+  // zeroes is what a power cut leaves once the metadata landed and the data
+  // did not, which is the shape #881 reports
+  if (contents.replace(/\0/g, '').trim() === '') {
     return undefined;
   }
 
@@ -116,6 +123,7 @@ export function readJsonConfigFile(
     const parsed = JSON.parse(contents.replace(/^\uFEFF/, ''));
     // callers walk it with `key in parsed`, which an array or a primitive survives
     if (isPlainObject(parsed)) {
+      readConfigFiles.add(filePath);
       return parsed;
     }
     log.error(`${filePath} holds no JSON object, continuing with defaults`);
@@ -123,8 +131,22 @@ export function readJsonConfigFile(
     log.error(`Failed to parse ${filePath}, continuing with defaults`, error);
   }
 
-  unreadableConfigFiles.add(filePath);
+  markUnreadable(filePath);
   return undefined;
+}
+
+/**
+ * Only a file this run has never got values out of. WorkspaceSettings.read
+ * calls super.read, so the global settings.json is read again on every session
+ * window; a hand edit caught mid truncate-then-write would otherwise mark a
+ * file the singleton already holds the real values for, and kill saving for
+ * the rest of the run.
+ */
+function markUnreadable(filePath: string): void {
+  if (readConfigFiles.has(filePath)) {
+    return;
+  }
+  unreadableConfigFiles.add(filePath);
 }
 
 /**
@@ -343,7 +365,7 @@ export function resetConfigFile(filePath: string): boolean {
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
       // already gone, which is the outcome the caller asked for
-      unreadableConfigFiles.delete(filePath);
+      forgetConfigFile(filePath);
       return true;
     }
     log.error(`Failed to move ${targetPath} aside`, error);
@@ -351,8 +373,15 @@ export function resetConfigFile(filePath: string): boolean {
   }
 
   log.info(`Moved the unusable config to ${quarantinePath}`);
-  unreadableConfigFiles.delete(filePath);
+  forgetConfigFile(filePath);
   return true;
+}
+
+// the path starts over: whatever lands there next is a different file, and a
+// corrupt one deserves the mark even though the old one had been read fine
+function forgetConfigFile(filePath: string): void {
+  unreadableConfigFiles.delete(filePath);
+  readConfigFiles.delete(filePath);
 }
 
 export function getRelativePathToUserHome(absolutePath: string): string {

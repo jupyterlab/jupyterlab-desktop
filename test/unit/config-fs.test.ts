@@ -238,6 +238,31 @@ describe('readJsonConfigFile on a real filesystem', () => {
     expect(writeJsonConfigFile(target, { theme: 'dark' })).toBe(true);
   });
 
+  it('treats a file of NUL bytes as absent, which is what a power cut leaves', () => {
+    const target = path.join(dir, 'settings.json');
+    fs.writeFileSync(target, Buffer.alloc(64));
+
+    expect(readJsonConfigFile(target)).toBeUndefined();
+    // trim leaves NUL, so this used to reach JSON.parse and get marked
+    expect(getUnreadableConfigFiles()).not.toContain(target);
+    expect(writeJsonConfigFile(target, { theme: 'dark' })).toBe(true);
+  });
+
+  it('does not mark a file it has already read once', () => {
+    const target = path.join(dir, 'settings.json');
+    fs.writeFileSync(target, '{"theme":"dark"}');
+    expect(readJsonConfigFile(target)).toEqual({ theme: 'dark' });
+
+    // WorkspaceSettings.read calls super.read, so the global file is read again
+    // on every session window, and an editor mid truncate-then-write would
+    // otherwise disable saving for values the singleton is already holding
+    fs.writeFileSync(target, '{"theme":');
+    expect(readJsonConfigFile(target)).toBeUndefined();
+
+    expect(getUnreadableConfigFiles()).not.toContain(target);
+    expect(writeJsonConfigFile(target, { theme: 'light' })).toBe(true);
+  });
+
   it('yields nothing more once marked, however the file reads later', () => {
     const target = path.join(dir, 'settings.json');
     fs.writeFileSync(target, '{');

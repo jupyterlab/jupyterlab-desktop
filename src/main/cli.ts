@@ -887,9 +887,10 @@ export async function handleEnvSetPythonEnvsPathCommand(argv: any) {
   );
 }
 
-// resolved the way the constructor does, or this names a file that was never
-// written: a project directory that is a symlink fails the lstat there and
-// falls back to the home directory
+// resolved the way the constructor does, so the name matches the file that was
+// actually written. That resolution has its own problem, an lstat that sends a
+// symlinked project directory to the home one, and this only keeps the two in
+// step rather than fixing it
 function settingsFilePathFor(projectPath?: string): string {
   return projectPath
     ? WorkspaceSettings.getWorkspaceSettingsPath(
@@ -1000,9 +1001,7 @@ function handleConfigListCommand(argv: any) {
   listLines.push('Project / Workspace settings');
   listLines.push('============================');
   listLines.push(`[Project path: ${projectPath}]`);
-  listLines.push(
-    `[Source file: ${WorkspaceSettings.getWorkspaceSettingsPath(projectPath)}]`
-  );
+  listLines.push(`[Source file: ${settingsFilePathFor(projectPath)}]`);
   listLines.push('\nSettings');
   listLines.push('========');
 

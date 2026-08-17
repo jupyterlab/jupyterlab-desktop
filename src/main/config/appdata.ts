@@ -41,12 +41,19 @@ function pythonEnvFromConfig(entry: any): IPythonEnvironment {
   };
 }
 
-// an environment with no path cannot be launched, and the path is what reaches
-// path.dirname and the existence checks in the registry
+// all three are written on every save, so one missing means the file was
+// edited: the path reaches path.dirname and the registry, the name is rendered
+// straight into the environment list, and the type is compared against
+// IEnvironmentType, where undefined takes the else branch of every check
 function pythonEnvsIn(value: unknown): IPythonEnvironment[] {
   return objectsIn(value)
     .map(pythonEnvFromConfig)
-    .filter(env => env.path !== undefined);
+    .filter(
+      env =>
+        env.path !== undefined &&
+        env.name !== undefined &&
+        env.type !== undefined
+    );
 }
 
 export interface INewsItem {

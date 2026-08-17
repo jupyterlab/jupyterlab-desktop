@@ -236,9 +236,17 @@ export class SessionConfig {
     // is handed to something that assumes its type: the geometry goes to
     // BrowserWindow, lastOpened back to toISOString() on the next save
     for (const key of ['x', 'y', 'width', 'height'] as const) {
-      if (typeof jsonData[key] === 'number' && isFinite(jsonData[key])) {
-        this[key] = jsonData[key];
+      const value = jsonData[key];
+      // integers, because setBounds rounds anyway, and a size has to be
+      // positive: x and y may not, a window on a second display to the left
+      // has a negative x
+      if (!Number.isInteger(value)) {
+        continue;
       }
+      if ((key === 'width' || key === 'height') && value <= 0) {
+        continue;
+      }
+      this[key] = value;
     }
     if ('lastOpened' in jsonData) {
       this.lastOpened = dateFromConfig(jsonData.lastOpened);
@@ -252,8 +260,15 @@ export class SessionConfig {
       // because serialize omits the key in that case
       this.persistSessionData = jsonData.persistSessionData === true;
     }
-    if (this.persistSessionData && typeof jsonData.partition === 'string') {
-      this.partition = jsonData.partition;
+    if (this.persistSessionData) {
+      if (typeof jsonData.partition === 'string' && jsonData.partition !== '') {
+        this.partition = jsonData.partition;
+      } else if (this.isRemote) {
+        // a remote session left on the empty default writes its cookies to a
+        // partition neither place that clears session data will touch, since
+        // both only clear one that starts with persist:
+        this.partition = `persist:${Date.now()}`;
+      }
     }
     if (typeof jsonData.workingDirectory === 'string') {
       this.workingDirectory = jsonData.workingDirectory;
