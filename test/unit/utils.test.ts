@@ -167,7 +167,8 @@ describe('envPathForPythonPath', () => {
   it('returns parent of bin/ on posix', () => {
     Object.defineProperty(process, 'platform', { value: 'darwin' });
     const result = envPathForPythonPath('/env/bin/python');
-    expect(toSlash(result)).toContain('/env');
+    // exact, because 'contains /env' is also true of the argument it was given
+    expect(toSlash(result)).toBe('/env/');
   });
 
   it('returns parent of Scripts/ on windows', () => {
@@ -206,7 +207,9 @@ describe('condaSourcePathForEnvPath', () => {
 
   it('returns conda.sh path on posix', () => {
     Object.defineProperty(process, 'platform', { value: 'darwin' });
-    expect(toSlash(condaSourcePathForEnvPath('/env'))).toBe(
+    // undefined is this function's Windows answer, and the empty string it
+    // becomes here fails the comparison rather than typing as a string
+    expect(toSlash(condaSourcePathForEnvPath('/env') ?? '')).toBe(
       '/env/etc/profile.d/conda.sh'
     );
   });
