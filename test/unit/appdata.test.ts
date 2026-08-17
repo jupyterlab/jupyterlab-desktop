@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import * as fs from 'fs';
 
 vi.mock('fs', async () => {
@@ -6,17 +6,69 @@ vi.mock('fs', async () => {
   return {
     ...actual,
     existsSync: vi.fn(() => false),
+    lstatSync: vi.fn(() => {
+      throw Object.assign(new Error('ENOENT'), { code: 'ENOENT' });
+    }),
     readFileSync: vi.fn(() => {
-      throw new Error('ENOENT');
+      throw Object.assign(new Error('ENOENT'), { code: 'ENOENT' });
     }),
     writeFileSync: vi.fn(),
-    mkdirSync: vi.fn()
+    mkdirSync: vi.fn(),
+    renameSync: vi.fn(),
+    realpathSync: vi.fn((target: any) => target),
+    chownSync: vi.fn(),
+    fchmodSync: vi.fn(),
+    openSync: vi.fn(() => 7),
+    fsyncSync: vi.fn(),
+    closeSync: vi.fn(),
+    unlinkSync: vi.fn()
   };
 });
 
 import { appData, ApplicationData } from '../../src/main/config/appdata';
+import {
+  getUnreadableConfigFiles,
+  resetConfigFile
+} from '../../src/main/utils';
 
 const mockFs = vi.mocked(fs);
+
+// Without this, an existsSync or readFileSync left set by one test feeds the
+// next one whatever the previous body returned.
+beforeEach(() => {
+  vi.clearAllMocks();
+  mockFs.existsSync = vi.fn(() => false);
+  mockFs.lstatSync = vi.fn(() => {
+    throw Object.assign(new Error('ENOENT'), { code: 'ENOENT' });
+  }) as any;
+  mockFs.readFileSync = vi.fn(() => {
+    throw Object.assign(new Error('ENOENT'), { code: 'ENOENT' });
+  }) as any;
+  mockFs.writeFileSync = vi.fn();
+  mockFs.mkdirSync = vi.fn();
+  mockFs.renameSync = vi.fn();
+  mockFs.realpathSync = vi.fn((target: any) => target) as any;
+  mockFs.statSync = vi.fn(() => {
+    throw Object.assign(new Error('ENOENT'), { code: 'ENOENT' });
+  }) as any;
+  mockFs.chownSync = vi.fn();
+  mockFs.fchmodSync = vi.fn();
+  mockFs.openSync = vi.fn(() => 7) as any;
+  mockFs.fsyncSync = vi.fn();
+  mockFs.closeSync = vi.fn();
+  mockFs.unlinkSync = vi.fn();
+});
+
+// the unreadable-config list is keyed by path and app-data.json has only one,
+// so a corrupt-read test would otherwise block every save that follows
+afterEach(() => {
+  // the mark now outlives any read, so clearing it takes the same route the
+  // Reset to Defaults button does
+  mockFs.existsSync = vi.fn(() => false);
+  mockFs.renameSync = vi.fn();
+  resetConfigFile(ApplicationData.getAppDataPath());
+  resetAppData();
+});
 
 function resetAppData() {
   appData.pythonPath = '';
@@ -48,14 +100,28 @@ describe('ApplicationData.read', () => {
     resetAppData();
   });
 
-  it('does not read or mutate state when the file does not exist', () => {
-    mockFs.existsSync = vi.fn(() => false);
-    mockFs.readFileSync = vi.fn();
+  it('keeps its state when the file does not exist', () => {
+    mockFs.readFileSync = vi.fn(() => {
+      throw Object.assign(new Error('ENOENT'), { code: 'ENOENT' });
+    }) as any;
     const pythonPathBefore = appData.pythonPath;
+
     appData.read();
-    // the missing-file guard must short-circuit before parsing anything
-    expect(mockFs.readFileSync).not.toHaveBeenCalled();
+
     expect(appData.pythonPath).toBe(pythonPathBefore);
+    expect(getUnreadableConfigFiles()).not.toContain(
+      ApplicationData.getAppDataPath()
+    );
+  });
+
+  it('keeps its state instead of throwing when the file is corrupt', () => {
+    mockFs.existsSync = vi.fn(() => true);
+    mockFs.readFileSync = vi.fn(() => Buffer.from('{"pythonPath": '));
+    appData.pythonPath = '/usr/bin/python3';
+
+    appData.read();
+
+    expect(appData.pythonPath).toBe('/usr/bin/python3');
   });
 
   it('reads pythonPath from JSON', () => {
@@ -118,11 +184,11 @@ describe('ApplicationData.save', () => {
     mockFs.writeFileSync = vi.fn();
   });
 
-  it('calls writeFileSync with app-data.json path', () => {
+  it('lands on the app-data.json path', () => {
     appData.save();
-    expect(mockFs.writeFileSync).toHaveBeenCalledOnce();
-    const [writePath] = (mockFs.writeFileSync as any).mock.calls[0];
-    expect(writePath).toMatch(/app-data\.json$/);
+    expect(mockFs.renameSync).toHaveBeenCalledOnce();
+    const [, target] = (mockFs.renameSync as any).mock.calls[0];
+    expect(target).toMatch(/app-data\.json$/);
   });
 
   it('omits empty pythonPath from saved JSON', () => {
