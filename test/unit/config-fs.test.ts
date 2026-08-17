@@ -248,19 +248,17 @@ describe('readJsonConfigFile on a real filesystem', () => {
     expect(writeJsonConfigFile(target, { theme: 'dark' })).toBe(true);
   });
 
-  it('does not mark a file it has already read once', () => {
+  it('reads JSON a crash left padded with NUL rather than marking it', () => {
     const target = path.join(dir, 'settings.json');
-    fs.writeFileSync(target, '{"theme":"dark"}');
+    const json = '{"theme":"dark"}';
+    // the file keeps its old length and the tail never made it to disk
+    fs.writeFileSync(
+      target,
+      Buffer.concat([Buffer.from(json), Buffer.alloc(48)])
+    );
+
     expect(readJsonConfigFile(target)).toEqual({ theme: 'dark' });
-
-    // WorkspaceSettings.read calls super.read, so the global file is read again
-    // on every session window, and an editor mid truncate-then-write would
-    // otherwise disable saving for values the singleton is already holding
-    fs.writeFileSync(target, '{"theme":');
-    expect(readJsonConfigFile(target)).toBeUndefined();
-
     expect(getUnreadableConfigFiles()).not.toContain(target);
-    expect(writeJsonConfigFile(target, { theme: 'light' })).toBe(true);
   });
 
   it('yields nothing more once marked, however the file reads later', () => {

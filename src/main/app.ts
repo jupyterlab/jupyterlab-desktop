@@ -1328,7 +1328,8 @@ export class JupyterApplication implements IApplication, IDisposable {
     const options: Electron.MessageBoxOptions = {
       type: 'warning',
       title: 'Setting was not saved',
-      message: 'The settings file could not be written, so the change is lost.',
+      message:
+        'The settings file could not be written, so the change will be lost when the app closes.',
       detail: `${UserSettings.getUserSettingsPath()}\n\nSee the log for the reason. A file that could not be read at startup is left alone until it is repaired or reset.`
     };
 

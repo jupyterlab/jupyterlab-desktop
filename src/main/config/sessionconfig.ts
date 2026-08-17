@@ -260,15 +260,8 @@ export class SessionConfig {
       // because serialize omits the key in that case
       this.persistSessionData = jsonData.persistSessionData === true;
     }
-    if (this.persistSessionData) {
-      if (typeof jsonData.partition === 'string' && jsonData.partition !== '') {
-        this.partition = jsonData.partition;
-      } else if (this.isRemote) {
-        // a remote session left on the empty default writes its cookies to a
-        // partition neither place that clears session data will touch, since
-        // both only clear one that starts with persist:
-        this.partition = `persist:${Date.now()}`;
-      }
+    if (this.persistSessionData && typeof jsonData.partition === 'string') {
+      this.partition = jsonData.partition;
     }
     if (typeof jsonData.workingDirectory === 'string') {
       this.workingDirectory = jsonData.workingDirectory;

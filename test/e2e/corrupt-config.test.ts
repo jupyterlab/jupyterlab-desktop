@@ -58,15 +58,19 @@ test('starts and reaches the welcome view when settings.json is corrupt', async 
   try {
     const welcome = await pageByTitle(app, /welcome/i);
     await expect(welcome.locator('#new-notebook-link')).toBeVisible();
+  } finally {
+    // closed before the assertions, because the save this must not perform
+    // runs from will-quit: checking the file while the app is still up cannot
+    // fail on the behaviour these exist to hold
+    await app.close();
+  }
 
-    // the file the app could not read is left exactly as it was
+  try {
     expect(readFileSync(join(userDataDir, 'settings.json'), 'utf8')).toBe(body);
-    // this is the only place the real write runs, temporary and all
     expect(
       readdirSync(userDataDir).filter(name => name.endsWith('.tmp'))
     ).toEqual([]);
   } finally {
-    await app.close();
     cleanup();
   }
 });
@@ -80,13 +84,16 @@ test('starts when app-data.json is truncated, which is what #881 reports', async
   try {
     const welcome = await pageByTitle(app, /welcome/i);
     await expect(welcome.locator('#new-notebook-link')).toBeVisible();
+  } finally {
+    await app.close();
+  }
 
+  try {
     expect(readFileSync(join(userDataDir, 'app-data.json'), 'utf8')).toBe(body);
     expect(
       readdirSync(userDataDir).filter(name => name.endsWith('.tmp'))
     ).toEqual([]);
   } finally {
-    await app.close();
     cleanup();
   }
 });

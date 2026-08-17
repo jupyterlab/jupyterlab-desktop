@@ -412,7 +412,7 @@ export function addUserSetEnvironment(envPath: string, isConda: boolean) {
     // the default python path below is written to a different file, so this
     // reports and carries on rather than skipping it
     console.error(
-      'Could not write the application data file, so the environment was not added to the list.'
+      'Could not write the application data file, so the environment is only added for this run.'
     );
   }
 
@@ -561,7 +561,7 @@ export async function handleEnvUpdateRegistryCommand(argv: any) {
   await registry.ready;
   if (!appData.save()) {
     console.error(
-      'Could not write the application data file, so the registry was not updated.'
+      'Could not write the application data file, so the refreshed registry is only in memory.'
     );
   }
 }

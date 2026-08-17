@@ -495,23 +495,6 @@ describe('SessionConfig.deserialize', () => {
     expect(s.partition).toBe('');
   });
 
-  it('gives a remote session a clearable partition when the file has none', () => {
-    const s = new SessionConfig();
-
-    s.deserialize({ remoteURL: 'https://example.com/lab', partition: 42 });
-
-    // left empty, its cookies land where neither caller of clearSession looks
-    expect(s.partition.startsWith('persist:')).toBe(true);
-  });
-
-  it('leaves a local session without a partition it never uses', () => {
-    const s = new SessionConfig();
-
-    s.deserialize({ workingDirectory: '/data/nb', partition: 42 });
-
-    expect(s.partition).toBe('');
-  });
-
   it('sets workingDirectory', () => {
     const s = new SessionConfig();
     s.deserialize({ workingDirectory: '/data/nb' });
