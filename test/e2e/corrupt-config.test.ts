@@ -23,10 +23,21 @@ async function launchWith(files: { [name: string]: string }) {
     writeFileSync(join(userDataDir, name), body);
   }
 
-  const app = await electron.launch({
-    args: ['.', `--user-data-dir=${userDataDir}`],
-    env: { ...process.env, HOME: jupyterDir }
-  });
+  const cleanup = () => {
+    rmSync(userDataDir, { recursive: true, force: true });
+    rmSync(jupyterDir, { recursive: true, force: true });
+  };
+
+  let app;
+  try {
+    app = await electron.launch({
+      args: ['.', `--user-data-dir=${userDataDir}`],
+      env: { ...process.env, HOME: jupyterDir }
+    });
+  } catch (error) {
+    cleanup();
+    throw error;
+  }
   // same order and the same retry as helpers.ts launchApp: stubAllDialogs
   // evaluates the main process, and at launch a window can be mid-navigation
   await app.firstWindow();
@@ -35,14 +46,7 @@ async function launchWith(files: { [name: string]: string }) {
     await stubAllDialogs(app);
   });
 
-  return {
-    app,
-    userDataDir,
-    cleanup: () => {
-      rmSync(userDataDir, { recursive: true, force: true });
-      rmSync(jupyterDir, { recursive: true, force: true });
-    }
-  };
+  return { app, userDataDir, cleanup };
 }
 
 test('starts and reaches the welcome view when settings.json is corrupt', async () => {
@@ -52,16 +56,15 @@ test('starts and reaches the welcome view when settings.json is corrupt', async 
   });
 
   try {
-    const welcome = await pageByTitle(app, /welcome/i);
-    await expect(welcome.locator('#new-notebook-link')).toBeVisible();
-  } finally {
-    // closed before the assertions, because the save this must not perform
-    // runs from will-quit: checking the file while the app is still up cannot
-    // fail on the behaviour these exist to hold
-    await app.close();
-  }
+    try {
+      const welcome = await pageByTitle(app, /welcome/i);
+      await expect(welcome.locator('#new-notebook-link')).toBeVisible();
+    } finally {
+      // closed before the assertions, because the save these must not see runs
+      // from will-quit: checking while the app is up cannot fail on it
+      await app.close();
+    }
 
-  try {
     expect(readFileSync(join(userDataDir, 'settings.json'), 'utf8')).toBe(body);
     expect(
       readdirSync(userDataDir).filter(name => name.endsWith('.tmp'))
@@ -78,13 +81,13 @@ test('starts when app-data.json is truncated, which is what #881 reports', async
   });
 
   try {
-    const welcome = await pageByTitle(app, /welcome/i);
-    await expect(welcome.locator('#new-notebook-link')).toBeVisible();
-  } finally {
-    await app.close();
-  }
+    try {
+      const welcome = await pageByTitle(app, /welcome/i);
+      await expect(welcome.locator('#new-notebook-link')).toBeVisible();
+    } finally {
+      await app.close();
+    }
 
-  try {
     expect(readFileSync(join(userDataDir, 'app-data.json'), 'utf8')).toBe(body);
     expect(
       readdirSync(userDataDir).filter(name => name.endsWith('.tmp'))

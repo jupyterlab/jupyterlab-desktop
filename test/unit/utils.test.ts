@@ -25,6 +25,7 @@ vi.mock('fs', async () => {
     renameSync: vi.fn(),
     realpathSync: vi.fn(),
     chownSync: vi.fn(),
+    fchownSync: vi.fn(),
     fchmodSync: vi.fn()
   };
 });
@@ -116,6 +117,7 @@ beforeEach(() => {
   mockFs.unlinkSync = vi.fn();
   mockFs.realpathSync = vi.fn();
   mockFs.chownSync = vi.fn();
+  mockFs.fchownSync = vi.fn();
   mockFs.fchmodSync = vi.fn();
 });
 
@@ -945,6 +947,7 @@ describe('writeJsonConfigFile', () => {
     mockFs.statSync = vi.fn(enoent) as any;
     mockFs.lstatSync = vi.fn(enoent) as any;
     mockFs.chownSync = vi.fn();
+    mockFs.fchownSync = vi.fn();
     mockFs.fchmodSync = vi.fn();
   });
 
@@ -954,7 +957,9 @@ describe('writeJsonConfigFile', () => {
     );
 
     const tempPath = `/data/write.json.${process.pid}.tmp`;
-    expect(mockFs.openSync).toHaveBeenCalledWith(tempPath, 'w');
+    // wx, so a symlink left at the temporary name is refused rather than
+    // followed, and 0600 because nothing existed to carry a mode from
+    expect(mockFs.openSync).toHaveBeenCalledWith(tempPath, 'wx', 0o600);
     expect(mockFs.writeFileSync).toHaveBeenCalledWith(
       7,
       JSON.stringify({ theme: 'dark' }, null, 2)
@@ -1003,11 +1008,9 @@ describe('writeJsonConfigFile', () => {
       (process as any).getuid = realGetuid;
     }
 
-    expect(mockFs.chownSync).toHaveBeenCalledWith(
-      `/data/owned.json.${process.pid}.tmp`,
-      501,
-      20
-    );
+    // through the descriptor: the path form follows a symlink and would hand
+    // away whatever it names
+    expect(mockFs.fchownSync).toHaveBeenCalledWith(7, 501, 20);
   });
 
   it('leaves ownership alone when the app is not root', () => {
@@ -1105,7 +1108,7 @@ describe('writeJsonConfigFile', () => {
     );
 
     const tempPath = `/dotfiles/settings.json.${process.pid}.tmp`;
-    expect(mockFs.openSync).toHaveBeenCalledWith(tempPath, 'w');
+    expect(mockFs.openSync).toHaveBeenCalledWith(tempPath, 'wx', 0o600);
     expect(mockFs.renameSync).toHaveBeenCalledWith(
       tempPath,
       '/dotfiles/settings.json'
@@ -1141,6 +1144,7 @@ describe('resetConfigFile', () => {
     mockFs.statSync = vi.fn(enoent) as any;
     mockFs.lstatSync = vi.fn(enoent) as any;
     mockFs.chownSync = vi.fn();
+    mockFs.fchownSync = vi.fn();
   });
 
   it('moves the file aside and lets the next write through', () => {

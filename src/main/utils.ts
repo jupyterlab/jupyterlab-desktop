@@ -65,6 +65,10 @@ export function getSchemasDir(): string {
 const unreadableConfigFiles = new Set<string>();
 
 /** Reading happens during module import, so the notice is pulled afterwards. */
+export function configFileIsUnreadable(filePath: string): boolean {
+  return unreadableConfigFiles.has(filePath);
+}
+
 export function getUnreadableConfigFiles(): readonly string[] {
   return [...unreadableConfigFiles];
 }
@@ -88,7 +92,7 @@ export function readJsonConfigFile(
 
   let contents: string;
   try {
-    contents = fs.readFileSync(filePath).toString();
+    contents = decodeConfig(fs.readFileSync(filePath));
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
       return undefined;
@@ -101,11 +105,10 @@ export function readJsonConfigFile(
     return undefined;
   }
 
-  // Notepad and Set-Content -Encoding UTF8 leave a UTF-8 BOM JSON.parse rejects,
-  // and a power cut leaves NUL padding once the metadata landed and the data did
-  // not, which is the shape #881 reports. Both come off before the emptiness
-  // check and before the parse, so a file whose JSON survived the padding reads
-  const text = contents.replace(/\0/g, '').replace(/^\uFEFF/, '');
+  // NUL padding is what a power cut leaves once the metadata reached disk and
+  // the data did not, which is the shape #881 reports. Off before the emptiness
+  // check and before the parse, so a file whose JSON survived it still reads.
+  const text = contents.replace(/\0/g, '');
 
   // nothing worth protecting in an empty one, so it is not marked
   if (text.trim() === '') {
@@ -166,18 +169,16 @@ export function writeJsonConfigFile(filePath: string, data: unknown): boolean {
     // recursive is a no-op when the directory is already there, and checking
     // first only opens a race window
     fs.mkdirSync(path.dirname(targetPath), { recursive: true });
-    // opened at the mode it will end up with, so the file is never briefly
-    // wider than the one it replaces. The umask can only narrow that, which is
-    // what the chmod undoes; widening is the only direction left with a gap,
-    // and a file that was already the wider one has nothing to leak in it
-    const mode = existing ? existing.mode & 0o777 : undefined;
-    fd =
-      mode === undefined
-        ? fs.openSync(tempPath, 'w')
-        : fs.openSync(tempPath, 'w', mode);
-    if (mode !== undefined) {
-      fs.fchmodSync(fd, mode);
-    }
+    // Opened at the mode it will end up with, so the file is never briefly
+    // wider than the one it replaces, and 0600 when there is nothing to carry:
+    // app-data.json holds recentRemoteURLs, whose entries carry a token in the
+    // query string, so the umask default is too generous to create it at.
+    const mode = existing ? existing.mode & 0o777 : 0o600;
+    fd = openExclusive(tempPath, mode);
+    // the umask narrows openSync's mode argument on the way through and does
+    // not touch fchmod, so this is what actually lands the group and other bits
+    fs.fchmodSync(fd, mode);
+    carryOwnership(fd, existing);
     fs.writeFileSync(fd, contents);
     // rename publishes the name, not the bytes: without this a power cut can
     // leave a good filename on an empty file
@@ -188,7 +189,6 @@ export function writeJsonConfigFile(filePath: string, data: unknown): boolean {
     const toClose = fd;
     fd = undefined;
     fs.closeSync(toClose);
-    carryOwnership(tempPath, existing);
     fs.renameSync(tempPath, targetPath);
     syncDirectoryEntry(targetPath);
     return true;
@@ -233,6 +233,24 @@ function syncDirectoryEntry(filePath: string): void {
  * something that assumes its type. These live here because appdata.ts and
  * sessionconfig.ts both need them and already import a cycle apart.
  */
+/**
+ * A byte order mark decides the encoding, and decoding UTF-16 as UTF-8 gives
+ * replacement characters no amount of trimming removes. Notepad writes one on
+ * Save As, and PowerShell's Out-File writes one for several of its encodings,
+ * so a config edited by hand on Windows can arrive with any of these.
+ */
+function decodeConfig(buffer: Buffer): string {
+  if (buffer.length >= 2 && buffer[0] === 0xff && buffer[1] === 0xfe) {
+    return buffer.subarray(2).toString('utf16le');
+  }
+  if (buffer.length >= 3 && buffer.subarray(0, 3).equals(UTF8_BOM)) {
+    return buffer.subarray(3).toString();
+  }
+  return buffer.toString();
+}
+
+const UTF8_BOM = Buffer.from([0xef, 0xbb, 0xbf]);
+
 /** Callers walk the result with `key in`, which an array or a primitive survives. */
 function isPlainObject(value: unknown): value is Record<string, any> {
   return value !== null && typeof value === 'object' && !Array.isArray(value);
@@ -283,19 +301,39 @@ function statOrUndefined(
 }
 
 /**
+ * O_EXCL, so the open fails rather than following a symlink somebody left at
+ * the name. The name carries this process's pid, so an existing one is either
+ * a temporary a previous run with that pid left behind, or a plant; unlinking
+ * removes the link itself rather than whatever it points at, and no live
+ * process shares the pid.
+ */
+function openExclusive(tempPath: string, mode: number): number {
+  try {
+    return fs.openSync(tempPath, 'wx', mode);
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== 'EEXIST') {
+      throw error;
+    }
+    fs.unlinkSync(tempPath);
+    return fs.openSync(tempPath, 'wx', mode);
+  }
+}
+
+/**
  * A run as root would otherwise leave the config owned by root and the user
  * unable to write their own settings again. write-file-atomic and atomically
- * both carry the owner across for the same reason.
+ * both carry the owner across for the same reason. Through the descriptor,
+ * since the path form follows a symlink and would hand away whatever it names.
  */
-function carryOwnership(tempPath: string, existing?: fs.Stats): void {
+function carryOwnership(fd: number, existing?: fs.Stats): void {
   if (!existing || process.getuid?.() !== 0) {
     return;
   }
 
   try {
-    fs.chownSync(tempPath, existing.uid, existing.gid);
+    fs.fchownSync(fd, existing.uid, existing.gid);
   } catch (error) {
-    log.error(`Failed to carry ownership onto ${tempPath}`, error);
+    log.error('Failed to carry ownership onto the new config', error);
   }
 }
 

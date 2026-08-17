@@ -139,6 +139,32 @@ describe('writeJsonConfigFile on a real filesystem', () => {
     }
   );
 
+  posixOnly('refuses to follow a symlink left at its temporary name', () => {
+    // the temporary name carries this process's pid, which is guessable, and a
+    // run as root would otherwise truncate and chown whatever the link names
+    const target = path.join(dir, 'settings.json');
+    const decoy = path.join(dir, 'decoy');
+    fs.writeFileSync(decoy, 'not mine to touch');
+    fs.symlinkSync(decoy, `${target}.${process.pid}.tmp`);
+
+    expect(writeJsonConfigFile(target, { theme: 'dark' })).toBe(true);
+
+    expect(fs.readFileSync(decoy, 'utf8')).toBe('not mine to touch');
+    expect(JSON.parse(fs.readFileSync(target, 'utf8'))).toEqual({
+      theme: 'dark'
+    });
+  });
+
+  posixOnly('creates a config nobody else can read', () => {
+    // app-data.json holds recentRemoteURLs, whose entries carry a token in the
+    // query string, so the umask default is too generous to create it at
+    const target = path.join(dir, 'app-data.json');
+
+    expect(writeJsonConfigFile(target, { recentRemoteURLs: [] })).toBe(true);
+
+    expect(fs.statSync(target).mode & 0o777).toBe(0o600);
+  });
+
   it('cleans up its temporary when the rename cannot happen', () => {
     // a config path that is a directory: the temporary is created, the rename
     // is the step that fails, which is the only way to reach the cleanup
@@ -227,6 +253,22 @@ describe('readJsonConfigFile on a real filesystem', () => {
     fs.writeFileSync(target, '﻿{"theme":"dark"}');
 
     expect(readJsonConfigFile(target)).toEqual({ theme: 'dark' });
+  });
+
+  it('reads one saved as UTF-16, which Save As and Out-File both write', () => {
+    const target = path.join(dir, 'settings.json');
+    fs.writeFileSync(
+      target,
+      Buffer.concat([
+        Buffer.from([0xff, 0xfe]),
+        Buffer.from('{"theme":"dark"}', 'utf16le')
+      ])
+    );
+
+    // decoded as UTF-8 the mark becomes two replacement characters, which no
+    // amount of trimming removes, and the file reads as corrupt
+    expect(readJsonConfigFile(target)).toEqual({ theme: 'dark' });
+    expect(getUnreadableConfigFiles()).not.toContain(target);
   });
 
   it('treats an empty file as absent and lets the next write through', () => {
