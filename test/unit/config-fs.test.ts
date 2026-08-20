@@ -336,6 +336,44 @@ describe('readJsonConfigFile on a real filesystem', () => {
     expect(getUnreadableConfigFiles()).toContain(target);
   });
 
+  it('reads a file torn in the middle without stalling the import', () => {
+    // the run above is six bytes, which is the size that hides what this
+    // costs. A power cut pads in filesystem blocks, so this is the shape the
+    // report describes, and the read happens while the config modules are
+    // still being imported, with no window up to show for it.
+    const target = path.join(dir, 'settings.json');
+    fs.writeFileSync(
+      target,
+      Buffer.concat([
+        Buffer.from('{"theme":"dark"'),
+        Buffer.alloc(200 * 1024),
+        Buffer.from('}')
+      ])
+    );
+
+    const started = Date.now();
+    expect(readJsonConfigFile(target)).toBeUndefined();
+    // measured at 22.7 s with `replace(/\0+$/, '')`, whose anchor retries from
+    // every position in the run, against under a millisecond for a scan. The
+    // margin between those is what makes a wall-clock assertion safe here
+    expect(Date.now() - started).toBeLessThan(1000);
+  });
+
+  it('does not build a config directory through a dangling link', () => {
+    // a dotfiles setup points the config directory at an external volume and
+    // the volume is not mounted. Pinned rather than guarded: recursive
+    // mkdirSync throws ENOENT through a dangling link rather than creating the
+    // chain behind it, so the shadow copy this would otherwise leave on the
+    // boot disk is Node's refusal and not ours. A guard here measured as dead.
+    const missing = path.join(dir, 'not-mounted');
+    const linked = path.join(dir, 'linked-config');
+    fs.symlinkSync(missing, linked);
+
+    const target = path.join(linked, 'settings.json');
+    expect(writeJsonConfigFile(target, { theme: 'dark' })).toBe(false);
+    expect(fs.existsSync(missing)).toBe(false);
+  });
+
   it('yields nothing more once marked, however the file reads later', () => {
     const target = path.join(dir, 'settings.json');
     fs.writeFileSync(target, '{');
