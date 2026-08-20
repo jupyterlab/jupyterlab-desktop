@@ -269,7 +269,10 @@ export class JupyterApplication implements IApplication, IDisposable {
    * Construct the Jupyter application
    */
   constructor(cliArgs: ICLIArguments) {
-    // before anything that can create a session or a webContents
+    // first, so that anything added to this constructor later is already
+    // covered by the time it can create a webContents
+    installGlobalNavigationGuard();
+    // same reason, and before anything that can create a session
     this._applyPermissionPolicies();
 
     this._cliArgs = cliArgs;
@@ -286,7 +289,6 @@ export class JupyterApplication implements IApplication, IDisposable {
     this._serverFactory.createFreeServer().catch(error => {
       console.error('Failed to create free server', error);
     });
-    installGlobalNavigationGuard();
     this._registerListeners();
 
     if (
