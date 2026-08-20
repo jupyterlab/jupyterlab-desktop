@@ -303,6 +303,39 @@ describe('readJsonConfigFile on a real filesystem', () => {
     expect(getUnreadableConfigFiles()).not.toContain(target);
   });
 
+  it('reads a file saved as UTF-16 big endian', () => {
+    const target = path.join(dir, 'settings.json');
+    const le = Buffer.from('{"theme":"dark"}', 'utf16le');
+    fs.writeFileSync(
+      target,
+      Buffer.concat([Buffer.from([0xfe, 0xff]), Buffer.from(le).swap16()])
+    );
+
+    // Notepad calls it "Unicode big endian"; decoded as UTF-8 the mark becomes
+    // replacement characters and the file is marked, which refuses every write
+    // to it from then on
+    expect(readJsonConfigFile(target)).toEqual({ theme: 'dark' });
+    expect(getUnreadableConfigFiles()).not.toContain(target);
+  });
+
+  it('refuses JSON torn in the middle rather than inventing a value', () => {
+    const target = path.join(dir, 'settings.json');
+    // the tail reached disk and the middle did not
+    fs.writeFileSync(
+      target,
+      Buffer.concat([
+        Buffer.from('{"pythonPath":"/opt/py","theme"'),
+        Buffer.alloc(6),
+        Buffer.from(':"dark"}')
+      ])
+    );
+
+    // stripping NUL everywhere would splice it into valid JSON holding a value
+    // nobody wrote, and the next save would persist it
+    expect(readJsonConfigFile(target)).toBeUndefined();
+    expect(getUnreadableConfigFiles()).toContain(target);
+  });
+
   it('yields nothing more once marked, however the file reads later', () => {
     const target = path.join(dir, 'settings.json');
     fs.writeFileSync(target, '{');

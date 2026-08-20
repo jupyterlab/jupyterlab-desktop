@@ -108,7 +108,11 @@ export function readJsonConfigFile(
   // NUL padding is what a power cut leaves once the metadata reached disk and
   // the data did not, which is the shape #881 reports. Off before the emptiness
   // check and before the parse, so a file whose JSON survived it still reads.
-  const text = contents.replace(/\0/g, '');
+  //
+  // Only the tail. Stripping NUL everywhere also closes a hole torn in the
+  // middle: `{"a":1,"b":2` + NULs + `}` becomes valid JSON holding a value
+  // nobody wrote, and the next save persists it as though it were the user's.
+  const text = contents.replace(/\0+$/, '');
 
   // nothing worth protecting in an empty one, so it is not marked
   if (text.trim() === '') {
@@ -242,6 +246,13 @@ function syncDirectoryEntry(filePath: string): void {
 function decodeConfig(buffer: Buffer): string {
   if (buffer.length >= 2 && buffer[0] === 0xff && buffer[1] === 0xfe) {
     return buffer.subarray(2).toString('utf16le');
+  }
+  if (buffer.length >= 2 && buffer[0] === 0xfe && buffer[1] === 0xff) {
+    // Node has no utf16be, so swap the pairs and read it as little endian.
+    // Notepad calls this one "Unicode big endian" and Out-File takes it as
+    // BigEndianUnicode; leaving it out marks the file and refuses every write
+    // to it from then on, which is worse than any of the shapes above.
+    return Buffer.from(buffer.subarray(2)).swap16().toString('utf16le');
   }
   if (buffer.length >= 3 && buffer.subarray(0, 3).equals(UTF8_BOM)) {
     return buffer.subarray(3).toString();
