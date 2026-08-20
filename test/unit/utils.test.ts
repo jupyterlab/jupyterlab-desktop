@@ -1010,14 +1010,22 @@ describe('writeJsonConfigFile', () => {
     );
   });
 
+  // lstatSync is what decides whether there is an existing file to carry
+  // ownership from, and stubbing statSync instead left it throwing, so this
+  // pair used to pass on the `!existing` early return rather than on the
+  // root check they are about
+  const existingFileOwnedBy = (uid: number, gid: number) =>
+    vi.fn(() => ({
+      mode: 0o100600,
+      uid,
+      gid,
+      isSymbolicLink: () => false
+    })) as any;
+
   it('leaves ownership alone when the app is not root', () => {
     const realGetuid = process.getuid;
     (process as any).getuid = () => 501;
-    mockFs.statSync = vi.fn(() => ({
-      mode: 0o100600,
-      uid: 501,
-      gid: 20
-    })) as any;
+    mockFs.lstatSync = existingFileOwnedBy(501, 20);
 
     try {
       writeJsonConfigFile('/data/unowned.json', {});
@@ -1026,6 +1034,22 @@ describe('writeJsonConfigFile', () => {
     }
 
     expect(mockFs.chownSync).not.toHaveBeenCalled();
+  });
+
+  it('carries the existing owner onto the replacement when root', () => {
+    // a sudo-run app writing a file the user owns must not leave it root's,
+    // or the next unprivileged start cannot save at all
+    const realGetuid = process.getuid;
+    (process as any).getuid = () => 0;
+    mockFs.lstatSync = existingFileOwnedBy(501, 20);
+
+    try {
+      writeJsonConfigFile('/data/owned.json', {});
+    } finally {
+      (process as any).getuid = realGetuid;
+    }
+
+    expect(mockFs.chownSync).toHaveBeenCalledWith(expect.any(String), 501, 20);
   });
 
   it('follows a dangling link to the path it names', () => {
