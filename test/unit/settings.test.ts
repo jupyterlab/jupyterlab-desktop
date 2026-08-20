@@ -249,6 +249,26 @@ describe('UserSettings', () => {
     expect(written).toEqual({});
   });
 
+  it('drops a key whose value is back to the default', () => {
+    // merging over the file means the on-disk value survives unless something
+    // takes it out, and a setting that no longer differs is one of those
+    mockFs.existsSync = vi.fn(() => true);
+    mockFs.readFileSync = vi.fn(() =>
+      Buffer.from(JSON.stringify({ showNewsFeed: false }))
+    ) as any;
+    mockFs.writeFileSync = vi.fn();
+
+    const us = new UserSettings(true);
+    us.setValue(SettingType.showNewsFeed, true); // true is the default
+
+    us.save();
+
+    const written = JSON.parse(
+      (mockFs.writeFileSync as any).mock.calls[0][1] as string
+    );
+    expect('showNewsFeed' in written).toBe(false);
+  });
+
   it('writes back a key it has no setting for', () => {
     // save merges over the file rather than rebuilding it, or a settings.json
     // written by a newer build loses whatever this one does not recognise, and

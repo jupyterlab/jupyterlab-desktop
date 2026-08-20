@@ -220,14 +220,44 @@ describe('WorkspaceSettings — keys it does not claim', () => {
     expect('futureGlobalSetting' in written()).toBe(false);
   });
 
+  it('writes a value set after that key was unset', () => {
+    const ws = new WorkspaceSettings('/data/nb');
+
+    ws.unsetValue(SettingType.uiMode);
+    ws.setValue(SettingType.uiMode, UIMode.SingleDocument);
+    ws.save();
+
+    // setting a key again has to undo the pending removal, or the write is
+    // dropped and the menu action silently does nothing
+    expect(written().uiMode).toBe(UIMode.SingleDocument);
+  });
+
+  it('drops an override that no longer differs from the global value', () => {
+    // only the project file holds it, or super.read() picks the same value up
+    // as the global one and the two no longer differ for the wrong reason
+    mockFs.readFileSync = vi.fn((p: fs.PathLike | fs.promises.FileHandle) =>
+      p.toString().includes('desktop-settings.json')
+        ? Buffer.from(JSON.stringify({ serverArgs: '--no-browser' }))
+        : Buffer.from('{}')
+    ) as any;
+    const ws = new WorkspaceSettings('/data/nb');
+    expect(ws.getValue(SettingType.serverArgs)).toBe('--no-browser');
+
+    // serverArgs is overridable and the global default is ''
+    ws.setValue(SettingType.serverArgs, '');
+    ws.save();
+
+    expect('serverArgs' in written()).toBe(false);
+  });
+
   it('drops a leftover when that key is explicitly unset', () => {
     const ws = new WorkspaceSettings('/data/nb');
 
-    // theme, because the CLI refuses a key outside SettingType, so a name this
-    // build does not know is not a reachable input to unsetValue
-    ws.unsetValue(SettingType.theme);
+    // uiMode, because the CLI refuses a key a project cannot override, so a
+    // non-overridable one is not a reachable input to unsetValue here
+    ws.unsetValue(SettingType.uiMode);
     ws.save();
 
-    expect('theme' in written()).toBe(false);
+    expect('uiMode' in written()).toBe(false);
   });
 });

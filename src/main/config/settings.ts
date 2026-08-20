@@ -155,6 +155,11 @@ function readJsonFileOrEmpty(filePath: string): { [key: string]: any } {
   }
 }
 
+type SettingDecision =
+  | { kind: 'write'; value: any }
+  | { kind: 'delete' }
+  | { kind: 'leave' };
+
 export class UserSettings {
   constructor(readSettings: boolean = true) {
     this._settings = {
@@ -218,15 +223,10 @@ export class UserSettings {
 
   setValue(setting: SettingType, value: any) {
     this._settings[setting].value = value;
-    this._unset.delete(setting);
   }
 
   unsetValue(setting: SettingType) {
     this._settings[setting].setToDefault();
-    // the only thing that takes a key out of the file. A value that merely
-    // equals its default is indistinguishable from one nobody ever set, so
-    // save cannot use that to decide a deletion
-    this._unset.add(setting);
   }
 
   read() {
@@ -250,7 +250,11 @@ export class UserSettings {
       readJsonFileOrEmpty(userSettingsPath),
       key => {
         const setting = this._settings[key];
-        return { write: setting.differentThanDefault, value: setting.value };
+        // every key of SettingType is one this build owns, so one matching
+        // its default does not belong in the file, whatever the file holds
+        return setting.differentThanDefault
+          ? { kind: 'write', value: setting.value }
+          : { kind: 'delete' };
       }
     );
 
@@ -264,20 +268,18 @@ export class UserSettings {
    */
   protected _merged(
     onDisk: { [key: string]: any },
-    valueFor: (key: string) => { write: boolean; value?: any }
+    decide: (key: string) => SettingDecision
   ): { [key: string]: any } {
     // spread defines rather than assigns, so a __proto__ key out of the file
     // stays an own property instead of reaching Object.prototype
     const merged = { ...onDisk };
 
     for (let key in SettingType) {
-      if (this._unset.has(key)) {
-        delete merged[key];
-        continue;
-      }
-      const decision = valueFor(key);
-      if (decision.write) {
+      const decision = decide(key);
+      if (decision.kind === 'write') {
         merged[key] = decision.value;
+      } else if (decision.kind === 'delete') {
+        delete merged[key];
       }
     }
 
@@ -290,7 +292,6 @@ export class UserSettings {
     );
   }
 
-  protected _unset = new Set<string>();
   protected _settings: { [key: string]: Setting<any> };
 }
 
@@ -328,7 +329,6 @@ export class WorkspaceSettings extends UserSettings {
 
   unsetValue(setting: SettingType) {
     delete this._wsSettings[setting];
-    this._unset.add(setting);
   }
 
   read() {
@@ -363,13 +363,22 @@ export class WorkspaceSettings extends UserSettings {
     const wsSettings = this._merged(
       readJsonFileOrEmpty(wsSettingsPath),
       key => {
+        // a key a project cannot override is not this file's to remove, even
+        // though it does nothing here
+        if (!this._settings[key].wsOverridable) {
+          return { kind: 'leave' };
+        }
         const setting = this._wsSettings[key];
-        const write =
-          !!setting &&
-          this._settings[key].wsOverridable &&
+        if (
+          setting &&
           (key === SettingType.uiMode ||
-            this._isDifferentThanUserSetting(key as SettingType));
-        return { write, value: setting?.value };
+            this._isDifferentThanUserSetting(key as SettingType))
+        ) {
+          return { kind: 'write', value: setting.value };
+        }
+        // unsetValue takes it out of _wsSettings, and an override matching the
+        // global value is not an override any more
+        return { kind: 'delete' };
       }
     );
 
