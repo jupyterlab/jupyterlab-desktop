@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import * as fs from 'fs';
 
 vi.mock('fs', async () => {
@@ -8,7 +8,12 @@ vi.mock('fs', async () => {
     existsSync: vi.fn(),
     lstatSync: vi.fn(),
     mkdirSync: vi.fn(),
-    writeFileSync: vi.fn()
+    writeFileSync: vi.fn(),
+    // a vi.fn() with no implementation returns undefined, and the reader calls
+    // .toString() on it: throw what fs throws for a missing file instead
+    readFileSync: vi.fn(() => {
+      throw Object.assign(new Error('ENOENT'), { code: 'ENOENT' });
+    })
   };
 });
 
@@ -29,6 +34,19 @@ import {
 } from '../../src/main/config/settings';
 
 const mockFs = vi.mocked(fs);
+
+// save() reads the file before merging over it, so a stub left set by one test
+// would feed the next one whatever the previous body returned
+beforeEach(() => {
+  vi.clearAllMocks();
+  mockFs.existsSync = vi.fn();
+  mockFs.lstatSync = vi.fn();
+  mockFs.mkdirSync = vi.fn();
+  mockFs.writeFileSync = vi.fn();
+  mockFs.readFileSync = vi.fn(() => {
+    throw Object.assign(new Error('ENOENT'), { code: 'ENOENT' });
+  }) as any;
+});
 
 describe('constants', () => {
   it('DEFAULT_WIN_WIDTH is 1024', () => expect(DEFAULT_WIN_WIDTH).toBe(1024));
@@ -191,10 +209,50 @@ describe('UserSettings', () => {
     expect(written).not.toHaveProperty('logLevel');
   });
 
+  it('does not let a __proto__ key out of the file reach Object.prototype', () => {
+    // read walks SettingType rather than the file, so nothing out of the file
+    // ever indexes _settings. Walking the file instead resolved '__proto__' to
+    // Object.prototype and assigned onto it, at module import.
+    mockFs.existsSync = vi.fn(() => true);
+    mockFs.readFileSync = vi.fn(() =>
+      Buffer.from('{"__proto__":{"pwned":1},"theme":"dark"}')
+    ) as any;
+    mockFs.writeFileSync = vi.fn();
+
+    try {
+      const us = new UserSettings(true);
+      us.save();
+
+      expect(({} as any).value).toBeUndefined();
+      expect(({} as any).pwned).toBeUndefined();
+      // and it is still written back, rather than dropped
+      const written = (mockFs.writeFileSync as any).mock.calls[0][1] as string;
+      expect(written).toContain('__proto__');
+    } finally {
+      delete (Object.prototype as any).value;
+      delete (Object.prototype as any).pwned;
+    }
+  });
+
+  it('takes nothing from a file whose top level is not an object', () => {
+    mockFs.existsSync = vi.fn(() => true);
+    mockFs.readFileSync = vi.fn(() => Buffer.from('[1,2,3]')) as any;
+    mockFs.writeFileSync = vi.fn();
+
+    const us = new UserSettings(true);
+    us.save();
+
+    // spreading an array would have written {"0":1,"1":2,"2":3}
+    const written = JSON.parse(
+      (mockFs.writeFileSync as any).mock.calls[0][1] as string
+    );
+    expect(written).toEqual({});
+  });
+
   it('writes back a key it has no setting for', () => {
-    // save rebuilds the file, so a key left out of it is a key deleted from
-    // disk: a settings.json written by a newer build loses whatever this one
-    // does not recognise, and troubleshoot.md sends people to edit this by hand
+    // save merges over the file rather than rebuilding it, or a settings.json
+    // written by a newer build loses whatever this one does not recognise, and
+    // troubleshoot.md sends people to edit this file by hand
     mockFs.existsSync = vi.fn(() => true);
     mockFs.readFileSync = vi.fn(() =>
       Buffer.from(JSON.stringify({ futureSetting: 42, theme: 'dark' }))

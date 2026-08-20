@@ -136,6 +136,25 @@ export namespace Setting {
   }
 }
 
+/**
+ * What the file holds right now, or nothing when it is absent or unusable.
+ * save merges over this rather than rebuilding, so a read that fails here
+ * costs the keys this build does not know rather than corrupting the ones it
+ * does; #1115 replaces this with the shared reader.
+ */
+function readJsonFileOrEmpty(filePath: string): { [key: string]: any } {
+  try {
+    const parsed = JSON.parse(fs.readFileSync(filePath).toString());
+    return parsed !== null &&
+      typeof parsed === 'object' &&
+      !Array.isArray(parsed)
+      ? parsed
+      : {};
+  } catch {
+    return {};
+  }
+}
+
 export class UserSettings {
   constructor(readSettings: boolean = true) {
     this._settings = {
@@ -199,10 +218,15 @@ export class UserSettings {
 
   setValue(setting: SettingType, value: any) {
     this._settings[setting].value = value;
+    this._unset.delete(setting);
   }
 
   unsetValue(setting: SettingType) {
     this._settings[setting].setToDefault();
+    // the only thing that takes a key out of the file. A value that merely
+    // equals its default is indistinguishable from one nobody ever set, so
+    // save cannot use that to decide a deletion
+    this._unset.add(setting);
   }
 
   read() {
@@ -213,28 +237,51 @@ export class UserSettings {
     const data = fs.readFileSync(userSettingsPath);
     const jsonData = JSON.parse(data.toString());
 
-    this._unclaimed = {};
-    for (const key of Object.keys(jsonData)) {
-      if (key in SettingType) {
+    for (let key in SettingType) {
+      if (key in jsonData) {
         this._settings[key].value = jsonData[key];
-      } else {
-        this._unclaimed[key] = jsonData[key];
       }
     }
   }
 
   save() {
     const userSettingsPath = UserSettings.getUserSettingsPath();
-    const userSettings: { [key: string]: any } = { ...this._unclaimed };
+    const userSettings = this._merged(
+      readJsonFileOrEmpty(userSettingsPath),
+      key => {
+        const setting = this._settings[key];
+        return { write: setting.differentThanDefault, value: setting.value };
+      }
+    );
+
+    fs.writeFileSync(userSettingsPath, JSON.stringify(userSettings, null, 2));
+  }
+
+  /**
+   * The file as it is on disk, with this object's settings written over it.
+   * Rebuilding from the settings alone deletes every key the build has no
+   * setting for, and every value the read declined to take.
+   */
+  protected _merged(
+    onDisk: { [key: string]: any },
+    valueFor: (key: string) => { write: boolean; value?: any }
+  ): { [key: string]: any } {
+    // spread defines rather than assigns, so a __proto__ key out of the file
+    // stays an own property instead of reaching Object.prototype
+    const merged = { ...onDisk };
 
     for (let key in SettingType) {
-      const setting = this._settings[key];
-      if (setting.differentThanDefault) {
-        userSettings[key] = setting.value;
+      if (this._unset.has(key)) {
+        delete merged[key];
+        continue;
+      }
+      const decision = valueFor(key);
+      if (decision.write) {
+        merged[key] = decision.value;
       }
     }
 
-    fs.writeFileSync(userSettingsPath, JSON.stringify(userSettings, null, 2));
+    return merged;
   }
 
   get resolvedWorkingDirectory(): string {
@@ -243,9 +290,7 @@ export class UserSettings {
     );
   }
 
-  // what the file held and this build had no setting for. Kept because save
-  // rebuilds the file, so a key left out of it is a key deleted from disk.
-  protected _unclaimed: { [key: string]: any } = {};
+  protected _unset = new Set<string>();
   protected _settings: { [key: string]: Setting<any> };
 }
 
@@ -283,7 +328,7 @@ export class WorkspaceSettings extends UserSettings {
 
   unsetValue(setting: SettingType) {
     delete this._wsSettings[setting];
-    delete this._wsUnclaimed[setting];
+    this._unset.add(setting);
   }
 
   read() {
@@ -298,15 +343,13 @@ export class WorkspaceSettings extends UserSettings {
     const data = fs.readFileSync(wsSettingsPath);
     const jsonData = JSON.parse(data.toString());
 
-    this._wsUnclaimed = {};
-    for (const key of Object.keys(jsonData)) {
-      const userSetting = key in SettingType ? this._settings[key] : undefined;
-      if (userSetting?.wsOverridable) {
-        this._wsSettings[key] = Object.assign({}, userSetting);
-        this._wsSettings[key].value = jsonData[key];
-      } else {
-        // not overridable by a project, or not a setting this build knows
-        this._wsUnclaimed[key] = jsonData[key];
+    for (let key in SettingType) {
+      if (key in jsonData) {
+        const userSetting = this._settings[key];
+        if (userSetting.wsOverridable) {
+          this._wsSettings[key] = Object.assign({}, userSetting);
+          this._wsSettings[key].value = jsonData[key];
+        }
       }
     }
   }
@@ -315,21 +358,20 @@ export class WorkspaceSettings extends UserSettings {
     const wsSettingsPath = WorkspaceSettings.getWorkspaceSettingsPath(
       this._workingDirectory
     );
-    const wsSettings: { [key: string]: any } = { ...this._wsUnclaimed };
-
     // uiMode needs special handling, it needs to be saved even if same as global default.
     // this is due to automatically setting uiMode to Zen for default for opening single file
-    for (let key in SettingType) {
-      const setting = this._wsSettings[key];
-      if (
-        setting &&
-        this._settings[key].wsOverridable &&
-        (key === SettingType.uiMode ||
-          this._isDifferentThanUserSetting(key as SettingType))
-      ) {
-        wsSettings[key] = setting.value;
+    const wsSettings = this._merged(
+      readJsonFileOrEmpty(wsSettingsPath),
+      key => {
+        const setting = this._wsSettings[key];
+        const write =
+          !!setting &&
+          this._settings[key].wsOverridable &&
+          (key === SettingType.uiMode ||
+            this._isDifferentThanUserSetting(key as SettingType));
+        return { write, value: setting?.value };
       }
-    }
+    );
 
     // Write when there is something to persist, or when a previous file needs
     // to be cleared. mkdir is unconditional: recursive mode is a no-op when the
@@ -356,7 +398,6 @@ export class WorkspaceSettings extends UserSettings {
     return path.join(workingDirectory, '.jupyter', 'desktop-settings.json');
   }
 
-  private _wsUnclaimed: { [key: string]: any } = {};
   private _workingDirectory: string;
   private _wsSettings: { [key: string]: Setting<any> } = {};
 }
