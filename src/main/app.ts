@@ -32,7 +32,7 @@ import {
   waitForDuration
 } from './utils';
 import { installGlobalNavigationGuard } from './navigationguard';
-import { isPermissionAllowed } from './permissionpolicy';
+import { isPermissionAllowed, serverUrlsForRequest } from './permissionpolicy';
 import { IServerFactory, JupyterServerFactory } from './server';
 import { connectAndGetServerInfo, IJupyterServerInfo } from './connect';
 import { UpdateDialog } from './updatedialog/updatedialog';
@@ -597,7 +597,7 @@ export class JupyterApplication implements IApplication, IDisposable {
           const allowed = isPermissionAllowed({
             permission,
             requestingUrl,
-            serverUrl: this._serverUrlForWebContents(webContents)
+            serverUrls: this._serverUrlsForRequest(webContents)
           });
           if (!allowed) {
             // a refusal is silent in the page, so leave a trail behind. Only
@@ -614,12 +614,25 @@ export class JupyterApplication implements IApplication, IDisposable {
       );
 
       ses.setPermissionCheckHandler(
-        (webContents, permission, requestingOrigin) =>
-          isPermissionAllowed({
+        (webContents, permission, requestingOrigin) => {
+          const allowed = isPermissionAllowed({
             permission,
             requestingUrl: requestingOrigin,
-            serverUrl: this._serverUrlForWebContents(webContents)
-          })
+            serverUrls: this._serverUrlsForRequest(webContents)
+          });
+          if (!allowed) {
+            // a check is where Notification.permission and its kind are
+            // answered, and some of those never reach the request handler, so
+            // leaving this one silent hides exactly the refusals nobody can
+            // see from inside the page
+            log.debug(
+              `Denied a ${permission} check from ${
+                originOf(requestingOrigin) ?? 'an unknown origin'
+              }`
+            );
+          }
+          return allowed;
+        }
       );
     };
 
@@ -627,28 +640,20 @@ export class JupyterApplication implements IApplication, IDisposable {
     app.on('session-created', apply);
   }
 
-  /**
-   * The lab view of a session window is the only content a Jupyter server
-   * serves. Local sessions share one session while listening on different
-   * ports, so the origin is resolved per webContents rather than captured once.
-   */
-  private _serverUrlForWebContents(
+  private _serverUrlsForRequest(
     webContents: Electron.WebContents | null
-  ): string | undefined {
-    if (!webContents) {
-      return undefined;
-    }
-
+  ): string[] {
     // the handlers go up before the manager exists, and a permission request
     // cannot arrive mid-constructor today, but only because nothing in between
     // pumps the event loop
-    for (const sessionWindow of this._sessionWindowManager?.windows ?? []) {
-      if (webContents === sessionWindow.labView?.view?.webContents) {
-        return sessionWindow.getServerInfo()?.url;
-      }
-    }
-
-    return undefined;
+    const windows = this._sessionWindowManager?.windows ?? [];
+    return serverUrlsForRequest(
+      webContents,
+      windows.map(sessionWindow => ({
+        viewWebContents: sessionWindow.labView?.view?.webContents,
+        serverUrl: sessionWindow.getServerInfo()?.url
+      }))
+    );
   }
 
   private _validateRemoteServerUrl(url: string): Promise<IJupyterServerInfo> {
