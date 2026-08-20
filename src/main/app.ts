@@ -1333,13 +1333,20 @@ export class JupyterApplication implements IApplication, IDisposable {
       detail: `${UserSettings.getUserSettingsPath()}\n\nSee the log for the reason. A file that could not be read at startup is left alone until it is repaired or reset.`
     };
 
-    // parented, because a box without one runs synchronously on macOS by
-    // Electron's own note, and this is called from inside an IPC handler
-    const parent = BrowserWindow.fromWebContents(sender);
-    const shown = parent
-      ? dialog.showMessageBox(parent, options)
-      : dialog.showMessageBox(options);
-    shown.catch(error => log.error(error));
+    // Parented, always. Electron's own note on the signal option says a message
+    // box without a parent "runs synchronously due to platform limitations" on
+    // macOS, and this is called from inside an IPC handler, so a parentless one
+    // freezes every window until somebody clicks a box nobody went looking for.
+    // A sender whose window is already gone gets any other live window rather
+    // than the parentless call, and the log if there is none.
+    const parent =
+      BrowserWindow.fromWebContents(sender) ??
+      BrowserWindow.getAllWindows().find(win => !win.isDestroyed());
+    if (!parent) {
+      log.error(`Could not write ${UserSettings.getUserSettingsPath()}`);
+      return;
+    }
+    dialog.showMessageBox(parent, options).catch(error => log.error(error));
   }
 
   private _quit(): void {
