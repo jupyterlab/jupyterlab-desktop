@@ -343,8 +343,7 @@ describe('SessionConfig.createFromArgs', () => {
   });
 
   it('excludes pythonPath when it does not exist', () => {
-    // the arg is resolved before it reaches here, so on Windows it arrives as
-    // C:\valid\dir and a forward-slash match would find nothing
+    // the arg is resolved before it reaches here, so on Windows it arrives as C:\valid\dir and a forward-slash match would find nothing
     mockFs.existsSync = vi.fn((p: fs.PathLike) => {
       return p.toString().replace(/\\/g, '/').includes('valid/dir');
     });

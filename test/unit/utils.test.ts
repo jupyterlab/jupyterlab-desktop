@@ -81,10 +81,7 @@ import * as net from 'net';
 
 const mockFs = vi.mocked(fs);
 
-// Stubbing process.platform does not restage path: it binds win32 or posix at
-// import, from the real host. So a function that branches on the platform runs
-// the branch the test asked for, and joins it with the host's separator. These
-// assertions are about layout, not about which slash, so they compare in one.
+// Stubbing process.platform does not restage path: it binds win32 or posix at import, from the real host. So a function that branches on the platform runs the branch the test asked for, and joins it with the host's separator. These assertions are about layout, not about which slash, so they compare in one.
 const toSlash = (p: string) => p.split(path.sep).join('/');
 
 // Reset the fs stubs to fresh no-op fns before every test so a value set in
@@ -207,8 +204,7 @@ describe('condaSourcePathForEnvPath', () => {
 
   it('returns conda.sh path on posix', () => {
     Object.defineProperty(process, 'platform', { value: 'darwin' });
-    // undefined is this function's Windows answer, and the empty string it
-    // becomes here fails the comparison rather than typing as a string
+    // undefined is this function's Windows answer, and the empty string it becomes here fails the comparison rather than typing as a string
     expect(toSlash(condaSourcePathForEnvPath('/env') ?? '')).toBe(
       '/env/etc/profile.d/conda.sh'
     );

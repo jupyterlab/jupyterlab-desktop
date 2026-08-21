@@ -103,8 +103,7 @@ describe('launchCLIinEnvironment', () => {
   });
 
   it('spawns bash with the generated activate script and cleans it up on close', async () => {
-    // pinned: the Windows branch spawns cmd and waits five seconds before it
-    // unlinks, so on that runner this hit the timeout rather than the assertion
+    // pinned: the Windows branch spawns cmd and waits five seconds before it unlinks, so on that runner this hit the timeout rather than the assertion
     Object.defineProperty(process, 'platform', { value: 'darwin' });
     mockSpawn.mockReturnValue(makeChild(0));
     const result = await launchCLIinEnvironment('/envs/a');
