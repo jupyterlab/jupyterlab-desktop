@@ -62,11 +62,7 @@ describe('isPermissionAllowed', () => {
     ).toBe(false);
   });
 
-  // Electron calls the check handler with no webContents for notification and
-  // worker checks, so there is no single window to measure against and every
-  // open server is offered instead. Matching only the one window would leave
-  // Notification.permission reading denied while the request handler had
-  // already granted it.
+  // Electron calls the check handler with no webContents for notification and worker checks, so there is no single window to measure against and every open server is offered instead. Matching only the one window would leave Notification.permission reading denied while the request handler had already granted it.
   it('allows notifications from a server origin that no single window pins', () => {
     expect(
       isPermissionAllowed({
@@ -112,9 +108,7 @@ describe('serverUrlsForRequest', () => {
     expect(serverUrlsForRequest(labView, views)).toEqual([server]);
   });
 
-  // this is the case that made the notifications grant dead: Electron passes
-  // no webContents for notification and worker checks, so pinning the request
-  // to a single window refuses every one of them
+  // this is the case that made the notifications grant dead: Electron passes no webContents for notification and worker checks, so pinning the request to a single window refuses every one of them
   it('offers every open server when there is no webContents', () => {
     expect(serverUrlsForRequest(null, views)).toEqual([
       server,

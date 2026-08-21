@@ -1,11 +1,9 @@
-// Copyright (c) Jupyter Development Team.
-// Distributed under the terms of the Modified BSD License.
+// Copyright (c) Jupyter Development Team. Distributed under the terms of the Modified BSD License.
 
 import type { WebContents } from 'electron';
 import { isSameServerOrigin } from './utils';
 
-// What the Jupyter server origin may have, and why. Anything absent is refused,
-// as is everything for any other origin.
+// What the Jupyter server origin may have, and why. Anything absent is refused, as is everything for any other origin.
 const SERVER_ORIGIN_PERMISSIONS: Record<string, boolean> = {
   'clipboard-read': true, // JupyterLab copies and pastes cells through it
   'clipboard-sanitized-write': true,
@@ -20,15 +18,12 @@ const SERVER_ORIGIN_PERMISSIONS: Record<string, boolean> = {
 export interface IPermissionRequest {
   permission: string;
   requestingUrl: string | undefined | null;
-  // every Jupyter server origin currently open, since a check can arrive with
-  // no way to say which window it belongs to
+  // every Jupyter server origin currently open, since a check can arrive with no way to say which window it belongs to
   serverUrls: readonly (string | undefined | null)[];
 }
 
 /**
- * Decide a permission request. Electron grants everything silently when no
- * handler is installed, so anything off the Jupyter server origin is refused
- * here.
+ * Decide a permission request. Electron grants everything silently when no handler is installed, so anything off the Jupyter server origin is refused here.
  */
 export function isPermissionAllowed({
   permission,
@@ -54,12 +49,7 @@ export interface IServedView {
 /**
  * The server origins a permission request may be measured against.
  *
- * A check handler can be called with no webContents at all: notification and
- * worker checks reach Electron without a frame host, which the 13.0 breaking
- * change describes as passing null and points at requestingOrigin instead.
- * Narrowing to a single window is not possible there, so every open server
- * counts. Those are origins the user connected to by hand, and the origin
- * being matched comes from Chromium rather than from the page.
+ * A check handler can be called with no webContents at all: notification and worker checks reach Electron without a frame host, which the 13.0 breaking change describes as passing null and points at requestingOrigin instead. Narrowing to a single window is not possible there, so every open server counts. Those are origins the user connected to by hand, and the origin being matched comes from Chromium rather than from the page.
  */
 export function serverUrlsForRequest(
   webContents: WebContents | null,
@@ -69,8 +59,7 @@ export function serverUrlsForRequest(
     const view = views.find(
       candidate => candidate.viewWebContents === webContents
     );
-    // a webContents that is not a lab view, such as the welcome page or a
-    // sign-in window, is served by nothing and gets nothing
+    // a webContents that is not a lab view, such as the welcome page or a sign-in window, is served by nothing and gets nothing
     return view?.serverUrl ? [view.serverUrl] : [];
   }
 
