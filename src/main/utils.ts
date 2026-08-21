@@ -1,4 +1,5 @@
-// Copyright (c) Jupyter Development Team. Distributed under the terms of the Modified BSD License.
+// Copyright (c) Jupyter Development Team.
+// Distributed under the terms of the Modified BSD License.
 
 import * as path from 'path';
 import * as fs from 'fs';
@@ -27,7 +28,8 @@ export interface ISaveOptions {
 }
 
 export function isDevMode(): boolean {
-  // require.main is undefined under ESM and when the app runs against an Electron binary from the system rather than the bundled one (#786)
+  // require.main is undefined under ESM and when the app runs against an
+  // Electron binary from the system rather than the bundled one (#786)
   return !app.isPackaged;
 }
 
@@ -358,7 +360,8 @@ export function getBundledEnvInstallerPath(): string {
 }
 
 export function getBundledPythonInstallDir(): string {
-  // this directory path cannot have any spaces since conda environments cannot be installed to such paths
+  // this directory path cannot have any spaces since
+  // conda environments cannot be installed to such paths
   const installDir =
     process.platform === 'darwin'
       ? path.normalize(path.join(app.getPath('home'), 'Library', app.getName()))
@@ -394,7 +397,9 @@ export function isDarkTheme(themeType: string) {
 }
 
 /**
- * The origin of a URL, or null when there is not one: no URL, one that does not parse, or an opaque source such as data: and about:blank, which serialize to the literal "null" origin. Never throws.
+ * The origin of a URL, or null when there is not one: no URL, one that does not
+ * parse, or an opaque source such as data: and about:blank, which serialize to
+ * the literal "null" origin. Never throws.
  */
 export function originOf(url: string | undefined | null): string | null {
   if (!url) {
@@ -409,7 +414,8 @@ export function originOf(url: string | undefined | null): string | null {
 }
 
 /**
- * Whether a URL uses one of the given schemes, written as URL.protocol does, with the colon. False when the URL does not parse.
+ * Whether a URL uses one of the given schemes, written as URL.protocol does,
+ * with the colon. False when the URL does not parse.
  */
 export function matchesScheme(url: string, ...schemes: string[]): boolean {
   try {
@@ -420,7 +426,8 @@ export function matchesScheme(url: string, ...schemes: string[]): boolean {
 }
 
 /**
- * Strict same-origin check between two URLs. False when either URL is absent, unparseable, or has an opaque origin. Never throws.
+ * Strict same-origin check between two URLs. False when either URL is absent,
+ * unparseable, or has an opaque origin. Never throws.
  */
 export function isSameServerOrigin(
   senderUrl: string | undefined | null,
@@ -432,7 +439,9 @@ export function isSameServerOrigin(
 }
 
 export function clearSession(session: Electron.Session): Promise<void> {
-  // best-effort teardown: callers await this before closing windows, so a failure to clear one cache must not reject and skip that cleanup, nor hang (Promise.all with no catch would). allSettled always resolves; log failures.
+  // best-effort teardown: callers await this before closing windows, so a
+  // failure to clear one cache must not reject and skip that cleanup, nor hang
+  // (Promise.all with no catch would). allSettled always resolves; log failures.
   return Promise.allSettled([
     session.clearCache(),
     session.clearAuthCache(),
@@ -591,7 +600,9 @@ export async function installBundledEnvironment(
   return installCondaPackEnvironment(condaPackPath, installPath, listener);
 }
 
-// Extract a conda-pack tarball into destDir. Separated from the install flow so the tar usage (which the project re-verifies on every tar bump) is unit-tested against a real tarball rather than only exercised by a full env install.
+// Extract a conda-pack tarball into destDir. Separated from the install flow so
+// the tar usage (which the project re-verifies on every tar bump) is unit-tested
+// against a real tarball rather than only exercised by a full env install.
 export async function extractTarball(
   tarballPath: string,
   destDir: string
@@ -725,7 +736,8 @@ export async function deletePythonEnvironment(
         'Environment cannot be deleted since it was not installed by JupyterLab Desktop.'
       );
       reject();
-      // without this return the guard is advisory only: execution falls through and rmSync deletes the directory the guard just refused.
+      // without this return the guard is advisory only: execution falls
+      // through and rmSync deletes the directory the guard just refused.
       return;
     }
 
@@ -844,13 +856,15 @@ export function createCommandScriptInEnv(
 
   let hasActivate = fs.existsSync(activatePath);
   const isConda = isCondaEnv(envPath);
-  // conda commands don't work properly when called from the sub environment. instead call using conda from the base environment with -p parameter
+  // conda commands don't work properly when called from the sub environment.
+  // instead call using conda from the base environment with -p parameter
   const isCondaCommand = isConda && command?.startsWith('conda ');
   if (isCondaCommand && !isBaseCondaEnv(envPath)) {
     command = `${command} -p ${envPath}`;
   }
 
-  // conda activate is only available in base conda environments or conda-packed environments
+  // conda activate is only available in base conda environments or
+  // conda-packed environments
   let isBaseCondaActivate = false;
   if (!hasActivate && isConda) {
     if (fs.existsSync(baseCondaEnvPath)) {
@@ -1036,7 +1050,8 @@ export function launchTerminalInDirectory(options: {
   } else {
     let callCommands = '';
     if (commands) {
-      // note that calling "exec bash" at the end will cause .bashrc to be reloaded, which could possibly override python path (e.g. base conda initialization)
+      // note that calling "exec bash" at the end will cause .bashrc to be reloaded,
+      // which could possibly override python path (e.g. base conda initialization)
       callCommands = ` -- bash -c "${commands}${
         interactive ? '; exec bash' : ''
       }"`;

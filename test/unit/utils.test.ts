@@ -95,7 +95,8 @@ import * as net from 'net';
 
 const mockFs = vi.mocked(fs);
 
-// Reset the fs stubs to fresh no-op fns before every test so a value set in one test cannot leak into a later one that does not set it.
+// Reset the fs stubs to fresh no-op fns before every test so a value set in
+// one test cannot leak into a later one that does not set it.
 beforeEach(() => {
   vi.clearAllMocks();
   mockFs.existsSync = vi.fn();
@@ -540,7 +541,8 @@ describe('createCommandScriptInEnv', () => {
   });
 
   it('returns empty string when envPath lstatSync throws and no activate exists', () => {
-    // when lstatSync throws, the try-catch swallows it and execution continues; if there's also no activate script, the function returns ''
+    // when lstatSync throws, the try-catch swallows it and execution continues;
+    // if there's also no activate script, the function returns ''
     mockFs.lstatSync = vi.fn(() => {
       throw Object.assign(new Error('ENOENT'), { code: 'ENOENT' });
     });
@@ -624,7 +626,8 @@ describe('markEnvironmentAsJupyterInstalled', () => {
   it('still writes env.json when the .jupyter dir already exists', () => {
     mockFs.existsSync = vi.fn(() => true);
     markEnvironmentAsJupyterInstalled('/env/myenv');
-    // mkdir runs unconditionally: recursive mode is a no-op on an existing directory, so there is no reason to check first and race on the answer.
+    // mkdir runs unconditionally: recursive mode is a no-op on an existing
+    // directory, so there is no reason to check first and race on the answer.
     expect(mockFs.writeFileSync).toHaveBeenCalledWith(
       expect.stringContaining('env.json'),
       expect.stringContaining('jupyterlab-desktop')
@@ -665,7 +668,8 @@ describe('deletePythonEnvironment', () => {
       EnvironmentDeleteStatus.Failure,
       expect.any(String)
     );
-    // the guard must stop here: a rejected promise is not enough, the directory must never be touched when it was not Desktop-installed.
+    // the guard must stop here: a rejected promise is not enough, the
+    // directory must never be touched when it was not Desktop-installed.
     expect(mockFs.rmSync).not.toHaveBeenCalled();
   });
 
@@ -723,7 +727,8 @@ describe('clearSession', () => {
     const session = fakeSession({
       clearStorageData: vi.fn(() => Promise.reject(new Error('boom')))
     });
-    // best-effort: callers close windows right after awaiting, so a failed clear must not reject (skipping cleanup) nor hang.
+    // best-effort: callers close windows right after awaiting, so a failed
+    // clear must not reject (skipping cleanup) nor hang.
     await expect(clearSession(session)).resolves.toBeUndefined();
     expect(log.error).toHaveBeenCalledWith(
       'Failed to clear part of the session',
