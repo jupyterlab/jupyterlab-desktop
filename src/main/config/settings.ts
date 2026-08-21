@@ -250,10 +250,7 @@ export class UserSettings {
   }
 
   /**
-   * Whether a value from a config file can stand in for a setting, judged
-   * against the declared default: a string where an array belongs reaches
-   * join() later and throws there instead, and null passes a bare typeof check
-   * for every object-valued setting.
+   * Whether a value from a config file can stand in for a setting, judged against the declared default: a string where an array belongs reaches join() later and throws there instead, and null passes a bare typeof check for every object-valued setting.
    */
   protected _hasShapeOf(value: any, key: string): boolean {
     const reference = this._settings[key].defaultValue;

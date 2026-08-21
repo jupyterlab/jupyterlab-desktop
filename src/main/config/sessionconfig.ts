@@ -232,14 +232,10 @@ export class SessionConfig {
   }
 
   deserialize(jsonData: any) {
-    // every field here is copied out of a file a person can edit, and each one
-    // is handed to something that assumes its type: the geometry goes to
-    // BrowserWindow, lastOpened back to toISOString() on the next save
+    // every field here is copied out of a file a person can edit, and each one is handed to something that assumes its type: the geometry goes to BrowserWindow, lastOpened back to toISOString() on the next save
     for (const key of ['x', 'y', 'width', 'height'] as const) {
       const value = jsonData[key];
-      // integers, because setBounds rounds anyway, and a size has to be
-      // positive: x and y may not, a window on a second display to the left
-      // has a negative x
+      // integers, because setBounds rounds anyway, and a size has to be positive: x and y may not, a window on a second display to the left has a negative x
       if (!Number.isInteger(value)) {
         continue;
       }
@@ -255,9 +251,7 @@ export class SessionConfig {
       this.remoteURL = jsonData.remoteURL;
     }
     if ('persistSessionData' in jsonData) {
-      // only a real boolean: this one decides whether a remote server's
-      // cookies land on disk, so anything else fails closed. Absent means true
-      // because serialize omits the key in that case
+      // only a real boolean: this one decides whether a remote server's cookies land on disk, so anything else fails closed. Absent means true because serialize omits the key in that case
       this.persistSessionData = jsonData.persistSessionData === true;
     }
     if (this.persistSessionData && typeof jsonData.partition === 'string') {

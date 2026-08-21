@@ -20,10 +20,7 @@ import { ISignal, Signal } from '@lumino/signaling';
 const MAX_RECENT_SESSIONS = 20;
 
 /**
- * A file can parse into a perfectly good object and still hold junk inside its
- * arrays. Every loop below walks properties off these entries, and one null
- * among them used to throw during module import, which is #824 again by
- * another route.
+ * A file can parse into a perfectly good object and still hold junk inside its arrays. Every loop below walks properties off these entries, and one null among them used to throw during module import, which is #824 again by another route.
  */
 function objectsIn(value: unknown): any[] {
   return Array.isArray(value) ? value.filter(isPlainObject) : [];
@@ -33,18 +30,14 @@ function pythonEnvFromConfig(entry: any): IPythonEnvironment {
   return {
     name: stringFromConfig(entry.name),
     path: stringFromConfig(entry.path),
-    // a number here silently takes the wrong branch of every enum compare, and
-    // spreading a string gives { '0': '3', '1': '.' }
+    // a number here silently takes the wrong branch of every enum compare, and spreading a string gives { '0': '3', '1': '.' }
     type: stringFromConfig(entry.type) as IEnvironmentType,
     versions: isPlainObject(entry.versions) ? { ...entry.versions } : {},
     defaultKernel: 'python3'
   };
 }
 
-// all three are written on every save, so one missing means the file was
-// edited: the path reaches path.dirname and the registry, the name is rendered
-// straight into the environment list, and the type is compared against
-// IEnvironmentType, where undefined takes the else branch of every check
+// all three are written on every save, so one missing means the file was edited: the path reaches path.dirname and the registry, the name is rendered straight into the environment list, and the type is compared against IEnvironmentType, where undefined takes the else branch of every check
 function pythonEnvsIn(value: unknown): IPythonEnvironment[] {
   return objectsIn(value)
     .map(pythonEnvFromConfig)
@@ -143,8 +136,7 @@ export class ApplicationData {
     for (const recentSession of objectsIn(jsonData.recentSessions)) {
       const workingDirectory = stringFromConfig(recentSession.workingDirectory);
       const remoteURL = stringFromConfig(recentSession.remoteURL);
-      // an entry naming neither has nothing to reopen, and the welcome view
-      // would draw a row for it anyway
+      // an entry naming neither has nothing to reopen, and the welcome view would draw a row for it anyway
       if (workingDirectory === undefined && remoteURL === undefined) {
         continue;
       }

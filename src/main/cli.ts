@@ -409,8 +409,7 @@ export function addUserSetEnvironment(envPath: string, isConda: boolean) {
     defaultKernel: 'python3'
   });
   if (!appData.save()) {
-    // the default python path below is written to a different file, so this
-    // reports and carries on rather than skipping it
+    // the default python path below is written to a different file, so this reports and carries on rather than skipping it
     console.error(
       'Could not write the application data file, so the environment is only added for this run.'
     );
@@ -887,10 +886,7 @@ export async function handleEnvSetPythonEnvsPathCommand(argv: any) {
   );
 }
 
-// resolved the way the constructor does, so the name matches the file that was
-// actually written. That resolution has its own problem, an lstat that sends a
-// symlinked project directory to the home one, and this only keeps the two in
-// step rather than fixing it
+// resolved the way the constructor does, so the name matches the file that was actually written. That resolution has its own problem, an lstat that sends a symlinked project directory to the home one, and this only keeps the two in step rather than fixing it
 function settingsFilePathFor(projectPath?: string): string {
   return projectPath
     ? WorkspaceSettings.getWorkspaceSettingsPath(
@@ -902,8 +898,7 @@ function settingsFilePathFor(projectPath?: string): string {
 function reportUnsavedSetting(what: string, projectPath?: string): void {
   const file = settingsFilePathFor(projectPath);
 
-  // the refusal is far more often the read guard than a failed write, and only
-  // one of the two has something the reader can do about it
+  // the refusal is far more often the read guard than a failed write, and only one of the two has something the reader can do about it
   if (configFileIsUnreadable(file)) {
     console.error(
       `${file} could not be read, so ${what} was not saved. Repair the JSON in it, or move it aside and let a fresh one be written.`

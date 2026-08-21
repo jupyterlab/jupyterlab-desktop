@@ -240,10 +240,7 @@ app.on('ready', async () => {
 });
 
 /**
- * Say so when config could not be read. Falling back to defaults is not a
- * neutral act: which interpreter runs, which conda channels packages come
- * from, and whether updates install by themselves all revert with it, so this
- * is worth interrupting for rather than leaving in a log nobody opens.
+ * Say so when config could not be read. Falling back to defaults is not a neutral act: which interpreter runs, which conda channels packages come from, and whether updates install by themselves all revert with it, so this is worth interrupting for rather than leaving in a log nobody opens.
  */
 function reportUnreadableConfig(): void {
   const files = getUnreadableConfigFiles();
@@ -260,11 +257,7 @@ function reportUnreadableConfig(): void {
     `Defaults below, which moves ${them} aside with a .corrupt suffix and ` +
     `saves normally from then on.`;
 
-  // Waits for a window and hands it over as the parent. Electron's dialog docs
-  // note that on macOS a message box with no parent "runs synchronously due to
-  // platform limitations", so showing this before the first window blocks the
-  // whole startup until somebody clicks: an app launched at login or over a
-  // remote session never comes up, and the e2e harness cannot get past it.
+  // Waits for a window and hands it over as the parent. Electron's dialog docs note that on macOS a message box with no parent "runs synchronously due to platform limitations", so showing this before the first window blocks the whole startup until somebody clicks: an app launched at login or over a remote session never comes up, and the e2e harness cannot get past it.
   firstWindow()
     .then(parent =>
       dialog.showMessageBox(parent, {
@@ -293,15 +286,11 @@ function reportUnreadableConfig(): void {
 }
 
 /**
- * The parent a message box needs so that showing it does not block startup.
- * Bounded, and destroyed windows are skipped: the notice is worth losing to
- * the log, and a parent that has gone away leaves the box without one, which
- * is the case that hangs.
+ * The parent a message box needs so that showing it does not block startup. Bounded, and destroyed windows are skipped: the notice is worth losing to the log, and a parent that has gone away leaves the box without one, which is the case that hangs.
  */
 async function firstWindow(): Promise<BrowserWindow> {
   await waitForFunction(() => liveWindows().length > 0, 30000);
-  // the focused one first: several windows are up by now, and attaching to a
-  // transient one means the sheet closes with it before anybody reads it
+  // the focused one first: several windows are up by now, and attaching to a transient one means the sheet closes with it before anybody reads it
   const focused = BrowserWindow.getFocusedWindow();
   const parent = focused && !focused.isDestroyed() ? focused : liveWindows()[0];
   if (!parent) {

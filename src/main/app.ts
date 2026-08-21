@@ -640,8 +640,7 @@ export class JupyterApplication implements IApplication, IDisposable {
 
     app.on('will-quit', event => {
       event.preventDefault();
-      // preventDefault is already in effect, so anything that escapes here
-      // leaves the app unable to close at all
+      // preventDefault is already in effect, so anything that escapes here leaves the app unable to close at all
       try {
         appData.save();
         userSettings.save();
@@ -1317,8 +1316,7 @@ export class JupyterApplication implements IApplication, IDisposable {
   }
 
   /**
-   * A refused write is silent otherwise: the dialog closes as if the change
-   * took, and the only trace is a log line. The CLI reports the same case.
+   * A refused write is silent otherwise: the dialog closes as if the change took, and the only trace is a log line. The CLI reports the same case.
    */
   private _saveUserSettingsOrWarn(sender: Electron.WebContents): void {
     if (userSettings.save()) {
@@ -1333,12 +1331,7 @@ export class JupyterApplication implements IApplication, IDisposable {
       detail: `${UserSettings.getUserSettingsPath()}\n\nSee the log for the reason. A file that could not be read at startup is left alone until it is repaired or reset.`
     };
 
-    // Parented, always. Electron's own note on the signal option says a message
-    // box without a parent "runs synchronously due to platform limitations" on
-    // macOS, and this is called from inside an IPC handler, so a parentless one
-    // freezes every window until somebody clicks a box nobody went looking for.
-    // A sender whose window is already gone gets any other live window rather
-    // than the parentless call, and the log if there is none.
+    // Parented, always. Electron's own note on the signal option says a message box without a parent "runs synchronously due to platform limitations" on macOS, and this is called from inside an IPC handler, so a parentless one freezes every window until somebody clicks a box nobody went looking for. A sender whose window is already gone gets any other live window rather than the parentless call, and the log if there is none.
     const parent =
       BrowserWindow.fromWebContents(sender) ??
       BrowserWindow.getAllWindows().find(win => !win.isDestroyed());

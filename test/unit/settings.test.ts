@@ -42,16 +42,14 @@ import { resetConfigFile } from '../../src/main/utils';
 
 const mockFs = vi.mocked(fs);
 
-// readFileSync is stubbed for the whole file now, so an existsSync left set to
-// true by one test would feed the next one whatever the previous body returned.
+// readFileSync is stubbed for the whole file now, so an existsSync left set to true by one test would feed the next one whatever the previous body returned.
 beforeEach(() => {
   vi.clearAllMocks();
   mockFs.existsSync = vi.fn();
   mockFs.lstatSync = vi.fn();
   mockFs.mkdirSync = vi.fn();
   mockFs.writeFileSync = vi.fn();
-  // an undefined return makes readJsonConfigFile throw a TypeError with no
-  // code, which marks the path for every test that follows
+  // an undefined return makes readJsonConfigFile throw a TypeError with no code, which marks the path for every test that follows
   mockFs.readFileSync = vi.fn(() => {
     throw Object.assign(new Error('ENOENT'), { code: 'ENOENT' });
   }) as any;
@@ -62,8 +60,7 @@ beforeEach(() => {
   }) as any;
   mockFs.chownSync = vi.fn();
   mockFs.fchmodSync = vi.fn();
-  // the config write goes to a sibling temporary and is renamed over the
-  // target, so these three stand between save() and the real filesystem
+  // the config write goes to a sibling temporary and is renamed over the target, so these three stand between save() and the real filesystem
   mockFs.openSync = vi.fn(() => 7) as any;
   mockFs.fsyncSync = vi.fn();
   mockFs.closeSync = vi.fn();
@@ -201,9 +198,7 @@ describe('Setting', () => {
 });
 
 describe('UserSettings', () => {
-  // the unreadable-config list is module state keyed by path, and every
-  // UserSettings here reads the same path, so a test that leaves one marked
-  // would decide the outcome of the next
+  // the unreadable-config list is module state keyed by path, and every UserSettings here reads the same path, so a test that leaves one marked would decide the outcome of the next
   afterEach(() => {
     mockFs.existsSync = vi.fn(() => false);
     mockFs.renameSync = vi.fn();
@@ -229,8 +224,7 @@ describe('UserSettings', () => {
   });
 
   it('starts on defaults instead of throwing when settings.json is corrupt', () => {
-    // reading is done while this module is still being imported, so a throw
-    // here takes the app down before a window exists (#824)
+    // reading is done while this module is still being imported, so a throw here takes the app down before a window exists (#824)
     mockFs.existsSync = vi.fn(() => true);
     mockFs.readFileSync = vi.fn(() => Buffer.from('{"theme": "dark",}')) as any;
 

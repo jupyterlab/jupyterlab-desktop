@@ -1,6 +1,4 @@
-// Real filesystem, no fs mock: the rest of the suite pins the call sequence,
-// this pins what actually lands on disk. Modes, symlinks and rename semantics
-// are exactly the parts a mock cannot answer for.
+// Real filesystem, no fs mock: the rest of the suite pins the call sequence, this pins what actually lands on disk. Modes, symlinks and rename semantics are exactly the parts a mock cannot answer for.
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import * as fs from 'fs';
 import * as os from 'os';
@@ -13,14 +11,12 @@ import {
   writeJsonConfigFile
 } from '../../src/main/utils';
 
-// These exercise POSIX permission bits and symlinks: root ignores the mode
-// bits, and Windows needs Developer Mode before symlinkSync works at all.
+// These exercise POSIX permission bits and symlinks: root ignores the mode bits, and Windows needs Developer Mode before symlinkSync works at all.
 const asRoot = process.getuid?.() === 0;
 const onWindows = process.platform === 'win32';
 const posixOnly = it.skipIf(onWindows);
 const unprivilegedPosix = it.skipIf(onWindows || asRoot);
-// process.umask throws in a worker thread and the pool is not pinned, so probe
-// it rather than guess from the platform
+// process.umask throws in a worker thread and the pool is not pinned, so probe it rather than guess from the platform
 const canSetUmask = (() => {
   if (onWindows) {
     return false;
@@ -57,8 +53,7 @@ describe('writeJsonConfigFile on a real filesystem', () => {
     expect(siblings()).toEqual(['settings.json']);
   });
 
-  // Windows has no mode to keep: chmod there moves the read-only bit alone, so
-  // a file written 0600 reads back 0666 whatever the writer does.
+  // Windows has no mode to keep: chmod there moves the read-only bit alone, so a file written 0600 reads back 0666 whatever the writer does.
   posixOnly('keeps a private file private', () => {
     const target = path.join(dir, 'settings.json');
     fs.writeFileSync(target, '{}');
@@ -72,8 +67,7 @@ describe('writeJsonConfigFile on a real filesystem', () => {
   it.runIf(canSetUmask)(
     'keeps a group-writable file group-writable under a tighter umask',
     () => {
-      // openSync's mode argument would be masked here; fchmod is not, which is
-      // the whole reason the mode is applied after the open
+      // openSync's mode argument would be masked here; fchmod is not, which is the whole reason the mode is applied after the open
       const target = path.join(dir, 'shared.json');
       fs.writeFileSync(target, '{}');
       fs.chmodSync(target, 0o664);
@@ -140,8 +134,7 @@ describe('writeJsonConfigFile on a real filesystem', () => {
   );
 
   it('cleans up its temporary when the rename cannot happen', () => {
-    // a config path that is a directory: the temporary is created, the rename
-    // is the step that fails, which is the only way to reach the cleanup
+    // a config path that is a directory: the temporary is created, the rename is the step that fails, which is the only way to reach the cleanup
     const target = path.join(dir, 'settings.json');
     fs.mkdirSync(target);
 
@@ -152,8 +145,7 @@ describe('writeJsonConfigFile on a real filesystem', () => {
   });
 
   it('leaves a temporary belonging to another process alone', () => {
-    // the pid in the name is what keeps two instances off each other; the
-    // second path is the one a pid-less implementation would have taken
+    // the pid in the name is what keeps two instances off each other; the second path is the one a pid-less implementation would have taken
     const target = path.join(dir, 'settings.json');
     const otherPid = `${target}.999999.tmp`;
     const shared = `${target}.tmp`;
@@ -266,8 +258,7 @@ describe('readJsonConfigFile on a real filesystem', () => {
     fs.writeFileSync(target, '{');
     readJsonConfigFile(target);
 
-    // a second reader must not get the repaired values while the object built
-    // at import still holds defaults
+    // a second reader must not get the repaired values while the object built at import still holds defaults
     fs.writeFileSync(target, '{"theme":"dark"}');
     expect(readJsonConfigFile(target)).toBeUndefined();
 
@@ -291,8 +282,7 @@ describe('resetConfigFile on a real filesystem', () => {
   });
 
   posixOnly('leaves a symlinked config writable after the reset', () => {
-    // the reset moves the target away, so the link is left dangling; if the
-    // next write cannot follow it the app never saves config again
+    // the reset moves the target away, so the link is left dangling; if the next write cannot follow it the app never saves config again
     const real = path.join(dir, 'real.json');
     const link = path.join(dir, 'settings.json');
     fs.writeFileSync(real, '{"theme": "dark",');

@@ -33,8 +33,7 @@ import {
 
 const mockFs = vi.mocked(fs);
 
-// Without this, an existsSync or readFileSync left set by one test feeds the
-// next one whatever the previous body returned.
+// Without this, an existsSync or readFileSync left set by one test feeds the next one whatever the previous body returned.
 beforeEach(() => {
   vi.clearAllMocks();
   mockFs.existsSync = vi.fn(() => false);
@@ -59,11 +58,9 @@ beforeEach(() => {
   mockFs.unlinkSync = vi.fn();
 });
 
-// the unreadable-config list is keyed by path and app-data.json has only one,
-// so a corrupt-read test would otherwise block every save that follows
+// the unreadable-config list is keyed by path and app-data.json has only one, so a corrupt-read test would otherwise block every save that follows
 afterEach(() => {
-  // the mark now outlives any read, so clearing it takes the same route the
-  // Reset to Defaults button does
+  // the mark now outlives any read, so clearing it takes the same route the Reset to Defaults button does
   mockFs.existsSync = vi.fn(() => false);
   mockFs.renameSync = vi.fn();
   resetConfigFile(ApplicationData.getAppDataPath());
@@ -170,8 +167,7 @@ describe('ApplicationData.read', () => {
 
     appData.read();
 
-    // save() calls toISOString on each of these; an Invalid Date throws there,
-    // and save() runs from will-quit after preventDefault
+    // save() calls toISOString on each of these; an Invalid Date throws there, and save() runs from will-quit after preventDefault
     expect(() => appData.save()).not.toThrow();
   });
 
@@ -313,8 +309,7 @@ describe('ApplicationData.read', () => {
 
     appData.read();
 
-    // the first names nothing to reopen, and the welcome view draws a row per
-    // entry whatever is in it
+    // the first names nothing to reopen, and the welcome view draws a row per entry whatever is in it
     expect(appData.recentSessions).toHaveLength(2);
   });
 

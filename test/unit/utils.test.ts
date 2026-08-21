@@ -108,8 +108,7 @@ beforeEach(() => {
   mockFs.rmSync = vi.fn();
   mockFs.readFileSync = vi.fn();
   mockFs.renameSync = vi.fn();
-  // the config writer reaches for these; without a reset here the stubs the
-  // write describes install would leak into every test that runs after them
+  // the config writer reaches for these; without a reset here the stubs the write describes install would leak into every test that runs after them
   mockFs.openSync = vi.fn();
   mockFs.fsyncSync = vi.fn();
   mockFs.closeSync = vi.fn();
@@ -872,8 +871,7 @@ describe('isSameServerOrigin', () => {
   });
 });
 
-// The list of unreadable config files lives for the whole module, so every
-// test below uses a path of its own rather than relying on a reset.
+// The list of unreadable config files lives for the whole module, so every test below uses a path of its own rather than relying on a reset.
 describe('readJsonConfigFile', () => {
   it('returns the parsed object for a readable config', () => {
     mockFs.existsSync = vi.fn(() => true);
@@ -1010,10 +1008,7 @@ describe('writeJsonConfigFile', () => {
     );
   });
 
-  // lstatSync is what decides whether there is an existing file to carry
-  // ownership from, and stubbing statSync instead left it throwing, so this
-  // pair used to pass on the `!existing` early return rather than on the
-  // root check they are about
+  // lstatSync is what decides whether there is an existing file to carry ownership from, and stubbing statSync instead left it throwing, so this pair used to pass on the `!existing` early return rather than on the root check they are about
   const existingFileOwnedBy = (uid: number, gid: number) =>
     vi.fn(() => ({
       mode: 0o100600,
@@ -1037,8 +1032,7 @@ describe('writeJsonConfigFile', () => {
   });
 
   it('carries the existing owner onto the replacement when root', () => {
-    // a sudo-run app writing a file the user owns must not leave it root's,
-    // or the next unprivileged start cannot save at all
+    // a sudo-run app writing a file the user owns must not leave it root's, or the next unprivileged start cannot save at all
     const realGetuid = process.getuid;
     (process as any).getuid = () => 0;
     mockFs.lstatSync = existingFileOwnedBy(501, 20);
@@ -1058,8 +1052,7 @@ describe('writeJsonConfigFile', () => {
 
     expect(writeJsonConfigFile('/data/dangling.json', {})).toBe(true);
 
-    // the target the link names, not the link's own directory. Resolved here
-    // because a bare '/dotfiles/...' picks up the current drive on Windows.
+    // the target the link names, not the link's own directory. Resolved here because a bare '/dotfiles/...' picks up the current drive on Windows.
     const target = path.resolve('/dotfiles/settings.json');
     expect(mockFs.renameSync).toHaveBeenCalledWith(
       `${target}.${process.pid}.tmp`,
