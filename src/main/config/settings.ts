@@ -137,10 +137,7 @@ export namespace Setting {
 }
 
 /**
- * What the file holds right now, or nothing when it is absent or unusable.
- * save merges over this rather than rebuilding, so a read that fails here
- * costs the keys this build does not know rather than corrupting the ones it
- * does; #1115 replaces this with the shared reader.
+ * What the file holds right now, or nothing when it is absent or unusable. save merges over this rather than rebuilding, so a read that fails here costs the keys this build does not know rather than corrupting the ones it does; #1115 replaces this with the shared reader.
  */
 function readJsonFileOrEmpty(filePath: string): { [key: string]: any } {
   try {
@@ -250,8 +247,7 @@ export class UserSettings {
       readJsonFileOrEmpty(userSettingsPath),
       key => {
         const setting = this._settings[key];
-        // every key of SettingType is one this build owns, so one matching
-        // its default does not belong in the file, whatever the file holds
+        // every key of SettingType is one this build owns, so one matching its default does not belong in the file, whatever the file holds
         return setting.differentThanDefault
           ? { kind: 'write', value: setting.value }
           : { kind: 'delete' };
@@ -262,16 +258,13 @@ export class UserSettings {
   }
 
   /**
-   * The file as it is on disk, with this object's settings written over it.
-   * Rebuilding from the settings alone deletes every key the build has no
-   * setting for, and every value the read declined to take.
+   * The file as it is on disk, with this object's settings written over it. Rebuilding from the settings alone deletes every key the build has no setting for, and every value the read declined to take.
    */
   protected _merged(
     onDisk: { [key: string]: any },
     decide: (key: string) => SettingDecision
   ): { [key: string]: any } {
-    // spread defines rather than assigns, so a __proto__ key out of the file
-    // stays an own property instead of reaching Object.prototype
+    // spread defines rather than assigns, so a __proto__ key out of the file stays an own property instead of reaching Object.prototype
     const merged = { ...onDisk };
 
     for (let key in SettingType) {
@@ -363,8 +356,7 @@ export class WorkspaceSettings extends UserSettings {
     const wsSettings = this._merged(
       readJsonFileOrEmpty(wsSettingsPath),
       key => {
-        // a key a project cannot override is not this file's to remove, even
-        // though it does nothing here
+        // a key a project cannot override is not this file's to remove, even though it does nothing here
         if (!this._settings[key].wsOverridable) {
           return { kind: 'leave' };
         }
@@ -376,8 +368,7 @@ export class WorkspaceSettings extends UserSettings {
         ) {
           return { kind: 'write', value: setting.value };
         }
-        // unsetValue takes it out of _wsSettings, and an override matching the
-        // global value is not an override any more
+        // unsetValue takes it out of _wsSettings, and an override matching the global value is not an override any more
         return { kind: 'delete' };
       }
     );

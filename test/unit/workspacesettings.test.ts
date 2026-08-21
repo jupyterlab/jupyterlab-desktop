@@ -215,8 +215,7 @@ describe('WorkspaceSettings — keys it does not claim', () => {
 
     ws.save();
 
-    // super.read() fills the base class from settings.json, and this class
-    // writes desktop-settings.json: one set each, or they cross over
+    // super.read() fills the base class from settings.json, and this class writes desktop-settings.json: one set each, or they cross over
     expect('futureGlobalSetting' in written()).toBe(false);
   });
 
@@ -227,14 +226,12 @@ describe('WorkspaceSettings — keys it does not claim', () => {
     ws.setValue(SettingType.uiMode, UIMode.SingleDocument);
     ws.save();
 
-    // setting a key again has to undo the pending removal, or the write is
-    // dropped and the menu action silently does nothing
+    // setting a key again has to undo the pending removal, or the write is dropped and the menu action silently does nothing
     expect(written().uiMode).toBe(UIMode.SingleDocument);
   });
 
   it('drops an override that no longer differs from the global value', () => {
-    // only the project file holds it, or super.read() picks the same value up
-    // as the global one and the two no longer differ for the wrong reason
+    // only the project file holds it, or super.read() picks the same value up as the global one and the two no longer differ for the wrong reason
     mockFs.readFileSync = vi.fn((p: fs.PathLike | fs.promises.FileHandle) =>
       p.toString().includes('desktop-settings.json')
         ? Buffer.from(JSON.stringify({ serverArgs: '--no-browser' }))
@@ -253,8 +250,7 @@ describe('WorkspaceSettings — keys it does not claim', () => {
   it('drops a leftover when that key is explicitly unset', () => {
     const ws = new WorkspaceSettings('/data/nb');
 
-    // uiMode, because the CLI refuses a key a project cannot override, so a
-    // non-overridable one is not a reachable input to unsetValue here
+    // uiMode, because the CLI refuses a key a project cannot override, so a non-overridable one is not a reachable input to unsetValue here
     ws.unsetValue(SettingType.uiMode);
     ws.save();
 

@@ -9,8 +9,7 @@ vi.mock('fs', async () => {
     lstatSync: vi.fn(),
     mkdirSync: vi.fn(),
     writeFileSync: vi.fn(),
-    // a vi.fn() with no implementation returns undefined, and the reader calls
-    // .toString() on it: throw what fs throws for a missing file instead
+    // a vi.fn() with no implementation returns undefined, and the reader calls .toString() on it: throw what fs throws for a missing file instead
     readFileSync: vi.fn(() => {
       throw Object.assign(new Error('ENOENT'), { code: 'ENOENT' });
     })
@@ -35,8 +34,7 @@ import {
 
 const mockFs = vi.mocked(fs);
 
-// save() reads the file before merging over it, so a stub left set by one test
-// would feed the next one whatever the previous body returned
+// save() reads the file before merging over it, so a stub left set by one test would feed the next one whatever the previous body returned
 beforeEach(() => {
   vi.clearAllMocks();
   mockFs.existsSync = vi.fn();
@@ -210,9 +208,7 @@ describe('UserSettings', () => {
   });
 
   it('does not let a __proto__ key out of the file reach Object.prototype', () => {
-    // read walks SettingType rather than the file, so nothing out of the file
-    // ever indexes _settings. Walking the file instead resolved '__proto__' to
-    // Object.prototype and assigned onto it, at module import.
+    // read walks SettingType rather than the file, so nothing out of the file ever indexes _settings. Walking the file instead resolved '__proto__' to Object.prototype and assigned onto it, at module import.
     mockFs.existsSync = vi.fn(() => true);
     mockFs.readFileSync = vi.fn(() =>
       Buffer.from('{"__proto__":{"pwned":1},"theme":"dark"}')
@@ -250,8 +246,7 @@ describe('UserSettings', () => {
   });
 
   it('drops a key whose value is back to the default', () => {
-    // merging over the file means the on-disk value survives unless something
-    // takes it out, and a setting that no longer differs is one of those
+    // merging over the file means the on-disk value survives unless something takes it out, and a setting that no longer differs is one of those
     mockFs.existsSync = vi.fn(() => true);
     mockFs.readFileSync = vi.fn(() =>
       Buffer.from(JSON.stringify({ showNewsFeed: false }))
@@ -270,9 +265,7 @@ describe('UserSettings', () => {
   });
 
   it('writes back a key it has no setting for', () => {
-    // save merges over the file rather than rebuilding it, or a settings.json
-    // written by a newer build loses whatever this one does not recognise, and
-    // troubleshoot.md sends people to edit this file by hand
+    // save merges over the file rather than rebuilding it, or a settings.json written by a newer build loses whatever this one does not recognise, and troubleshoot.md sends people to edit this file by hand
     mockFs.existsSync = vi.fn(() => true);
     mockFs.readFileSync = vi.fn(() =>
       Buffer.from(JSON.stringify({ futureSetting: 42, theme: 'dark' }))
