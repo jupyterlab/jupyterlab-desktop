@@ -1016,7 +1016,11 @@ describe('writeJsonConfigFile', () => {
   it('leaves ownership alone when the app is not root', () => {
     const realGetuid = process.getuid;
     (process as any).getuid = () => 501;
-    mockFs.statSync = vi.fn(() => ({
+    // lstatSync, the same call the root case above stubs: it is what finds the
+    // existing file, and stubbing statSync instead left this returning on the
+    // `!existing` branch without ever reaching the check it is named after
+    mockFs.lstatSync = vi.fn(() => ({
+      isSymbolicLink: () => false,
       mode: 0o100600,
       uid: 501,
       gid: 20
@@ -1028,7 +1032,9 @@ describe('writeJsonConfigFile', () => {
       (process as any).getuid = realGetuid;
     }
 
-    expect(mockFs.chownSync).not.toHaveBeenCalled();
+    // fchownSync, which is what the code calls; asserting on chownSync passed
+    // whatever the code did
+    expect(mockFs.fchownSync).not.toHaveBeenCalled();
   });
 
   it('follows a dangling link to the path it names', () => {
