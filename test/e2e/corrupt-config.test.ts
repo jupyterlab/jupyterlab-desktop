@@ -11,9 +11,7 @@ import { join } from 'path';
 import { tmpdir } from 'os';
 import { pageByTitle } from './helpers';
 
-// #824: a corrupt config threw during module import, before any window existed,
-// so the user got Electron's default error dialog and an app that never started
-// again.
+// #824: a corrupt config threw during module import, before any window existed, so the user got Electron's default error dialog and an app that never started again.
 //
 // Not using launchApp, which seeds valid config; these need the broken kind.
 async function launchWith(files: { [name: string]: string }) {
@@ -38,8 +36,7 @@ async function launchWith(files: { [name: string]: string }) {
     cleanup();
     throw error;
   }
-  // same order and the same retry as helpers.ts launchApp: stubAllDialogs
-  // evaluates the main process, and at launch a window can be mid-navigation
+  // same order and the same retry as helpers.ts launchApp: stubAllDialogs evaluates the main process, and at launch a window can be mid-navigation
   await app.firstWindow();
   await stubAllDialogs(app).catch(async () => {
     await new Promise(resolve => setTimeout(resolve, 1000));
@@ -60,8 +57,7 @@ test('starts and reaches the welcome view when settings.json is corrupt', async 
       const welcome = await pageByTitle(app, /welcome/i);
       await expect(welcome.locator('#new-notebook-link')).toBeVisible();
     } finally {
-      // closed before the assertions, because the save these must not see runs
-      // from will-quit: checking while the app is up cannot fail on it
+      // closed before the assertions, because the save these must not see runs from will-quit: checking while the app is up cannot fail on it
       await app.close();
     }
 

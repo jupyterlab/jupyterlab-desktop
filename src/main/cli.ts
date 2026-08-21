@@ -409,8 +409,7 @@ export function addUserSetEnvironment(envPath: string, isConda: boolean) {
     defaultKernel: 'python3'
   });
   if (!appData.save()) {
-    // the default python path below is written to a different file, so this
-    // reports and carries on rather than skipping it
+    // the default python path below is written to a different file, so this reports and carries on rather than skipping it
     console.error(
       'Could not write the application data file, so the environment is only added for this run.'
     );
@@ -503,9 +502,7 @@ async function installAdditionalCondaPackagesToEnv(
   const condaChannels =
     channelList?.length > 0 ? channelList : getCondaChannels();
   const channels = condaChannels.map(channel => `-c ${channel}`).join(' ');
-  // TODO: remove classic solver. since installing additional packages onto conda-lock
-  // generated environments fails with mamba solver, classic is used here.
-  // should be fixed with conda 24.1. https://github.com/conda/conda-libmamba-solver/pull/429
+  // TODO: remove classic solver. since installing additional packages onto conda-lock generated environments fails with mamba solver, classic is used here. should be fixed with conda 24.1. https://github.com/conda/conda-libmamba-solver/pull/429
   const installCommand = `conda install -y ${channels} --solver=classic -p ${envPath} ${packages}`;
   console.log(`Installing additional packages: "${packages}"`);
   await runCommandInEnvironment(baseCondaEnvPath, installCommand, callbacks);
@@ -625,9 +622,7 @@ export async function createPythonEnvironment(
       }
 
       if (packages) {
-        // TODO: remove classic solver. since installing additional packages onto conda-lock
-        // generated environments fails with mamba solver, classic is used here.
-        // should be fixed with conda 24.1. https://github.com/conda/conda-libmamba-solver/pull/429
+        // TODO: remove classic solver. since installing additional packages onto conda-lock generated environments fails with mamba solver, classic is used here. should be fixed with conda 24.1. https://github.com/conda/conda-libmamba-solver/pull/429
         const installCommand = `conda install -y ${channels} --solver=classic -p ${envPath} ${packages}`;
         console.log(`Installing additional packages: "${packages}"`);
         await runCommandInEnvironment(
@@ -887,10 +882,7 @@ export async function handleEnvSetPythonEnvsPathCommand(argv: any) {
   );
 }
 
-// resolved the way the constructor does, so the name matches the file that was
-// actually written. That resolution has its own problem, an lstat that sends a
-// symlinked project directory to the home one, and this only keeps the two in
-// step rather than fixing it
+// resolved the way the constructor does, so the name matches the file that was actually written. That resolution has its own problem, an lstat that sends a symlinked project directory to the home one, and this only keeps the two in step rather than fixing it
 function settingsFilePathFor(projectPath?: string): string {
   return projectPath
     ? WorkspaceSettings.getWorkspaceSettingsPath(
@@ -902,8 +894,7 @@ function settingsFilePathFor(projectPath?: string): string {
 function reportUnsavedSetting(what: string, projectPath?: string): void {
   const file = settingsFilePathFor(projectPath);
 
-  // the refusal is far more often the read guard than a failed write, and only
-  // one of the two has something the reader can do about it
+  // the refusal is far more often the read guard than a failed write, and only one of the two has something the reader can do about it
   if (configFileIsUnreadable(file)) {
     console.error(
       `${file} could not be read, so ${what} was not saved. Repair the JSON in it, or move it aside and let a fresh one be written.`

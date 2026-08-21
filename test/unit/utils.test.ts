@@ -95,8 +95,7 @@ import * as net from 'net';
 
 const mockFs = vi.mocked(fs);
 
-// Reset the fs stubs to fresh no-op fns before every test so a value set in
-// one test cannot leak into a later one that does not set it.
+// Reset the fs stubs to fresh no-op fns before every test so a value set in one test cannot leak into a later one that does not set it.
 beforeEach(() => {
   vi.clearAllMocks();
   mockFs.existsSync = vi.fn();
@@ -109,8 +108,7 @@ beforeEach(() => {
   mockFs.rmSync = vi.fn();
   mockFs.readFileSync = vi.fn();
   mockFs.renameSync = vi.fn();
-  // the config writer reaches for these; without a reset here the stubs the
-  // write describes install would leak into every test that runs after them
+  // the config writer reaches for these; without a reset here the stubs the write describes install would leak into every test that runs after them
   mockFs.openSync = vi.fn();
   mockFs.fsyncSync = vi.fn();
   mockFs.closeSync = vi.fn();
@@ -542,8 +540,7 @@ describe('createCommandScriptInEnv', () => {
   });
 
   it('returns empty string when envPath lstatSync throws and no activate exists', () => {
-    // when lstatSync throws, the try-catch swallows it and execution continues;
-    // if there's also no activate script, the function returns ''
+    // when lstatSync throws, the try-catch swallows it and execution continues; if there's also no activate script, the function returns ''
     mockFs.lstatSync = vi.fn(() => {
       throw Object.assign(new Error('ENOENT'), { code: 'ENOENT' });
     });
@@ -627,8 +624,7 @@ describe('markEnvironmentAsJupyterInstalled', () => {
   it('still writes env.json when the .jupyter dir already exists', () => {
     mockFs.existsSync = vi.fn(() => true);
     markEnvironmentAsJupyterInstalled('/env/myenv');
-    // mkdir runs unconditionally: recursive mode is a no-op on an existing
-    // directory, so there is no reason to check first and race on the answer.
+    // mkdir runs unconditionally: recursive mode is a no-op on an existing directory, so there is no reason to check first and race on the answer.
     expect(mockFs.writeFileSync).toHaveBeenCalledWith(
       expect.stringContaining('env.json'),
       expect.stringContaining('jupyterlab-desktop')
@@ -669,8 +665,7 @@ describe('deletePythonEnvironment', () => {
       EnvironmentDeleteStatus.Failure,
       expect.any(String)
     );
-    // the guard must stop here: a rejected promise is not enough, the
-    // directory must never be touched when it was not Desktop-installed.
+    // the guard must stop here: a rejected promise is not enough, the directory must never be touched when it was not Desktop-installed.
     expect(mockFs.rmSync).not.toHaveBeenCalled();
   });
 
@@ -728,8 +723,7 @@ describe('clearSession', () => {
     const session = fakeSession({
       clearStorageData: vi.fn(() => Promise.reject(new Error('boom')))
     });
-    // best-effort: callers close windows right after awaiting, so a failed
-    // clear must not reject (skipping cleanup) nor hang.
+    // best-effort: callers close windows right after awaiting, so a failed clear must not reject (skipping cleanup) nor hang.
     await expect(clearSession(session)).resolves.toBeUndefined();
     expect(log.error).toHaveBeenCalledWith(
       'Failed to clear part of the session',
@@ -874,8 +868,7 @@ describe('isSameServerOrigin', () => {
   });
 });
 
-// The list of unreadable config files lives for the whole module, so every
-// test below uses a path of its own rather than relying on a reset.
+// The list of unreadable config files lives for the whole module, so every test below uses a path of its own rather than relying on a reset.
 describe('readJsonConfigFile', () => {
   it('returns the parsed object for a readable config', () => {
     mockFs.existsSync = vi.fn(() => true);
@@ -957,8 +950,7 @@ describe('writeJsonConfigFile', () => {
     );
 
     const tempPath = `/data/write.json.${process.pid}.tmp`;
-    // wx, so a symlink left at the temporary name is refused rather than
-    // followed, and 0600 because nothing existed to carry a mode from
+    // wx, so a symlink left at the temporary name is refused rather than followed, and 0600 because nothing existed to carry a mode from
     expect(mockFs.openSync).toHaveBeenCalledWith(tempPath, 'wx', 0o600);
     expect(mockFs.writeFileSync).toHaveBeenCalledWith(
       7,
@@ -1008,17 +1000,14 @@ describe('writeJsonConfigFile', () => {
       (process as any).getuid = realGetuid;
     }
 
-    // through the descriptor: the path form follows a symlink and would hand
-    // away whatever it names
+    // through the descriptor: the path form follows a symlink and would hand away whatever it names
     expect(mockFs.fchownSync).toHaveBeenCalledWith(7, 501, 20);
   });
 
   it('leaves ownership alone when the app is not root', () => {
     const realGetuid = process.getuid;
     (process as any).getuid = () => 501;
-    // lstatSync, the same call the root case above stubs: it is what finds the
-    // existing file, and stubbing statSync instead left this returning on the
-    // `!existing` branch without ever reaching the check it is named after
+    // lstatSync, the same call the root case above stubs: it is what finds the existing file, and stubbing statSync instead left this returning on the `!existing` branch without ever reaching the check it is named after
     mockFs.lstatSync = vi.fn(() => ({
       isSymbolicLink: () => false,
       mode: 0o100600,
@@ -1032,8 +1021,7 @@ describe('writeJsonConfigFile', () => {
       (process as any).getuid = realGetuid;
     }
 
-    // fchownSync, which is what the code calls; asserting on chownSync passed
-    // whatever the code did
+    // fchownSync, which is what the code calls; asserting on chownSync passed whatever the code did
     expect(mockFs.fchownSync).not.toHaveBeenCalled();
   });
 
@@ -1043,8 +1031,7 @@ describe('writeJsonConfigFile', () => {
 
     expect(writeJsonConfigFile('/data/dangling.json', {})).toBe(true);
 
-    // the target the link names, not the link's own directory. Resolved here
-    // because a bare '/dotfiles/...' picks up the current drive on Windows.
+    // the target the link names, not the link's own directory. Resolved here because a bare '/dotfiles/...' picks up the current drive on Windows.
     const target = path.resolve('/dotfiles/settings.json');
     expect(mockFs.renameSync).toHaveBeenCalledWith(
       `${target}.${process.pid}.tmp`,

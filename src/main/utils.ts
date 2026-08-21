@@ -1,5 +1,4 @@
-// Copyright (c) Jupyter Development Team.
-// Distributed under the terms of the Modified BSD License.
+// Copyright (c) Jupyter Development Team. Distributed under the terms of the Modified BSD License.
 
 import * as path from 'path';
 import * as fs from 'fs';
@@ -28,8 +27,7 @@ export interface ISaveOptions {
 }
 
 export function isDevMode(): boolean {
-  // require.main is undefined under ESM and when the app runs against an
-  // Electron binary from the system rather than the bundled one (#786)
+  // require.main is undefined under ESM and when the app runs against an Electron binary from the system rather than the bundled one (#786)
   return !app.isPackaged;
 }
 
@@ -74,20 +72,14 @@ export function getUnreadableConfigFiles(): readonly string[] {
 }
 
 /**
- * Config is read while the modules holding it are still being imported, so
- * throwing here kills the app before a window exists (#824).
+ * Config is read while the modules holding it are still being imported, so throwing here kills the app before a window exists (#824).
  *
- * A marked file yields nothing for the rest of the run, whatever it holds
- * later: the object built at import still has defaults, and two readers of one
- * file must not disagree. Only a restart clears it here; resetConfigFile
- * moves one aside on request, and the dialog that offers that lands with
- * the notice that tells the user any of this happened.
+ * A marked file yields nothing for the rest of the run, whatever it holds later: the object built at import still has defaults, and two readers of one file must not disagree. Only a restart clears it here; resetConfigFile moves one aside on request, and the dialog that offers that lands with the notice that tells the user any of this happened.
  */
 export function readJsonConfigFile(
   filePath: string
 ): Record<string, any> | undefined {
-  // handing a later reader the repaired values while the object built at
-  // import still holds defaults would leave two views of the same file
+  // handing a later reader the repaired values while the object built at import still holds defaults would leave two views of the same file
   if (unreadableConfigFiles.has(filePath)) {
     return undefined;
   }
@@ -99,21 +91,15 @@ export function readJsonConfigFile(
     if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
       return undefined;
     }
-    // marked even when the cause looks temporary, a lock or a descriptor
-    // limit: the values in memory are defaults either way, and letting a save
-    // through would put those over a file that is still perfectly good
+    // marked even when the cause looks temporary, a lock or a descriptor limit: the values in memory are defaults either way, and letting a save through would put those over a file that is still perfectly good
     log.error(`Failed to read ${filePath}, continuing with defaults`, error);
     unreadableConfigFiles.add(filePath);
     return undefined;
   }
 
-  // NUL padding is what a power cut leaves once the metadata reached disk and
-  // the data did not, which is the shape #881 reports. Off before the emptiness
-  // check and before the parse, so a file whose JSON survived it still reads.
+  // NUL padding is what a power cut leaves once the metadata reached disk and the data did not, which is the shape #881 reports. Off before the emptiness check and before the parse, so a file whose JSON survived it still reads.
   //
-  // Only the tail. Stripping NUL everywhere also closes a hole torn in the
-  // middle: `{"a":1,"b":2` + NULs + `}` becomes valid JSON holding a value
-  // nobody wrote, and the next save persists it as though it were the user's.
+  // Only the tail. Stripping NUL everywhere also closes a hole torn in the middle: `{"a":1,"b":2` + NULs + `}` becomes valid JSON holding a value nobody wrote, and the next save persists it as though it were the user's.
   const text = trimTrailingNuls(contents);
 
   // nothing worth protecting in an empty one, so it is not marked
@@ -137,17 +123,11 @@ export function readJsonConfigFile(
 }
 
 /**
- * Write through a sibling temporary and rename, so a process that dies halfway
- * leaves the previous file whole rather than the truncated one #824 is made
- * of. A file that could not be read is skipped: it still holds what the user
- * put there, and every value in memory is a default.
+ * Write through a sibling temporary and rename, so a process that dies halfway leaves the previous file whole rather than the truncated one #824 is made of. A file that could not be read is skipped: it still holds what the user put there, and every value in memory is a default.
  *
- * The target is resolved first, so a config symlinked into a dotfiles repo
- * keeps its link and its atomicity instead of trading one for the other;
- * write-file-atomic and atomically both resolve the same way.
+ * The target is resolved first, so a config symlinked into a dotfiles repo keeps its link and its atomicity instead of trading one for the other; write-file-atomic and atomically both resolve the same way.
  *
- * Reports failure rather than throwing, since will-quit calls this between
- * preventDefault and quit.
+ * Reports failure rather than throwing, since will-quit calls this between preventDefault and quit.
  */
 export function writeJsonConfigFile(filePath: string, data: unknown): boolean {
   if (unreadableConfigFiles.has(filePath)) {
@@ -155,8 +135,7 @@ export function writeJsonConfigFile(filePath: string, data: unknown): boolean {
     return false;
   }
 
-  // one lstat answers both "is it a link" and "what mode and owner does it
-  // have"; realpath walks the path with an lstat per component
+  // one lstat answers both "is it a link" and "what mode and owner does it have"; realpath walks the path with an lstat per component
   let targetPath = filePath;
   let existing = statOrUndefined(filePath, fs.lstatSync);
   if (existing?.isSymbolicLink()) {
@@ -169,29 +148,20 @@ export function writeJsonConfigFile(filePath: string, data: unknown): boolean {
   let fd: number | undefined;
 
   try {
-    // inside the try: a getter that throws would otherwise escape a function
-    // whose callers are documented not to have to catch
+    // inside the try: a getter that throws would otherwise escape a function whose callers are documented not to have to catch
     const contents = JSON.stringify(data, null, 2);
-    // recursive is a no-op when the directory is already there, and checking
-    // first only opens a race window
+    // recursive is a no-op when the directory is already there, and checking first only opens a race window
     fs.mkdirSync(path.dirname(targetPath), { recursive: true });
-    // Opened at the mode it will end up with, so the file is never briefly
-    // wider than the one it replaces, and 0600 when there is nothing to carry:
-    // app-data.json holds recentRemoteURLs, whose entries carry a token in the
-    // query string, so the umask default is too generous to create it at.
+    // Opened at the mode it will end up with, so the file is never briefly wider than the one it replaces, and 0600 when there is nothing to carry: app-data.json holds recentRemoteURLs, whose entries carry a token in the query string, so the umask default is too generous to create it at.
     const mode = existing ? existing.mode & 0o777 : 0o600;
     fd = openExclusive(tempPath, mode);
-    // the umask narrows openSync's mode argument on the way through and does
-    // not touch fchmod, so this is what actually lands the group and other bits
+    // the umask narrows openSync's mode argument on the way through and does not touch fchmod, so this is what actually lands the group and other bits
     fs.fchmodSync(fd, mode);
     carryOwnership(fd, existing);
     fs.writeFileSync(fd, contents);
-    // rename publishes the name, not the bytes: without this a power cut can
-    // leave a good filename on an empty file
+    // rename publishes the name, not the bytes: without this a power cut can leave a good filename on an empty file
     fs.fsyncSync(fd);
-    // cleared before the close, not after: close releases the descriptor even
-    // when it reports an error, so a throw here must not send the catch back
-    // to close a number that now belongs to somebody else
+    // cleared before the close, not after: close releases the descriptor even when it reports an error, so a throw here must not send the catch back to close a number that now belongs to somebody else
     const toClose = fd;
     fd = undefined;
     fs.closeSync(toClose);
@@ -211,10 +181,7 @@ export function writeJsonConfigFile(filePath: string, data: unknown): boolean {
 }
 
 /**
- * The rename writes a new directory entry, and https://lwn.net/Articles/457667/
- * notes that on some filesystems that entry only survives a power cut once the
- * directory itself is flushed. Best effort: Windows cannot open a directory for
- * reading, and by this point the contents are already on disk either way.
+ * The rename writes a new directory entry, and https://lwn.net/Articles/457667/ notes that on some filesystems that entry only survives a power cut once the directory itself is flushed. Best effort: Windows cannot open a directory for reading, and by this point the contents are already on disk either way.
  */
 function syncDirectoryEntry(filePath: string): void {
   if (process.platform === 'win32') {
@@ -226,8 +193,7 @@ function syncDirectoryEntry(filePath: string): void {
     fd = fs.openSync(path.dirname(filePath), 'r');
     fs.fsyncSync(fd);
   } catch (error) {
-    // best effort by design, and a filesystem that refuses would otherwise put
-    // a line in the log on every single save
+    // best effort by design, and a filesystem that refuses would otherwise put a line in the log on every single save
     log.debug(`Could not flush the directory of ${filePath}`, error);
   } finally {
     closeQuietly(fd);
@@ -235,20 +201,14 @@ function syncDirectoryEntry(filePath: string): void {
 }
 
 /**
- * A byte order mark decides the encoding, and decoding UTF-16 as UTF-8 gives
- * replacement characters no amount of trimming removes. Notepad writes one on
- * Save As, and PowerShell's Out-File writes one for several of its encodings,
- * so a config edited by hand on Windows can arrive with any of these.
+ * A byte order mark decides the encoding, and decoding UTF-16 as UTF-8 gives replacement characters no amount of trimming removes. Notepad writes one on Save As, and PowerShell's Out-File writes one for several of its encodings, so a config edited by hand on Windows can arrive with any of these.
  */
 function decodeConfig(buffer: Buffer): string {
   if (buffer.length >= 2 && buffer[0] === 0xff && buffer[1] === 0xfe) {
     return buffer.subarray(2).toString('utf16le');
   }
   if (buffer.length >= 2 && buffer[0] === 0xfe && buffer[1] === 0xff) {
-    // Node has no utf16be, so swap the pairs and read it as little endian.
-    // Notepad calls this one "Unicode big endian" and Out-File takes it as
-    // BigEndianUnicode; leaving it out marks the file and refuses every write
-    // to it from then on, which is worse than any of the shapes above.
+    // Node has no utf16be, so swap the pairs and read it as little endian. Notepad calls this one "Unicode big endian" and Out-File takes it as BigEndianUnicode; leaving it out marks the file and refuses every write to it from then on, which is worse than any of the shapes above.
     return Buffer.from(buffer.subarray(2)).swap16().toString('utf16le');
   }
   if (buffer.length >= 3 && buffer.subarray(0, 3).equals(UTF8_BOM)) {
@@ -258,11 +218,7 @@ function decodeConfig(buffer: Buffer): string {
 }
 
 /**
- * `contents` without the NULs at its end. A scan rather than
- * `replace(/\0+$/, '')`, whose anchor retries from every position when the run
- * is followed by anything else, which is what a file torn in the middle is.
- * This runs while the config modules are still importing, so the cost lands
- * before any window: 214 ms at 20 KB of interior NULs, 3.2 s at 80, 22.7 s at 200.
+ * `contents` without the NULs at its end. A scan rather than `replace(/\0+$/, '')`, whose anchor retries from every position when the run is followed by anything else, which is what a file torn in the middle is. This runs while the config modules are still importing, so the cost lands before any window: 214 ms at 20 KB of interior NULs, 3.2 s at 80, 22.7 s at 200.
  */
 function trimTrailingNuls(contents: string): string {
   let end = contents.length;
@@ -292,18 +248,14 @@ function closeQuietly(fd: number | undefined): void {
 }
 
 /**
- * Where the writing and the moving aside have to happen: the file a config
- * symlink points at, whether or not that file exists yet. Renaming onto the
- * link itself would unlink it and hand back a regular file, detaching the user
- * from wherever it points.
+ * Where the writing and the moving aside have to happen: the file a config symlink points at, whether or not that file exists yet. Renaming onto the link itself would unlink it and hand back a regular file, detaching the user from wherever it points.
  */
 function resolveConfigPath(filePath: string): string {
   try {
     return fs.realpathSync(filePath);
   } catch {
     try {
-      // ENOENT covers nothing-there and a link whose target is missing; only
-      // the second has something left to follow
+      // ENOENT covers nothing-there and a link whose target is missing; only the second has something left to follow
       return path.resolve(path.dirname(filePath), fs.readlinkSync(filePath));
     } catch {
       return filePath;
@@ -324,11 +276,7 @@ function statOrUndefined(
 }
 
 /**
- * O_EXCL, so the open fails rather than following a symlink somebody left at
- * the name. The name carries this process's pid, so an existing one is either
- * a temporary a previous run with that pid left behind, or a plant; unlinking
- * removes the link itself rather than whatever it points at, and no live
- * process shares the pid.
+ * O_EXCL, so the open fails rather than following a symlink somebody left at the name. The name carries this process's pid, so an existing one is either a temporary a previous run with that pid left behind, or a plant; unlinking removes the link itself rather than whatever it points at, and no live process shares the pid.
  */
 function openExclusive(tempPath: string, mode: number): number {
   try {
@@ -343,10 +291,7 @@ function openExclusive(tempPath: string, mode: number): number {
 }
 
 /**
- * A run as root would otherwise leave the config owned by root and the user
- * unable to write their own settings again. write-file-atomic and atomically
- * both carry the owner across for the same reason. Through the descriptor,
- * since the path form follows a symlink and would hand away whatever it names.
+ * A run as root would otherwise leave the config owned by root and the user unable to write their own settings again. write-file-atomic and atomically both carry the owner across for the same reason. Through the descriptor, since the path form follows a symlink and would hand away whatever it names.
  */
 function carryOwnership(fd: number, existing?: fs.Stats): void {
   if (!existing || process.getuid?.() !== 0) {
@@ -361,12 +306,9 @@ function carryOwnership(fd: number, existing?: fs.Stats): void {
 }
 
 /**
- * Move an unreadable config aside so a fresh one can take its place. Only ever
- * runs on request: a file the app moves by itself is one nobody agreed to lose.
+ * Move an unreadable config aside so a fresh one can take its place. Only ever runs on request: a file the app moves by itself is one nobody agreed to lose.
  *
- * The link is resolved first, so a config symlinked into a dotfiles repo has
- * the corrupt file moved rather than the link, which would leave the bad JSON
- * in the repo and quietly detach the user from it.
+ * The link is resolved first, so a config symlinked into a dotfiles repo has the corrupt file moved rather than the link, which would leave the bad JSON in the repo and quietly detach the user from it.
  */
 export function resetConfigFile(filePath: string): boolean {
   const targetPath = resolveConfigPath(filePath);
@@ -377,8 +319,7 @@ export function resetConfigFile(filePath: string): boolean {
     quarantinePath = `${targetPath}.corrupt.${n}`;
   }
   if (fs.existsSync(quarantinePath)) {
-    // the first copy is the one still holding real settings, and the rest are
-    // defaults written since, so refuse rather than pick one to destroy
+    // the first copy is the one still holding real settings, and the rest are defaults written since, so refuse rather than pick one to destroy
     log.error(`Every quarantine slot beside ${targetPath} is taken`);
     return false;
   }
@@ -417,8 +358,7 @@ export function getBundledEnvInstallerPath(): string {
 }
 
 export function getBundledPythonInstallDir(): string {
-  // this directory path cannot have any spaces since
-  // conda environments cannot be installed to such paths
+  // this directory path cannot have any spaces since conda environments cannot be installed to such paths
   const installDir =
     process.platform === 'darwin'
       ? path.normalize(path.join(app.getPath('home'), 'Library', app.getName()))
@@ -454,9 +394,7 @@ export function isDarkTheme(themeType: string) {
 }
 
 /**
- * The origin of a URL, or null when there is not one: no URL, one that does not
- * parse, or an opaque source such as data: and about:blank, which serialize to
- * the literal "null" origin. Never throws.
+ * The origin of a URL, or null when there is not one: no URL, one that does not parse, or an opaque source such as data: and about:blank, which serialize to the literal "null" origin. Never throws.
  */
 export function originOf(url: string | undefined | null): string | null {
   if (!url) {
@@ -471,8 +409,7 @@ export function originOf(url: string | undefined | null): string | null {
 }
 
 /**
- * Whether a URL uses one of the given schemes, written as URL.protocol does,
- * with the colon. False when the URL does not parse.
+ * Whether a URL uses one of the given schemes, written as URL.protocol does, with the colon. False when the URL does not parse.
  */
 export function matchesScheme(url: string, ...schemes: string[]): boolean {
   try {
@@ -483,8 +420,7 @@ export function matchesScheme(url: string, ...schemes: string[]): boolean {
 }
 
 /**
- * Strict same-origin check between two URLs. False when either URL is absent,
- * unparseable, or has an opaque origin. Never throws.
+ * Strict same-origin check between two URLs. False when either URL is absent, unparseable, or has an opaque origin. Never throws.
  */
 export function isSameServerOrigin(
   senderUrl: string | undefined | null,
@@ -496,9 +432,7 @@ export function isSameServerOrigin(
 }
 
 export function clearSession(session: Electron.Session): Promise<void> {
-  // best-effort teardown: callers await this before closing windows, so a
-  // failure to clear one cache must not reject and skip that cleanup, nor hang
-  // (Promise.all with no catch would). allSettled always resolves; log failures.
+  // best-effort teardown: callers await this before closing windows, so a failure to clear one cache must not reject and skip that cleanup, nor hang (Promise.all with no catch would). allSettled always resolves; log failures.
   return Promise.allSettled([
     session.clearCache(),
     session.clearAuthCache(),
@@ -657,9 +591,7 @@ export async function installBundledEnvironment(
   return installCondaPackEnvironment(condaPackPath, installPath, listener);
 }
 
-// Extract a conda-pack tarball into destDir. Separated from the install flow so
-// the tar usage (which the project re-verifies on every tar bump) is unit-tested
-// against a real tarball rather than only exercised by a full env install.
+// Extract a conda-pack tarball into destDir. Separated from the install flow so the tar usage (which the project re-verifies on every tar bump) is unit-tested against a real tarball rather than only exercised by a full env install.
 export async function extractTarball(
   tarballPath: string,
   destDir: string
@@ -793,8 +725,7 @@ export async function deletePythonEnvironment(
         'Environment cannot be deleted since it was not installed by JupyterLab Desktop.'
       );
       reject();
-      // without this return the guard is advisory only: execution falls
-      // through and rmSync deletes the directory the guard just refused.
+      // without this return the guard is advisory only: execution falls through and rmSync deletes the directory the guard just refused.
       return;
     }
 
@@ -913,15 +844,13 @@ export function createCommandScriptInEnv(
 
   let hasActivate = fs.existsSync(activatePath);
   const isConda = isCondaEnv(envPath);
-  // conda commands don't work properly when called from the sub environment.
-  // instead call using conda from the base environment with -p parameter
+  // conda commands don't work properly when called from the sub environment. instead call using conda from the base environment with -p parameter
   const isCondaCommand = isConda && command?.startsWith('conda ');
   if (isCondaCommand && !isBaseCondaEnv(envPath)) {
     command = `${command} -p ${envPath}`;
   }
 
-  // conda activate is only available in base conda environments or
-  // conda-packed environments
+  // conda activate is only available in base conda environments or conda-packed environments
   let isBaseCondaActivate = false;
   if (!hasActivate && isConda) {
     if (fs.existsSync(baseCondaEnvPath)) {
@@ -1107,8 +1036,7 @@ export function launchTerminalInDirectory(options: {
   } else {
     let callCommands = '';
     if (commands) {
-      // note that calling "exec bash" at the end will cause .bashrc to be reloaded,
-      // which could possibly override python path (e.g. base conda initialization)
+      // note that calling "exec bash" at the end will cause .bashrc to be reloaded, which could possibly override python path (e.g. base conda initialization)
       callCommands = ` -- bash -c "${commands}${
         interactive ? '; exec bash' : ''
       }"`;

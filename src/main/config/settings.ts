@@ -1,5 +1,4 @@
-// Copyright (c) Jupyter Development Team.
-// Distributed under the terms of the Modified BSD License.
+// Copyright (c) Jupyter Development Team. Distributed under the terms of the Modified BSD License.
 
 import * as path from 'path';
 import * as fs from 'fs';
@@ -312,8 +311,7 @@ export class WorkspaceSettings extends UserSettings {
     );
     const wsSettings: { [key: string]: any } = {};
 
-    // uiMode needs special handling, it needs to be saved even if same as global default.
-    // this is due to automatically setting uiMode to Zen for default for opening single file
+    // uiMode needs special handling, it needs to be saved even if same as global default. this is due to automatically setting uiMode to Zen for default for opening single file
     for (let key in SettingType) {
       const setting = this._wsSettings[key];
       if (
@@ -326,8 +324,7 @@ export class WorkspaceSettings extends UserSettings {
       }
     }
 
-    // Write when there is something to persist, or when a previous file needs
-    // to be cleared. The directory is created by the writer.
+    // Write when there is something to persist, or when a previous file needs to be cleared. The directory is created by the writer.
     if (Object.keys(wsSettings).length > 0 || fs.existsSync(wsSettingsPath)) {
       return writeJsonConfigFile(wsSettingsPath, wsSettings);
     }

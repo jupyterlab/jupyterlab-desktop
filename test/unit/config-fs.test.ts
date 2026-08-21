@@ -1,6 +1,4 @@
-// Real filesystem, no fs mock: the rest of the suite pins the call sequence,
-// this pins what actually lands on disk. Modes, symlinks and rename semantics
-// are exactly the parts a mock cannot answer for.
+// Real filesystem, no fs mock: the rest of the suite pins the call sequence, this pins what actually lands on disk. Modes, symlinks and rename semantics are exactly the parts a mock cannot answer for.
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import * as fs from 'fs';
 import * as os from 'os';
@@ -13,14 +11,12 @@ import {
   writeJsonConfigFile
 } from '../../src/main/utils';
 
-// These exercise POSIX permission bits and symlinks: root ignores the mode
-// bits, and Windows needs Developer Mode before symlinkSync works at all.
+// These exercise POSIX permission bits and symlinks: root ignores the mode bits, and Windows needs Developer Mode before symlinkSync works at all.
 const asRoot = process.getuid?.() === 0;
 const onWindows = process.platform === 'win32';
 const posixOnly = it.skipIf(onWindows);
 const unprivilegedPosix = it.skipIf(onWindows || asRoot);
-// process.umask throws in a worker thread and the pool is not pinned, so probe
-// it rather than guess from the platform
+// process.umask throws in a worker thread and the pool is not pinned, so probe it rather than guess from the platform
 const canSetUmask = (() => {
   if (onWindows) {
     return false;
@@ -57,8 +53,7 @@ describe('writeJsonConfigFile on a real filesystem', () => {
     expect(siblings()).toEqual(['settings.json']);
   });
 
-  // Windows has no mode to keep: chmod there moves the read-only bit alone, so
-  // a file written 0600 reads back 0666 whatever the writer does.
+  // Windows has no mode to keep: chmod there moves the read-only bit alone, so a file written 0600 reads back 0666 whatever the writer does.
   posixOnly('keeps a private file private', () => {
     const target = path.join(dir, 'settings.json');
     fs.writeFileSync(target, '{}');
@@ -72,8 +67,7 @@ describe('writeJsonConfigFile on a real filesystem', () => {
   it.runIf(canSetUmask)(
     'keeps a group-writable file group-writable under a tighter umask',
     () => {
-      // openSync's mode argument would be masked here; fchmod is not, which is
-      // the whole reason the mode is applied after the open
+      // openSync's mode argument would be masked here; fchmod is not, which is the whole reason the mode is applied after the open
       const target = path.join(dir, 'shared.json');
       fs.writeFileSync(target, '{}');
       fs.chmodSync(target, 0o664);
@@ -140,8 +134,7 @@ describe('writeJsonConfigFile on a real filesystem', () => {
   );
 
   posixOnly('refuses to follow a symlink left at its temporary name', () => {
-    // the temporary name carries this process's pid, which is guessable, and a
-    // run as root would otherwise truncate and chown whatever the link names
+    // the temporary name carries this process's pid, which is guessable, and a run as root would otherwise truncate and chown whatever the link names
     const target = path.join(dir, 'settings.json');
     const decoy = path.join(dir, 'decoy');
     fs.writeFileSync(decoy, 'not mine to touch');
@@ -156,8 +149,7 @@ describe('writeJsonConfigFile on a real filesystem', () => {
   });
 
   posixOnly('creates a config nobody else can read', () => {
-    // app-data.json holds recentRemoteURLs, whose entries carry a token in the
-    // query string, so the umask default is too generous to create it at
+    // app-data.json holds recentRemoteURLs, whose entries carry a token in the query string, so the umask default is too generous to create it at
     const target = path.join(dir, 'app-data.json');
 
     expect(writeJsonConfigFile(target, { recentRemoteURLs: [] })).toBe(true);
@@ -166,8 +158,7 @@ describe('writeJsonConfigFile on a real filesystem', () => {
   });
 
   it('cleans up its temporary when the rename cannot happen', () => {
-    // a config path that is a directory: the temporary is created, the rename
-    // is the step that fails, which is the only way to reach the cleanup
+    // a config path that is a directory: the temporary is created, the rename is the step that fails, which is the only way to reach the cleanup
     const target = path.join(dir, 'settings.json');
     fs.mkdirSync(target);
 
@@ -178,8 +169,7 @@ describe('writeJsonConfigFile on a real filesystem', () => {
   });
 
   it('leaves a temporary belonging to another process alone', () => {
-    // the pid in the name is what keeps two instances off each other; the
-    // second path is the one a pid-less implementation would have taken
+    // the pid in the name is what keeps two instances off each other; the second path is the one a pid-less implementation would have taken
     const target = path.join(dir, 'settings.json');
     const otherPid = `${target}.999999.tmp`;
     const shared = `${target}.tmp`;
@@ -265,8 +255,7 @@ describe('readJsonConfigFile on a real filesystem', () => {
       ])
     );
 
-    // decoded as UTF-8 the mark becomes two replacement characters, which no
-    // amount of trimming removes, and the file reads as corrupt
+    // decoded as UTF-8 the mark becomes two replacement characters, which no amount of trimming removes, and the file reads as corrupt
     expect(readJsonConfigFile(target)).toEqual({ theme: 'dark' });
     expect(getUnreadableConfigFiles()).not.toContain(target);
   });
@@ -311,9 +300,7 @@ describe('readJsonConfigFile on a real filesystem', () => {
       Buffer.concat([Buffer.from([0xfe, 0xff]), Buffer.from(le).swap16()])
     );
 
-    // Notepad calls it "Unicode big endian"; decoded as UTF-8 the mark becomes
-    // replacement characters and the file is marked, which refuses every write
-    // to it from then on
+    // Notepad calls it "Unicode big endian"; decoded as UTF-8 the mark becomes replacement characters and the file is marked, which refuses every write to it from then on
     expect(readJsonConfigFile(target)).toEqual({ theme: 'dark' });
     expect(getUnreadableConfigFiles()).not.toContain(target);
   });
@@ -330,17 +317,13 @@ describe('readJsonConfigFile on a real filesystem', () => {
       ])
     );
 
-    // stripping NUL everywhere would splice it into valid JSON holding a value
-    // nobody wrote, and the next save would persist it
+    // stripping NUL everywhere would splice it into valid JSON holding a value nobody wrote, and the next save would persist it
     expect(readJsonConfigFile(target)).toBeUndefined();
     expect(getUnreadableConfigFiles()).toContain(target);
   });
 
   it('reads a file torn in the middle without stalling the import', () => {
-    // the run above is six bytes, which is the size that hides what this
-    // costs. A power cut pads in filesystem blocks, so this is the shape the
-    // report describes, and the read happens while the config modules are
-    // still being imported, with no window up to show for it.
+    // the run above is six bytes, which is the size that hides what this costs. A power cut pads in filesystem blocks, so this is the shape the report describes, and the read happens while the config modules are still being imported, with no window up to show for it.
     const target = path.join(dir, 'settings.json');
     fs.writeFileSync(
       target,
@@ -353,18 +336,12 @@ describe('readJsonConfigFile on a real filesystem', () => {
 
     const started = Date.now();
     expect(readJsonConfigFile(target)).toBeUndefined();
-    // measured at 22.7 s with `replace(/\0+$/, '')`, whose anchor retries from
-    // every position in the run, against under a millisecond for a scan. The
-    // margin between those is what makes a wall-clock assertion safe here
+    // measured at 22.7 s with `replace(/\0+$/, '')`, whose anchor retries from every position in the run, against under a millisecond for a scan. The margin between those is what makes a wall-clock assertion safe here
     expect(Date.now() - started).toBeLessThan(1000);
   });
 
   it('does not build a config directory through a dangling link', () => {
-    // a dotfiles setup points the config directory at an external volume and
-    // the volume is not mounted. Pinned rather than guarded: recursive
-    // mkdirSync throws ENOENT through a dangling link rather than creating the
-    // chain behind it, so the shadow copy this would otherwise leave on the
-    // boot disk is Node's refusal and not ours. A guard here measured as dead.
+    // a dotfiles setup points the config directory at an external volume and the volume is not mounted. Pinned rather than guarded: recursive mkdirSync throws ENOENT through a dangling link rather than creating the chain behind it, so the shadow copy this would otherwise leave on the boot disk is Node's refusal and not ours. A guard here measured as dead.
     const missing = path.join(dir, 'not-mounted');
     const linked = path.join(dir, 'linked-config');
     fs.symlinkSync(missing, linked);
@@ -379,8 +356,7 @@ describe('readJsonConfigFile on a real filesystem', () => {
     fs.writeFileSync(target, '{');
     readJsonConfigFile(target);
 
-    // a second reader must not get the repaired values while the object built
-    // at import still holds defaults
+    // a second reader must not get the repaired values while the object built at import still holds defaults
     fs.writeFileSync(target, '{"theme":"dark"}');
     expect(readJsonConfigFile(target)).toBeUndefined();
 
@@ -404,8 +380,7 @@ describe('resetConfigFile on a real filesystem', () => {
   });
 
   posixOnly('leaves a symlinked config writable after the reset', () => {
-    // the reset moves the target away, so the link is left dangling; if the
-    // next write cannot follow it the app never saves config again
+    // the reset moves the target away, so the link is left dangling; if the next write cannot follow it the app never saves config again
     const real = path.join(dir, 'real.json');
     const link = path.join(dir, 'settings.json');
     fs.writeFileSync(real, '{"theme": "dark",');
