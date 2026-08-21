@@ -583,8 +583,7 @@ describe('createCommandScriptInEnv', () => {
         command: 'pip install numpy'
       }
     );
-    // unquoted, cmd splits at the space and cannot find activate (see #837).
-    // Assert the closing quote too, otherwise dropping it still passes.
+    // unquoted, cmd splits at the space and cannot find activate (see #837). Assert the closing quote too, otherwise dropping it still passes.
     const activatePath = path.join(
       'C:/Users/First Last/env',
       'Scripts',
@@ -596,8 +595,7 @@ describe('createCommandScriptInEnv', () => {
   it('quotes the env path appended to a conda command', () => {
     Object.defineProperty(process, 'platform', { value: 'linux' });
     mockFs.lstatSync = vi.fn(() => ({ isDirectory: () => true } as fs.Stats));
-    // conda-meta present (isCondaEnv) and activate present, but no condabin,
-    // so this is a sub environment and -p gets appended
+    // conda-meta present (isCondaEnv) and activate present, but no condabin, so this is a sub environment and -p gets appended
     mockFs.existsSync = vi.fn(
       (pth: fs.PathLike) =>
         pth.toString().includes('activate') ||

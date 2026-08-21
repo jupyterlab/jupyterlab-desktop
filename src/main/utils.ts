@@ -113,8 +113,7 @@ export function isDarkTheme(themeType: string) {
   }
 }
 
-// data:, about:blank and other opaque sources serialize to the literal "null"
-// origin, which must never be treated as a real origin.
+// data:, about:blank and other opaque sources serialize to the literal "null" origin, which must never be treated as a real origin.
 function originOf(url: string | undefined | null): string | null {
   if (!url) {
     return null;
@@ -536,9 +535,7 @@ export function isBaseCondaEnv(envPath: string): boolean {
   return fs.existsSync(condaBinPath) && fs.lstatSync(condaBinPath).isFile();
 }
 
-// POSIX single-quotes because double quotes still evaluate $(...) and backticks;
-// the '\'' idiom closes, escapes and reopens. cmd has no substitution, so quotes
-// there are about spaces (#837), and Windows paths cannot contain a quote.
+// POSIX single-quotes because double quotes still evaluate $(...) and backticks; the '\'' idiom closes, escapes and reopens. cmd has no substitution, so quotes there are about spaces (#837), and Windows paths cannot contain a quote.
 export function shellQuotePath(value: string, isWin: boolean): string {
   return isWin ? `"${value}"` : `'${value.split("'").join(`'\\''`)}'`;
 }
@@ -715,8 +712,7 @@ export function openDirectoryInExplorer(dirPath: string): boolean {
       ? 'explorer'
       : 'xdg-open';
 
-  // execFile, not exec: passing argv directly means no shell parses dirPath,
-  // so quoting and substitution never come up.
+  // execFile, not exec: passing argv directly means no shell parses dirPath, so quoting and substitution never come up.
   execFile(openCommand, [dirPath]);
 
   return true;
@@ -736,9 +732,7 @@ export function launchTerminalInDirectory(options: {
   let commands = options.commands;
 
   if (platform === 'darwin') {
-    // Build the shell line first, then hand osascript its argv directly. Going
-    // through exec() would let /bin/sh parse this string too, and that outer
-    // pass expands $(...) in the paths before Terminal ever sees them.
+    // Build the shell line first, then hand osascript its argv directly. Going through exec() would let /bin/sh parse this string too, and that outer pass expands $(...) in the paths before Terminal ever sees them.
     const shellLine = commands
       ? `cd ${shellQuotePath(dirPath, false)} && ${commands}`
       : `cd ${shellQuotePath(dirPath, false)}`;
@@ -773,8 +767,7 @@ export function launchTerminalInDirectory(options: {
   } else {
     const args = [`--working-directory=${dirPath}`];
     if (commands) {
-      // "exec bash" at the end reloads .bashrc, which could override the python
-      // path (e.g. base conda initialization)
+      // "exec bash" at the end reloads .bashrc, which could override the python path (e.g. base conda initialization)
       args.push(
         '--',
         'bash',
