@@ -258,14 +258,11 @@ function decodeConfig(buffer: Buffer): string {
 }
 
 /**
- * `contents` without the NULs at its end.
- *
- * Written as a scan rather than `replace(/\0+$/, '')`, which is quadratic when
- * a NUL run is followed by anything else: the anchor forces a retry from every
- * position in the run. A file torn in the middle is exactly that shape, and
- * this runs synchronously while the config modules are still being imported,
- * so the cost lands before any window exists. Measured on the tail-anchored
- * form: 214 ms at 20 KB of interior NULs, 3.2 s at 80 KB, 22.7 s at 200 KB.
+ * `contents` without the NULs at its end. A scan rather than
+ * `replace(/\0+$/, '')`, whose anchor retries from every position when the run
+ * is followed by anything else, which is what a file torn in the middle is.
+ * This runs while the config modules are still importing, so the cost lands
+ * before any window: 214 ms at 20 KB of interior NULs, 3.2 s at 80, 22.7 s at 200.
  */
 function trimTrailingNuls(contents: string): string {
   let end = contents.length;
