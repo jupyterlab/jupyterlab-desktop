@@ -1,4 +1,5 @@
-// Copyright (c) Jupyter Development Team. Distributed under the terms of the Modified BSD License.
+// Copyright (c) Jupyter Development Team.
+// Distributed under the terms of the Modified BSD License.
 
 import { updateElectronApp } from 'update-electron-app';
 import {
@@ -177,7 +178,8 @@ class SessionWindowManager implements IDisposable {
     if (!restorePosition) {
       rect = this._getNewWindowRect();
 
-      // if any other window has top left too close to the new, move the new window rect
+      // if any other window has top left too close to the new,
+      // move the new window rect
       while (this._isRectTooCloseToExistingWindows(rect)) {
         rect.x += windowSpacing;
         rect.y += windowSpacing;
@@ -267,7 +269,8 @@ export class JupyterApplication implements IApplication, IDisposable {
    * Construct the Jupyter application
    */
   constructor(cliArgs: ICLIArguments) {
-    // first, so that anything added to this constructor later is already covered by the time it can create a webContents
+    // first, so that anything added to this constructor later is already
+    // covered by the time it can create a webContents
     installGlobalNavigationGuard();
     // same reason, and before anything that can create a session
     this._applyPermissionPolicies();
@@ -1227,12 +1230,17 @@ export class JupyterApplication implements IApplication, IDisposable {
       EventTypeMain.GetServerInfo,
       (event): IServerInfo => {
         for (const sessionWindow of this._sessionWindowManager.windows) {
-          // The title bar is app-owned chrome loaded from a bundled source and never renders untrusted content, so object identity is enough.
+          // The title bar is app-owned chrome loaded from a bundled source and
+          // never renders untrusted content, so object identity is enough.
           if (event.sender === sessionWindow.titleBarView?.view?.webContents) {
             return sessionWindow.getServerInfo();
           }
 
-          // The lab view renders untrusted notebook content and its top-level frame can be navigated off the Jupyter origin. The webContents object stays the same across that navigation, so identity alone must not release the server URL and auth token: require the sender frame's current origin to still be the Jupyter server origin.
+          // The lab view renders untrusted notebook content and its top-level
+          // frame can be navigated off the Jupyter origin. The webContents
+          // object stays the same across that navigation, so identity alone
+          // must not release the server URL and auth token: require the sender
+          // frame's current origin to still be the Jupyter server origin.
           if (event.sender === sessionWindow.labView?.view?.webContents) {
             const serverInfo = sessionWindow.getServerInfo();
             const senderUrl = event.senderFrame?.url ?? event.sender.getURL();
