@@ -28,8 +28,6 @@ export interface ISaveOptions {
 }
 
 export function isDevMode(): boolean {
-  // require.main is undefined under ESM and when the app runs against an
-  // Electron binary from the system rather than the bundled one (#786)
   return !app.isPackaged;
 }
 

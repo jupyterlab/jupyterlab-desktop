@@ -14,8 +14,16 @@ permissions:
 
 jobs:
   test:
-    name: 'Unit tests'
-    runs-on: ubuntu-latest
+    # One leg per OS, the way jupyterlab splits linuxtests / macostests /
+    # windowstests. The suite mocks electron, so no binary is needed and the
+    # cost is a runner each; what it buys is the filesystem behaviour that only
+    # differs by platform, which the config tests reach directly.
+    name: 'Unit tests (${{ matrix.os }})'
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
     timeout-minutes: 10
     permissions:
       contents: read
@@ -26,7 +34,12 @@ jobs:
           node-version: '24.x'
           cache: 'yarn'
       - run: yarn install --frozen-lockfile
-      - run: yarn test:coverage
+      # Coverage thresholds only need enforcing once; the other legs are here
+      # for the behaviour, not the numbers.
+      - if: matrix.os == 'ubuntu-latest'
+        run: yarn test:coverage
+      - if: matrix.os != 'ubuntu-latest'
+        run: yarn test:unit
 
   publish:
     needs: test
