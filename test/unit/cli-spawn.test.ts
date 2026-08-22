@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import * as fs from 'fs';
 import { execFileSync, spawn } from 'child_process';
 
@@ -97,7 +97,14 @@ beforeEach(() => {
 });
 
 describe('launchCLIinEnvironment', () => {
+  const originalPlatform = process.platform;
+  afterEach(() => {
+    Object.defineProperty(process, 'platform', { value: originalPlatform });
+  });
+
   it('spawns bash with the generated activate script and cleans it up on close', async () => {
+    // pinned: the Windows branch spawns cmd and waits five seconds before it unlinks, so on that runner this hit the timeout rather than the assertion
+    Object.defineProperty(process, 'platform', { value: 'darwin' });
     mockSpawn.mockReturnValue(makeChild(0));
     const result = await launchCLIinEnvironment('/envs/a');
     expect(mockSpawn).toHaveBeenCalledWith(

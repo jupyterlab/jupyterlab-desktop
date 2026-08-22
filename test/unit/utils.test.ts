@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import * as fs from 'fs';
 import * as path from 'path';
-import { nativeTheme } from 'electron';
+import { app, nativeTheme } from 'electron';
 import log from 'electron-log';
 
 vi.mock('fs', async () => {
@@ -60,6 +60,7 @@ import {
   isBaseCondaEnv,
   isCondaEnv,
   isDarkTheme,
+  isDevMode,
   isEnvInstalledByDesktopApp,
   isPortInUse,
   isSameServerOrigin,
@@ -67,7 +68,9 @@ import {
   jupyterEnvInstallInfoPathForEnvPath,
   LightThemeBGColor,
   markEnvironmentAsJupyterInstalled,
+  matchesScheme,
   openDirectoryInExplorer,
+  originOf,
   pythonPathForEnvPath,
   versionWithoutSuffix,
   waitForDuration,
@@ -77,6 +80,9 @@ import * as childProcess from 'child_process';
 import * as net from 'net';
 
 const mockFs = vi.mocked(fs);
+
+// Stubbing process.platform does not restage path: it binds win32 or posix at import, from the real host. So a function that branches on the platform runs the branch the test asked for, and joins it with the host's separator. These assertions are about layout, not about which slash, so they compare in one.
+const toSlash = (p: string) => p.split(path.sep).join('/');
 
 // Reset the fs stubs to fresh no-op fns before every test so a value set in
 // one test cannot leak into a later one that does not set it.
@@ -130,7 +136,7 @@ describe('pythonPathForEnvPath', () => {
   it('returns bin/python on posix', () => {
     Object.defineProperty(process, 'platform', { value: 'darwin' });
     mockFs.existsSync = vi.fn(() => false);
-    expect(pythonPathForEnvPath('/env')).toBe('/env/bin/python');
+    expect(toSlash(pythonPathForEnvPath('/env'))).toBe('/env/bin/python');
   });
 
   it('returns python.exe in root for conda on windows', () => {
@@ -158,7 +164,8 @@ describe('envPathForPythonPath', () => {
   it('returns parent of bin/ on posix', () => {
     Object.defineProperty(process, 'platform', { value: 'darwin' });
     const result = envPathForPythonPath('/env/bin/python');
-    expect(result).toContain('/env');
+    // exact, because 'contains /env' is also true of the argument it was given
+    expect(toSlash(result)).toBe('/env/');
   });
 
   it('returns parent of Scripts/ on windows', () => {
@@ -184,7 +191,7 @@ describe('activatePathForEnvPath', () => {
 
   it('returns bin/activate on posix', () => {
     Object.defineProperty(process, 'platform', { value: 'darwin' });
-    expect(activatePathForEnvPath('/env')).toBe('/env/bin/activate');
+    expect(toSlash(activatePathForEnvPath('/env'))).toBe('/env/bin/activate');
   });
 });
 
@@ -197,7 +204,8 @@ describe('condaSourcePathForEnvPath', () => {
 
   it('returns conda.sh path on posix', () => {
     Object.defineProperty(process, 'platform', { value: 'darwin' });
-    expect(condaSourcePathForEnvPath('/env')).toBe(
+    // undefined is this function's Windows answer, and the empty string it becomes here fails the comparison rather than typing as a string
+    expect(toSlash(condaSourcePathForEnvPath('/env') ?? '')).toBe(
       '/env/etc/profile.d/conda.sh'
     );
   });
@@ -210,7 +218,7 @@ describe('condaSourcePathForEnvPath', () => {
 
 describe('jupyterEnvInstallInfoPathForEnvPath', () => {
   it('returns .jupyter/env.json path', () => {
-    expect(jupyterEnvInstallInfoPathForEnvPath('/env')).toBe(
+    expect(toSlash(jupyterEnvInstallInfoPathForEnvPath('/env'))).toBe(
       '/env/.jupyter/env.json'
     );
   });
@@ -365,7 +373,7 @@ describe('getLogFilePath', () => {
 
   it('returns path under Library/Logs on darwin', () => {
     Object.defineProperty(process, 'platform', { value: 'darwin' });
-    expect(getLogFilePath()).toContain('Library/Logs');
+    expect(toSlash(getLogFilePath())).toContain('Library/Logs');
   });
 
   it('returns path under .config on linux', () => {
@@ -404,10 +412,30 @@ describe('getJlabCLICommandTargetPath', () => {
     Object.defineProperty(process, 'platform', { value: originalPlatform });
   });
 
-  // darwin path requires require.main via isDevMode() — only test the non-darwin case here
   it('returns undefined on non-darwin', () => {
     Object.defineProperty(process, 'platform', { value: 'linux' });
     expect(getJlabCLICommandTargetPath()).toBeUndefined();
+  });
+
+  it('points at the app directory on darwin', () => {
+    Object.defineProperty(process, 'platform', { value: 'darwin' });
+    expect(getJlabCLICommandTargetPath()).toBe(`${app.getAppPath()}/app/jlab`);
+  });
+});
+
+describe('isDevMode', () => {
+  afterEach(() => {
+    (app as any).isPackaged = false;
+  });
+
+  it('is true when the app is not packaged', () => {
+    (app as any).isPackaged = false;
+    expect(isDevMode()).toBe(true);
+  });
+
+  it('is false when the app is packaged', () => {
+    (app as any).isPackaged = true;
+    expect(isDevMode()).toBe(false);
   });
 });
 
@@ -714,7 +742,7 @@ describe('createTempFile', () => {
   it('returns path inside the temp dir', () => {
     const result = createTempFile('run.sh');
     expect(result).toContain('run.sh');
-    expect(result).toContain('/tmp/jlab_desktop_abc');
+    expect(toSlash(result)).toContain('/tmp/jlab_desktop_abc');
   });
 
   it('uses defaults when called with no args', () => {
@@ -785,6 +813,20 @@ describe('getFreePort', () => {
   });
 });
 
+describe('originOf', () => {
+  it('drops the query string, where a Jupyter URL carries its token', () => {
+    expect(originOf('http://localhost:8888/lab?token=secret')).toBe(
+      'http://localhost:8888'
+    );
+  });
+
+  it('returns null for an opaque or unparseable source', () => {
+    expect(originOf('data:text/html,<p>x')).toBeNull();
+    expect(originOf('not a url')).toBeNull();
+    expect(originOf(undefined)).toBeNull();
+  });
+});
+
 describe('isSameServerOrigin', () => {
   const server = 'http://localhost:8888/lab?token=secret';
 
@@ -822,5 +864,52 @@ describe('isSameServerOrigin', () => {
     expect(isSameServerOrigin('http://localhost:8888/lab', undefined)).toBe(
       false
     );
+  });
+});
+
+describe('originOf', () => {
+  it('returns the origin of a parseable URL', () => {
+    expect(originOf('http://localhost:8888/lab?token=secret')).toBe(
+      'http://localhost:8888'
+    );
+  });
+
+  it.each(['about:blank', 'data:text/html,<h1>hi</h1>'])(
+    'returns null for the opaque origin of %s',
+    url => {
+      expect(originOf(url)).toBeNull();
+    }
+  );
+
+  it.each(['not a url', '', undefined, null])(
+    'returns null instead of throwing for %s',
+    url => {
+      expect(originOf(url as string | undefined | null)).toBeNull();
+    }
+  );
+});
+
+describe('matchesScheme', () => {
+  it('accepts a URL whose scheme is in the given set', () => {
+    expect(matchesScheme('https://example.com/x', 'http:', 'https:')).toBe(
+      true
+    );
+    expect(matchesScheme('mailto:a@b.c', 'http:', 'https:', 'mailto:')).toBe(
+      true
+    );
+  });
+
+  it('rejects a scheme the caller did not ask for', () => {
+    expect(matchesScheme('mailto:a@b.c', 'http:', 'https:')).toBe(false);
+    expect(matchesScheme('file:///etc/passwd', 'http:', 'https:')).toBe(false);
+    expect(matchesScheme('javascript:alert(1)', 'http:', 'https:')).toBe(false);
+  });
+
+  it('rejects a URL that does not parse instead of throwing', () => {
+    expect(matchesScheme('not a url', 'http:', 'https:')).toBe(false);
+  });
+
+  it('rejects when no scheme is accepted', () => {
+    expect(matchesScheme('https://example.com/')).toBe(false);
   });
 });
