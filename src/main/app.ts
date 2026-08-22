@@ -8,6 +8,7 @@ import {
   BrowserWindow,
   dialog,
   net,
+  Session,
   session,
   shell
 } from 'electron';
@@ -25,10 +26,13 @@ import {
   installBundledEnvironment,
   isDarkTheme,
   isSameServerOrigin,
+  originOf,
   pythonPathForEnvPath,
   setupJlabCLICommandWithElevatedRights,
   waitForDuration
 } from './utils';
+import { installGlobalNavigationGuard } from './navigationguard';
+import { isPermissionAllowed, serverUrlsForRequest } from './permissionpolicy';
 import { IServerFactory, JupyterServerFactory } from './server';
 import { connectAndGetServerInfo, IJupyterServerInfo } from './connect';
 import { UpdateDialog } from './updatedialog/updatedialog';
@@ -265,6 +269,12 @@ export class JupyterApplication implements IApplication, IDisposable {
    * Construct the Jupyter application
    */
   constructor(cliArgs: ICLIArguments) {
+    // first, so that anything added to this constructor later is already
+    // covered by the time it can create a webContents
+    installGlobalNavigationGuard();
+    // same reason, and before anything that can create a session
+    this._applyPermissionPolicies();
+
     this._cliArgs = cliArgs;
     this._registry = new Registry();
     this._serverFactory = new JupyterServerFactory(this._registry);
@@ -570,6 +580,70 @@ export class JupyterApplication implements IApplication, IDisposable {
     });
 
     updateElectronApp();
+  }
+
+  /**
+   * Refuse permission requests unless they come from a Jupyter server origin. A remote session builds its own partition, so sessions are hooked as they are created rather than only the default one.
+   */
+  private _applyPermissionPolicies() {
+    const apply = (ses: Session) => {
+      ses.setPermissionRequestHandler(
+        (webContents, permission, callback, details) => {
+          // never webContents.getURL(): that is the top frame, and the request may be coming from an off-origin frame inside it
+          const requestingUrl = details?.requestingUrl;
+          const allowed = isPermissionAllowed({
+            permission,
+            requestingUrl,
+            serverUrls: this._serverUrlsForRequest(webContents)
+          });
+          if (!allowed) {
+            // a refusal is silent in the page, so leave a trail behind. Only the origin: a Jupyter URL carries its token in the query string and this line would put it in the log file.
+            log.debug(
+              `Denied ${permission} requested by ${
+                originOf(requestingUrl) ?? 'an unknown origin'
+              }`
+            );
+          }
+          callback(allowed);
+        }
+      );
+
+      ses.setPermissionCheckHandler(
+        (webContents, permission, requestingOrigin) => {
+          const allowed = isPermissionAllowed({
+            permission,
+            requestingUrl: requestingOrigin,
+            serverUrls: this._serverUrlsForRequest(webContents)
+          });
+          if (!allowed) {
+            // a check is where Notification.permission and its kind are answered, and some of those never reach the request handler, so leaving this one silent hides exactly the refusals nobody can see from inside the page
+            log.debug(
+              `Denied a ${permission} check from ${
+                originOf(requestingOrigin) ?? 'an unknown origin'
+              }`
+            );
+          }
+          return allowed;
+        }
+      );
+    };
+
+    apply(session.defaultSession);
+    app.on('session-created', apply);
+  }
+
+  private _serverUrlsForRequest(
+    webContents: Electron.WebContents | null
+  ): string[] {
+    // the handlers go up before the manager exists, and a permission request cannot arrive mid-constructor today, but only because nothing in between pumps the event loop
+    const windows = this._sessionWindowManager?.windows ?? [];
+    return serverUrlsForRequest(
+      webContents,
+      windows.map(sessionWindow => ({
+        viewWebContents: sessionWindow.labView?.view?.webContents,
+        serverUrl: sessionWindow.getServerInfo()?.url
+      }))
+    );
   }
 
   private _validateRemoteServerUrl(url: string): Promise<IJupyterServerInfo> {

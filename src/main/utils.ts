@@ -28,7 +28,9 @@ export interface ISaveOptions {
 }
 
 export function isDevMode(): boolean {
-  return require.main.filename.indexOf('app.asar') === -1;
+  // require.main is undefined under ESM and when the app runs against an
+  // Electron binary from the system rather than the bundled one (#786)
+  return !app.isPackaged;
 }
 
 export function getAppDir(): string {
@@ -47,12 +49,10 @@ export function getUserHomeDir(): string {
 export function getUserDataDir(): string {
   const userDataDir = app.getPath('userData');
 
-  if (!fs.existsSync(userDataDir)) {
-    try {
-      fs.mkdirSync(userDataDir, { recursive: true });
-    } catch (error) {
-      log.error(error);
-    }
+  try {
+    fs.mkdirSync(userDataDir, { recursive: true });
+  } catch (error) {
+    log.error(error);
   }
 
   return userDataDir;
@@ -86,12 +86,10 @@ export function getBundledPythonInstallDir(): string {
       ? path.normalize(path.join(app.getPath('home'), 'Library', app.getName()))
       : app.getPath('userData');
 
-  if (!fs.existsSync(installDir)) {
-    try {
-      fs.mkdirSync(installDir, { recursive: true });
-    } catch (error) {
-      log.error(error);
-    }
+  try {
+    fs.mkdirSync(installDir, { recursive: true });
+  } catch (error) {
+    log.error(error);
   }
 
   return installDir;
@@ -117,9 +115,12 @@ export function isDarkTheme(themeType: string) {
   }
 }
 
-// data:, about:blank and other opaque sources serialize to the literal "null"
-// origin, which must never be treated as a real origin.
-function originOf(url: string | undefined | null): string | null {
+/**
+ * The origin of a URL, or null when there is not one: no URL, one that does not
+ * parse, or an opaque source such as data: and about:blank, which serialize to
+ * the literal "null" origin. Never throws.
+ */
+export function originOf(url: string | undefined | null): string | null {
   if (!url) {
     return null;
   }
@@ -128,6 +129,18 @@ function originOf(url: string | undefined | null): string | null {
     return origin === 'null' ? null : origin;
   } catch {
     return null;
+  }
+}
+
+/**
+ * Whether a URL uses one of the given schemes, written as URL.protocol does,
+ * with the colon. False when the URL does not parse.
+ */
+export function matchesScheme(url: string, ...schemes: string[]): boolean {
+  try {
+    return schemes.includes(new URL(url).protocol);
+  } catch {
+    return false;
   }
 }
 
@@ -420,11 +433,7 @@ export function markEnvironmentAsJupyterInstalled(
   };
 
   try {
-    const dirPath = path.dirname(envInstallInfoPath);
-    if (!fs.existsSync(dirPath)) {
-      fs.mkdirSync(dirPath, { recursive: true });
-    }
-
+    fs.mkdirSync(path.dirname(envInstallInfoPath), { recursive: true });
     fs.writeFileSync(envInstallInfoPath, JSON.stringify(data, null, 2));
   } catch (error) {
     console.error('Failed to create file', envInstallInfoPath, error);
