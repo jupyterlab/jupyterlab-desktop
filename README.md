@@ -16,6 +16,8 @@ Install JupyterLab Desktop using one of the methods listed below for your system
 
 Additionally, JupyterLab Desktop can be installed on Windows via winget: `winget install jupyterlab`.
 
+On macOS it is also carried as a Homebrew cask, maintained by the Homebrew community rather than by this project: `brew install --cask jupyterlab-app`.
+
 If you need to remove a previous JupyterLab Desktop installation, please follow the [uninstall instructions](user-guide.md#uninstalling-jupyterlab-desktop).
 
 ## Launching JupyterLab Desktop
