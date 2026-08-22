@@ -418,8 +418,6 @@ describe('getJlabCLICommandTargetPath', () => {
   });
 });
 
-// #786: the app is in dev mode when it is unpackaged, which also covers being
-// run against an Electron binary from the system rather than the bundled one
 describe('isDevMode', () => {
   afterEach(() => {
     (app as any).isPackaged = false;
