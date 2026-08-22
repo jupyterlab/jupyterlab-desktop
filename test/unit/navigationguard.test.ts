@@ -1,4 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { readdirSync, readFileSync, statSync } from 'fs';
+import { join, relative } from 'path';
 import { app, shell } from 'electron';
 import {
   guardAppOwnedView,
@@ -6,6 +8,16 @@ import {
   markGuarded,
   openUrlInSystemBrowser
 } from '../../src/main/navigationguard';
+
+function walk(dir: string): string[] {
+  return readdirSync(dir).flatMap(entry => {
+    const full = join(dir, entry);
+    if (statSync(full).isDirectory()) {
+      return walk(full);
+    }
+    return full.endsWith('.ts') ? [full] : [];
+  });
+}
 
 interface IFakeContents {
   on: (name: string, listener: (...args: any[]) => void) => void;
@@ -34,7 +46,15 @@ function fakeContents(): IFakeContents {
   };
 }
 
-const navigationEvent = () => ({ preventDefault: vi.fn() });
+// electron passes the event object carrying the url, not positional arguments
+const navigationEvent = (url = 'https://example.com/', isMainFrame = true) => ({
+  preventDefault: vi.fn(),
+  url,
+  isMainFrame
+});
+
+const subframeEvent = (url = 'https://example.com/') =>
+  navigationEvent(url, false);
 
 describe('openUrlInSystemBrowser', () => {
   beforeEach(() => {
@@ -70,7 +90,7 @@ describe('guardAppOwnedView', () => {
     guardAppOwnedView(contents as any);
     const event = navigationEvent();
 
-    contents.emit('will-navigate', event, 'https://example.com/');
+    contents.emit('will-navigate', event);
 
     expect(event.preventDefault).toHaveBeenCalledOnce();
     expect(shell.openExternal).toHaveBeenCalledOnce();
@@ -81,7 +101,7 @@ describe('guardAppOwnedView', () => {
     guardAppOwnedView(contents as any);
     const event = navigationEvent();
 
-    contents.emit('will-redirect', event, 'https://example.com/');
+    contents.emit('will-redirect', event);
 
     expect(event.preventDefault).toHaveBeenCalledOnce();
   });
@@ -96,12 +116,45 @@ describe('guardAppOwnedView', () => {
     expect(shell.openExternal).toHaveBeenCalledOnce();
   });
 
-  it('prevents navigation without opening anything for an unsafe scheme', () => {
+  it('blocks a subframe rather than handing its target to the browser', () => {
+    const contents = fakeContents();
+    guardAppOwnedView(contents as any);
+    const event = subframeEvent();
+
+    contents.emit('will-frame-navigate', event);
+
+    expect(event.preventDefault).toHaveBeenCalledOnce();
+    expect(shell.openExternal).not.toHaveBeenCalled();
+  });
+
+  it('blocks a subframe redirect rather than opening it in the browser', () => {
+    const contents = fakeContents();
+    guardAppOwnedView(contents as any);
+    const event = subframeEvent();
+
+    contents.emit('will-redirect', event);
+
+    expect(event.preventDefault).toHaveBeenCalledOnce();
+    expect(shell.openExternal).not.toHaveBeenCalled();
+  });
+
+  it('leaves the main frame to will-navigate so nothing opens twice', () => {
     const contents = fakeContents();
     guardAppOwnedView(contents as any);
     const event = navigationEvent();
 
-    contents.emit('will-navigate', event, 'file:///etc/passwd');
+    contents.emit('will-frame-navigate', event);
+
+    expect(event.preventDefault).not.toHaveBeenCalled();
+    expect(shell.openExternal).not.toHaveBeenCalled();
+  });
+
+  it('prevents navigation without opening anything for an unsafe scheme', () => {
+    const contents = fakeContents();
+    guardAppOwnedView(contents as any);
+    const event = navigationEvent('file:///etc/passwd');
+
+    contents.emit('will-navigate', event);
 
     expect(event.preventDefault).toHaveBeenCalledOnce();
     expect(shell.openExternal).not.toHaveBeenCalled();
@@ -128,7 +181,7 @@ describe('installGlobalNavigationGuard', () => {
     created(null, contents);
     const event = navigationEvent();
 
-    contents.emit('will-navigate', event, 'https://example.com/');
+    contents.emit('will-navigate', event);
 
     expect(event.preventDefault).toHaveBeenCalledOnce();
   });
@@ -139,7 +192,28 @@ describe('installGlobalNavigationGuard', () => {
     markGuarded(contents as any);
     const event = navigationEvent();
 
-    contents.emit('will-navigate', event, 'https://example.com/');
+    contents.emit('will-navigate', event);
+
+    expect(event.preventDefault).not.toHaveBeenCalled();
+  });
+
+  it('prevents a subframe navigating in a view nobody claimed', () => {
+    const contents = fakeContents();
+    created(null, contents);
+    const event = subframeEvent();
+
+    contents.emit('will-frame-navigate', event);
+
+    expect(event.preventDefault).toHaveBeenCalledOnce();
+  });
+
+  it('leaves a claimed view its own subframes', () => {
+    const contents = fakeContents();
+    created(null, contents);
+    markGuarded(contents as any);
+    const event = subframeEvent();
+
+    contents.emit('will-frame-navigate', event);
 
     expect(event.preventDefault).not.toHaveBeenCalled();
   });
@@ -162,5 +236,64 @@ describe('installGlobalNavigationGuard', () => {
     contents.emit('will-attach-webview', event);
 
     expect(event.preventDefault).toHaveBeenCalledOnce();
+  });
+
+  it('still denies window creation from a view that claimed navigation', () => {
+    const contents = fakeContents();
+    created(null, contents);
+    markGuarded(contents as any);
+
+    // marking a view exempts its navigations, not its popups: the owner has to
+    // set its own handler, which is what the source check below is about
+    expect(contents.openWindow('https://example.com/')).toEqual({
+      action: 'deny'
+    });
+  });
+});
+
+describe('every surface that claims navigation also declares a popup policy', () => {
+  // markGuarded only exempts navigation. A view that claims it and then leaves
+  // setWindowOpenHandler alone keeps the global deny-all, so a login that pops
+  // a window dies with nothing on screen. connect.ts shipped that way.
+  it.each(['connect.ts', 'labview/labview.ts', 'authwindow/authwindow.ts'])(
+    '%s sets its own window open handler',
+    file => {
+      const source = readFileSync(
+        join(__dirname, '../../src/main', file),
+        'utf8'
+      );
+
+      expect(source).toContain('markGuarded(');
+      expect(source).toContain('setWindowOpenHandler(');
+    }
+  );
+
+  it('connect.ts marks the popup it allows, not just the window itself', () => {
+    // a popup is a fresh webContents nobody claimed, so allowing it without
+    // marking it leaves the global guard blocking its own start URL: the
+    // window opens on a blank document and the login never renders
+    const source = readFileSync(
+      join(__dirname, '../../src/main/connect.ts'),
+      'utf8'
+    );
+
+    expect(source).toContain("on('did-create-window'");
+    expect(source).toMatch(/did-create-window[\s\S]{0,160}markGuarded\(/);
+  });
+
+  it('names every direct caller of markGuarded', () => {
+    const root = join(__dirname, '../../src/main');
+    const callers = walk(root).filter(file => {
+      const source = readFileSync(file, 'utf8');
+      return (
+        !file.endsWith('navigationguard.ts') && /\bmarkGuarded\(/.test(source)
+      );
+    });
+
+    expect(callers.map(file => relative(root, file)).sort()).toEqual([
+      'authwindow/authwindow.ts',
+      'connect.ts',
+      'labview/labview.ts'
+    ]);
   });
 });

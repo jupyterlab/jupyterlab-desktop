@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import * as fs from 'fs';
 import * as path from 'path';
-import { nativeTheme } from 'electron';
+import { app, nativeTheme } from 'electron';
 import log from 'electron-log';
 
 vi.mock('fs', async () => {
@@ -60,6 +60,7 @@ import {
   isBaseCondaEnv,
   isCondaEnv,
   isDarkTheme,
+  isDevMode,
   isEnvInstalledByDesktopApp,
   isPortInUse,
   isSameServerOrigin,
@@ -68,7 +69,9 @@ import {
   launchTerminalInDirectory,
   LightThemeBGColor,
   markEnvironmentAsJupyterInstalled,
+  matchesScheme,
   openDirectoryInExplorer,
+  originOf,
   pythonPathForEnvPath,
   shellQuotePath,
   versionWithoutSuffix,
@@ -406,10 +409,30 @@ describe('getJlabCLICommandTargetPath', () => {
     Object.defineProperty(process, 'platform', { value: originalPlatform });
   });
 
-  // darwin path requires require.main via isDevMode() — only test the non-darwin case here
   it('returns undefined on non-darwin', () => {
     Object.defineProperty(process, 'platform', { value: 'linux' });
     expect(getJlabCLICommandTargetPath()).toBeUndefined();
+  });
+
+  it('points at the app directory on darwin', () => {
+    Object.defineProperty(process, 'platform', { value: 'darwin' });
+    expect(getJlabCLICommandTargetPath()).toBe(`${app.getAppPath()}/app/jlab`);
+  });
+});
+
+describe('isDevMode', () => {
+  afterEach(() => {
+    (app as any).isPackaged = false;
+  });
+
+  it('is true when the app is not packaged', () => {
+    (app as any).isPackaged = false;
+    expect(isDevMode()).toBe(true);
+  });
+
+  it('is false when the app is packaged', () => {
+    (app as any).isPackaged = true;
+    expect(isDevMode()).toBe(false);
   });
 });
 
@@ -920,6 +943,20 @@ describe('getFreePort', () => {
   });
 });
 
+describe('originOf', () => {
+  it('drops the query string, where a Jupyter URL carries its token', () => {
+    expect(originOf('http://localhost:8888/lab?token=secret')).toBe(
+      'http://localhost:8888'
+    );
+  });
+
+  it('returns null for an opaque or unparseable source', () => {
+    expect(originOf('data:text/html,<p>x')).toBeNull();
+    expect(originOf('not a url')).toBeNull();
+    expect(originOf(undefined)).toBeNull();
+  });
+});
+
 describe('isSameServerOrigin', () => {
   const server = 'http://localhost:8888/lab?token=secret';
 
@@ -957,5 +994,52 @@ describe('isSameServerOrigin', () => {
     expect(isSameServerOrigin('http://localhost:8888/lab', undefined)).toBe(
       false
     );
+  });
+});
+
+describe('originOf', () => {
+  it('returns the origin of a parseable URL', () => {
+    expect(originOf('http://localhost:8888/lab?token=secret')).toBe(
+      'http://localhost:8888'
+    );
+  });
+
+  it.each(['about:blank', 'data:text/html,<h1>hi</h1>'])(
+    'returns null for the opaque origin of %s',
+    url => {
+      expect(originOf(url)).toBeNull();
+    }
+  );
+
+  it.each(['not a url', '', undefined, null])(
+    'returns null instead of throwing for %s',
+    url => {
+      expect(originOf(url as string | undefined | null)).toBeNull();
+    }
+  );
+});
+
+describe('matchesScheme', () => {
+  it('accepts a URL whose scheme is in the given set', () => {
+    expect(matchesScheme('https://example.com/x', 'http:', 'https:')).toBe(
+      true
+    );
+    expect(matchesScheme('mailto:a@b.c', 'http:', 'https:', 'mailto:')).toBe(
+      true
+    );
+  });
+
+  it('rejects a scheme the caller did not ask for', () => {
+    expect(matchesScheme('mailto:a@b.c', 'http:', 'https:')).toBe(false);
+    expect(matchesScheme('file:///etc/passwd', 'http:', 'https:')).toBe(false);
+    expect(matchesScheme('javascript:alert(1)', 'http:', 'https:')).toBe(false);
+  });
+
+  it('rejects a URL that does not parse instead of throwing', () => {
+    expect(matchesScheme('not a url', 'http:', 'https:')).toBe(false);
+  });
+
+  it('rejects when no scheme is accepted', () => {
+    expect(matchesScheme('https://example.com/')).toBe(false);
   });
 });
