@@ -594,7 +594,7 @@ describe('createCommandScriptInEnv', () => {
     );
     const script = createCommandScriptInEnv('/env/$(id -u)', '/base', {});
     // single quotes, so the shell never evaluates it. Double quotes would.
-    expect(script).toContain("source '/env/$(id -u)/bin/activate'");
+    expect(toSlash(script)).toContain("source '/env/$(id -u)/bin/activate'");
     expect(script).not.toContain('"');
   });
 
