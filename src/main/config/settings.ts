@@ -3,7 +3,13 @@
 
 import * as path from 'path';
 import * as fs from 'fs';
-import { getUserDataDir, getUserHomeDir } from '../utils';
+import log from 'electron-log';
+import {
+  getUserDataDir,
+  getUserHomeDir,
+  readJsonConfigFile,
+  writeJsonConfigFile
+} from '../utils';
 
 export const DEFAULT_WIN_WIDTH = 1024;
 export const DEFAULT_WIN_HEIGHT = 768;
@@ -112,6 +118,10 @@ export class Setting<T> {
     return this._valueSet;
   }
 
+  get defaultValue(): T {
+    return this._defaultValue;
+  }
+
   get differentThanDefault(): boolean {
     return JSON.stringify(this.value) !== JSON.stringify(this._defaultValue);
   }
@@ -207,21 +217,19 @@ export class UserSettings {
 
   read() {
     const userSettingsPath = UserSettings.getUserSettingsPath();
-    if (!fs.existsSync(userSettingsPath)) {
+    const jsonData = readJsonConfigFile(userSettingsPath);
+    if (!jsonData) {
       return;
     }
-    const data = fs.readFileSync(userSettingsPath);
-    const jsonData = JSON.parse(data.toString());
 
     for (let key in SettingType) {
-      if (key in jsonData) {
-        const setting = this._settings[key];
-        setting.value = jsonData[key];
+      if (key in jsonData && this._hasShapeOf(jsonData[key], key)) {
+        this._settings[key].value = jsonData[key];
       }
     }
   }
 
-  save() {
+  save(): boolean {
     const userSettingsPath = UserSettings.getUserSettingsPath();
     const userSettings: { [key: string]: any } = {};
 
@@ -232,13 +240,30 @@ export class UserSettings {
       }
     }
 
-    fs.writeFileSync(userSettingsPath, JSON.stringify(userSettings, null, 2));
+    return writeJsonConfigFile(userSettingsPath, userSettings);
   }
 
   get resolvedWorkingDirectory(): string {
     return resolveWorkingDirectory(
       this._settings[SettingType.defaultWorkingDirectory].value
     );
+  }
+
+  /**
+   * Whether a value from a config file can stand in for a setting, judged against the declared default: a string where an array belongs reaches join() later and throws there instead, and null passes a bare typeof check for every object-valued setting.
+   */
+  protected _hasShapeOf(value: any, key: string): boolean {
+    const reference = this._settings[key].defaultValue;
+    const matches =
+      value !== null &&
+      typeof value === typeof reference &&
+      Array.isArray(value) === Array.isArray(reference);
+
+    if (!matches) {
+      log.error(`Ignoring "${key}", its value has the wrong shape`);
+    }
+
+    return matches;
   }
 
   protected _settings: { [key: string]: Setting<any> };
@@ -286,14 +311,13 @@ export class WorkspaceSettings extends UserSettings {
     const wsSettingsPath = WorkspaceSettings.getWorkspaceSettingsPath(
       this._workingDirectory
     );
-    if (!fs.existsSync(wsSettingsPath)) {
+    const jsonData = readJsonConfigFile(wsSettingsPath);
+    if (!jsonData) {
       return;
     }
-    const data = fs.readFileSync(wsSettingsPath);
-    const jsonData = JSON.parse(data.toString());
 
     for (let key in SettingType) {
-      if (key in jsonData) {
+      if (key in jsonData && this._hasShapeOf(jsonData[key], key)) {
         const userSetting = this._settings[key];
         if (userSetting.wsOverridable) {
           this._wsSettings[key] = Object.assign({}, userSetting);
@@ -303,7 +327,7 @@ export class WorkspaceSettings extends UserSettings {
     }
   }
 
-  save() {
+  save(): boolean {
     const wsSettingsPath = WorkspaceSettings.getWorkspaceSettingsPath(
       this._workingDirectory
     );
@@ -327,9 +351,10 @@ export class WorkspaceSettings extends UserSettings {
     // to be cleared. mkdir is unconditional: recursive mode is a no-op when the
     // directory already exists, and checking first only opens a race window.
     if (Object.keys(wsSettings).length > 0 || fs.existsSync(wsSettingsPath)) {
-      fs.mkdirSync(path.dirname(wsSettingsPath), { recursive: true });
-      fs.writeFileSync(wsSettingsPath, JSON.stringify(wsSettings, null, 2));
+      return writeJsonConfigFile(wsSettingsPath, wsSettings);
     }
+
+    return true;
   }
 
   private _isDifferentThanUserSetting(setting: SettingType): boolean {

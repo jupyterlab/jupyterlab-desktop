@@ -82,7 +82,7 @@ describe('SessionConfig.createLocal', () => {
 
   it('skips files that do not exist', () => {
     mockFs.lstatSync = vi.fn(() => {
-      throw new Error('ENOENT');
+      throw Object.assign(new Error('ENOENT'), { code: 'ENOENT' });
     });
     const s = SessionConfig.createLocal('/data', ['missing.ipynb']);
     expect(s.filesToOpen).toEqual([]);
@@ -192,7 +192,7 @@ describe('SessionConfig.createLocalForFilesOrFolders', () => {
 
   it('skips paths where lstatSync throws', () => {
     mockFs.lstatSync = vi.fn(() => {
-      throw new Error('ENOENT');
+      throw Object.assign(new Error('ENOENT'), { code: 'ENOENT' });
     });
     const s = SessionConfig.createLocalForFilesOrFolders([
       '/missing/path.ipynb'
@@ -221,7 +221,7 @@ describe('SessionConfig.createFromArgs', () => {
   beforeEach(() => {
     mockFs.existsSync = vi.fn(() => false);
     mockFs.lstatSync = vi.fn(() => {
-      throw new Error('ENOENT');
+      throw Object.assign(new Error('ENOENT'), { code: 'ENOENT' });
     });
   });
 
@@ -448,6 +448,27 @@ describe('SessionConfig.deserialize', () => {
     expect(s.y).toBe(20);
     expect(s.width).toBe(800);
     expect(s.height).toBe(600);
+  });
+
+  it('keeps a negative x, which a second display to the left produces', () => {
+    const s = new SessionConfig();
+
+    s.deserialize({ x: -1200, y: 0 });
+
+    expect(s.x).toBe(-1200);
+    expect(s.y).toBe(0);
+  });
+
+  it('ignores a size that is zero, negative or fractional', () => {
+    const s = new SessionConfig();
+    const width = s.width;
+    const height = s.height;
+
+    s.deserialize({ width: 0, height: -5000 });
+    s.deserialize({ width: 800.5 });
+
+    expect(s.width).toBe(width);
+    expect(s.height).toBe(height);
   });
 
   it('sets remoteURL', () => {

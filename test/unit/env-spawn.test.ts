@@ -148,7 +148,7 @@ describe('validatePythonPath', () => {
 
   it('is invalid when execFileSync throws', async () => {
     mockExecFileSync.mockImplementation(() => {
-      throw new Error('ENOENT');
+      throw Object.assign(new Error('ENOENT'), { code: 'ENOENT' });
     });
     const result = await env.validatePythonPath('/usr/bin/python3');
     expect(result.valid).toBe(false);
