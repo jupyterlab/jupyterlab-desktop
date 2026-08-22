@@ -28,7 +28,7 @@ vi.mock('electron', () => ({
 vi.mock('../../src/main/config/appdata', () => ({
   appData: {
     userSetPythonEnvs: [],
-    save: vi.fn()
+    save: vi.fn(() => true)
   },
   ApplicationData: { getSingleton: vi.fn() }
 }));
@@ -36,7 +36,7 @@ vi.mock('../../src/main/config/settings', () => ({
   userSettings: {
     getValue: vi.fn(() => ''),
     setValue: vi.fn(),
-    save: vi.fn()
+    save: vi.fn(() => true)
   },
   SettingType: {
     pythonPath: 'pythonPath',
@@ -105,11 +105,12 @@ const mockFs = vi.mocked(fs);
 beforeEach(() => {
   vi.clearAllMocks();
   (appData as any).userSetPythonEnvs = [];
-  (appData as any).save = vi.fn();
+  // save() reports whether the write landed now, and the handlers branch on it
+  (appData as any).save = vi.fn(() => true);
   mockFs.existsSync = vi.fn(() => false);
   (userSettings as any).getValue = vi.fn(() => '');
   (userSettings as any).setValue = vi.fn();
-  (userSettings as any).save = vi.fn();
+  (userSettings as any).save = vi.fn(() => true);
   vi.spyOn(envModule, 'validateCondaPath').mockResolvedValue({ valid: true });
   vi.spyOn(envModule, 'validateSystemPythonPath').mockResolvedValue({
     valid: true

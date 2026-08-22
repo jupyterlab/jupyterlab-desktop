@@ -3,7 +3,12 @@
 
 import * as path from 'path';
 import * as fs from 'fs';
-import { getUserDataDir, getUserHomeDir } from '../utils';
+import {
+  getUserDataDir,
+  getUserHomeDir,
+  readJsonConfigFile,
+  writeJsonConfigFile
+} from '../utils';
 
 export const DEFAULT_WIN_WIDTH = 1024;
 export const DEFAULT_WIN_HEIGHT = 768;
@@ -207,11 +212,10 @@ export class UserSettings {
 
   read() {
     const userSettingsPath = UserSettings.getUserSettingsPath();
-    if (!fs.existsSync(userSettingsPath)) {
+    const jsonData = readJsonConfigFile(userSettingsPath);
+    if (!jsonData) {
       return;
     }
-    const data = fs.readFileSync(userSettingsPath);
-    const jsonData = JSON.parse(data.toString());
 
     for (let key in SettingType) {
       if (key in jsonData) {
@@ -221,7 +225,7 @@ export class UserSettings {
     }
   }
 
-  save() {
+  save(): boolean {
     const userSettingsPath = UserSettings.getUserSettingsPath();
     const userSettings: { [key: string]: any } = {};
 
@@ -232,7 +236,7 @@ export class UserSettings {
       }
     }
 
-    fs.writeFileSync(userSettingsPath, JSON.stringify(userSettings, null, 2));
+    return writeJsonConfigFile(userSettingsPath, userSettings);
   }
 
   get resolvedWorkingDirectory(): string {
@@ -286,11 +290,10 @@ export class WorkspaceSettings extends UserSettings {
     const wsSettingsPath = WorkspaceSettings.getWorkspaceSettingsPath(
       this._workingDirectory
     );
-    if (!fs.existsSync(wsSettingsPath)) {
+    const jsonData = readJsonConfigFile(wsSettingsPath);
+    if (!jsonData) {
       return;
     }
-    const data = fs.readFileSync(wsSettingsPath);
-    const jsonData = JSON.parse(data.toString());
 
     for (let key in SettingType) {
       if (key in jsonData) {
@@ -303,7 +306,7 @@ export class WorkspaceSettings extends UserSettings {
     }
   }
 
-  save() {
+  save(): boolean {
     const wsSettingsPath = WorkspaceSettings.getWorkspaceSettingsPath(
       this._workingDirectory
     );
@@ -324,12 +327,12 @@ export class WorkspaceSettings extends UserSettings {
     }
 
     // Write when there is something to persist, or when a previous file needs
-    // to be cleared. mkdir is unconditional: recursive mode is a no-op when the
-    // directory already exists, and checking first only opens a race window.
+    // to be cleared. The directory is created by the writer.
     if (Object.keys(wsSettings).length > 0 || fs.existsSync(wsSettingsPath)) {
-      fs.mkdirSync(path.dirname(wsSettingsPath), { recursive: true });
-      fs.writeFileSync(wsSettingsPath, JSON.stringify(wsSettings, null, 2));
+      return writeJsonConfigFile(wsSettingsPath, wsSettings);
     }
+
+    return true;
   }
 
   private _isDifferentThanUserSetting(setting: SettingType): boolean {
