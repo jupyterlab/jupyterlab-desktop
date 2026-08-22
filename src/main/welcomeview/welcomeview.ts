@@ -808,14 +808,17 @@ export class WelcomeView {
           const data = await response.text();
           const newsList = parseNewsFeed(data, maxNewsToShow);
 
+          // a feed that came back empty must not blank what the user sees
+          if (newsList.length === 0) {
+            return;
+          }
+
           this._sendNewsList(newsList);
 
           WelcomeView._newsList = newsList;
           appData.newsList = [...newsList];
           appData.save();
-          if (newsList.length > 0) {
-            WelcomeView._newsListFetched = true;
-          }
+          WelcomeView._newsListFetched = true;
         } catch (error) {
           console.error('Failed to parse news list:', error);
         }

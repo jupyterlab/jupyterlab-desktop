@@ -88,6 +88,18 @@ You can delete the stored session data manually at any time by using the `Clear 
 
 <img src="media/settings-privacy.png" alt="Clear History" width=800 />
 
+# Browser features available to notebooks
+
+Notebook content runs in a browser engine, so it can ask for the same features a web page asks for. JupyterLab Desktop answers those requests itself rather than leaving them to the engine, which approves all of them by default.
+
+Content served by the JupyterLab server your session is connected to can use the clipboard, full screen and notifications. Copying and pasting cells goes through the clipboard, presentations use full screen, and extensions use notifications to report work that takes a while to finish.
+
+The camera and microphone, screen capture, geolocation and idle detection are refused, including for that server. A remote server is a website like any other here, and nothing prompts you the way a browser would, so granting it the camera would grant it silently. Anything not named above is refused as well.
+
+Content served from anywhere else is refused everything. That includes a single sign-on page shown while connecting to a remote server.
+
+A refused request is silent inside the page, as it is in a browser. Each refusal is written to the log along with the origin that asked for it, at `Debug` level, so set the log level to `Debug` first if you want to read them. See [Logs](troubleshoot.md#logs).
+
 # How to create a Custom Python Environment
 
 ### Using conda
