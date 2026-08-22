@@ -136,6 +136,27 @@ export namespace Setting {
   }
 }
 
+/**
+ * What the file holds right now, or nothing when it is absent or unusable. save merges over this rather than rebuilding, so a read that fails here costs the keys this build does not know rather than corrupting the ones it does; #1115 replaces this with the shared reader.
+ */
+function readJsonFileOrEmpty(filePath: string): { [key: string]: any } {
+  try {
+    const parsed = JSON.parse(fs.readFileSync(filePath).toString());
+    return parsed !== null &&
+      typeof parsed === 'object' &&
+      !Array.isArray(parsed)
+      ? parsed
+      : {};
+  } catch {
+    return {};
+  }
+}
+
+type SettingDecision =
+  | { kind: 'write'; value: any }
+  | { kind: 'delete' }
+  | { kind: 'leave' };
+
 export class UserSettings {
   constructor(readSettings: boolean = true) {
     this._settings = {
@@ -215,24 +236,47 @@ export class UserSettings {
 
     for (let key in SettingType) {
       if (key in jsonData) {
-        const setting = this._settings[key];
-        setting.value = jsonData[key];
+        this._settings[key].value = jsonData[key];
       }
     }
   }
 
   save() {
     const userSettingsPath = UserSettings.getUserSettingsPath();
-    const userSettings: { [key: string]: any } = {};
+    const userSettings = this._merged(
+      readJsonFileOrEmpty(userSettingsPath),
+      key => {
+        const setting = this._settings[key];
+        // every key of SettingType is one this build owns, so one matching its default does not belong in the file, whatever the file holds
+        return setting.differentThanDefault
+          ? { kind: 'write', value: setting.value }
+          : { kind: 'delete' };
+      }
+    );
+
+    fs.writeFileSync(userSettingsPath, JSON.stringify(userSettings, null, 2));
+  }
+
+  /**
+   * The file as it is on disk, with this object's settings written over it. Rebuilding from the settings alone deletes every key the build has no setting for, and every value the read declined to take.
+   */
+  protected _merged(
+    onDisk: { [key: string]: any },
+    decide: (key: string) => SettingDecision
+  ): { [key: string]: any } {
+    // spread defines rather than assigns, so a __proto__ key out of the file stays an own property instead of reaching Object.prototype
+    const merged = { ...onDisk };
 
     for (let key in SettingType) {
-      const setting = this._settings[key];
-      if (setting.differentThanDefault) {
-        userSettings[key] = setting.value;
+      const decision = decide(key);
+      if (decision.kind === 'write') {
+        merged[key] = decision.value;
+      } else if (decision.kind === 'delete') {
+        delete merged[key];
       }
     }
 
-    fs.writeFileSync(userSettingsPath, JSON.stringify(userSettings, null, 2));
+    return merged;
   }
 
   get resolvedWorkingDirectory(): string {
@@ -307,21 +351,27 @@ export class WorkspaceSettings extends UserSettings {
     const wsSettingsPath = WorkspaceSettings.getWorkspaceSettingsPath(
       this._workingDirectory
     );
-    const wsSettings: { [key: string]: any } = {};
-
     // uiMode needs special handling, it needs to be saved even if same as global default.
     // this is due to automatically setting uiMode to Zen for default for opening single file
-    for (let key in SettingType) {
-      const setting = this._wsSettings[key];
-      if (
-        setting &&
-        this._settings[key].wsOverridable &&
-        (key === SettingType.uiMode ||
-          this._isDifferentThanUserSetting(key as SettingType))
-      ) {
-        wsSettings[key] = setting.value;
+    const wsSettings = this._merged(
+      readJsonFileOrEmpty(wsSettingsPath),
+      key => {
+        // a key a project cannot override is not this file's to remove, even though it does nothing here
+        if (!this._settings[key].wsOverridable) {
+          return { kind: 'leave' };
+        }
+        const setting = this._wsSettings[key];
+        if (
+          setting &&
+          (key === SettingType.uiMode ||
+            this._isDifferentThanUserSetting(key as SettingType))
+        ) {
+          return { kind: 'write', value: setting.value };
+        }
+        // unsetValue takes it out of _wsSettings, and an override matching the global value is not an override any more
+        return { kind: 'delete' };
       }
-    }
+    );
 
     // Write when there is something to persist, or when a previous file needs
     // to be cleared. mkdir is unconditional: recursive mode is a no-op when the

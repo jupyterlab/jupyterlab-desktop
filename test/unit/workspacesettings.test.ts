@@ -169,3 +169,91 @@ describe('WorkspaceSettings save', () => {
     expect(mockFs.writeFileSync).not.toHaveBeenCalled();
   });
 });
+
+describe('WorkspaceSettings — keys it does not claim', () => {
+  const written = () =>
+    JSON.parse(vi.mocked(fs.writeFileSync).mock.calls[0][1] as string);
+
+  beforeEach(() => {
+    mockFs.existsSync = vi.fn(() => true);
+    mockFs.writeFileSync = vi.fn();
+    mockFs.mkdirSync = vi.fn();
+    mockFs.readFileSync = vi.fn((p: fs.PathLike | fs.promises.FileHandle) => {
+      if (p.toString().includes('desktop-settings.json')) {
+        // uiMode is overridable, theme is not, futureProjectSetting is unknown
+        return Buffer.from(
+          JSON.stringify({
+            uiMode: 'zen',
+            theme: 'dark',
+            futureProjectSetting: 7
+          })
+        );
+      }
+      return Buffer.from(JSON.stringify({ futureGlobalSetting: 42 }));
+    });
+  });
+
+  it('writes back a key this build has no setting for', () => {
+    const ws = new WorkspaceSettings('/data/nb');
+
+    ws.save();
+
+    expect(written().futureProjectSetting).toBe(7);
+  });
+
+  it('writes back a key that is not overridable by a project', () => {
+    const ws = new WorkspaceSettings('/data/nb');
+
+    ws.save();
+
+    // meaningless in a project file, but deleting somebody's line is worse
+    expect(written().theme).toBe('dark');
+  });
+
+  it('keeps the global file-s leftovers out of the project file', () => {
+    const ws = new WorkspaceSettings('/data/nb');
+
+    ws.save();
+
+    // super.read() fills the base class from settings.json, and this class writes desktop-settings.json: one set each, or they cross over
+    expect('futureGlobalSetting' in written()).toBe(false);
+  });
+
+  it('writes a value set after that key was unset', () => {
+    const ws = new WorkspaceSettings('/data/nb');
+
+    ws.unsetValue(SettingType.uiMode);
+    ws.setValue(SettingType.uiMode, UIMode.SingleDocument);
+    ws.save();
+
+    // setting a key again has to undo the pending removal, or the write is dropped and the menu action silently does nothing
+    expect(written().uiMode).toBe(UIMode.SingleDocument);
+  });
+
+  it('drops an override that no longer differs from the global value', () => {
+    // only the project file holds it, or super.read() picks the same value up as the global one and the two no longer differ for the wrong reason
+    mockFs.readFileSync = vi.fn((p: fs.PathLike | fs.promises.FileHandle) =>
+      p.toString().includes('desktop-settings.json')
+        ? Buffer.from(JSON.stringify({ serverArgs: '--no-browser' }))
+        : Buffer.from('{}')
+    ) as any;
+    const ws = new WorkspaceSettings('/data/nb');
+    expect(ws.getValue(SettingType.serverArgs)).toBe('--no-browser');
+
+    // serverArgs is overridable and the global default is ''
+    ws.setValue(SettingType.serverArgs, '');
+    ws.save();
+
+    expect('serverArgs' in written()).toBe(false);
+  });
+
+  it('drops a leftover when that key is explicitly unset', () => {
+    const ws = new WorkspaceSettings('/data/nb');
+
+    // uiMode, because the CLI refuses a key a project cannot override, so a non-overridable one is not a reachable input to unsetValue here
+    ws.unsetValue(SettingType.uiMode);
+    ws.save();
+
+    expect('uiMode' in written()).toBe(false);
+  });
+});
