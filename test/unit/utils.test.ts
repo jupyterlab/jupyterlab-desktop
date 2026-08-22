@@ -81,6 +81,9 @@ import * as net from 'net';
 
 const mockFs = vi.mocked(fs);
 
+// Stubbing process.platform does not restage path: it binds win32 or posix at import, from the real host. So a function that branches on the platform runs the branch the test asked for, and joins it with the host's separator. These assertions are about layout, not about which slash, so they compare in one.
+const toSlash = (p: string) => p.split(path.sep).join('/');
+
 // Reset the fs stubs to fresh no-op fns before every test so a value set in
 // one test cannot leak into a later one that does not set it.
 beforeEach(() => {
@@ -133,7 +136,7 @@ describe('pythonPathForEnvPath', () => {
   it('returns bin/python on posix', () => {
     Object.defineProperty(process, 'platform', { value: 'darwin' });
     mockFs.existsSync = vi.fn(() => false);
-    expect(pythonPathForEnvPath('/env')).toBe('/env/bin/python');
+    expect(toSlash(pythonPathForEnvPath('/env'))).toBe('/env/bin/python');
   });
 
   it('returns python.exe in root for conda on windows', () => {
@@ -161,7 +164,8 @@ describe('envPathForPythonPath', () => {
   it('returns parent of bin/ on posix', () => {
     Object.defineProperty(process, 'platform', { value: 'darwin' });
     const result = envPathForPythonPath('/env/bin/python');
-    expect(result).toContain('/env');
+    // exact, because 'contains /env' is also true of the argument it was given
+    expect(toSlash(result)).toBe('/env/');
   });
 
   it('returns parent of Scripts/ on windows', () => {
@@ -187,7 +191,7 @@ describe('activatePathForEnvPath', () => {
 
   it('returns bin/activate on posix', () => {
     Object.defineProperty(process, 'platform', { value: 'darwin' });
-    expect(activatePathForEnvPath('/env')).toBe('/env/bin/activate');
+    expect(toSlash(activatePathForEnvPath('/env'))).toBe('/env/bin/activate');
   });
 });
 
@@ -200,7 +204,8 @@ describe('condaSourcePathForEnvPath', () => {
 
   it('returns conda.sh path on posix', () => {
     Object.defineProperty(process, 'platform', { value: 'darwin' });
-    expect(condaSourcePathForEnvPath('/env')).toBe(
+    // undefined is this function's Windows answer, and the empty string it becomes here fails the comparison rather than typing as a string
+    expect(toSlash(condaSourcePathForEnvPath('/env') ?? '')).toBe(
       '/env/etc/profile.d/conda.sh'
     );
   });
@@ -213,7 +218,7 @@ describe('condaSourcePathForEnvPath', () => {
 
 describe('jupyterEnvInstallInfoPathForEnvPath', () => {
   it('returns .jupyter/env.json path', () => {
-    expect(jupyterEnvInstallInfoPathForEnvPath('/env')).toBe(
+    expect(toSlash(jupyterEnvInstallInfoPathForEnvPath('/env'))).toBe(
       '/env/.jupyter/env.json'
     );
   });
@@ -368,7 +373,7 @@ describe('getLogFilePath', () => {
 
   it('returns path under Library/Logs on darwin', () => {
     Object.defineProperty(process, 'platform', { value: 'darwin' });
-    expect(getLogFilePath()).toContain('Library/Logs');
+    expect(toSlash(getLogFilePath())).toContain('Library/Logs');
   });
 
   it('returns path under .config on linux', () => {
@@ -737,7 +742,7 @@ describe('createTempFile', () => {
   it('returns path inside the temp dir', () => {
     const result = createTempFile('run.sh');
     expect(result).toContain('run.sh');
-    expect(result).toContain('/tmp/jlab_desktop_abc');
+    expect(toSlash(result)).toContain('/tmp/jlab_desktop_abc');
   });
 
   it('uses defaults when called with no args', () => {
