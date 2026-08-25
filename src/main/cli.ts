@@ -12,6 +12,7 @@ import {
   isBaseCondaEnv,
   isEnvInstalledByDesktopApp,
   markEnvironmentAsJupyterInstalled,
+  matchesScheme,
   pythonPathForEnvPath
 } from './utils';
 import yargs from 'yargs/yargs';
@@ -669,12 +670,7 @@ export async function createPythonEnvironment(
 }
 
 function isURL(urlString: string) {
-  try {
-    const url = new URL(urlString);
-    return url && (url.protocol === 'https:' || url.protocol === 'http:');
-  } catch (error) {
-    return false;
-  }
+  return matchesScheme(urlString, 'http:', 'https:');
 }
 
 async function downloadToTempFile(
