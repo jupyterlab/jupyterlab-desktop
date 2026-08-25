@@ -131,18 +131,10 @@
       "category": "public.app-category.productivity",
       "target": [
         {
-          "target": "dmg",
-          "arch": [
-            "x64",
-            "arm64"
-          ]
+          "target": "dmg"
         },
         {
-          "target": "zip",
-          "arch": [
-            "x64",
-            "arm64"
-          ]
+          "target": "zip"
         }
       ],
       "entitlements": "build/entitlements.plist",
