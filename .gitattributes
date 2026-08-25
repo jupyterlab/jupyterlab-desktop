@@ -1,0 +1,6 @@
+# These run as Unix shell scripts wherever they end up, so they keep LF even
+# when checked out on Windows. linux_after_install.sh becomes the postinst of
+# the deb and rpm, where a CRLF shebang is read as an interpreter named
+# "/bin/bash\r" and the install fails.
+*.sh text eol=lf
+electron-builder-scripts/snap-hooks/* text eol=lf

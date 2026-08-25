@@ -2,7 +2,8 @@
 // Distributed under the terms of the Modified BSD License.
 
 import { BrowserWindow, Cookie } from 'electron';
-import { clearSession } from './utils';
+import log from 'electron-log';
+import { clearSession, matchesScheme } from './utils';
 import { markGuarded } from './navigationguard';
 
 export let connectWindow: BrowserWindow;
@@ -58,6 +59,19 @@ export async function connectAndGetServerInfo(
     const window = new BrowserWindow(browserOptions);
     // this window exists to follow a login wherever the server sends it
     markGuarded(window.webContents);
+
+    // a login that pops a window needs one, and the popup has to be marked too
+    // or the global guard strands it on a blank document
+    window.webContents.setWindowOpenHandler(({ url }) => {
+      if (!matchesScheme(url, 'http:', 'https:')) {
+        log.debug(`Blocked a window opening ${url} from the connection window`);
+        return { action: 'deny' };
+      }
+      return { action: 'allow' };
+    });
+    window.webContents.on('did-create-window', child => {
+      markGuarded(child.webContents);
+    });
 
     const timeout = options?.timeout || 30000;
 
