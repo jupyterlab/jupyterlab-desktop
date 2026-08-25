@@ -140,7 +140,8 @@ jobs:
           yarn extract_env_installer:${{ matrix.cfg.platform }}
           echo $CSC_LINK | base64 -d -o certificate.p12
           security create-keychain -p $ENV_INSTALLER_KEYCHAIN_PASS build.keychain
-          security default-keychain -s build.keychain
+          # list-keychains, not default-keychain: GitHub's guide for installing an Apple certificate on a runner adds the keychain to the user search list, which is all codesign and electron-builder's auto-discovery need. Making it the default and then deleting it left the session pointing at a keychain that no longer existed.
+          security list-keychains -d user -s build.keychain $(security list-keychains -d user | tr -d '"')
           security unlock-keychain -p $ENV_INSTALLER_KEYCHAIN_PASS build.keychain
           security import certificate.p12 -k build.keychain -P $CSC_KEY_PASSWORD -T /usr/bin/codesign
           security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k $ENV_INSTALLER_KEYCHAIN_PASS build.keychain
@@ -162,7 +163,6 @@ jobs:
             done
           done < ./env_installer/sign-${{ matrix.cfg.platform }}.txt
           rm certificate.p12
-          security delete-keychain build.keychain
 
       # recreate tarball after signing contents
       - name: Re-archive Application Server Installer
@@ -193,8 +193,9 @@ jobs:
           APPLEID: ${{ secrets.APPLEID }}
           APPLEIDPASS: ${{ secrets.APPLEIDPASS }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-          CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
-          CSC_LINK: ${{ secrets.CSC_LINK }}
+          # No CSC_LINK or CSC_KEY_PASSWORD here on purpose. With them set, electron-builder builds its own temporary keychain and then runs `security set-key-partition-list -k` against it with the .p12 import password instead of the keychain password it just generated (electron-builder#10066). That was harmless while macOS skipped the check on an already-unlocked keychain; macOS 26.6 stopped skipping it, which is why the macos-26-intel leg fails while macos-26-arm64 on 26.5.2 signs the same secrets in the same run. Reproduced on macOS 27: the same call with the right password reaches SecItemCopyMatching, with the wrong one it is the SecKeychainUnlock error CI reports.
+          #
+          # Without them macPackager skips createKeychain and signs through CSC_IDENTITY_AUTO_DISCOVERY, which finds the identity in the build.keychain the step above imported into. #10066 calls this workaround unusable in CI for want of a keychain to discover from; this workflow already builds one.
         run: |
           # dmgbuild intermittently cannot detach its disk image on hosted mac
           # runners ("hdiutil: couldn't eject disk2 - Resource busy", upstream
@@ -206,6 +207,11 @@ jobs:
             yarn dist:${{ matrix.cfg.platform }}
           }
         if: steps.release-exists.outputs.result == 'true'
+
+      # After the installers, because dist:osx now signs through this keychain, and always() so a failed build does not leave one on the runner. `|| true` rather than continue-on-error: a cleanup that cannot fail the job is the point, and hiding a step's result behind that key is what ready-check calls out elsewhere.
+      - name: Remove the signing keychain
+        if: always() && (matrix.cfg.platform == 'osx-64' || matrix.cfg.platform == 'osx-arm64')
+        run: security delete-keychain build.keychain || true
 
       - name: Upload Debian x64 Installer
         if: matrix.cfg.platform == 'linux-64'
