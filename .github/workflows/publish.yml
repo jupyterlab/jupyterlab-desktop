@@ -64,6 +64,8 @@ jobs:
 
     name: '${{ matrix.cfg.platform_name }} installer'
     runs-on: ${{ matrix.cfg.os }}
+    # The installers measure 9 to 25 minutes; without this the job inherits GitHub's 360, and a dmgbuild that hangs rather than fails burns all of it on a macOS runner.
+    timeout-minutes: 45
     defaults:
       run:
         # needed for conda to work
