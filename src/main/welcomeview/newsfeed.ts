@@ -4,23 +4,34 @@
 import { XMLParser } from 'fast-xml-parser';
 import { INewsItem } from '../config/appdata';
 
-// Parse a blog RSS feed into the news items the welcome view shows. Kept pure
-// and separate from the view so the fast-xml-parser usage (which the project
-// re-verifies on every parser bump) is unit-tested rather than only checked by
-// eye against the live feed. `isArray: item` makes a single-item feed parse to
-// an array too, so the caller can always iterate.
+// nested markup parses to an object, which would render as "[object Object]"
+const asText = (value: unknown): string =>
+  typeof value === 'string' ? value : '';
+
+// Kept out of the view so the fast-xml-parser usage, which this project
+// re-verifies on every parser bump, is covered by unit tests.
 export function parseNewsFeed(xml: string, maxNewsToShow = 10): INewsItem[] {
   if (maxNewsToShow <= 0) {
     return [];
   }
-  const parser = new XMLParser({ isArray: name => name === 'item' });
+  const parser = new XMLParser({
+    // a single-item feed parses to an array too, so the caller can iterate
+    isArray: name => name === 'item',
+    // without it a title of "0755" comes back as the number 755
+    parseTagValue: false
+  });
   const feed = parser.parse(xml);
   const items = feed?.rss?.channel?.item ?? [];
   const newsList: INewsItem[] = [];
   for (const item of items) {
+    const title = asText(item?.title);
+    const link = asText(item?.link);
+    if (!title || !link) {
+      continue;
+    }
     newsList.push({
-      title: item.title,
-      link: encodeURIComponent(item.link)
+      title,
+      link: encodeURIComponent(link)
     });
     if (newsList.length === maxNewsToShow) {
       break;

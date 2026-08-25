@@ -93,7 +93,14 @@ beforeEach(() => {
 });
 
 describe('runCommandInEnvironment', () => {
+  const original = process.platform;
+  afterEach(() => {
+    Object.defineProperty(process, 'platform', { value: original });
+  });
+
   it('spawns bash with -c and the env script and resolves true on exit code 0', async () => {
+    // pinned, or the Windows leg of the matrix takes the cmd branch below
+    Object.defineProperty(process, 'platform', { value: 'darwin' });
     mockSpawn.mockReturnValue(makeChild({ code: 0 }));
     const result = await env.runCommandInEnvironment(
       '/envs/a',
