@@ -24,8 +24,8 @@
     "dist:linux-64": "yarn build && electron-builder --linux --publish never",
     "dist:linux-aarch64": "yarn build && electron-builder --linux --arm64 --publish never",
     "dist:osx": "yarn build && electron-builder --macos --publish never",
-    "dist:osx-64": "yarn dist:osx",
-    "dist:osx-arm64": "yarn dist:osx",
+    "dist:osx-64": "yarn dist:osx --x64",
+    "dist:osx-arm64": "yarn dist:osx --arm64",
     "dist:osx-dev": "yarn build && CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --macos --publish never",
     "dist:osx-arm64-dev": "yarn build && CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --macos --arm64 --publish never",
     "dist:win-64": "yarn build && electron-builder --win --publish never",
@@ -131,18 +131,10 @@
       "category": "public.app-category.productivity",
       "target": [
         {
-          "target": "dmg",
-          "arch": [
-            "x64",
-            "arm64"
-          ]
+          "target": "dmg"
         },
         {
-          "target": "zip",
-          "arch": [
-            "x64",
-            "arm64"
-          ]
+          "target": "zip"
         }
       ],
       "entitlements": "build/entitlements.plist",

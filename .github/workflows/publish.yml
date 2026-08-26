@@ -64,6 +64,7 @@ jobs:
 
     name: '${{ matrix.cfg.platform_name }} installer'
     runs-on: ${{ matrix.cfg.os }}
+    timeout-minutes: 45
     defaults:
       run:
         # needed for conda to work
@@ -140,7 +141,7 @@ jobs:
           yarn extract_env_installer:${{ matrix.cfg.platform }}
           echo $CSC_LINK | base64 -d -o certificate.p12
           security create-keychain -p $ENV_INSTALLER_KEYCHAIN_PASS build.keychain
-          security default-keychain -s build.keychain
+          security list-keychains -d user -s build.keychain $(security list-keychains -d user | tr -d '"')
           security unlock-keychain -p $ENV_INSTALLER_KEYCHAIN_PASS build.keychain
           security import certificate.p12 -k build.keychain -P $CSC_KEY_PASSWORD -T /usr/bin/codesign
           security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k $ENV_INSTALLER_KEYCHAIN_PASS build.keychain
@@ -162,7 +163,6 @@ jobs:
             done
           done < ./env_installer/sign-${{ matrix.cfg.platform }}.txt
           rm certificate.p12
-          security delete-keychain build.keychain
 
       # recreate tarball after signing contents
       - name: Re-archive Application Server Installer
@@ -193,8 +193,7 @@ jobs:
           APPLEID: ${{ secrets.APPLEID }}
           APPLEIDPASS: ${{ secrets.APPLEIDPASS }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-          CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
-          CSC_LINK: ${{ secrets.CSC_LINK }}
+          # No CSC_LINK: electron-builder#10066
         run: |
           # dmgbuild intermittently cannot detach its disk image on hosted mac
           # runners ("hdiutil: couldn't eject disk2 - Resource busy", upstream
@@ -206,6 +205,10 @@ jobs:
             yarn dist:${{ matrix.cfg.platform }}
           }
         if: steps.release-exists.outputs.result == 'true'
+
+      - name: Remove the signing keychain
+        if: always() && (matrix.cfg.platform == 'osx-64' || matrix.cfg.platform == 'osx-arm64')
+        run: security delete-keychain build.keychain || true
 
       - name: Upload Debian x64 Installer
         if: matrix.cfg.platform == 'linux-64'
