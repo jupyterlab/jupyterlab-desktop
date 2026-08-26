@@ -206,10 +206,6 @@ jobs:
           }
         if: steps.release-exists.outputs.result == 'true'
 
-      - name: Remove the signing keychain
-        if: always() && (matrix.cfg.platform == 'osx-64' || matrix.cfg.platform == 'osx-arm64')
-        run: security delete-keychain build.keychain || true
-
       - name: Upload Debian x64 Installer
         if: matrix.cfg.platform == 'linux-64'
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
