@@ -228,6 +228,9 @@ app.on('ready', async () => {
     setupJLabCommand();
     createPythonEnvsDirectory();
     argv.cwd = process.cwd();
+    if (await appData.migrateRemoteCredentials()) {
+      appData.save();
+    }
     jupyterApp = new JupyterApplication((argv as unknown) as ICLIArguments);
   } catch (error) {
     log.error(error);

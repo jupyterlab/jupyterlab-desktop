@@ -82,7 +82,7 @@ This will launch a dialog that automatically discovers and lists the locally run
 
 Select a server from the list or enter the URL of the JupyterLab application server including `/lab` in the URL. If the server requires a token for authentication, make sure to include it as a query parameter of the URL as well (`/lab?token=<token-value>`). After entering a URL hit `Enter` key to connect.
 
-JupyterLab Desktop can connect to remote server instances that require additional authentication such as Single Sign-On (SSO). If the `Persist session data` option is checked, then the session information is stored and JupyterLab Desktop will re-use this data on the next launch. If this option is not checked, the session data is automatically deleted at the next launch and servers requiring authentication will prompt for re-login.
+JupyterLab Desktop can connect to remote server instances that require additional authentication such as Single Sign-On (SSO). If the `Persist session data` option is checked, then the session information is stored and JupyterLab Desktop will re-use this data on the next launch. Server URL tokens are stored only when the operating system secure credential store is available; otherwise cookies and cache can persist, but the server may prompt for authentication again. If this option is not checked, the session data is automatically deleted at the next launch and servers requiring authentication will prompt for re-login.
 
 You can delete the stored session data manually at any time by using the `Clear History` option in the Privacy tab of Settings dialog.
 

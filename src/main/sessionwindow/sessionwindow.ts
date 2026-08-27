@@ -207,10 +207,11 @@ export class SessionWindow implements IDisposable {
 
     if (this._contentViewType === ContentViewType.Lab) {
       if (this._sessionConfig.isRemote) {
-        this._createSessionForRemoteUrl(
+        void this._createSessionForRemoteUrl(
           this._sessionConfig.url?.href || this._sessionConfig.remoteURL,
           this._sessionConfig.persistSessionData,
-          this._sessionConfig.partition
+          this._sessionConfig.partition,
+          this._sessionConfig.encryptedRemoteURL
         );
       } else {
         this._createServerForSession()
@@ -706,7 +707,7 @@ export class SessionWindow implements IDisposable {
         this._remoteServerSelectDialog.window.close();
         this._remoteServerSelectDialog = null;
 
-        this._createSessionForRemoteUrl(
+        void this._createSessionForRemoteUrl(
           remoteUrl,
           persistSessionData,
           undefined
@@ -1397,7 +1398,8 @@ export class SessionWindow implements IDisposable {
       isDarkTheme: this._isDarkTheme,
       parent: this._window,
       modal: true,
-      persistSessionData: true
+      persistSessionData: true,
+      canPersistRemoteCredentials: await SessionConfig.canPersistRemoteURL()
     });
 
     this._remoteServerSelectDialog.load();
@@ -1676,26 +1678,46 @@ export class SessionWindow implements IDisposable {
     });
   }
 
-  private _createSessionForRemoteUrl(
+  private async _createSessionForRemoteUrl(
     remoteURL: string,
     persistSessionData: boolean,
-    partition: string
+    partition: string,
+    encryptedRemoteURL?: string
   ) {
     this._showProgressView('Connecting to JupyterLab Server');
 
     try {
-      this._sessionConfig = SessionConfig.createRemote(
-        remoteURL,
+      const storedRemoteURL = SessionConfig.remoteURLForStorage(remoteURL);
+      let connectionURL = remoteURL;
+      let storedCredentials: string;
+      if (encryptedRemoteURL && remoteURL === storedRemoteURL) {
+        const storedSessionConfig = new SessionConfig();
+        storedSessionConfig.deserialize({
+          remoteURL,
+          encryptedRemoteURL,
+          persistSessionData,
+          partition
+        });
+        connectionURL = await storedSessionConfig.remoteURLForConnection();
+        storedCredentials = storedSessionConfig.encryptedRemoteURL;
+      }
+      const sessionConfig = SessionConfig.createRemote(
+        connectionURL,
         persistSessionData,
         partition
       );
-      const sessionConfig = this._sessionConfig;
+      this._sessionConfig = sessionConfig;
+      sessionConfig.encryptedRemoteURL = storedCredentials;
+      if (persistSessionData && !storedCredentials) {
+        await sessionConfig.protectRemoteURL(connectionURL);
+      }
 
       appData.addRemoteURLToRecents(sessionConfig.remoteURL);
       appData.addSessionToRecents({
         remoteURL: sessionConfig.remoteURL,
         persistSessionData,
-        partition: sessionConfig.partition
+        partition: sessionConfig.partition,
+        encryptedRemoteURL: sessionConfig.encryptedRemoteURL
       });
 
       this._contentViewType = ContentViewType.Lab;
@@ -1725,10 +1747,11 @@ export class SessionWindow implements IDisposable {
     const recentSession = appData.recentSessions[sessionIndex];
 
     if (recentSession.remoteURL) {
-      this._createSessionForRemoteUrl(
+      void this._createSessionForRemoteUrl(
         recentSession.remoteURL,
         recentSession.persistSessionData,
-        recentSession.partition
+        recentSession.partition,
+        recentSession.encryptedRemoteURL
       );
     } else {
       let workingDirectoryExists = true;

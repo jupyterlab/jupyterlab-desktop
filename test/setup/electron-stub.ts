@@ -61,6 +61,17 @@ export const net = { fetch: vi.fn() };
 
 export const nativeTheme = { shouldUseDarkColors: false };
 
+export const safeStorage = {
+  isAsyncEncryptionAvailable: vi.fn(() => Promise.resolve(true)),
+  getSelectedStorageBackend: vi.fn(() => 'gnome_libsecret'),
+  encryptStringAsync: vi.fn((value: string) =>
+    Promise.resolve(Buffer.from(value))
+  ),
+  decryptStringAsync: vi.fn((value: Buffer) =>
+    Promise.resolve({ result: value.toString(), shouldReEncrypt: false })
+  )
+};
+
 export const screen = {
   getPrimaryDisplay: vi.fn(() => ({
     workAreaSize: { width: 1920, height: 1080 }

@@ -22,6 +22,8 @@ export interface IRecentSession {
   remoteURL?: string;
   persistSessionData?: boolean;
   partition?: string;
+  encryptedRemoteURL?: string;
+  legacyRemoteURL?: string;
   date?: Date;
 }
 
@@ -110,6 +112,13 @@ export class ApplicationData {
             : recentSession.remoteURL,
           persistSessionData: recentSession.persistSessionData,
           partition: recentSession.partition,
+          encryptedRemoteURL: recentSession.encryptedRemoteURL,
+          legacyRemoteURL:
+            recentSession.remoteURL &&
+            SessionConfig.remoteURLForStorage(recentSession.remoteURL) !==
+              recentSession.remoteURL
+              ? recentSession.remoteURL
+              : undefined,
           date: new Date(recentSession.date)
         });
       }
@@ -213,6 +222,10 @@ export class ApplicationData {
         partition: recentSession.persistSessionData
           ? recentSession.partition
           : undefined,
+        encryptedRemoteURL:
+          recentSession.persistSessionData !== false
+            ? recentSession.encryptedRemoteURL
+            : undefined,
         date: recentSession.date.toISOString()
       });
     }
@@ -336,6 +349,7 @@ export class ApplicationData {
           }
         }
         existing.partition = session.partition;
+        existing.encryptedRemoteURL = session.encryptedRemoteURL;
       }
     } else {
       let filesToOpen = [...(session.filesToOpen || [])];
@@ -345,6 +359,7 @@ export class ApplicationData {
         remoteURL,
         persistSessionData: session.persistSessionData,
         partition: session.partition,
+        encryptedRemoteURL: session.encryptedRemoteURL,
         date: now
       });
     }
@@ -379,6 +394,28 @@ export class ApplicationData {
     }
 
     this._recentSessionsChanged.emit();
+  }
+
+  async migrateRemoteCredentials(): Promise<boolean> {
+    let changed = false;
+    for (const session of this.sessions) {
+      if (session.legacyRemoteURL) {
+        await session.protectRemoteURL(session.legacyRemoteURL);
+        session.legacyRemoteURL = undefined;
+        changed = true;
+      }
+    }
+    for (const session of this.recentSessions) {
+      if (session.legacyRemoteURL) {
+        const config = new SessionConfig();
+        config.persistSessionData = session.persistSessionData !== false;
+        await config.protectRemoteURL(session.legacyRemoteURL);
+        session.encryptedRemoteURL = config.encryptedRemoteURL;
+        session.legacyRemoteURL = undefined;
+        changed = true;
+      }
+    }
+    return changed;
   }
 
   get recentSessionsChanged(): ISignal<this, void> {

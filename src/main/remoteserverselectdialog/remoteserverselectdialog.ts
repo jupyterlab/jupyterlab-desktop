@@ -23,6 +23,7 @@ export class RemoteServerSelectDialog {
 
     const recentServers = appData.recentRemoteURLs;
     const persistSessionData = options.persistSessionData;
+    const canPersistRemoteCredentials = options.canPersistRemoteCredentials;
 
     const template = `
       <style>
@@ -122,6 +123,9 @@ export class RemoteServerSelectDialog {
             <jp-checkbox type="checkbox" id="persist-session-data" <%= persistSessionData ? 'checked' : '' %> title="Persist session data including cookies and cache for the next launch. If the connected JupyterLab Server requires additional authentication such as SSO then persisting the data would allow auto re-login.">Persist session data</jp-checkbox>
           </div>
         </div>
+        <% if (!canPersistRemoteCredentials) { %>
+          <div class="row">Cookies and cache can persist, but this desktop environment has no secure keyring for the server URL token.</div>
+        <% } %>
       </div>
 
       <script>
@@ -238,7 +242,8 @@ export class RemoteServerSelectDialog {
       // Serialize for the inline <script> with `<` escaped so a stored URL
       // containing `</script>` cannot break out of the script context.
       recentServersJson: JSON.stringify(recentServers).replace(/</g, '\\u003c'),
-      persistSessionData
+      persistSessionData,
+      canPersistRemoteCredentials
     });
 
     this._deleteRecentRemoteUrlHandler = this._handleDeleteRecentRemoteUrl.bind(
@@ -319,5 +324,6 @@ export namespace RemoteServerSelectDialog {
     modal?: boolean;
     runningServers?: string[];
     persistSessionData: boolean;
+    canPersistRemoteCredentials: boolean;
   }
 }

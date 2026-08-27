@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import * as fs from 'fs';
+import { safeStorage } from 'electron';
 
 vi.mock('fs', async () => {
   const actual = await vi.importActual<typeof import('fs')>('fs');
@@ -19,6 +20,7 @@ import { appData, ApplicationData } from '../../src/main/config/appdata';
 import { SessionConfig } from '../../src/main/config/sessionconfig';
 
 const mockFs = vi.mocked(fs);
+const mockSafeStorage = vi.mocked(safeStorage);
 
 function resetAppData() {
   appData.pythonPath = '';
@@ -129,6 +131,38 @@ describe('ApplicationData.read', () => {
     );
     appData.read();
     expect(appData.recentRemoteURLs[0].url).toBe('not a URL');
+  });
+
+  it('migrates legacy remote credentials to encrypted session fields', async () => {
+    const date = new Date('2024-01-01').toISOString();
+    mockFs.existsSync = vi.fn(() => true);
+    mockFs.readFileSync = vi.fn(() =>
+      Buffer.from(
+        JSON.stringify({
+          sessions: [{ remoteURL: 'https://example.com/lab?token=active' }],
+          recentSessions: [
+            {
+              remoteURL: 'https://example.com/lab?token=recent',
+              date
+            }
+          ]
+        })
+      )
+    );
+    mockSafeStorage.isAsyncEncryptionAvailable.mockResolvedValue(true);
+    mockSafeStorage.getSelectedStorageBackend.mockReturnValue(
+      'gnome_libsecret'
+    );
+    mockSafeStorage.encryptStringAsync.mockImplementation(value =>
+      Promise.resolve(Buffer.from(value))
+    );
+    appData.read();
+    await expect(appData.migrateRemoteCredentials()).resolves.toBe(true);
+    appData.save();
+    const content = (mockFs.writeFileSync as any).mock.calls[0][1] as string;
+    expect(content).not.toContain('token=active');
+    expect(content).not.toContain('token=recent');
+    expect(content).toContain('encryptedRemoteURL');
   });
 
   it('reads updateBundledEnvOnRestart flag', () => {

@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import * as fs from 'fs';
 import * as path from 'path';
+import { safeStorage } from 'electron';
 
 vi.mock('fs', async () => {
   const actual = await vi.importActual<typeof import('fs')>('fs');
@@ -27,6 +28,18 @@ import { SessionConfig } from '../../src/main/config/sessionconfig';
 import { appData } from '../../src/main/config/appdata';
 
 const mockFs = vi.mocked(fs);
+const mockSafeStorage = vi.mocked(safeStorage);
+
+beforeEach(() => {
+  mockSafeStorage.isAsyncEncryptionAvailable.mockResolvedValue(true);
+  mockSafeStorage.getSelectedStorageBackend.mockReturnValue('gnome_libsecret');
+  mockSafeStorage.encryptStringAsync.mockImplementation(value =>
+    Promise.resolve(Buffer.from(value))
+  );
+  mockSafeStorage.decryptStringAsync.mockImplementation(value =>
+    Promise.resolve({ result: value.toString(), shouldReEncrypt: false })
+  );
+});
 
 describe('SessionConfig defaults', () => {
   it('x and y default to 0', () => {
@@ -123,6 +136,15 @@ describe('SessionConfig.createRemote', () => {
     expect(s.token).toBe('mysecret');
   });
 
+  it('removes credentials, query parameters, and fragments from storage URLs', () => {
+    const s = SessionConfig.createRemote(
+      'https://user:password@example.com/lab?token=secret#access-token',
+      true,
+      ''
+    );
+    expect(s.remoteURL).toBe('https://example.com/lab');
+  });
+
   it('persist partition when persistSessionData is true', () => {
     const s = SessionConfig.createRemote(
       'http://localhost:8888/lab?token=x',
@@ -177,6 +199,97 @@ describe('remote session startup', () => {
     );
     expect(source).toContain(
       'this._sessionConfig.url?.href || this._sessionConfig.remoteURL'
+    );
+  });
+});
+
+describe('SessionConfig remote credential storage', () => {
+  it('does not persist credentials when asynchronous encryption is unavailable', async () => {
+    mockSafeStorage.isAsyncEncryptionAvailable.mockResolvedValue(false);
+    await expect(SessionConfig.canPersistRemoteURL()).resolves.toBe(false);
+  });
+
+  it('treats credential-store initialization errors as unavailable', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    mockSafeStorage.isAsyncEncryptionAvailable.mockRejectedValue(
+      new Error('keyring unavailable')
+    );
+    await expect(SessionConfig.canPersistRemoteURL()).resolves.toBe(false);
+    warn.mockRestore();
+  });
+
+  it('serializes only the encrypted remote URL', async () => {
+    const s = SessionConfig.createRemote(
+      'https://example.com/lab?token=secret',
+      true,
+      ''
+    );
+    await s.protectRemoteURL(s.url.href);
+    const serialized = JSON.stringify(s.serialize());
+    expect(serialized).not.toContain('secret');
+    expect(s.serialize().encryptedRemoteURL).toBeDefined();
+  });
+
+  it('does not persist credentials with Linux basic_text storage', async () => {
+    mockSafeStorage.getSelectedStorageBackend.mockReturnValue('basic_text');
+    mockSafeStorage.encryptStringAsync.mockClear();
+    const s = SessionConfig.createRemote(
+      'https://example.com/lab?token=secret',
+      true,
+      ''
+    );
+    const platform = Object.getOwnPropertyDescriptor(process, 'platform');
+    Object.defineProperty(process, 'platform', { value: 'linux' });
+    try {
+      await s.protectRemoteURL(s.url.href);
+      expect(s.encryptedRemoteURL).toBeUndefined();
+      expect(mockSafeStorage.encryptStringAsync).not.toHaveBeenCalled();
+    } finally {
+      Object.defineProperty(process, 'platform', platform);
+    }
+  });
+
+  it('continues connecting when remote URL encryption fails', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    mockSafeStorage.encryptStringAsync.mockRejectedValue(
+      new Error('keyring locked')
+    );
+    const s = SessionConfig.createRemote(
+      'https://example.com/lab?token=secret',
+      true,
+      ''
+    );
+    await expect(s.protectRemoteURL(s.url.href)).resolves.toBe(false);
+    expect(s.encryptedRemoteURL).toBeUndefined();
+    warn.mockRestore();
+  });
+
+  it('falls back to the canonical URL when credential decryption fails', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    mockSafeStorage.decryptStringAsync.mockRejectedValue(
+      new Error('keyring locked')
+    );
+    const s = new SessionConfig();
+    s.remoteURL = 'https://example.com/lab';
+    s.encryptedRemoteURL = Buffer.from('encrypted').toString('base64');
+    await expect(s.remoteURLForConnection()).resolves.toBe(s.remoteURL);
+    warn.mockRestore();
+  });
+
+  it('re-encrypts a decrypted remote URL after key rotation', async () => {
+    mockSafeStorage.decryptStringAsync.mockResolvedValue({
+      result: 'https://example.com/lab?token=secret',
+      shouldReEncrypt: true
+    });
+    mockSafeStorage.encryptStringAsync.mockResolvedValue(
+      Buffer.from('rotated')
+    );
+    const s = new SessionConfig();
+    s.remoteURL = 'https://example.com/lab';
+    s.encryptedRemoteURL = Buffer.from('old').toString('base64');
+    await expect(s.remoteURLForConnection()).resolves.toContain('secret');
+    expect(s.encryptedRemoteURL).toBe(
+      Buffer.from('rotated').toString('base64')
     );
   });
 });
