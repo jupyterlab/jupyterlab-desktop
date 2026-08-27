@@ -105,7 +105,9 @@ export class ApplicationData {
           filesToOpen: recentSession.filesToOpen
             ? [...recentSession.filesToOpen]
             : [],
-          remoteURL: recentSession.remoteURL,
+          remoteURL: recentSession.remoteURL
+            ? SessionConfig.remoteURLForStorage(recentSession.remoteURL)
+            : recentSession.remoteURL,
           persistSessionData: recentSession.persistSessionData,
           partition: recentSession.partition,
           date: new Date(recentSession.date)
@@ -121,7 +123,7 @@ export class ApplicationData {
     ) {
       for (const remoteURL of jsonData.recentRemoteURLs) {
         this.recentRemoteURLs.push({
-          url: remoteURL.url,
+          url: SessionConfig.remoteURLForStorage(remoteURL.url),
           date: new Date(remoteURL.date)
         });
       }
@@ -204,7 +206,9 @@ export class ApplicationData {
           recentSession.filesToOpen.length > 0
             ? [...recentSession.filesToOpen]
             : undefined,
-        remoteURL: recentSession.remoteURL,
+        remoteURL: recentSession.remoteURL
+          ? SessionConfig.remoteURLForStorage(recentSession.remoteURL)
+          : recentSession.remoteURL,
         persistSessionData: recentSession.persistSessionData,
         partition: recentSession.persistSessionData
           ? recentSession.partition
@@ -216,7 +220,7 @@ export class ApplicationData {
     appDataJSON.recentRemoteURLs = [];
     for (const remoteUrl of this.recentRemoteURLs) {
       appDataJSON.recentRemoteURLs.push({
-        url: remoteUrl.url,
+        url: SessionConfig.remoteURLForStorage(remoteUrl.url),
         date: remoteUrl.date.toISOString()
       });
     }
@@ -253,10 +257,14 @@ export class ApplicationData {
       appDataJSON.updateBundledEnvOnRestart = true;
     }
 
-    fs.writeFileSync(appDataPath, JSON.stringify(appDataJSON, null, 2));
+    fs.writeFileSync(appDataPath, JSON.stringify(appDataJSON, null, 2), {
+      mode: 0o600
+    });
+    fs.chmodSync(appDataPath, 0o600);
   }
 
   addRemoteURLToRecents(url: string) {
+    url = SessionConfig.remoteURLForStorage(url);
     const existing = this.recentRemoteURLs.find(value => {
       return value.url === url;
     });
@@ -274,6 +282,7 @@ export class ApplicationData {
   }
 
   removeRemoteURLFromRecents(url: string) {
+    url = SessionConfig.remoteURLForStorage(url);
     const index = this.recentRemoteURLs.findIndex(value => {
       return value.url === url;
     });
@@ -295,10 +304,13 @@ export class ApplicationData {
       );
     };
 
-    const isRemote = session.remoteURL !== undefined;
+    const remoteURL = session.remoteURL
+      ? SessionConfig.remoteURLForStorage(session.remoteURL)
+      : session.remoteURL;
+    const isRemote = remoteURL !== undefined;
     const existing = this.recentSessions.find(item => {
       return isRemote
-        ? session.remoteURL === item.remoteURL
+        ? remoteURL === item.remoteURL
         : session.workingDirectory === item.workingDirectory &&
             filesToOpenCompare(session.filesToOpen, item.filesToOpen);
     });
@@ -330,7 +342,7 @@ export class ApplicationData {
       this.recentSessions.push({
         workingDirectory: session.workingDirectory,
         filesToOpen: filesToOpen,
-        remoteURL: session.remoteURL,
+        remoteURL,
         persistSessionData: session.persistSessionData,
         partition: session.partition,
         date: now

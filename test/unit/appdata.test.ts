@@ -10,11 +10,13 @@ vi.mock('fs', async () => {
       throw new Error('ENOENT');
     }),
     writeFileSync: vi.fn(),
+    chmodSync: vi.fn(),
     mkdirSync: vi.fn()
   };
 });
 
 import { appData, ApplicationData } from '../../src/main/config/appdata';
+import { SessionConfig } from '../../src/main/config/sessionconfig';
 
 const mockFs = vi.mocked(fs);
 
@@ -87,19 +89,46 @@ describe('ApplicationData.read', () => {
     expect(appData.condaPath.replace(/\\/g, '/')).toContain('/opt/conda');
   });
 
-  it('reads recentRemoteURLs list', () => {
+  it('removes query parameters from stored remote URLs', () => {
     const date = new Date('2024-01-01').toISOString();
     mockFs.existsSync = vi.fn(() => true);
     mockFs.readFileSync = vi.fn(() =>
       Buffer.from(
         JSON.stringify({
-          recentRemoteURLs: [{ url: 'https://example.com', date }]
+          sessions: [
+            { remoteURL: 'https://example.com/lab?token=session', date }
+          ],
+          recentSessions: [
+            {
+              remoteURL: 'https://example.com/lab?token=recent-session',
+              date
+            }
+          ],
+          recentRemoteURLs: [
+            { url: 'https://example.com/lab?token=recent-url', date }
+          ]
         })
       )
     );
     appData.read();
+    expect(appData.sessions[0].remoteURL).toBe('https://example.com/lab');
+    expect(appData.recentSessions[0].remoteURL).toBe('https://example.com/lab');
     expect(appData.recentRemoteURLs).toHaveLength(1);
-    expect(appData.recentRemoteURLs[0].url).toBe('https://example.com');
+    expect(appData.recentRemoteURLs[0].url).toBe('https://example.com/lab');
+  });
+
+  it('keeps malformed remote URLs readable without their query', () => {
+    const date = new Date('2024-01-01').toISOString();
+    mockFs.existsSync = vi.fn(() => true);
+    mockFs.readFileSync = vi.fn(() =>
+      Buffer.from(
+        JSON.stringify({
+          recentRemoteURLs: [{ url: 'not a URL?token=old', date }]
+        })
+      )
+    );
+    appData.read();
+    expect(appData.recentRemoteURLs[0].url).toBe('not a URL');
   });
 
   it('reads updateBundledEnvOnRestart flag', () => {
@@ -124,6 +153,10 @@ describe('ApplicationData.save', () => {
     expect(mockFs.writeFileSync).toHaveBeenCalledOnce();
     const [writePath] = (mockFs.writeFileSync as any).mock.calls[0];
     expect(writePath).toMatch(/app-data\.json$/);
+    expect((mockFs.writeFileSync as any).mock.calls[0][2]).toEqual({
+      mode: 0o600
+    });
+    expect(mockFs.chmodSync).toHaveBeenCalledWith(writePath, 0o600);
   });
 
   it('omits empty pythonPath from saved JSON', () => {
@@ -142,15 +175,27 @@ describe('ApplicationData.save', () => {
     expect(json.pythonPath).toBe('/usr/bin/python3');
   });
 
-  it('saves recentRemoteURLs with ISO date strings', () => {
+  it('saves remote URLs without query parameters', () => {
+    const date = new Date('2024-06-01');
+    const session = new SessionConfig();
+    session.remoteURL = 'https://example.com/lab?token=session';
+    appData.sessions = [session];
     appData.recentRemoteURLs = [
-      { url: 'https://example.com', date: new Date('2024-06-01') }
+      { url: 'https://example.com/lab?token=recent-url', date }
+    ];
+    appData.recentSessions = [
+      {
+        remoteURL: 'https://example.com/lab?token=recent-session',
+        filesToOpen: [],
+        date
+      }
     ];
     appData.save();
     const content = (mockFs.writeFileSync as any).mock.calls[0][1] as string;
     const json = JSON.parse(content);
-    expect(json.recentRemoteURLs).toHaveLength(1);
-    expect(json.recentRemoteURLs[0].url).toBe('https://example.com');
+    expect(json.sessions[0].remoteURL).toBe('https://example.com/lab');
+    expect(json.recentSessions[0].remoteURL).toBe('https://example.com/lab');
+    expect(json.recentRemoteURLs[0].url).toBe('https://example.com/lab');
     expect(typeof json.recentRemoteURLs[0].date).toBe('string');
   });
 });

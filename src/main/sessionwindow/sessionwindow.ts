@@ -208,7 +208,7 @@ export class SessionWindow implements IDisposable {
     if (this._contentViewType === ContentViewType.Lab) {
       if (this._sessionConfig.isRemote) {
         this._createSessionForRemoteUrl(
-          this._sessionConfig.remoteURL,
+          this._sessionConfig.url?.href || this._sessionConfig.remoteURL,
           this._sessionConfig.persistSessionData,
           this._sessionConfig.partition
         );
@@ -1691,9 +1691,9 @@ export class SessionWindow implements IDisposable {
       );
       const sessionConfig = this._sessionConfig;
 
-      appData.addRemoteURLToRecents(remoteURL);
+      appData.addRemoteURLToRecents(sessionConfig.remoteURL);
       appData.addSessionToRecents({
-        remoteURL,
+        remoteURL: sessionConfig.remoteURL,
         persistSessionData,
         partition: sessionConfig.partition
       });

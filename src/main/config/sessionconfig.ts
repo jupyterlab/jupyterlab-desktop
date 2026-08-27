@@ -89,8 +89,8 @@ export class SessionConfig {
     partition: string
   ): SessionConfig {
     const sessionConfig = new SessionConfig();
-    sessionConfig.remoteURL = remoteURL;
     const url = new URL(remoteURL);
+    sessionConfig.remoteURL = SessionConfig.remoteURLForStorage(remoteURL);
     const token = url.searchParams.get('token');
     sessionConfig.url = url;
     sessionConfig.token = token;
@@ -119,12 +119,13 @@ export class SessionConfig {
         const strArg = arg.toString();
         if (/^https?:\/\//.test(strArg)) {
           const remoteURL = strArg;
+          const storedRemoteURL = SessionConfig.remoteURLForStorage(remoteURL);
           const persistSessionData = cliArgs.persistSessionData === true;
           let partition: string = undefined;
 
           if (persistSessionData) {
             const existing = appData.recentSessions.find(recentSession => {
-              return recentSession.remoteURL === remoteURL;
+              return recentSession.remoteURL === storedRemoteURL;
             });
             if (
               existing &&
@@ -208,6 +209,18 @@ export class SessionConfig {
     return this.remoteURL !== '';
   }
 
+  static remoteURLForStorage(remoteURL: string): string {
+    try {
+      const url = new URL(remoteURL);
+      if (url.search === '') {
+        return remoteURL;
+      }
+      return remoteURL.slice(0, remoteURL.indexOf('?')) + url.hash;
+    } catch {
+      return remoteURL.split('?')[0];
+    }
+  }
+
   get resolvedWorkingDirectory(): string {
     return resolveWorkingDirectory(this.workingDirectory);
   }
@@ -247,7 +260,7 @@ export class SessionConfig {
       this.lastOpened = new Date(jsonData.lastOpened);
     }
     if ('remoteURL' in jsonData) {
-      this.remoteURL = jsonData.remoteURL;
+      this.remoteURL = SessionConfig.remoteURLForStorage(jsonData.remoteURL);
     }
     if ('persistSessionData' in jsonData) {
       this.persistSessionData = jsonData.persistSessionData;
@@ -273,7 +286,7 @@ export class SessionConfig {
     };
 
     if (this.remoteURL !== '') {
-      jsonData.remoteURL = this.remoteURL;
+      jsonData.remoteURL = SessionConfig.remoteURLForStorage(this.remoteURL);
     }
 
     if (this.persistSessionData === false) {

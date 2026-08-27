@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import * as fs from 'fs';
+import * as path from 'path';
 
 vi.mock('fs', async () => {
   const actual = await vi.importActual<typeof import('fs')>('fs');
@@ -19,10 +20,11 @@ vi.mock('../../src/main/config/settings', () => ({
   resolveWorkingDirectory: vi.fn((dir: string) => dir || '/home/user')
 }));
 vi.mock('../../src/main/config/appdata', () => ({
-  appData: { recentSessions: [] }
+  appData: { recentSessions: [] as any[] }
 }));
 
 import { SessionConfig } from '../../src/main/config/sessionconfig';
+import { appData } from '../../src/main/config/appdata';
 
 const mockFs = vi.mocked(fs);
 
@@ -101,13 +103,14 @@ describe('SessionConfig.createLocal', () => {
 });
 
 describe('SessionConfig.createRemote', () => {
-  it('sets remoteURL', () => {
+  it('keeps remoteURL without query parameters', () => {
     const s = SessionConfig.createRemote(
       'http://localhost:8888/lab?token=abc',
       true,
       ''
     );
-    expect(s.remoteURL).toBe('http://localhost:8888/lab?token=abc');
+    expect(s.remoteURL).toBe('http://localhost:8888/lab');
+    expect(s.url.href).toBe('http://localhost:8888/lab?token=abc');
     expect(s.isRemote).toBe(true);
   });
 
@@ -166,6 +169,18 @@ describe('SessionConfig.createRemote', () => {
   });
 });
 
+describe('remote session startup', () => {
+  it('uses the in-memory URL before its query-free persisted URL', () => {
+    const source = fs.readFileSync(
+      path.join(__dirname, '../../src/main/sessionwindow/sessionwindow.ts'),
+      'utf8'
+    );
+    expect(source).toContain(
+      'this._sessionConfig.url?.href || this._sessionConfig.remoteURL'
+    );
+  });
+});
+
 describe('SessionConfig.createLocalForFilesOrFolders', () => {
   it('creates session in parent dir of first file', () => {
     mockFs.lstatSync = vi.fn(
@@ -219,6 +234,7 @@ describe('SessionConfig.createLocalForFilesOrFolders', () => {
 
 describe('SessionConfig.createFromArgs', () => {
   beforeEach(() => {
+    appData.recentSessions = [];
     mockFs.existsSync = vi.fn(() => false);
     mockFs.lstatSync = vi.fn(() => {
       throw new Error('ENOENT');
@@ -246,7 +262,7 @@ describe('SessionConfig.createFromArgs', () => {
     });
     expect(result).toBeDefined();
     expect(result.isRemote).toBe(true);
-    expect(result.remoteURL).toBe('https://example.com/lab?token=tok');
+    expect(result.remoteURL).toBe('https://example.com/lab');
   });
 
   it('uses a persist: partition when persistSessionData is true', () => {
@@ -260,6 +276,25 @@ describe('SessionConfig.createFromArgs', () => {
     });
     expect(result.persistSessionData).toBe(true);
     expect(result.partition.startsWith('persist:')).toBe(true);
+  });
+
+  it('reuses a persisted partition for the URL without its query', () => {
+    appData.recentSessions = [
+      {
+        remoteURL: 'https://example.com/lab',
+        persistSessionData: true,
+        partition: 'persist:existing'
+      }
+    ];
+    const result = SessionConfig.createFromArgs({
+      _: ['https://example.com/lab?token=tok'],
+      $0: '',
+      cwd: '/cwd',
+      pythonPath: '',
+      workingDir: '',
+      persistSessionData: true
+    });
+    expect(result.partition).toBe('persist:existing');
   });
 
   it('uses a non-persistent partition when persistSessionData is not set', () => {
@@ -451,9 +486,9 @@ describe('SessionConfig.deserialize', () => {
     expect(s.height).toBe(600);
   });
 
-  it('sets remoteURL', () => {
+  it('sets remoteURL without query parameters', () => {
     const s = new SessionConfig();
-    s.deserialize({ remoteURL: 'http://remote:8888/lab' });
+    s.deserialize({ remoteURL: 'http://remote:8888/lab?token=tok' });
     expect(s.remoteURL).toBe('http://remote:8888/lab');
   });
 
@@ -529,7 +564,7 @@ describe('SessionConfig serialize/deserialize round-trip', () => {
     const copy = new SessionConfig();
     copy.deserialize(original.serialize());
 
-    expect(copy.remoteURL).toBe('http://remote:8888/lab?token=tok');
+    expect(copy.remoteURL).toBe('http://remote:8888/lab');
     expect(copy.persistSessionData).toBe(true);
     expect(copy.partition).toBe('persist:id123');
     expect(copy.isRemote).toBe(true);
