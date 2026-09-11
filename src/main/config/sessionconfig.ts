@@ -221,18 +221,13 @@ export class SessionConfig {
   static remoteURLForStorage(remoteURL: string): string {
     try {
       const url = new URL(remoteURL);
-      if (
-        url.username === '' &&
-        url.password === '' &&
-        url.search === '' &&
-        url.hash === ''
-      ) {
-        return remoteURL;
-      }
       url.username = '';
       url.password = '';
       url.search = '';
       url.hash = '';
+      // always the parsed form, so one server gets one key: a URL with nothing
+      // to strip would otherwise keep its own spelling of the host and port and
+      // never match the stripped form of the same server
       return url.href;
     } catch {
       return remoteURL.split(/[?#]/)[0];

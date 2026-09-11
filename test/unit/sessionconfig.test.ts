@@ -203,6 +203,28 @@ describe('remote session startup', () => {
   });
 });
 
+describe('SessionConfig.remoteURLForStorage', () => {
+  it('gives one key to a server whether or not the URL carries a query', () => {
+    expect(
+      SessionConfig.remoteURLForStorage('HTTPS://Example.COM:443/lab')
+    ).toBe(
+      SessionConfig.remoteURLForStorage('HTTPS://Example.COM:443/lab?token=x')
+    );
+  });
+
+  it('lowercases the host and drops a default port', () => {
+    expect(
+      SessionConfig.remoteURLForStorage('HTTPS://Example.COM:443/lab')
+    ).toBe('https://example.com/lab');
+  });
+
+  it('leaves a URL it cannot parse readable without its query', () => {
+    expect(SessionConfig.remoteURLForStorage('not a URL?token=old')).toBe(
+      'not a URL'
+    );
+  });
+});
+
 describe('SessionConfig.storedRemoteCredential', () => {
   beforeEach(() => {
     appData.recentSessions = [

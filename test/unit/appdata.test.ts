@@ -348,6 +348,31 @@ describe('ApplicationData.mergeDuplicateRecents', () => {
     expect(appData.recentSessions[0].encryptedRemoteURL).toBe('blob-newest');
   });
 
+  it('collapses rows for one server written with different URL spellings', async () => {
+    mockFs.existsSync = vi.fn(() => true);
+    mockFs.readFileSync = vi.fn(() =>
+      Buffer.from(
+        JSON.stringify({
+          recentRemoteURLs: [
+            {
+              url: 'https://lab.example.com:443/lab',
+              date: '2024-01-01T00:00:00.000Z'
+            },
+            {
+              url: 'https://lab.example.com/lab?token=x',
+              date: '2024-02-01T00:00:00.000Z'
+            }
+          ]
+        })
+      )
+    );
+    appData.read();
+    await expect(appData.mergeDuplicateRecents()).resolves.toBe(true);
+    expect(appData.recentRemoteURLs.map(item => item.url)).toEqual([
+      'https://lab.example.com/lab'
+    ]);
+  });
+
   it('keeps the session data a window is about to restore into', async () => {
     readThreeVisitsToOneServer();
     // two windows were open on this server, so a restored session still holds
@@ -391,14 +416,14 @@ describe('ApplicationData.addRemoteURLToRecents', () => {
   });
 
   it('adds a new URL', () => {
-    appData.addRemoteURLToRecents('https://example.com');
+    appData.addRemoteURLToRecents('https://example.com/lab');
     expect(appData.recentRemoteURLs).toHaveLength(1);
-    expect(appData.recentRemoteURLs[0].url).toBe('https://example.com');
+    expect(appData.recentRemoteURLs[0].url).toBe('https://example.com/lab');
   });
 
   it('new entry gets a date close to now', () => {
     const before = Date.now();
-    appData.addRemoteURLToRecents('https://example.com');
+    appData.addRemoteURLToRecents('https://example.com/lab');
     expect(appData.recentRemoteURLs[0].date.valueOf()).toBeGreaterThanOrEqual(
       before
     );
@@ -406,8 +431,10 @@ describe('ApplicationData.addRemoteURLToRecents', () => {
 
   it('updates date of existing URL without duplicating', () => {
     const oldDate = new Date(Date.now() - 5000);
-    appData.recentRemoteURLs = [{ url: 'https://example.com', date: oldDate }];
-    appData.addRemoteURLToRecents('https://example.com');
+    appData.recentRemoteURLs = [
+      { url: 'https://example.com/lab', date: oldDate }
+    ];
+    appData.addRemoteURLToRecents('https://example.com/lab');
     expect(appData.recentRemoteURLs).toHaveLength(1);
     expect(appData.recentRemoteURLs[0].date.valueOf()).toBeGreaterThan(
       oldDate.valueOf()
@@ -415,8 +442,8 @@ describe('ApplicationData.addRemoteURLToRecents', () => {
   });
 
   it('treats different URLs as separate entries', () => {
-    appData.addRemoteURLToRecents('https://a.com');
-    appData.addRemoteURLToRecents('https://b.com');
+    appData.addRemoteURLToRecents('https://a.example.com/lab');
+    appData.addRemoteURLToRecents('https://b.example.com/lab');
     expect(appData.recentRemoteURLs).toHaveLength(2);
   });
 });
@@ -424,19 +451,19 @@ describe('ApplicationData.addRemoteURLToRecents', () => {
 describe('ApplicationData.removeRemoteURLFromRecents', () => {
   beforeEach(() => {
     appData.recentRemoteURLs = [
-      { url: 'https://a.com', date: new Date() },
-      { url: 'https://b.com', date: new Date() }
+      { url: 'https://a.example.com/lab', date: new Date() },
+      { url: 'https://b.example.com/lab', date: new Date() }
     ];
   });
 
   it('removes the matching URL', () => {
-    appData.removeRemoteURLFromRecents('https://a.com');
+    appData.removeRemoteURLFromRecents('https://a.example.com/lab');
     expect(appData.recentRemoteURLs).toHaveLength(1);
-    expect(appData.recentRemoteURLs[0].url).toBe('https://b.com');
+    expect(appData.recentRemoteURLs[0].url).toBe('https://b.example.com/lab');
   });
 
   it('no-ops when URL is not in list', () => {
-    appData.removeRemoteURLFromRecents('https://missing.com');
+    appData.removeRemoteURLFromRecents('https://missing.example.com/lab');
     expect(appData.recentRemoteURLs).toHaveLength(2);
   });
 });
@@ -457,11 +484,13 @@ describe('ApplicationData.addSessionToRecents', () => {
 
   it('adds a new remote session', async () => {
     await appData.addSessionToRecents({
-      remoteURL: 'https://hub.example.com',
+      remoteURL: 'https://hub.example.com/lab',
       filesToOpen: []
     });
     expect(appData.recentSessions).toHaveLength(1);
-    expect(appData.recentSessions[0].remoteURL).toBe('https://hub.example.com');
+    expect(appData.recentSessions[0].remoteURL).toBe(
+      'https://hub.example.com/lab'
+    );
   });
 
   it('caps the recents list at 20 entries', async () => {
