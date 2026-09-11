@@ -272,7 +272,16 @@ export class ApplicationData {
     fs.writeFileSync(appDataPath, JSON.stringify(appDataJSON, null, 2), {
       mode: 0o600
     });
-    fs.chmodSync(appDataPath, 0o600);
+    // tightens a file an earlier release created at 0644: the mode above
+    // applies only when the file is created. Best effort, because a mount that
+    // refuses a mode change must not turn a completed save into a throw. Every
+    // caller treats save() as done once the bytes are written, and the ready
+    // handler would otherwise quit the app before it opens a window.
+    try {
+      fs.chmodSync(appDataPath, 0o600);
+    } catch (error) {
+      console.warn('Failed to restrict app-data.json permissions', error);
+    }
   }
 
   addRemoteURLToRecents(url: string) {

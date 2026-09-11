@@ -182,6 +182,7 @@ describe('ApplicationData.save', () => {
     resetAppData();
     mockFs.existsSync = vi.fn(() => false);
     mockFs.writeFileSync = vi.fn();
+    mockFs.chmodSync = vi.fn();
   });
 
   it('calls writeFileSync with app-data.json path', () => {
@@ -193,6 +194,16 @@ describe('ApplicationData.save', () => {
       mode: 0o600
     });
     expect(mockFs.chmodSync).toHaveBeenCalledWith(writePath, 0o600);
+  });
+
+  it('keeps the save when the mount refuses the mode change', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    mockFs.chmodSync = vi.fn(() => {
+      throw new Error('EPERM');
+    });
+    expect(() => appData.save()).not.toThrow();
+    expect(mockFs.writeFileSync).toHaveBeenCalledOnce();
+    warn.mockRestore();
   });
 
   it('omits empty pythonPath from saved JSON', () => {
