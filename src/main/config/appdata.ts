@@ -464,7 +464,10 @@ export class ApplicationData {
     let changed = false;
     for (const session of this.sessions) {
       if (session.legacyRemoteURL) {
-        await session.protectRemoteURL(session.legacyRemoteURL);
+        const stored = await session.protectRemoteURL(session.legacyRemoteURL);
+        if (!stored && session.persistSessionData) {
+          this.removedLegacyRemoteTokens = true;
+        }
         session.legacyRemoteURL = undefined;
         changed = true;
       }
@@ -473,7 +476,10 @@ export class ApplicationData {
       if (session.legacyRemoteURL) {
         const config = new SessionConfig();
         config.persistSessionData = session.persistSessionData !== false;
-        await config.protectRemoteURL(session.legacyRemoteURL);
+        const stored = await config.protectRemoteURL(session.legacyRemoteURL);
+        if (!stored && config.persistSessionData) {
+          this.removedLegacyRemoteTokens = true;
+        }
         session.encryptedRemoteURL = config.encryptedRemoteURL;
         session.legacyRemoteURL = undefined;
         changed = true;
@@ -518,6 +524,13 @@ export class ApplicationData {
   userSetPythonEnvs: IPythonEnvironment[] = [];
 
   updateBundledEnvOnRestart: boolean = false;
+  /**
+   * Set when the migration had to drop a token a session wanted kept, because
+   * no credential store was available to encrypt it. In memory only: the
+   * welcome view reads it once to tell the user why those servers now ask for
+   * a sign-in.
+   */
+  removedLegacyRemoteTokens: boolean = false;
 
   private _recentSessionsChanged = new Signal<this, void>(this);
 }

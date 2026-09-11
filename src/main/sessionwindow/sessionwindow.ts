@@ -335,7 +335,10 @@ export class SessionWindow implements IDisposable {
   private _loadWelcomeView() {
     const welcomeView = new WelcomeView({
       registry: this._registry,
-      isDarkTheme: this._isDarkTheme
+      isDarkTheme: this._isDarkTheme,
+      notification: appData.removedLegacyRemoteTokens
+        ? 'Saved remote server tokens were removed because no secure credential store is available. Reconnect by entering the server URL with its token.'
+        : ''
     });
     this._window.contentView.addChildView(welcomeView.view);
     const {

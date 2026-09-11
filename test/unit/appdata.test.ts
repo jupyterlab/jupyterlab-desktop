@@ -34,6 +34,7 @@ function resetAppData() {
   appData.newsList = [];
   appData.sessions = [];
   appData.updateBundledEnvOnRestart = false;
+  appData.removedLegacyRemoteTokens = false;
 }
 
 describe('ApplicationData.getAppDataPath', () => {
@@ -232,6 +233,60 @@ describe('ApplicationData.save', () => {
     expect(json.recentSessions[0].remoteURL).toBe('https://example.com/lab');
     expect(json.recentRemoteURLs[0].url).toBe('https://example.com/lab');
     expect(typeof json.recentRemoteURLs[0].date).toBe('string');
+  });
+});
+
+describe('ApplicationData.migrateRemoteCredentials', () => {
+  beforeEach(() => {
+    resetAppData();
+    mockSafeStorage.isAsyncEncryptionAvailable.mockResolvedValue(true);
+    mockSafeStorage.getSelectedStorageBackend.mockReturnValue(
+      'gnome_libsecret'
+    );
+    mockSafeStorage.encryptStringAsync.mockImplementation(value =>
+      Promise.resolve(Buffer.from(value))
+    );
+  });
+
+  function readOneLegacyRow(persistSessionData: boolean) {
+    mockFs.existsSync = vi.fn(() => true);
+    mockFs.readFileSync = vi.fn(() =>
+      Buffer.from(
+        JSON.stringify({
+          recentSessions: [
+            {
+              remoteURL: 'https://lab.example.com/lab?token=legacy',
+              persistSessionData,
+              partition: persistSessionData ? 'persist:one' : undefined,
+              date: '2024-01-01T00:00:00.000Z'
+            }
+          ]
+        })
+      )
+    );
+    appData.read();
+  }
+
+  it('reports nothing removed when the token could be encrypted', async () => {
+    readOneLegacyRow(true);
+    await appData.migrateRemoteCredentials();
+    expect(appData.recentSessions[0].encryptedRemoteURL).toBeDefined();
+    expect(appData.removedLegacyRemoteTokens).toBe(false);
+  });
+
+  it('reports the removal when no credential store is available', async () => {
+    mockSafeStorage.isAsyncEncryptionAvailable.mockResolvedValue(false);
+    readOneLegacyRow(true);
+    await appData.migrateRemoteCredentials();
+    expect(appData.recentSessions[0].encryptedRemoteURL).toBeUndefined();
+    expect(appData.removedLegacyRemoteTokens).toBe(true);
+  });
+
+  it('stays quiet for a session that declined to persist its data', async () => {
+    mockSafeStorage.isAsyncEncryptionAvailable.mockResolvedValue(false);
+    readOneLegacyRow(false);
+    await appData.migrateRemoteCredentials();
+    expect(appData.removedLegacyRemoteTokens).toBe(false);
   });
 });
 
