@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import * as fs from 'fs';
 import * as path from 'path';
 import { safeStorage } from 'electron';
@@ -200,6 +200,39 @@ describe('remote session startup', () => {
     expect(source).toContain(
       'this._sessionConfig.url?.href || this._sessionConfig.remoteURL'
     );
+  });
+});
+
+describe('SessionConfig.storedRemoteCredential', () => {
+  beforeEach(() => {
+    appData.recentSessions = [
+      {
+        remoteURL: 'https://example.com/lab',
+        encryptedRemoteURL: 'stored-blob'
+      }
+    ];
+  });
+
+  afterEach(() => {
+    appData.recentSessions = [];
+  });
+
+  it('returns the credential kept for a canonical URL', () => {
+    expect(
+      SessionConfig.storedRemoteCredential('https://example.com/lab')
+    ).toBe('stored-blob');
+  });
+
+  it('lets a URL that carries its own credentials win', () => {
+    expect(
+      SessionConfig.storedRemoteCredential('https://example.com/lab?token=new')
+    ).toBeUndefined();
+  });
+
+  it('returns nothing for a server with no recent session', () => {
+    expect(
+      SessionConfig.storedRemoteCredential('https://other.example.com/lab')
+    ).toBeUndefined();
   });
 });
 

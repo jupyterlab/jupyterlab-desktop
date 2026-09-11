@@ -239,6 +239,23 @@ export class SessionConfig {
     }
   }
 
+  /**
+   * The credential stored for a server, for a URL that carries none of its own.
+   * Both the recents list and the remote server dialog hand back the canonical
+   * URL, so without this lookup a reconnect from either would connect with no
+   * token and then overwrite the stored credential with a token-free one. A URL
+   * that does carry credentials wins over the stored one, so this returns
+   * nothing for it.
+   */
+  static storedRemoteCredential(remoteURL: string): string | undefined {
+    if (SessionConfig.remoteURLForStorage(remoteURL) !== remoteURL) {
+      return undefined;
+    }
+    return appData.recentSessions.find(
+      recentSession => recentSession.remoteURL === remoteURL
+    )?.encryptedRemoteURL;
+  }
+
   static async canPersistRemoteURL(): Promise<boolean> {
     try {
       if (!(await safeStorage.isAsyncEncryptionAvailable())) {
