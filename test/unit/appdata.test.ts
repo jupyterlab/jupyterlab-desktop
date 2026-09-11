@@ -282,6 +282,59 @@ describe('ApplicationData.migrateRemoteCredentials', () => {
     expect(appData.removedLegacyRemoteTokens).toBe(true);
   });
 
+  it.each([
+    ['a bare origin with no trailing slash', 'http://localhost:8888'],
+    ['an uppercase host', 'https://Example.com/lab'],
+    ['an explicit default port', 'https://example.com:443/lab']
+  ])('does not report %s as a removed token', async (_name, stored) => {
+    mockSafeStorage.isAsyncEncryptionAvailable.mockResolvedValue(false);
+    mockFs.existsSync = vi.fn(() => true);
+    mockFs.readFileSync = vi.fn(() =>
+      Buffer.from(
+        JSON.stringify({
+          recentSessions: [
+            {
+              // a v4.6.3-1 row for a server whose URL never had a token
+              remoteURL: stored,
+              persistSessionData: true,
+              partition: 'persist:one',
+              date: '2024-01-01T00:00:00.000Z'
+            }
+          ],
+          sessions: [{ remoteURL: stored, persistSessionData: true }]
+        })
+      )
+    );
+    appData.read();
+    expect(appData.recentSessions[0].legacyRemoteURL).toBeUndefined();
+    expect(appData.sessions[0].legacyRemoteURL).toBeUndefined();
+    await appData.migrateRemoteCredentials();
+    expect(appData.removedLegacyRemoteTokens).toBe(false);
+    expect(appData.recentSessions[0].encryptedRemoteURL).toBeUndefined();
+  });
+
+  it('still reports a row whose URL carried userinfo', async () => {
+    mockSafeStorage.isAsyncEncryptionAvailable.mockResolvedValue(false);
+    mockFs.existsSync = vi.fn(() => true);
+    mockFs.readFileSync = vi.fn(() =>
+      Buffer.from(
+        JSON.stringify({
+          recentSessions: [
+            {
+              remoteURL: 'https://user:pw@lab.example.com/lab',
+              persistSessionData: true,
+              partition: 'persist:one',
+              date: '2024-01-01T00:00:00.000Z'
+            }
+          ]
+        })
+      )
+    );
+    appData.read();
+    await appData.migrateRemoteCredentials();
+    expect(appData.removedLegacyRemoteTokens).toBe(true);
+  });
+
   it('stays quiet for a session that declined to persist its data', async () => {
     mockSafeStorage.isAsyncEncryptionAvailable.mockResolvedValue(false);
     readOneLegacyRow(false);

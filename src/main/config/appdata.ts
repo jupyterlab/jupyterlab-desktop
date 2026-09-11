@@ -115,8 +115,7 @@ export class ApplicationData {
           encryptedRemoteURL: recentSession.encryptedRemoteURL,
           legacyRemoteURL:
             recentSession.remoteURL &&
-            SessionConfig.remoteURLForStorage(recentSession.remoteURL) !==
-              recentSession.remoteURL
+            SessionConfig.carriesCredentials(recentSession.remoteURL)
               ? recentSession.remoteURL
               : undefined,
           date: new Date(recentSession.date)

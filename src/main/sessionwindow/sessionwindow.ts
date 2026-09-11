@@ -1691,10 +1691,11 @@ export class SessionWindow implements IDisposable {
 
     try {
       const storedRemoteURL = SessionConfig.remoteURLForStorage(remoteURL);
-      // A caller that has no credential of its own still reconnects from the
-      // one stored for this server. The remote server dialog is such a caller:
-      // its recents list holds canonical URLs, so without the lookup it would
-      // connect with no token and then overwrite the stored credential.
+      // A URL that supplies no credentials of its own still reconnects from
+      // the one stored for this server, however it is spelled. Both the recents
+      // list and anything typed into the remote server dialog arrive that way,
+      // and without the lookup they would connect with no token and then
+      // overwrite the stored credential with a token-free one.
       const credential =
         encryptedRemoteURL ??
         (persistSessionData
@@ -1702,10 +1703,10 @@ export class SessionWindow implements IDisposable {
           : undefined);
       let connectionURL = remoteURL;
       let storedCredentials: string;
-      if (credential && remoteURL === storedRemoteURL) {
+      if (credential && !SessionConfig.carriesCredentials(remoteURL)) {
         const storedSessionConfig = new SessionConfig();
         storedSessionConfig.deserialize({
-          remoteURL,
+          remoteURL: storedRemoteURL,
           encryptedRemoteURL: credential,
           persistSessionData,
           partition

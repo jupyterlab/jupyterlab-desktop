@@ -65,6 +65,36 @@ describe('SessionWindow remote credentials', () => {
     );
   });
 
+  it.each([
+    ['https://example.com/lab '],
+    ['https://Example.com/lab'],
+    ['https://example.com:443/lab'],
+    ['https://example.com/lab?']
+  ])('reconnects with the stored token when %s is typed', async typed => {
+    const stored = Buffer.from('https://example.com/lab?token=stored').toString(
+      'base64'
+    );
+    appData.recentSessions = [
+      {
+        remoteURL: 'https://example.com/lab',
+        filesToOpen: [],
+        persistSessionData: true,
+        partition: 'persist:example',
+        encryptedRemoteURL: stored,
+        date: new Date()
+      }
+    ];
+    vi.spyOn(appData, 'addRemoteURLToRecents').mockImplementation(() => {});
+    vi.spyOn(appData, 'addSessionToRecents').mockResolvedValue();
+    const win = makeWindow();
+    await win._createSessionForRemoteUrl(typed, true, undefined);
+    expect(win.sessionConfig.url.href).toContain('token=stored');
+    // the row keeps the credential it had, rather than a token-free reseal
+    expect(appData.addSessionToRecents).toHaveBeenCalledWith(
+      expect.objectContaining({ encryptedRemoteURL: stored })
+    );
+  });
+
   it('ignores the stored credential for a non-persistent session', async () => {
     appData.recentSessions = [
       {

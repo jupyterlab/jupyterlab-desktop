@@ -203,6 +203,28 @@ describe('remote session startup', () => {
   });
 });
 
+describe('SessionConfig.carriesCredentials', () => {
+  it.each([
+    ['a query string', 'https://example.com/lab?token=x'],
+    ['userinfo', 'https://user:pw@example.com/lab'],
+    ['a fragment', 'https://example.com/lab#access=x']
+  ])('reports %s', (_name, url) => {
+    expect(SessionConfig.carriesCredentials(url)).toBe(true);
+  });
+
+  it.each([
+    ['a canonical URL', 'https://example.com/lab'],
+    ['a bare origin', 'http://localhost:8888'],
+    ['an uppercase host', 'https://Example.com/lab'],
+    ['an explicit default port', 'https://example.com:443/lab'],
+    ['a trailing space', 'https://example.com/lab '],
+    ['a bare query mark', 'https://example.com/lab?'],
+    ['a bare hash', 'https://example.com/lab#']
+  ])('reports no credentials for %s', (_name, url) => {
+    expect(SessionConfig.carriesCredentials(url)).toBe(false);
+  });
+});
+
 describe('SessionConfig.remoteURLForStorage', () => {
   it('gives one key to a server whether or not the URL carries a query', () => {
     expect(
@@ -248,6 +270,28 @@ describe('SessionConfig.storedRemoteCredential', () => {
   it('lets a URL that carries its own credentials win', () => {
     expect(
       SessionConfig.storedRemoteCredential('https://example.com/lab?token=new')
+    ).toBeUndefined();
+  });
+
+  it.each([
+    ['a trailing space from a paste', 'https://example.com/lab '],
+    ['an uppercase host', 'https://Example.com/lab'],
+    ['an explicit default port', 'https://example.com:443/lab'],
+    ['an empty query', 'https://example.com/lab?'],
+    ['an empty fragment', 'https://example.com/lab#']
+  ])('finds the credential through %s', (_name, typed) => {
+    expect(SessionConfig.storedRemoteCredential(typed)).toBe('stored-blob');
+  });
+
+  it('lets userinfo in the URL win over the stored credential', () => {
+    expect(
+      SessionConfig.storedRemoteCredential('https://user:pw@example.com/lab')
+    ).toBeUndefined();
+  });
+
+  it('lets a fragment in the URL win over the stored credential', () => {
+    expect(
+      SessionConfig.storedRemoteCredential('https://example.com/lab#access=x')
     ).toBeUndefined();
   });
 
@@ -652,6 +696,19 @@ describe('SessionConfig.deserialize', () => {
     expect(s.y).toBe(20);
     expect(s.width).toBe(800);
     expect(s.height).toBe(600);
+  });
+
+  it('marks a URL with a token as a legacy credential to migrate', () => {
+    const s = new SessionConfig();
+    s.deserialize({ remoteURL: 'http://remote:8888/lab?token=tok' });
+    expect(s.legacyRemoteURL).toBe('http://remote:8888/lab?token=tok');
+  });
+
+  it('does not mark a token-free URL spelled another way', () => {
+    const s = new SessionConfig();
+    s.deserialize({ remoteURL: 'http://Remote:8888/lab' });
+    expect(s.remoteURL).toBe('http://remote:8888/lab');
+    expect(s.legacyRemoteURL).toBeUndefined();
   });
 
   it('sets remoteURL without query parameters', () => {

@@ -235,19 +235,39 @@ export class SessionConfig {
   }
 
   /**
+   * Whether the URL carries what remoteURLForStorage() strips: userinfo, a
+   * query string or a fragment. A difference in spelling alone (host case, a
+   * default port, whitespace, a bare `?` or `#`) does not count, so the same
+   * server typed another way is still recognised as that server.
+   */
+  static carriesCredentials(remoteURL: string): boolean {
+    try {
+      const url = new URL(remoteURL);
+      return (
+        url.username !== '' ||
+        url.password !== '' ||
+        url.search !== '' ||
+        url.hash !== ''
+      );
+    } catch {
+      // matches what remoteURLForStorage strips from a URL it cannot parse
+      return /[?#]/.test(remoteURL);
+    }
+  }
+
+  /**
    * The credential stored for a server, for a URL that carries none of its own.
    * Both the recents list and the remote server dialog hand back the canonical
    * URL, so without this lookup a reconnect from either would connect with no
-   * token and then overwrite the stored credential with a token-free one. A URL
-   * that does carry credentials wins over the stored one, so this returns
-   * nothing for it.
+   * token and then overwrite the stored credential with a token-free one.
    */
   static storedRemoteCredential(remoteURL: string): string | undefined {
-    if (SessionConfig.remoteURLForStorage(remoteURL) !== remoteURL) {
+    if (SessionConfig.carriesCredentials(remoteURL)) {
       return undefined;
     }
+    const storedRemoteURL = SessionConfig.remoteURLForStorage(remoteURL);
     return appData.recentSessions.find(
-      recentSession => recentSession.remoteURL === remoteURL
+      recentSession => recentSession.remoteURL === storedRemoteURL
     )?.encryptedRemoteURL;
   }
 
@@ -344,7 +364,7 @@ export class SessionConfig {
     }
     if ('remoteURL' in jsonData) {
       this.remoteURL = SessionConfig.remoteURLForStorage(jsonData.remoteURL);
-      if (this.remoteURL !== jsonData.remoteURL) {
+      if (SessionConfig.carriesCredentials(jsonData.remoteURL)) {
         this.legacyRemoteURL = jsonData.remoteURL;
       }
     }
