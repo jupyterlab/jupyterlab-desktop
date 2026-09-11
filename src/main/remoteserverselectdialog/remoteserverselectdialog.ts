@@ -124,7 +124,7 @@ export class RemoteServerSelectDialog {
           </div>
         </div>
         <% if (!canPersistRemoteCredentials) { %>
-          <div class="row">Cookies and cache can persist, but this desktop environment has no secure keyring for the server URL token.</div>
+          <div class="row">Cookies and cache can persist, but the operating system secure credential store is not available, so the server URL token is not saved.</div>
         <% } %>
       </div>
 
