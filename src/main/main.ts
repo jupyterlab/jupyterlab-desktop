@@ -228,7 +228,10 @@ app.on('ready', async () => {
     setupJLabCommand();
     createPythonEnvsDirectory();
     argv.cwd = process.cwd();
-    if (await appData.migrateRemoteCredentials()) {
+    // merge first, so only the surviving row's legacy token is encrypted
+    const mergedRecents = await appData.mergeDuplicateRecents();
+    const migratedCredentials = await appData.migrateRemoteCredentials();
+    if (mergedRecents || migratedCredentials) {
       appData.save();
     }
     jupyterApp = new JupyterApplication((argv as unknown) as ICLIArguments);

@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import * as fs from 'fs';
-import { safeStorage } from 'electron';
+import { safeStorage, session } from 'electron';
 
 vi.mock('fs', async () => {
   const actual = await vi.importActual<typeof import('fs')>('fs');
@@ -21,6 +21,7 @@ import { SessionConfig } from '../../src/main/config/sessionconfig';
 
 const mockFs = vi.mocked(fs);
 const mockSafeStorage = vi.mocked(safeStorage);
+const mockSession = vi.mocked(session);
 
 function resetAppData() {
   appData.pythonPath = '';
@@ -231,6 +232,156 @@ describe('ApplicationData.save', () => {
     expect(json.recentSessions[0].remoteURL).toBe('https://example.com/lab');
     expect(json.recentRemoteURLs[0].url).toBe('https://example.com/lab');
     expect(typeof json.recentRemoteURLs[0].date).toBe('string');
+  });
+});
+
+describe('ApplicationData.mergeDuplicateRecents', () => {
+  beforeEach(() => {
+    resetAppData();
+    mockSession.fromPartition.mockClear();
+  });
+
+  // An install upgraded from a release that kept the token in the URL holds one
+  // recents row per token. Reading maps them all onto the same canonical URL,
+  // so the lists end up with rows the user cannot tell apart.
+  function readThreeVisitsToOneServer() {
+    mockFs.existsSync = vi.fn(() => true);
+    mockFs.readFileSync = vi.fn(() =>
+      Buffer.from(
+        JSON.stringify({
+          recentSessions: [
+            {
+              remoteURL: 'https://lab.example.com/lab?token=old',
+              persistSessionData: true,
+              partition: 'persist:old',
+              date: '2024-01-01T00:00:00.000Z'
+            },
+            {
+              remoteURL: 'https://lab.example.com/lab?token=newest',
+              persistSessionData: true,
+              partition: 'persist:newest',
+              date: '2024-03-01T00:00:00.000Z'
+            },
+            {
+              remoteURL: 'https://lab.example.com/lab?token=middle',
+              persistSessionData: true,
+              partition: 'persist:middle',
+              date: '2024-02-01T00:00:00.000Z'
+            },
+            {
+              workingDirectory: '/data/nb',
+              date: '2024-02-15T00:00:00.000Z'
+            }
+          ],
+          recentRemoteURLs: [
+            {
+              url: 'https://lab.example.com/lab?token=old',
+              date: '2024-01-01T00:00:00.000Z'
+            },
+            {
+              url: 'https://lab.example.com/lab?token=newest',
+              date: '2024-03-01T00:00:00.000Z'
+            },
+            {
+              url: 'https://other.example.com/lab',
+              date: '2024-02-01T00:00:00.000Z'
+            }
+          ]
+        })
+      )
+    );
+    appData.read();
+  }
+
+  it('collapses recent remote URLs that differ only by a stripped query', async () => {
+    readThreeVisitsToOneServer();
+    expect(appData.recentRemoteURLs).toHaveLength(3);
+    await expect(appData.mergeDuplicateRecents()).resolves.toBe(true);
+    expect(appData.recentRemoteURLs.map(item => item.url)).toEqual([
+      'https://lab.example.com/lab',
+      'https://other.example.com/lab'
+    ]);
+  });
+
+  it('keeps the newest row for a server and every local session', async () => {
+    readThreeVisitsToOneServer();
+    await appData.mergeDuplicateRecents();
+    expect(appData.recentSessions).toHaveLength(2);
+    const remote = appData.recentSessions.find(item => item.remoteURL);
+    expect(remote.remoteURL).toBe('https://lab.example.com/lab');
+    expect(remote.partition).toBe('persist:newest');
+    expect(
+      appData.recentSessions.some(item => item.workingDirectory === '/data/nb')
+    ).toBe(true);
+  });
+
+  it('releases the session data of the rows it drops', async () => {
+    readThreeVisitsToOneServer();
+    await appData.mergeDuplicateRecents();
+    const cleared = mockSession.fromPartition.mock.calls
+      .map(call => call[0])
+      .sort();
+    expect(cleared).toEqual(['persist:middle', 'persist:old']);
+  });
+
+  it('keeps the credential of the newest row for a server', async () => {
+    appData.recentSessions = [
+      {
+        remoteURL: 'https://lab.example.com/lab',
+        filesToOpen: [],
+        persistSessionData: true,
+        partition: 'persist:newest',
+        encryptedRemoteURL: 'blob-newest',
+        date: new Date('2024-03-01')
+      },
+      {
+        remoteURL: 'https://lab.example.com/lab',
+        filesToOpen: [],
+        persistSessionData: true,
+        partition: 'persist:old',
+        encryptedRemoteURL: 'blob-old',
+        date: new Date('2024-01-01')
+      }
+    ];
+    await expect(appData.mergeDuplicateRecents()).resolves.toBe(true);
+    expect(appData.recentSessions).toHaveLength(1);
+    expect(appData.recentSessions[0].encryptedRemoteURL).toBe('blob-newest');
+  });
+
+  it('keeps the session data a window is about to restore into', async () => {
+    readThreeVisitsToOneServer();
+    // two windows were open on this server, so a restored session still holds
+    // the partition of a row the merge drops
+    const restored = new SessionConfig();
+    restored.partition = 'persist:old';
+    appData.sessions = [restored];
+    await appData.mergeDuplicateRecents();
+    expect(mockSession.fromPartition.mock.calls.map(call => call[0])).toEqual([
+      'persist:middle'
+    ]);
+  });
+
+  it('changes nothing when every server appears once', async () => {
+    appData.recentSessions = [
+      {
+        remoteURL: 'https://a.example.com/lab',
+        filesToOpen: [],
+        partition: 'persist:a',
+        date: new Date('2024-01-01')
+      },
+      {
+        workingDirectory: '/data/nb',
+        filesToOpen: [],
+        date: new Date('2024-01-02')
+      }
+    ];
+    appData.recentRemoteURLs = [
+      { url: 'https://a.example.com/lab', date: new Date('2024-01-01') }
+    ];
+    await expect(appData.mergeDuplicateRecents()).resolves.toBe(false);
+    expect(appData.recentSessions).toHaveLength(2);
+    expect(appData.recentRemoteURLs).toHaveLength(1);
+    expect(mockSession.fromPartition).not.toHaveBeenCalled();
   });
 });
 

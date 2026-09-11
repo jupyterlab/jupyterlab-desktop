@@ -72,6 +72,20 @@ export const safeStorage = {
   )
 };
 
+// One shared fake for every partition, so a test can assert which partitions a
+// caller asked to clear by reading `session.fromPartition` calls.
+const partitionSession = {
+  clearCache: vi.fn(() => Promise.resolve()),
+  clearAuthCache: vi.fn(() => Promise.resolve()),
+  clearStorageData: vi.fn(() => Promise.resolve()),
+  flushStorageData: vi.fn(() => Promise.resolve())
+};
+
+export const session = {
+  fromPartition: vi.fn((_partition: string) => partitionSession),
+  defaultSession: partitionSession
+};
+
 export const screen = {
   getPrimaryDisplay: vi.fn(() => ({
     workAreaSize: { width: 1920, height: 1080 }

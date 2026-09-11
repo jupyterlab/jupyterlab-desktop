@@ -396,6 +396,70 @@ export class ApplicationData {
     this._recentSessionsChanged.emit();
   }
 
+  /**
+   * Collapse recents rows that differ only by a query string that is no longer
+   * stored, and release the session data of the rows that are dropped. An
+   * install upgraded from a release that kept the token in the URL holds one
+   * row per token for the same server, and reading maps them all onto the same
+   * canonical URL. The newest row wins, so its partition and credential are the
+   * ones kept. Returns whether anything changed, so the caller knows to save.
+   *
+   * Runs after Electron is ready, because clearing a partition needs a session.
+   */
+  async mergeDuplicateRecents(): Promise<boolean> {
+    this._sortRecentItems(this.recentSessions);
+    this._sortRecentItems(this.recentRemoteURLs);
+
+    // a window restoring into a partition still needs its cookies, even when
+    // the recents row that named it is the one being dropped
+    const partitionsInUse = new Set(
+      this.sessions.map(sessionConfig => sessionConfig.partition)
+    );
+
+    const supersededPartitions: string[] = [];
+    const mergedSessions: IRecentSession[] = [];
+    for (const recentSession of this.recentSessions) {
+      const duplicate =
+        recentSession.remoteURL &&
+        mergedSessions.some(item => item.remoteURL === recentSession.remoteURL);
+      if (!duplicate) {
+        mergedSessions.push(recentSession);
+      } else if (
+        recentSession.partition?.startsWith('persist:') &&
+        !partitionsInUse.has(recentSession.partition)
+      ) {
+        supersededPartitions.push(recentSession.partition);
+      }
+    }
+
+    const mergedRemoteURLs: IRecentRemoteURL[] = [];
+    for (const remoteURL of this.recentRemoteURLs) {
+      if (!mergedRemoteURLs.some(item => item.url === remoteURL.url)) {
+        mergedRemoteURLs.push(remoteURL);
+      }
+    }
+
+    const changed =
+      mergedSessions.length !== this.recentSessions.length ||
+      mergedRemoteURLs.length !== this.recentRemoteURLs.length;
+    this.recentSessions = mergedSessions;
+    this.recentRemoteURLs = mergedRemoteURLs;
+
+    for (const partition of supersededPartitions) {
+      try {
+        await clearSession(electronSession.fromPartition(partition));
+      } catch (error) {
+        //
+      }
+    }
+
+    if (changed) {
+      this._recentSessionsChanged.emit();
+    }
+
+    return changed;
+  }
+
   async migrateRemoteCredentials(): Promise<boolean> {
     let changed = false;
     for (const session of this.sessions) {
