@@ -404,18 +404,20 @@ export class LabView implements IDisposable {
       act(verdict, details.url);
     };
 
-    this._view.webContents.on('will-redirect', details => {
-      // a subframe (HTML output, the PDF viewer, a proxied panel) is not the
-      // privileged surface and keeps following its own redirects
-      if (details.isMainFrame) {
-        handle(details, 'redirect');
-      }
-    });
+    const wireNavigation = (contents: Electron.WebContents): void => {
+      contents.on('will-redirect', details => {
+        // a subframe (HTML output, the PDF viewer, a proxied panel) is not the
+        // privileged surface and keeps following its own redirects
+        if (details.isMainFrame) {
+          handle(details, 'redirect');
+        }
+      });
 
-    // will-navigate only fires for the main frame
-    this._view.webContents.on('will-navigate', details =>
-      handle(details, 'navigate')
-    );
+      // will-navigate only fires for the main frame
+      contents.on('will-navigate', details => handle(details, 'navigate'));
+    };
+
+    wireNavigation(this._view.webContents);
 
     this._view.webContents.setWindowOpenHandler(({ url }) => {
       const verdict = classify(url, 'navigate');
@@ -424,6 +426,10 @@ export class LabView implements IDisposable {
       }
       act(verdict, url);
       return { action: 'deny' };
+    });
+    this._view.webContents.on('did-create-window', child => {
+      markGuarded(child.webContents);
+      wireNavigation(child.webContents);
     });
   }
 
