@@ -179,36 +179,57 @@ function createPythonEnvsDirectory() {
   }
 }
 
+// Electron builds a default menu on every platform. On macOS it is the visible
+// menu bar; on Windows and Linux each window hides the bar and only the
+// accelerators are left, which is why the two edits below are macOS only and
+// the zoom accelerator is not.
 function setApplicationMenu() {
-  if (process.platform !== 'darwin') {
+  const menu = Menu.getApplicationMenu();
+  if (!menu) {
     return;
   }
 
-  // hide Help menu
-  const menu = Menu.getApplicationMenu();
   let viewMenu: MenuItem | undefined;
-  menu?.items.forEach(item => {
-    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-    // @ts-ignore
-    if (item.role === 'help') {
-      item.visible = false;
-    }
-
+  menu.items.forEach(item => {
     // eslint-disable-next-line @typescript-eslint/ban-ts-comment
     // @ts-ignore
     if (item.role === 'viewmenu') {
       viewMenu = item;
     }
   });
-  // hide Reload and Force Reload menu items
-  viewMenu?.submenu?.items.forEach(item => {
-    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-    // @ts-ignore
-    if (item.role === 'reload' || item.role === 'forcereload') {
-      item.visible = false;
-      item.enabled = false;
-    }
-  });
+
+  if (process.platform === 'darwin') {
+    // hide Help menu
+    menu.items.forEach(item => {
+      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+      // @ts-ignore
+      if (item.role === 'help') {
+        item.visible = false;
+      }
+    });
+    // hide Reload and Force Reload menu items
+    viewMenu?.submenu?.items.forEach(item => {
+      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+      // @ts-ignore
+      if (item.role === 'reload' || item.role === 'forcereload') {
+        item.visible = false;
+        item.enabled = false;
+      }
+    });
+  }
+
+  // Zoom In comes bound to the shifted plus alone. Browsers and editors zoom in
+  // on the unshifted `=` of that key as well, and so did this app until the
+  // binding was dropped in f72e0a5. A menu item holds one accelerator, so the
+  // second one needs an item of its own (#550).
+  viewMenu?.submenu?.append(
+    new MenuItem({
+      role: 'zoomIn',
+      accelerator: 'CommandOrControl+=',
+      visible: false
+    })
+  );
+
   Menu.setApplicationMenu(menu);
 }
 

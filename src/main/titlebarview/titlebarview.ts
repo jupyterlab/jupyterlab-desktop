@@ -25,9 +25,9 @@ export class TitleBarView {
       this._isDarkTheme ? DarkThemeBGColor : LightThemeBGColor
     );
 
-    // prevent Ctrl +/- zoom
+    // prevent Ctrl +/-/= zoom
     this._view.webContents.on('before-input-event', (event, input) => {
-      if (input.control && ['+', '-'].includes(input.key)) {
+      if (input.control && ['+', '-', '='].includes(input.key)) {
         event.preventDefault();
       }
     });
