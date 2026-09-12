@@ -56,6 +56,7 @@ export class ApplicationData {
   }
 
   read() {
+    this.storedURLsRewritten = false;
     const appDataPath = ApplicationData.getAppDataPath();
     if (!fs.existsSync(appDataPath)) {
       return;
@@ -92,6 +93,12 @@ export class ApplicationData {
       for (const session of jsonData.sessions) {
         const sessionConfig = new SessionConfig();
         sessionConfig.deserialize(session);
+        if (
+          typeof session.remoteURL === 'string' &&
+          sessionConfig.remoteURL !== session.remoteURL
+        ) {
+          this.storedURLsRewritten = true;
+        }
         this.sessions.push(sessionConfig);
       }
     }
@@ -108,7 +115,7 @@ export class ApplicationData {
             ? [...recentSession.filesToOpen]
             : [],
           remoteURL: recentSession.remoteURL
-            ? SessionConfig.remoteURLForStorage(recentSession.remoteURL)
+            ? this._canonicalURL(recentSession.remoteURL)
             : recentSession.remoteURL,
           persistSessionData: recentSession.persistSessionData,
           partition: recentSession.partition,
@@ -131,7 +138,7 @@ export class ApplicationData {
     ) {
       for (const remoteURL of jsonData.recentRemoteURLs) {
         this.recentRemoteURLs.push({
-          url: SessionConfig.remoteURLForStorage(remoteURL.url),
+          url: this._canonicalURL(remoteURL.url),
           date: new Date(remoteURL.date)
         });
       }
@@ -342,22 +349,26 @@ export class ApplicationData {
       existing.date = now;
       // update persist info for remote
       if (isRemote) {
+        // the row reads as the new session before the first await: the caller
+        // does not wait for this, and a save that runs while the old partition
+        // is being cleared must not write the old partition and credential
+        const previousPartition = existing.partition;
         existing.persistSessionData = session.persistSessionData;
+        existing.partition = session.partition;
+        existing.encryptedRemoteURL = session.encryptedRemoteURL;
         if (
-          existing.partition &&
-          existing.partition !== session.partition &&
-          existing.partition.startsWith('persist:')
+          previousPartition &&
+          previousPartition !== session.partition &&
+          previousPartition.startsWith('persist:')
         ) {
           try {
             await clearSession(
-              electronSession.fromPartition(existing.partition)
+              electronSession.fromPartition(previousPartition)
             );
           } catch (error) {
             //
           }
         }
-        existing.partition = session.partition;
-        existing.encryptedRemoteURL = session.encryptedRemoteURL;
       }
     } else {
       let filesToOpen = [...(session.filesToOpen || [])];
@@ -505,6 +516,18 @@ export class ApplicationData {
     return path.join(userDataDir, 'app-data.json');
   }
 
+  /**
+   * The canonical form of a URL read from the file, noting when the two
+   * differ so the ready handler knows to write the file back.
+   */
+  private _canonicalURL(stored: string): string {
+    const canonical = SessionConfig.remoteURLForStorage(stored);
+    if (canonical !== stored) {
+      this.storedURLsRewritten = true;
+    }
+    return canonical;
+  }
+
   private _sortRecentItems(items: { date?: Date }[]) {
     items.sort((lhs, rhs) => {
       return rhs.date.valueOf() - lhs.date.valueOf();
@@ -539,6 +562,14 @@ export class ApplicationData {
    * a sign-in.
    */
   removedLegacyRemoteTokens: boolean = false;
+  /**
+   * Set by read() when a stored URL was not in its canonical form. The ready
+   * handler then saves once, so what read() stripped leaves the file on the
+   * first launch. Without it a token that only the dialog list held, because
+   * its recents row was evicted or deleted, would stay in the file until the
+   * next save that happens to run.
+   */
+  storedURLsRewritten: boolean = false;
 
   private _recentSessionsChanged = new Signal<this, void>(this);
 }

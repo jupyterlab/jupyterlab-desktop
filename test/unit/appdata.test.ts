@@ -35,6 +35,7 @@ function resetAppData() {
   appData.sessions = [];
   appData.updateBundledEnvOnRestart = false;
   appData.removedLegacyRemoteTokens = false;
+  appData.storedURLsRewritten = false;
 }
 
 describe('ApplicationData.getAppDataPath', () => {
@@ -133,6 +134,60 @@ describe('ApplicationData.read', () => {
     );
     appData.read();
     expect(appData.recentRemoteURLs[0].url).toBe('not a URL');
+  });
+
+  it('reports a token that only the dialog list held as rewritten', async () => {
+    // the recents row for this server was evicted or deleted, so the dialog
+    // list alone still carries the token and neither migration step sees it;
+    // the startup save has to be told another way
+    const date = new Date('2024-01-01').toISOString();
+    mockFs.existsSync = vi.fn(() => true);
+    mockFs.readFileSync = vi.fn(() =>
+      Buffer.from(
+        JSON.stringify({
+          recentSessions: [{ workingDirectory: '/data/nb', date }],
+          recentRemoteURLs: [
+            { url: 'https://example.com/lab?token=only-here', date }
+          ]
+        })
+      )
+    );
+    appData.read();
+    expect(appData.recentRemoteURLs[0].url).toBe('https://example.com/lab');
+    await expect(appData.mergeDuplicateRecents()).resolves.toBe(false);
+    await expect(appData.migrateRemoteCredentials()).resolves.toBe(false);
+    expect(appData.storedURLsRewritten).toBe(true);
+  });
+
+  it('reports a session stored in another spelling as rewritten', () => {
+    const date = new Date('2024-01-01').toISOString();
+    mockFs.existsSync = vi.fn(() => true);
+    mockFs.readFileSync = vi.fn(() =>
+      Buffer.from(
+        JSON.stringify({
+          sessions: [{ remoteURL: 'https://Example.com/lab', date }]
+        })
+      )
+    );
+    appData.read();
+    expect(appData.sessions[0].remoteURL).toBe('https://example.com/lab');
+    expect(appData.storedURLsRewritten).toBe(true);
+  });
+
+  it('reports nothing rewritten for a file already in canonical form', () => {
+    const date = new Date('2024-01-01').toISOString();
+    mockFs.existsSync = vi.fn(() => true);
+    mockFs.readFileSync = vi.fn(() =>
+      Buffer.from(
+        JSON.stringify({
+          sessions: [{ remoteURL: 'https://example.com/lab', date }],
+          recentSessions: [{ remoteURL: 'https://example.com/lab', date }],
+          recentRemoteURLs: [{ url: 'https://example.com/lab', date }]
+        })
+      )
+    );
+    appData.read();
+    expect(appData.storedURLsRewritten).toBe(false);
   });
 
   it('migrates legacy remote credentials to encrypted session fields', async () => {
@@ -657,6 +712,46 @@ describe('ApplicationData.addSessionToRecents', () => {
     expect(appData.recentSessions[0].date.valueOf()).toBeGreaterThanOrEqual(
       before
     );
+  });
+
+  it('gives an existing row its new partition and credential before clearing the old partition', async () => {
+    // _createSessionForRemoteUrl does not wait for this call, so a save that
+    // runs while the old partition is still being cleared must already see
+    // the row as the new session left it
+    appData.recentSessions = [
+      {
+        remoteURL: 'https://hub.example.com/lab',
+        filesToOpen: [],
+        persistSessionData: true,
+        partition: 'persist:old',
+        encryptedRemoteURL: 'blob-old',
+        date: new Date('2024-01-01')
+      }
+    ];
+    let releaseClear: () => void;
+    const clearing = new Promise<void>(resolve => {
+      releaseClear = resolve;
+    });
+    mockSession.fromPartition.mockReturnValueOnce({
+      clearCache: () => clearing,
+      clearAuthCache: () => Promise.resolve(),
+      clearStorageData: () => Promise.resolve(),
+      flushStorageData: () => Promise.resolve()
+    } as any);
+    const pending = appData.addSessionToRecents({
+      remoteURL: 'https://hub.example.com/lab',
+      filesToOpen: [],
+      persistSessionData: true,
+      partition: 'persist:new',
+      encryptedRemoteURL: 'blob-new'
+    });
+    // the old partition is being cleared, and the row already reads as new
+    expect(mockSession.fromPartition).toHaveBeenCalledWith('persist:old');
+    expect(appData.recentSessions[0].partition).toBe('persist:new');
+    expect(appData.recentSessions[0].encryptedRemoteURL).toBe('blob-new');
+    releaseClear();
+    await pending;
+    expect(appData.recentSessions).toHaveLength(1);
   });
 });
 

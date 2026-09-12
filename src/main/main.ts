@@ -231,7 +231,9 @@ app.on('ready', async () => {
     // merge first, so only the surviving row's legacy token is encrypted
     const mergedRecents = await appData.mergeDuplicateRecents();
     const migratedCredentials = await appData.migrateRemoteCredentials();
-    if (mergedRecents || migratedCredentials) {
+    // a URL that read() already rewrote, such as a token that only the dialog
+    // list held, has to leave the file now and not at whichever save runs next
+    if (mergedRecents || migratedCredentials || appData.storedURLsRewritten) {
       appData.save();
     }
     jupyterApp = new JupyterApplication((argv as unknown) as ICLIArguments);
