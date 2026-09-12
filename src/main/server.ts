@@ -13,7 +13,9 @@ import {
   createTempFile,
   getEnvironmentPath,
   getFreePort,
+  getPixiManifestPathForEnvPath,
   getUserDataDir,
+  getUserHomeDir,
   waitForDuration
 } from './utils';
 import {
@@ -31,6 +33,57 @@ import { ManagePythonEnvironmentDialog } from './pythonenvdialog/pythonenvdialog
 
 const SERVER_LAUNCH_TIMEOUT = 30000; // milliseconds
 const SERVER_RESTART_LIMIT = 3; // max server restarts
+
+interface IPixiEnvironmentInfo {
+  envName: string;
+  manifestPath: string;
+}
+
+function getPixiEnvironmentInfoFromEnvPath(
+  envPath: string
+): IPixiEnvironmentInfo | undefined {
+  const normalizedEnvPath = path.normalize(envPath);
+  const envName = path.basename(normalizedEnvPath);
+  const manifestPath = getPixiManifestPathForEnvPath(normalizedEnvPath);
+  if (!envName || !manifestPath) {
+    return;
+  }
+
+  return {
+    envName,
+    manifestPath
+  };
+}
+
+function getPixiExecutablePath(): string {
+  const pixiExecutableName = process.platform === 'win32' ? 'pixi.exe' : 'pixi';
+  const pathDirs = process.env.PATH
+    ? process.env.PATH.split(path.delimiter)
+    : [];
+  const candidates = pathDirs
+    .filter(dirPath => dirPath)
+    .map(dirPath => path.join(dirPath, pixiExecutableName));
+
+  candidates.push(
+    path.join(getUserHomeDir(), '.pixi', 'bin', pixiExecutableName)
+  );
+
+  for (const candidate of candidates) {
+    if (fs.existsSync(candidate) && fs.statSync(candidate).isFile()) {
+      return candidate;
+    }
+  }
+
+  return '';
+}
+
+function quoteShellArg(value: string, isWin: boolean): string {
+  if (isWin) {
+    return `"${value.replace(/%/g, '%%')}"`;
+  }
+
+  return `'${value.replace(/'/g, `'\\''`)}'`;
+}
 
 function createLaunchScript(
   serverInfo: JupyterServer.IInfo,
@@ -65,6 +118,7 @@ function createLaunchScript(
   }
 
   let script: string;
+  const isPixi = serverInfo.environment.type === IEnvironmentType.PixiEnv;
   const isConda =
     serverInfo.environment.type === IEnvironmentType.CondaRoot ||
     serverInfo.environment.type === IEnvironmentType.CondaEnv;
@@ -109,6 +163,29 @@ function createLaunchScript(
 
   const envActivatePath = activatePathForEnvPath(envPath);
 
+  if (isPixi) {
+    const pixiInfo = getPixiEnvironmentInfoFromEnvPath(envPath);
+    const pixiPath = getPixiExecutablePath();
+    if (!pixiInfo) {
+      throw new Error(
+        `Error: pixi manifest not found for environment: ${envPath}`
+      );
+    }
+    if (!pixiPath) {
+      throw new Error(`Error: pixi executable not found.`);
+    }
+    launchCmd = `${quoteShellArg(
+      pixiPath,
+      isWin
+    )} run --as-is --manifest-path ${quoteShellArg(
+      pixiInfo.manifestPath,
+      isWin
+    )} --environment ${quoteShellArg(
+      pixiInfo.envName,
+      isWin
+    )} --executable ${launchCmd}`;
+  }
+
   if (isWin) {
     if (isConda) {
       const parentDir = path.dirname(condaActivatePath);
@@ -121,6 +198,8 @@ function createLaunchScript(
         ${isBaseCondaActivate ? `CALL conda activate ${envPath}` : ''}
         CALL cd /d "${serverInfo.workingDirectory}"
         CALL ${launchCmd}`;
+    } else if (isPixi) {
+      script = `CALL ${launchCmd}`;
     } else {
       script = `
         CALL ${envActivatePath}
@@ -136,6 +215,8 @@ function createLaunchScript(
             : ''
         }
         ${launchCmd}`;
+    } else if (isPixi) {
+      script = launchCmd;
     } else {
       script = `
         source "${envActivatePath}"
@@ -262,12 +343,18 @@ export class JupyterServer {
           baseCondaEnvPath = condaEnvPathForCondaExePath(condaPath);
         }
 
-        const launchScriptPath = createLaunchScript(
-          this._info,
-          baseCondaEnvPath,
-          this._info.port,
-          this._info.token
-        );
+        let launchScriptPath: string;
+        try {
+          launchScriptPath = createLaunchScript(
+            this._info,
+            baseCondaEnvPath,
+            this._info.port,
+            this._info.token
+          );
+        } catch (error) {
+          reject(error instanceof Error ? error.message : error);
+          return;
+        }
 
         const jlabWorkspacesDir = path.join(
           this._info.workingDirectory,
