@@ -170,6 +170,10 @@ JupyterLab Desktop stores user settings, project settings and application data i
 
   This file contains data used by the application, e.g. recent sessions list, news feed cache, Python environment list cache.
 
+The two files in the application's own directory hold values worth keeping to yourself, such as the tokens carried in remote session URLs, so a file the application creates for the first time is readable only by you. A file that already exists keeps whatever permissions it has, including ones you widened on purpose. The project file is created at your umask default, since a project directory is a place two accounts can share.
+
+These files are written by replacing them, not by editing them in place, so that a crash or a power cut cannot leave one half written. A configuration file that is a symbolic link keeps its link, and the value lands at the other end.
+
 `{jlab-desktop-user-data-dir}` is OS specific and as below
 
 - `%APPDATA%\jupyterlab-desktop` on Windows

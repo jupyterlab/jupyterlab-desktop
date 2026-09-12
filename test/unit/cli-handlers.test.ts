@@ -1,6 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import * as fs from 'fs';
 
+// Hoisted, because a vi.mock factory runs above every const. Hard-coding the workspace save to false left the --project success branch unreachable and the suite green whichever way it went.
+const ws = vi.hoisted(() => ({ saveResult: true }));
+
 vi.mock('fs', async () => {
   const actual = await vi.importActual<typeof import('fs')>('fs');
   return {
@@ -28,7 +31,7 @@ vi.mock('electron', () => ({
 vi.mock('../../src/main/config/appdata', () => ({
   appData: {
     userSetPythonEnvs: [],
-    save: vi.fn()
+    save: vi.fn(() => true)
   },
   ApplicationData: { getSingleton: vi.fn() }
 }));
@@ -36,17 +39,38 @@ vi.mock('../../src/main/config/settings', () => ({
   userSettings: {
     getValue: vi.fn(() => ''),
     setValue: vi.fn(),
-    save: vi.fn()
+    save: vi.fn(() => true),
+    // the config handlers read this to decide whether a key may be overridden per project
+    settings: { theme: { wsOverridable: true } }
   },
   SettingType: {
     pythonPath: 'pythonPath',
     pythonEnvsPath: 'pythonEnvsPath',
     condaPath: 'condaPath',
     condaChannels: 'condaChannels',
-    systemPythonPath: 'systemPythonPath'
+    systemPythonPath: 'systemPythonPath',
+    theme: 'theme'
   },
-  UserSettings: vi.fn(),
-  WorkspaceSettings: vi.fn()
+  UserSettings: Object.assign(vi.fn(), {
+    getUserSettingsPath: vi.fn(() => '/tmp/jlab-test/settings.json')
+  }),
+  resolveWorkingDirectory: vi.fn((dir: string) => dir),
+
+  // an arrow function cannot be used with `new`, and a bare vi.fn() constructs an object with none of the methods the handler calls
+  WorkspaceSettings: Object.assign(
+    vi.fn().mockImplementation(function () {
+      return {
+        setValue: vi.fn(),
+        unsetValue: vi.fn(),
+        save: vi.fn(() => ws.saveResult)
+      };
+    } as any),
+    {
+      getWorkspaceSettingsPath: vi.fn(
+        (dir: string) => `${dir}/.jupyter/desktop-settings.json`
+      )
+    }
+  )
 }));
 vi.mock('../../src/main/utils', () => ({
   getBundledPythonPath: vi.fn(() => '/bundled/python'),
@@ -57,6 +81,7 @@ vi.mock('../../src/main/utils', () => ({
   envPathForPythonPath: vi.fn((pythonPath: string) =>
     pythonPath.replace('/bin/python', '')
   ),
+  configFileIsUnreadable: vi.fn(() => false),
   createCommandScriptInEnv: vi.fn(),
   createTempFile: vi.fn(),
   installCondaPackEnvironment: vi.fn(),
@@ -90,26 +115,35 @@ vi.mock('../../src/main/registry', () => ({ Registry: vi.fn() }));
 
 import {
   addUserSetEnvironment,
+  handleConfigOpenFileCommand,
+  handleConfigSetCommand,
+  handleConfigUnsetCommand,
   handleEnvActivateCommand,
   handleEnvSetCondaChannelsCommand,
   handleEnvSetCondaPathCommand,
   handleEnvSetPythonEnvsPathCommand,
-  handleEnvSetSystemPythonPathCommand
+  handleEnvSetSystemPythonPathCommand,
+  handleEnvUpdateRegistryCommand
 } from '../../src/main/cli';
 import { appData } from '../../src/main/config/appdata';
 import { SettingType, userSettings } from '../../src/main/config/settings';
+import { resolveWorkingDirectory } from '../../src/main/config/settings';
 import * as envModule from '../../src/main/env';
+import * as utilsModule from '../../src/main/utils';
 
 const mockFs = vi.mocked(fs);
 
 beforeEach(() => {
   vi.clearAllMocks();
+  ws.saveResult = true;
   (appData as any).userSetPythonEnvs = [];
-  (appData as any).save = vi.fn();
+  // save() reports whether the write landed now, and the handlers branch on it
+  (appData as any).save = vi.fn(() => true);
   mockFs.existsSync = vi.fn(() => false);
   (userSettings as any).getValue = vi.fn(() => '');
   (userSettings as any).setValue = vi.fn();
-  (userSettings as any).save = vi.fn();
+  (userSettings as any).save = vi.fn(() => true);
+  (utilsModule as any).configFileIsUnreadable = vi.fn(() => false);
   vi.spyOn(envModule, 'validateCondaPath').mockResolvedValue({ valid: true });
   vi.spyOn(envModule, 'validateSystemPythonPath').mockResolvedValue({
     valid: true
@@ -276,6 +310,155 @@ describe('handleEnvSetSystemPythonPathCommand', () => {
   });
 });
 
+// Every one of these branches was unreachable: no test set save() to false, so the suite stayed green without running a line of the reporting the pull request is about, and the module mocks would have died on a TypeError before the first assertion if one had.
+describe('reporting a refused write', () => {
+  const refuseSaves = () => {
+    (userSettings as any).save = vi.fn(() => false);
+    (appData as any).save = vi.fn(() => false);
+    ws.saveResult = false;
+  };
+
+  // every refusal here ends in process.exit, so the whole block needs it stubbed or the first one takes the worker with it
+  let exit: ReturnType<typeof vi.spyOn>;
+  beforeEach(() => {
+    exit = vi
+      .spyOn(process, 'exit')
+      .mockImplementation((() => undefined) as any);
+  });
+  // Waits before restoring, so a deferred exit lands while the stub is still up. Three tests here assert only on the message and never await the flush themselves, and their exits reached the real process.exit after the restore: vitest reported an unhandled error while every test in the file still passed, which is the shape that only showed up once stderr was a pipe on CI.
+  afterEach(() => exit.mockRestore());
+
+  it('says the file could not be written, and does not claim success', async () => {
+    refuseSaves();
+    const err = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    const out = vi.spyOn(console, 'log').mockImplementation(() => undefined);
+    mockFs.existsSync = vi.fn(() => true);
+    vi.spyOn(envModule, 'validateCondaPath').mockResolvedValue({ valid: true });
+
+    await handleEnvSetCondaPathCommand({
+      _: ['set-conda-path', '/usr/bin/conda']
+    });
+
+    expect(err).toHaveBeenCalledWith(
+      expect.stringContaining('Could not write /tmp/jlab-test/settings.json')
+    );
+    expect(out).not.toHaveBeenCalled();
+    err.mockRestore();
+    out.mockRestore();
+  });
+
+  // The read guard and a failed write are different refusals, and only one of them is something the reader can act on, so they must not print the same sentence. A workspace save is refused when the global file is the unreadable one, so the message has to name the global rather than the healthy workspace file it was about to write.
+  it('names the global file when that is what could not be read', async () => {
+    refuseSaves();
+    (utilsModule as any).configFileIsUnreadable = vi.fn(
+      (p: string) => p === '/tmp/jlab-test/settings.json'
+    );
+    const err = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    mockFs.existsSync = vi.fn(() => true);
+
+    await handleConfigSetCommand({
+      _: ['set', 'theme', 'dark'],
+      project: '/data/nb'
+    });
+
+    expect(err).toHaveBeenCalledWith(
+      expect.stringContaining('/tmp/jlab-test/settings.json could not be read')
+    );
+    err.mockRestore();
+  });
+
+  // `jlab config set ... && deploy.sh` runs the deploy either way otherwise: stderr carries the message and the status stays 0, which automation cannot tell from success.
+  //
+  // Asserted on process.exit rather than process.exitCode, because exitCode does not survive Electron's quit and a test for it passes under vitest, which is plain Node. That is the shape this repo calls a green test proving nothing.
+  it('exits non-zero rather than only reporting', async () => {
+    refuseSaves();
+    const err = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    mockFs.existsSync = vi.fn(() => true);
+
+    try {
+      await handleEnvSetCondaPathCommand({
+        _: ['set-conda-path', '/usr/bin/conda']
+      });
+      expect(exit).toHaveBeenCalledWith(1);
+    } finally {
+      err.mockRestore();
+    }
+  });
+
+  // addUserSetEnvironment is not CLI-only: app.ts calls it from the InstallBundledPythonEnv handler. A status left behind there sits on a process that is not exiting, and the app reports the whole session as a failure when the user quits hours later.
+  it('does not exit on a path the GUI also reaches', async () => {
+    refuseSaves();
+    (userSettings as any).getValue = vi.fn(() => '');
+    const err = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    const out = vi.spyOn(console, 'log').mockImplementation(() => undefined);
+    // the bundled python missing is what sends it down to the env's own python and the save below it; with the bundled one present the whole block is skipped and this asserts nothing
+    mockFs.existsSync = vi.fn(
+      (target: any) => String(target) !== '/bundled/python'
+    ) as any;
+
+    try {
+      addUserSetEnvironment('/envs/one', true);
+      expect(exit).not.toHaveBeenCalled();
+      expect(err).toHaveBeenCalled();
+    } finally {
+      err.mockRestore();
+      out.mockRestore();
+    }
+  });
+
+  // CLI-only, so nothing here runs inside the long-lived process and it has the same reason to stop as a refused setting.
+  it('exits non-zero when the registry refresh could not be written', async () => {
+    refuseSaves();
+    const err = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    const out = vi.spyOn(console, 'log').mockImplementation(() => undefined);
+
+    try {
+      await handleEnvUpdateRegistryCommand({ _: ['update-registry'] });
+      expect(exit).toHaveBeenCalledWith(1);
+    } finally {
+      err.mockRestore();
+      out.mockRestore();
+    }
+  });
+
+  // The --project branches of both config handlers: the success one was unreachable because the mock pinned the save to false, and unset was not exported at all.
+  it('reports a project write it could not make, and says so on success', async () => {
+    const err = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    const out = vi.spyOn(console, 'log').mockImplementation(() => undefined);
+    mockFs.existsSync = vi.fn(() => true);
+
+    try {
+      handleConfigUnsetCommand({ _: ['unset', 'theme'], project: '/data/nb' });
+      expect(out).toHaveBeenCalled();
+      expect(exit).not.toHaveBeenCalled();
+
+      refuseSaves();
+      handleConfigUnsetCommand({ _: ['unset', 'theme'], project: '/data/nb' });
+      expect(exit).toHaveBeenCalledWith(1);
+    } finally {
+      err.mockRestore();
+      out.mockRestore();
+    }
+  });
+
+  it('points at the unreadable file instead when that is the reason', async () => {
+    refuseSaves();
+    (utilsModule as any).configFileIsUnreadable = vi.fn(() => true);
+    const err = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    mockFs.existsSync = vi.fn(() => true);
+    vi.spyOn(envModule, 'validateCondaPath').mockResolvedValue({ valid: true });
+
+    await handleEnvSetCondaPathCommand({
+      _: ['set-conda-path', '/usr/bin/conda']
+    });
+
+    expect(err).toHaveBeenCalledWith(
+      expect.stringContaining('could not be read')
+    );
+    err.mockRestore();
+  });
+});
+
 describe('handleEnvSetCondaPathCommand', () => {
   it('sets condaPath when path exists and is valid', async () => {
     mockFs.existsSync = vi.fn(() => true);
@@ -335,5 +518,29 @@ describe('handleEnvActivateCommand', () => {
     );
     errorSpy.mockRestore();
     logSpy.mockRestore();
+  });
+});
+
+// `list` prints settingsFilePathFor and `set` writes through new WorkspaceSettings, both of which resolve; open-file built its path from the raw argument, so for a symlinked --project-path it named a file nothing loads and offered it up to be hand-edited.
+describe('config open-file names the file the app reads', () => {
+  beforeEach(() => {
+    vi.mocked(resolveWorkingDirectory).mockImplementation(() => '/resolved');
+    vi.mocked(fs.existsSync).mockReturnValue(true);
+    // statSync is not in the fs mock factory, so vi.mocked hands back the real one
+    vi.spyOn(fs, 'statSync').mockReturnValue({
+      isDirectory: () => true,
+      isFile: () => true
+    } as any);
+  });
+
+  it('uses the resolved project path, not the argument', () => {
+    const log = vi.spyOn(console, 'log').mockImplementation(() => undefined);
+
+    handleConfigOpenFileCommand({ projectPath: '/link' });
+
+    const printed = log.mock.calls.map(c => String(c[0])).join('\n');
+    expect(printed).toContain('/resolved/.jupyter/desktop-settings.json');
+    expect(printed).not.toContain('/link/.jupyter/desktop-settings.json');
+    log.mockRestore();
   });
 });

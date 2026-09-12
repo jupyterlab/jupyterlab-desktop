@@ -1,8 +1,24 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { constants as fsConstants } from 'node:fs';
 import * as fs from 'fs';
 import * as path from 'path';
 import { app, nativeTheme } from 'electron';
 import log from 'electron-log';
+
+// randomBytes is a named import in the source, so its binding is fixed at import time and reassigning the module does nothing. Hoisted flag, because the factory runs above every const.
+const entropy = vi.hoisted(() => ({ fails: false }));
+vi.mock('crypto', async () => {
+  const actual = await vi.importActual<typeof import('crypto')>('crypto');
+  return {
+    ...actual,
+    randomBytes: (n: number) => {
+      if (entropy.fails) {
+        throw new Error('no entropy');
+      }
+      return actual.randomBytes(n);
+    }
+  };
+});
 
 vi.mock('fs', async () => {
   const actual = await vi.importActual<typeof import('fs')>('fs');
@@ -11,12 +27,21 @@ vi.mock('fs', async () => {
     existsSync: vi.fn(),
     lstatSync: vi.fn(),
     statSync: vi.fn(),
+    openSync: vi.fn(),
+    fsyncSync: vi.fn(),
+    closeSync: vi.fn(),
+    unlinkSync: vi.fn(),
     accessSync: vi.fn(),
     readlinkSync: vi.fn(),
     mkdtempSync: vi.fn(),
     writeFileSync: vi.fn(),
     mkdirSync: vi.fn(),
-    rmSync: vi.fn()
+    rmSync: vi.fn(),
+    readFileSync: vi.fn(),
+    renameSync: vi.fn(),
+    realpathSync: vi.fn(),
+    fchownSync: vi.fn(),
+    fchmodSync: vi.fn()
   };
 });
 vi.mock('net', async () => {
@@ -56,6 +81,7 @@ import {
   getJlabCLICommandTargetPath,
   getLogFilePath,
   getRelativePathToUserHome,
+  getUnreadableConfigFiles,
   getUserHomeDir,
   isBaseCondaEnv,
   isCondaEnv,
@@ -72,9 +98,12 @@ import {
   openDirectoryInExplorer,
   originOf,
   pythonPathForEnvPath,
+  readJsonConfigFile,
+  resetConfigFile,
   versionWithoutSuffix,
   waitForDuration,
-  waitForFunction
+  waitForFunction,
+  writeJsonConfigFile
 } from '../../src/main/utils';
 import * as childProcess from 'child_process';
 import * as net from 'net';
@@ -96,6 +125,16 @@ beforeEach(() => {
   mockFs.writeFileSync = vi.fn();
   mockFs.mkdirSync = vi.fn();
   mockFs.rmSync = vi.fn();
+  mockFs.readFileSync = vi.fn();
+  mockFs.renameSync = vi.fn();
+  // the config writer reaches for these; without a reset here the stubs the write describes install would leak into every test that runs after them
+  mockFs.openSync = vi.fn();
+  mockFs.fsyncSync = vi.fn();
+  mockFs.closeSync = vi.fn();
+  mockFs.unlinkSync = vi.fn();
+  mockFs.realpathSync = vi.fn();
+  mockFs.fchownSync = vi.fn();
+  mockFs.fchmodSync = vi.fn();
 });
 
 describe('isDarkTheme', () => {
@@ -524,7 +563,7 @@ describe('createCommandScriptInEnv', () => {
     // when lstatSync throws, the try-catch swallows it and execution continues;
     // if there's also no activate script, the function returns ''
     mockFs.lstatSync = vi.fn(() => {
-      throw new Error('ENOENT');
+      throw Object.assign(new Error('ENOENT'), { code: 'ENOENT' });
     });
     mockFs.existsSync = vi.fn(() => false);
     expect(createCommandScriptInEnv('/missing', '/base', {})).toBe('');
@@ -864,6 +903,518 @@ describe('isSameServerOrigin', () => {
     expect(isSameServerOrigin('http://localhost:8888/lab', undefined)).toBe(
       false
     );
+  });
+});
+
+// The list of unreadable config files lives for the whole module, so every test below uses a path of its own rather than relying on a reset.
+describe('readJsonConfigFile', () => {
+  it('returns the parsed object for a readable config', () => {
+    mockFs.existsSync = vi.fn(() => true);
+    mockFs.readFileSync = vi.fn(() => Buffer.from('{"theme":"dark"}')) as any;
+
+    expect(readJsonConfigFile('/data/readable.json')).toEqual({
+      theme: 'dark'
+    });
+    expect(getUnreadableConfigFiles()).not.toContain('/data/readable.json');
+  });
+
+  it('returns undefined without marking a file that is not there', () => {
+    mockFs.readFileSync = vi.fn(() => {
+      throw Object.assign(new Error('ENOENT'), { code: 'ENOENT' });
+    }) as any;
+
+    expect(readJsonConfigFile('/data/absent.json')).toBeUndefined();
+    expect(getUnreadableConfigFiles()).not.toContain('/data/absent.json');
+  });
+
+  it('leaves malformed JSON where it is and names it', () => {
+    mockFs.existsSync = vi.fn(() => true);
+    mockFs.readFileSync = vi.fn(() => Buffer.from('{"theme": }')) as any;
+
+    expect(readJsonConfigFile('/data/malformed.json')).toBeUndefined();
+    expect(mockFs.renameSync).not.toHaveBeenCalled();
+    expect(getUnreadableConfigFiles()).toContain('/data/malformed.json');
+  });
+
+  it('names a file it could not read at all', () => {
+    mockFs.existsSync = vi.fn(() => true);
+    mockFs.readFileSync = vi.fn(() => {
+      throw new Error('EACCES');
+    }) as any;
+
+    expect(readJsonConfigFile('/data/locked.json')).toBeUndefined();
+    expect(mockFs.renameSync).not.toHaveBeenCalled();
+    expect(getUnreadableConfigFiles()).toContain('/data/locked.json');
+  });
+
+  it('rejects an array, which callers walk without finding anything', () => {
+    mockFs.existsSync = vi.fn(() => true);
+    mockFs.readFileSync = vi.fn(() => Buffer.from('[]')) as any;
+
+    expect(readJsonConfigFile('/data/array.json')).toBeUndefined();
+    expect(getUnreadableConfigFiles()).toContain('/data/array.json');
+  });
+
+  it('rejects valid JSON that is not an object', () => {
+    mockFs.existsSync = vi.fn(() => true);
+    mockFs.readFileSync = vi.fn(() => Buffer.from('42')) as any;
+
+    expect(readJsonConfigFile('/data/number.json')).toBeUndefined();
+    expect(getUnreadableConfigFiles()).toContain('/data/number.json');
+  });
+});
+
+describe('writeJsonConfigFile', () => {
+  beforeEach(() => {
+    mockFs.openSync = vi.fn(() => 7) as any;
+    mockFs.fsyncSync = vi.fn();
+    mockFs.closeSync = vi.fn();
+    mockFs.unlinkSync = vi.fn();
+    // no file there yet, which is what a first write sees
+    const enoent = () => {
+      throw Object.assign(new Error('ENOENT'), { code: 'ENOENT' });
+    };
+    mockFs.realpathSync = vi.fn(enoent) as any;
+    mockFs.statSync = vi.fn(enoent) as any;
+    mockFs.lstatSync = vi.fn(enoent) as any;
+    mockFs.fchownSync = vi.fn();
+    mockFs.fchmodSync = vi.fn();
+  });
+
+  it('writes through a sibling temporary and renames it over the target', () => {
+    expect(writeJsonConfigFile('/data/write.json', { theme: 'dark' })).toBe(
+      true
+    );
+
+    // The name is unpredictable by design, so the shape is what there is to assert. wx, so a symlink left at that name is refused rather than followed, and 0600 because nothing existed to carry a mode from.
+    expect(mockFs.openSync).toHaveBeenCalledWith(
+      expect.stringMatching(/^\/data\/write\.json\.[0-9a-f]{12}\.tmp$/),
+      'wx',
+      0o600
+    );
+    expect(mockFs.writeFileSync).toHaveBeenCalledWith(
+      7,
+      JSON.stringify({ theme: 'dark' }, null, 2)
+    );
+    expect(mockFs.renameSync).toHaveBeenCalledWith(
+      expect.stringMatching(/^\/data\/write\.json\.[0-9a-f]{12}\.tmp$/),
+      '/data/write.json'
+    );
+  });
+
+  it('carries the existing permissions onto the temporary', () => {
+    mockFs.lstatSync = vi.fn(() => ({
+      isSymbolicLink: () => false,
+      isFile: () => true,
+      mode: 0o100600
+    })) as any;
+
+    writeJsonConfigFile('/data/private.json', {});
+
+    // chmod, not openSync's mode, which the umask narrows on the way through
+    expect(mockFs.fchmodSync).toHaveBeenCalledWith(7, 0o600);
+  });
+
+  // A directory answers 0755, and carrying that onto the temporary would create the file holding app-data.json's tokens world-readable for as long as it exists. Only a regular file has bits worth copying.
+  it('does not take its mode from a directory sitting at the config path', () => {
+    // lstatSync, not statSync: that is what the non-symlink path reads, and mocking the other one made this pass on the 0600 default instead of on the guard.
+    mockFs.lstatSync = vi.fn(() => ({
+      isSymbolicLink: () => false,
+      isFile: () => false,
+      mode: 0o40755
+    })) as any;
+
+    writeJsonConfigFile('/data/app-data.json', {});
+
+    expect(mockFs.openSync).toHaveBeenCalledWith(
+      expect.any(String),
+      'wx',
+      0o600
+    );
+  });
+
+  it('closes the descriptor when the write fails before the rename', () => {
+    mockFs.fsyncSync = vi.fn(() => {
+      throw new Error('EIO');
+    });
+
+    expect(writeJsonConfigFile('/data/eio.json', {})).toBe(false);
+    expect(mockFs.closeSync).toHaveBeenCalledWith(7);
+    expect(mockFs.renameSync).not.toHaveBeenCalled();
+  });
+
+  // closeSync releases the descriptor even when it reports an error, so the catch must not close the same number again: by then it can belong to a file somebody else just opened. The guard is that fd is cleared before the call.
+  it('does not close the descriptor twice when the close itself fails', () => {
+    mockFs.closeSync = vi.fn(() => {
+      throw new Error('EIO');
+    });
+
+    expect(writeJsonConfigFile('/data/badclose.json', {})).toBe(false);
+    expect(mockFs.closeSync).toHaveBeenCalledTimes(1);
+    expect(mockFs.renameSync).not.toHaveBeenCalled();
+  });
+
+  it('carries ownership across when the app is running as root', () => {
+    const realGetuid = process.getuid;
+    (process as any).getuid = () => 0;
+    mockFs.lstatSync = vi.fn(() => ({
+      isSymbolicLink: () => false,
+      isFile: () => true,
+      mode: 0o100600,
+      uid: 501,
+      gid: 20
+    })) as any;
+
+    try {
+      writeJsonConfigFile('/data/owned.json', {});
+    } finally {
+      (process as any).getuid = realGetuid;
+    }
+
+    // through the descriptor: the path form follows a symlink and would hand away whatever it names
+    expect(mockFs.fchownSync).toHaveBeenCalledWith(7, 501, 20);
+  });
+
+  // The lockout this function exists to prevent, in the case it used to return early on: `sudo jlab` with no config yet. Without an existing file to copy from, the containing directory is what the new file has to match, or every later unprivileged run gets EACCES on its own settings.
+  it('carries the directory owner when the file does not exist yet', () => {
+    const realGetuid = process.getuid;
+    (process as any).getuid = () => 0;
+    // nothing at the path: statOrUndefined returns undefined for the file and the stats for its directory
+    mockFs.lstatSync = vi.fn(() => {
+      throw Object.assign(new Error('ENOENT'), { code: 'ENOENT' });
+    }) as any;
+    // the same string the source passes, with no path.resolve of its own: resolve turns the POSIX literal into `\data` on Windows while the source's dirname leaves it `/data`, which is the mismatch this used to fail on
+    mockFs.statSync = vi.fn((target: string) => {
+      if (target === path.dirname('/data/fresh.json')) {
+        return { uid: 501, gid: 20, mode: 0o40755 } as any;
+      }
+      throw Object.assign(new Error('ENOENT'), { code: 'ENOENT' });
+    }) as any;
+
+    try {
+      writeJsonConfigFile('/data/fresh.json', {});
+    } finally {
+      (process as any).getuid = realGetuid;
+    }
+
+    expect(mockFs.fchownSync).toHaveBeenCalledWith(7, 501, 20);
+  });
+
+  it('leaves ownership alone when the app is not root', () => {
+    const realGetuid = process.getuid;
+    (process as any).getuid = () => 501;
+    // lstatSync, the same call the root case above stubs: it is what finds the existing file, and stubbing statSync instead left this returning on the `!existing` branch without ever reaching the check it is named after
+    mockFs.lstatSync = vi.fn(() => ({
+      isSymbolicLink: () => false,
+      isFile: () => true,
+      mode: 0o100600,
+      uid: 501,
+      gid: 20
+    })) as any;
+
+    try {
+      writeJsonConfigFile('/data/unowned.json', {});
+    } finally {
+      (process as any).getuid = realGetuid;
+    }
+
+    // fchownSync, which is what the code calls; asserting on chownSync passed whatever the code did
+    expect(mockFs.fchownSync).not.toHaveBeenCalled();
+  });
+
+  // A filesystem with no fsync is not a filesystem that failed to write. On a CIFS or gvfs home this used to lose every settings change, where master's plain writeFileSync worked, and syncDirectoryEntry already concedes the same case one call below.
+  it('saves anyway when the filesystem does not implement fsync', () => {
+    mockFs.fsyncSync = vi.fn(() => {
+      throw Object.assign(new Error('EINVAL'), { code: 'EINVAL' });
+    }) as any;
+
+    expect(writeJsonConfigFile('/data/nofsync.json', {})).toBe(true);
+    expect(mockFs.renameSync).toHaveBeenCalled();
+  });
+
+  it('fails the save when fsync reports a real I/O error', () => {
+    mockFs.fsyncSync = vi.fn(() => {
+      throw Object.assign(new Error('EIO'), { code: 'EIO' });
+    }) as any;
+
+    // the bytes genuinely may not be there, so publishing the name over the old file would be a lie
+    expect(writeJsonConfigFile('/data/eio-fsync.json', {})).toBe(false);
+    expect(mockFs.renameSync).not.toHaveBeenCalled();
+  });
+
+  // Under sudo the directory this call creates is root's too, so the fallback above would have read root:root and carried it onto the file: `.jupyter` inside a user's project is that case.
+  it('carries ownership onto a directory it had to create', () => {
+    const realGetuid = process.getuid;
+    (process as any).getuid = () => 0;
+    mockFs.lstatSync = vi.fn(() => {
+      throw Object.assign(new Error('ENOENT'), { code: 'ENOENT' });
+    }) as any;
+    mockFs.mkdirSync = vi.fn(() => '/proj/.jupyter') as any;
+    mockFs.statSync = vi.fn((target: string) => {
+      if (target === '/proj') {
+        return { uid: 501, gid: 20, mode: 0o40755 } as any;
+      }
+      throw Object.assign(new Error('ENOENT'), { code: 'ENOENT' });
+    }) as any;
+
+    try {
+      writeJsonConfigFile('/proj/.jupyter/desktop-settings.json', {});
+    } finally {
+      (process as any).getuid = realGetuid;
+    }
+
+    // through a descriptor, not the path: this runs as root over a directory created a moment ago
+    expect(mockFs.fchownSync).toHaveBeenCalledWith(7, 501, 20);
+  });
+
+  // A descriptor is not the guard on its own, which is what the assertion above cannot see: a plain 'r' open resolves a symlink like any path, so root would fchown whatever a swapped-in link names. carryOwnership's fd is safe for a different reason, its O_CREAT|O_EXCL open, and copying the reasoning without the flags left this one open.
+  //
+  // Its own test, skipped rather than made conditional, so the report says which platform did not run it. O_NOFOLLOW is POSIX and `fs.constants` has no such key on Windows, where `f & undefined` is 0 and the assertion compares 0 against undefined. The source is unreachable there anyway, since it returns unless getuid() is 0 and Windows has no getuid, but a silent `if` here would be a test that quietly checks nothing on a third of the matrix.
+  it.skipIf(process.platform === 'win32')(
+    'refuses a symlink where the directory should be',
+    () => {
+      const realGetuid = process.getuid;
+      (process as any).getuid = () => 0;
+      mockFs.lstatSync = vi.fn(() => {
+        throw Object.assign(new Error('ENOENT'), { code: 'ENOENT' });
+      }) as any;
+      mockFs.mkdirSync = vi.fn(() => '/proj/.jupyter') as any;
+      mockFs.statSync = vi.fn((target: string) => {
+        if (target === '/proj') {
+          return { uid: 501, gid: 20, mode: 0o40755 } as any;
+        }
+        throw Object.assign(new Error('ENOENT'), { code: 'ENOENT' });
+      }) as any;
+
+      try {
+        writeJsonConfigFile('/proj/.jupyter/desktop-settings.json', {});
+      } finally {
+        (process as any).getuid = realGetuid;
+      }
+
+      const flags = vi
+        .mocked(mockFs.openSync)
+        .mock.calls.map(call => Number(call[1]))
+        .filter(f => Number.isFinite(f));
+      expect(flags.length).toBeGreaterThan(0);
+      for (const f of flags) {
+        expect(f & fsConstants.O_NOFOLLOW).toBe(fsConstants.O_NOFOLLOW);
+      }
+    }
+  );
+
+  // `wx` exists so an entry already at that name is refused rather than followed, and the cleanup would have deleted it anyway, undoing the guard on the one path where it fired. Unreachable against a real filesystem now that the name is random, which is why it is pinned here.
+  it('does not delete what was already at the temporary name', () => {
+    mockFs.openSync = vi.fn(() => {
+      throw Object.assign(new Error('EEXIST'), { code: 'EEXIST' });
+    }) as any;
+
+    expect(writeJsonConfigFile('/data/collide.json', {})).toBe(false);
+
+    expect(mockFs.unlinkSync).not.toHaveBeenCalled();
+  });
+
+  // The contract the JSDoc states and will-quit depends on: this returns false, it never throws. randomBytes throws when the entropy source is unavailable, and building the temporary name outside the try let that escape, leaving _quit unreached and the app unquittable.
+  it('reports failure rather than throwing when the name cannot be built', () => {
+    entropy.fails = true;
+
+    try {
+      expect(writeJsonConfigFile('/data/noentropy.json', {})).toBe(false);
+    } finally {
+      entropy.fails = false;
+    }
+  });
+
+  it('follows a dangling link to the path it names', () => {
+    mockFs.lstatSync = vi.fn(() => ({ isSymbolicLink: () => true })) as any;
+    // one hop, then the target is not itself a link, which is what a real dangling link gives: readlink on it raises EINVAL
+    let hops = 0;
+    mockFs.readlinkSync = vi.fn(() => {
+      if (hops++ === 0) {
+        return '/dotfiles/settings.json';
+      }
+      throw Object.assign(new Error('EINVAL'), { code: 'EINVAL' });
+    }) as any;
+
+    expect(writeJsonConfigFile('/data/dangling.json', {})).toBe(true);
+
+    // the target the link names, not the link's own directory. Resolved here because a bare '/dotfiles/...' picks up the current drive on Windows.
+    const target = path.resolve('/dotfiles/settings.json');
+    expect(mockFs.renameSync).toHaveBeenCalledWith(
+      expect.stringMatching(/\.[0-9a-f]{12}\.tmp$/),
+      target
+    );
+  });
+
+  it('flushes the directory so the new name survives a power cut', () => {
+    const platform = process.platform;
+    Object.defineProperty(process, 'platform', { value: 'darwin' });
+    mockFs.openSync = vi.fn((target: any) =>
+      String(target).endsWith('.tmp') ? 7 : 9
+    ) as any;
+
+    try {
+      writeJsonConfigFile('/data/dirsync.json', {});
+    } finally {
+      Object.defineProperty(process, 'platform', { value: platform });
+    }
+
+    expect(mockFs.openSync).toHaveBeenCalledWith('/data', 'r');
+    expect(mockFs.fsyncSync).toHaveBeenCalledWith(9);
+    expect(mockFs.closeSync).toHaveBeenCalledWith(9);
+  });
+
+  it('skips the directory flush on Windows, which cannot open one', () => {
+    const platform = process.platform;
+    Object.defineProperty(process, 'platform', { value: 'win32' });
+
+    try {
+      writeJsonConfigFile('/data/win.json', {});
+    } finally {
+      Object.defineProperty(process, 'platform', { value: platform });
+    }
+
+    expect(mockFs.openSync).toHaveBeenCalledTimes(1);
+  });
+
+  it('flushes the contents before publishing the name', () => {
+    writeJsonConfigFile('/data/fsync.json', {});
+
+    expect(mockFs.fsyncSync).toHaveBeenCalledWith(7);
+    expect((mockFs.fsyncSync as any).mock.invocationCallOrder[0]).toBeLessThan(
+      (mockFs.renameSync as any).mock.invocationCallOrder[0]
+    );
+  });
+
+  it('refuses to write a file that could not be read this session', () => {
+    mockFs.existsSync = vi.fn(() => true);
+    mockFs.readFileSync = vi.fn(() => Buffer.from('{')) as any;
+    readJsonConfigFile('/data/refused.json');
+
+    expect(writeJsonConfigFile('/data/refused.json', { theme: 'dark' })).toBe(
+      false
+    );
+    expect(mockFs.openSync).not.toHaveBeenCalled();
+    expect(mockFs.writeFileSync).not.toHaveBeenCalled();
+    expect(mockFs.renameSync).not.toHaveBeenCalled();
+  });
+
+  it('keeps a symlinked config a symlink by writing beside its target', () => {
+    mockFs.lstatSync = vi.fn(() => ({ isSymbolicLink: () => true })) as any;
+    mockFs.realpathSync = vi.fn(() => '/dotfiles/settings.json') as any;
+
+    expect(writeJsonConfigFile('/data/linked.json', { theme: 'dark' })).toBe(
+      true
+    );
+
+    const tempPath = (mockFs.openSync as any).mock.calls[0][0] as string;
+    expect(tempPath).toMatch(/^\/dotfiles\/settings\.json\.[0-9a-f]{12}\.tmp$/);
+    expect(mockFs.openSync).toHaveBeenCalledWith(tempPath, 'wx', 0o600);
+    expect(mockFs.renameSync).toHaveBeenCalledWith(
+      tempPath,
+      '/dotfiles/settings.json'
+    );
+  });
+
+  it('removes the temporary and reports failure instead of throwing', () => {
+    mockFs.renameSync = vi.fn(() => {
+      const error: NodeJS.ErrnoException = new Error('EPERM');
+      error.code = 'EPERM';
+      throw error;
+    }) as any;
+
+    expect(writeJsonConfigFile('/data/busy.json', { theme: 'dark' })).toBe(
+      false
+    );
+    expect(mockFs.unlinkSync).toHaveBeenCalledWith(
+      expect.stringMatching(/^\/data\/busy\.json\.[0-9a-f]{12}\.tmp$/)
+    );
+  });
+});
+
+describe('resetConfigFile', () => {
+  beforeEach(() => {
+    mockFs.openSync = vi.fn(() => 7) as any;
+    mockFs.fsyncSync = vi.fn();
+    mockFs.closeSync = vi.fn();
+    // no file there yet, which is what a first write sees
+    const enoent = () => {
+      throw Object.assign(new Error('ENOENT'), { code: 'ENOENT' });
+    };
+    mockFs.realpathSync = vi.fn(enoent) as any;
+    mockFs.statSync = vi.fn(enoent) as any;
+    mockFs.lstatSync = vi.fn(enoent) as any;
+    mockFs.fchownSync = vi.fn();
+  });
+
+  it('moves the file aside and lets the next write through', () => {
+    mockFs.existsSync = vi.fn(
+      (path: any) => !String(path).includes('.corrupt')
+    );
+    mockFs.readFileSync = vi.fn(() => Buffer.from('{')) as any;
+    readJsonConfigFile('/data/reset.json');
+    expect(writeJsonConfigFile('/data/reset.json', {})).toBe(false);
+
+    expect(resetConfigFile('/data/reset.json')).toBe(true);
+
+    expect(mockFs.renameSync).toHaveBeenCalledWith(
+      '/data/reset.json',
+      '/data/reset.json.corrupt'
+    );
+    expect(getUnreadableConfigFiles()).not.toContain('/data/reset.json');
+    expect(writeJsonConfigFile('/data/reset.json', {})).toBe(true);
+  });
+
+  it('moves the file a symlinked config points at, not the link', () => {
+    mockFs.existsSync = vi.fn(() => false);
+    mockFs.realpathSync = vi.fn(() => '/dotfiles/settings.json') as any;
+
+    expect(resetConfigFile('/data/linked.json')).toBe(true);
+
+    expect(mockFs.renameSync).toHaveBeenCalledWith(
+      '/dotfiles/settings.json',
+      '/dotfiles/settings.json.corrupt'
+    );
+  });
+
+  it('refuses rather than sacrifice a copy once every slot is taken', () => {
+    mockFs.existsSync = vi.fn(() => true);
+
+    expect(resetConfigFile('/data/full.json')).toBe(false);
+
+    // the first copy is the one still holding real settings
+    expect(mockFs.renameSync).not.toHaveBeenCalled();
+  });
+
+  it('treats a file that is already gone as reset', () => {
+    mockFs.existsSync = vi.fn(() => false);
+    mockFs.renameSync = vi.fn(() => {
+      throw Object.assign(new Error('ENOENT'), { code: 'ENOENT' });
+    }) as any;
+
+    expect(resetConfigFile('/data/vanished.json')).toBe(true);
+  });
+
+  it('keeps the copy from an earlier corruption instead of overwriting it', () => {
+    mockFs.existsSync = vi.fn(
+      (path: any) => !String(path).endsWith('.corrupt.1')
+    );
+
+    resetConfigFile('/data/again.json');
+
+    expect(mockFs.renameSync).toHaveBeenCalledWith(
+      '/data/again.json',
+      '/data/again.json.corrupt.1'
+    );
+  });
+
+  it('reports failure when the file could not be moved', () => {
+    mockFs.existsSync = vi.fn(() => false);
+    mockFs.renameSync = vi.fn(() => {
+      throw new Error('EPERM');
+    }) as any;
+
+    expect(resetConfigFile('/data/stuck.json')).toBe(false);
   });
 });
 

@@ -1,5 +1,6 @@
 import { execFileSync, spawn } from 'child_process';
 import {
+  configFileIsUnreadable,
   createCommandScriptInEnv,
   createTempFile,
   EnvironmentInstallStatus,
@@ -21,6 +22,7 @@ import * as path from 'path';
 import { appData, ApplicationData } from './config/appdata';
 import { IEnvironmentType, IPythonEnvironment } from './tokens';
 import {
+  resolveWorkingDirectory,
   SettingType,
   UserSettings,
   userSettings,
@@ -406,7 +408,12 @@ export function addUserSetEnvironment(envPath: string, isConda: boolean) {
     versions: {},
     defaultKernel: 'python3'
   });
-  appData.save();
+  if (!appData.save()) {
+    // the default python path below is written to a different file, so this reports and carries on rather than skipping it. No exit status: this runs in the GUI as well, for the same reason as the call further down.
+    console.error(
+      'Could not write the application data file, so the environment is only added for this run.'
+    );
+  }
 
   // use as the default Python if not exists
   let defaultPythonPath = userSettings.getValue(SettingType.pythonPath);
@@ -416,11 +423,17 @@ export function addUserSetEnvironment(envPath: string, isConda: boolean) {
     if (!fs.existsSync(defaultPythonPath)) {
       defaultPythonPath = pythonPathForEnvPath(envPath, isConda);
       if (fs.existsSync(defaultPythonPath)) {
-        console.log(
-          `Setting "${defaultPythonPath}" as the default Python path`
-        );
         userSettings.setValue(SettingType.pythonPath, defaultPythonPath);
-        userSettings.save();
+        if (userSettings.save()) {
+          console.log(
+            `Setting "${defaultPythonPath}" as the default Python path`
+          );
+        } else {
+          // reached from the GUI too, through app.ts's InstallBundledPythonEnv handler, so it must not leave a status behind on a process that is not exiting
+          reportUnsavedSetting('the default Python path', undefined, {
+            setsExitCode: false
+          });
+        }
       }
     }
   }
@@ -548,7 +561,13 @@ export async function handleEnvUpdateRegistryCommand(argv: any) {
   console.log(`Updating JupyterLab Desktop's Python environment registry...`);
   const registry = new Registry();
   await registry.ready;
-  appData.save();
+  if (!appData.save()) {
+    console.error(
+      'Could not write the application data file, so the refreshed registry is only in memory.'
+    );
+    // CLI-only, unlike addUserSetEnvironment above: app.ts imports only that one and createPythonEnvironment, so nothing here runs inside the long-lived process and `jlab env update-registry && deploy.sh` has the same reason to stop as a refused setting. process.exit, not a deferred exit from a stderr write callback. That was tried and reverted: under plain Node the deferred form does rescue a message queued behind 200 KB of output, which process.exit drops at one pipe buffer, but this ships inside Electron, where main.ts calls app.quit() in the same then. Measured against this repo's electron 42 with stderr on a pipe nobody drains: short output and 60 KB deliver the message and the status either way, while at 200 KB and above the deferred form exits 0 five times out of five, losing the status as well as the message, where the synchronous one keeps the status every time. The truncation above that size is real and is in Remaining; trading the status for it is not a trade worth making, since the status is what `jlab config set ... && deploy.sh` reads.
+    process.exit(1);
+  }
 }
 
 export interface ICreatePythonEnvironmentOptions {
@@ -861,11 +880,54 @@ export async function handleEnvSetPythonEnvsPathCommand(argv: any) {
     return;
   }
 
+  userSettings.setValue(SettingType.pythonEnvsPath, dirPath);
+  if (!userSettings.save()) {
+    reportUnsavedSetting('the Python environment install directory');
+    return;
+  }
+
   console.log(
     `Setting "${dirPath}" as the Python environment install directory`
   );
-  userSettings.setValue(SettingType.pythonEnvsPath, dirPath);
-  userSettings.save();
+}
+
+// resolved the way the constructor does, so the name matches the file that was actually written. That resolution has its own problem, an lstat that sends a symlinked project directory to the home one, and this only keeps the two in step rather than fixing it
+function settingsFilePathFor(projectPath?: string): string {
+  return projectPath
+    ? WorkspaceSettings.getWorkspaceSettingsPath(
+        resolveWorkingDirectory(projectPath)
+      )
+    : UserSettings.getUserSettingsPath();
+}
+
+function reportUnsavedSetting(
+  what: string,
+  projectPath?: string,
+  { setsExitCode = true }: { setsExitCode?: boolean } = {}
+): void {
+  const file = settingsFilePathFor(projectPath);
+
+  // Both files, because a workspace save is refused when the *global* one could not be read: a project override is only persisted when it differs from the user value, and that value comes from the global file. Naming the workspace file there would point the reader at a healthy one and withhold the only actionable half of the message.
+  const unreadable = [
+    file,
+    UserSettings.getUserSettingsPath()
+  ].find(candidate => configFileIsUnreadable(candidate));
+
+  // the refusal is far more often the read guard than a failed write, and only one of the two has something the reader can do about it
+  console.error(
+    unreadable
+      ? `${unreadable} could not be read, so ${what} was not saved. Repair the JSON in it, or move it aside and let a fresh one be written.`
+      : `Could not write ${file}, so ${what} was not saved.`
+  );
+
+  // `jlab config set ... && deploy.sh` runs the deploy either way otherwise: the message goes to stderr and the status stays 0, which automation cannot tell from success.
+  //
+  // process.exit rather than process.exitCode, which does not survive Electron's quit. Measured against the repo's own Electron 42: setting exitCode and calling app.quit() exits 0, while the quit event reports 0 and process.exitCode still reads 1. A test for it passes under vitest, which is plain Node, and proves nothing about the app. getProjectPathForConfigCommand a few lines up already does this, and every caller here returns immediately after.
+  //
+  // Off for the callers that also run inside the long-lived GUI process, where nothing is about to exit and killing it would be worse than a lost setting.
+  if (setsExitCode) {
+    process.exit(1);
+  }
 }
 
 export async function handleEnvSetCondaPathCommand(argv: any) {
@@ -883,16 +945,24 @@ export async function handleEnvSetCondaPathCommand(argv: any) {
     return;
   }
 
-  console.log(`Setting "${condaPath}" as the conda path`);
   userSettings.setValue(SettingType.condaPath, condaPath);
-  userSettings.save();
+  if (!userSettings.save()) {
+    reportUnsavedSetting('the conda path');
+    return;
+  }
+
+  console.log(`Setting "${condaPath}" as the conda path`);
 }
 
 export async function handleEnvSetCondaChannelsCommand(argv: any) {
   const channelList = argv._.slice(1);
-  console.log(`Setting conda channels to "${channelList.join(' ')}"`);
   userSettings.setValue(SettingType.condaChannels, channelList);
-  userSettings.save();
+  if (!userSettings.save()) {
+    reportUnsavedSetting('the conda channels');
+    return;
+  }
+
+  console.log(`Setting conda channels to "${channelList.join(' ')}"`);
 }
 
 export async function handleEnvSetSystemPythonPathCommand(argv: any) {
@@ -910,9 +980,13 @@ export async function handleEnvSetSystemPythonPathCommand(argv: any) {
     return;
   }
 
-  console.log(`Setting "${systemPythonPath}" as the system Python path`);
   userSettings.setValue(SettingType.systemPythonPath, systemPythonPath);
-  userSettings.save();
+  if (!userSettings.save()) {
+    reportUnsavedSetting('the system Python path');
+    return;
+  }
+
+  console.log(`Setting "${systemPythonPath}" as the system Python path`);
 }
 
 function getProjectPathForConfigCommand(argv: any): string | undefined {
@@ -943,9 +1017,7 @@ function handleConfigListCommand(argv: any) {
   listLines.push('Project / Workspace settings');
   listLines.push('============================');
   listLines.push(`[Project path: ${projectPath}]`);
-  listLines.push(
-    `[Source file: ${WorkspaceSettings.getWorkspaceSettingsPath(projectPath)}]`
-  );
+  listLines.push(`[Source file: ${settingsFilePathFor(projectPath)}]`);
   listLines.push('\nSettings');
   listLines.push('========');
 
@@ -982,7 +1054,7 @@ function handleConfigListCommand(argv: any) {
   console.log(listLines.join('\n'));
 }
 
-function handleConfigSetCommand(argv: any) {
+export function handleConfigSetCommand(argv: any) {
   const parseSetting = (): { key: string; value: string } => {
     if (argv._.length !== 3) {
       console.error(`Invalid setting. Use "set <settingKey> <value>" format.`);
@@ -1028,6 +1100,7 @@ function handleConfigSetCommand(argv: any) {
     return;
   }
 
+  let saved: boolean;
   if (projectPath) {
     const setting = userSettings.settings[key];
     if (!setting.wsOverridable) {
@@ -1037,10 +1110,15 @@ function handleConfigSetCommand(argv: any) {
 
     const wsSettings = new WorkspaceSettings(projectPath);
     wsSettings.setValue(key as SettingType, value);
-    wsSettings.save();
+    saved = wsSettings.save();
   } else {
     userSettings.setValue(key as SettingType, value);
-    userSettings.save();
+    saved = userSettings.save();
+  }
+
+  if (!saved) {
+    reportUnsavedSetting(`"${key}"`, projectPath);
+    return;
   }
 
   console.log(
@@ -1050,7 +1128,7 @@ function handleConfigSetCommand(argv: any) {
   );
 }
 
-function handleConfigUnsetCommand(argv: any) {
+export function handleConfigUnsetCommand(argv: any) {
   const parseKey = (): string => {
     if (argv._.length !== 2) {
       console.error(`Invalid setting. Use "unset <settingKey>" format.`);
@@ -1073,6 +1151,7 @@ function handleConfigUnsetCommand(argv: any) {
     return;
   }
 
+  let saved: boolean;
   if (projectPath) {
     const setting = userSettings.settings[key];
     if (!setting.wsOverridable) {
@@ -1082,10 +1161,15 @@ function handleConfigUnsetCommand(argv: any) {
 
     const wsSettings = new WorkspaceSettings(projectPath);
     wsSettings.unsetValue(key as SettingType);
-    wsSettings.save();
+    saved = wsSettings.save();
   } else {
     userSettings.unsetValue(key as SettingType);
-    userSettings.save();
+    saved = userSettings.save();
+  }
+
+  if (!saved) {
+    reportUnsavedSetting(`the reset of "${key}"`, projectPath);
+    return;
   }
 
   console.log(
@@ -1095,11 +1179,10 @@ function handleConfigUnsetCommand(argv: any) {
   );
 }
 
-function handleConfigOpenFileCommand(argv: any) {
+export function handleConfigOpenFileCommand(argv: any) {
   const projectPath = getProjectPathForConfigCommand(argv);
-  const settingsFilePath = projectPath
-    ? WorkspaceSettings.getWorkspaceSettingsPath(projectPath)
-    : UserSettings.getUserSettingsPath();
+  // settingsFilePathFor, the same resolution `list` prints and `set` writes through: WorkspaceSettings resolves in its own constructor, so the resolved path is the file the app actually reads whether or not the resolution is right. Building this one from the unresolved argument instead would open a file nothing loads, and the point of this command is to hand-edit the one that counts. resolveWorkingDirectory's lstatSync collapses a symlinked project directory to $HOME, which is #1114's; while it does, all three commands are wrong about the same file rather than each about a different one.
+  const settingsFilePath = settingsFilePathFor(projectPath);
 
   console.log(`Settings file path: ${settingsFilePath}`);
 

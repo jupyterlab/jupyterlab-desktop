@@ -3,7 +3,14 @@
 
 import * as path from 'path';
 import * as fs from 'fs';
-import { getUserDataDir, getUserHomeDir } from '../utils';
+import log from 'electron-log';
+import {
+  configFileIsUnreadable,
+  getUserDataDir,
+  getUserHomeDir,
+  readJsonConfigFile,
+  writeJsonConfigFile
+} from '../utils';
 
 export const DEFAULT_WIN_WIDTH = 1024;
 export const DEFAULT_WIN_HEIGHT = 768;
@@ -207,11 +214,10 @@ export class UserSettings {
 
   read() {
     const userSettingsPath = UserSettings.getUserSettingsPath();
-    if (!fs.existsSync(userSettingsPath)) {
+    const jsonData = readJsonConfigFile(userSettingsPath);
+    if (!jsonData) {
       return;
     }
-    const data = fs.readFileSync(userSettingsPath);
-    const jsonData = JSON.parse(data.toString());
 
     for (let key in SettingType) {
       if (key in jsonData) {
@@ -221,7 +227,7 @@ export class UserSettings {
     }
   }
 
-  save() {
+  save(): boolean {
     const userSettingsPath = UserSettings.getUserSettingsPath();
     const userSettings: { [key: string]: any } = {};
 
@@ -232,7 +238,7 @@ export class UserSettings {
       }
     }
 
-    fs.writeFileSync(userSettingsPath, JSON.stringify(userSettings, null, 2));
+    return writeJsonConfigFile(userSettingsPath, userSettings);
   }
 
   get resolvedWorkingDirectory(): string {
@@ -286,11 +292,10 @@ export class WorkspaceSettings extends UserSettings {
     const wsSettingsPath = WorkspaceSettings.getWorkspaceSettingsPath(
       this._workingDirectory
     );
-    if (!fs.existsSync(wsSettingsPath)) {
+    const jsonData = readJsonConfigFile(wsSettingsPath);
+    if (!jsonData) {
       return;
     }
-    const data = fs.readFileSync(wsSettingsPath);
-    const jsonData = JSON.parse(data.toString());
 
     for (let key in SettingType) {
       if (key in jsonData) {
@@ -303,7 +308,20 @@ export class WorkspaceSettings extends UserSettings {
     }
   }
 
-  save() {
+  save(): boolean {
+    // A project override is persisted only when it differs from the user value, and the user value comes from the global settings.json. Unreadable, that read yields defaults, so an override that happens to equal a default stops looking like an override and would be dropped from a workspace file that is perfectly readable. Refuse instead: this file's correctness depends on one we could not read, which is the same reason the writer refuses the marked file itself.
+    //
+    // Including uiMode, which is exempt from that comparison twelve lines below and would survive it. The refusal is not about one key: save() rebuilds the whole file from what the comparison produced, so writing it at all to persist uiMode would drop every other override in the same breath. Losing the Zen toggle for the run is the smaller of the two.
+    if (configFileIsUnreadable(UserSettings.getUserSettingsPath())) {
+      // logged rather than only returned: all three GUI callers discard the boolean, so without this the refusal reaches nobody at all
+      log.error(
+        `Not writing ${WorkspaceSettings.getWorkspaceSettingsPath(
+          this._workingDirectory
+        )}, the user settings it is compared against could not be read this session`
+      );
+      return false;
+    }
+
     const wsSettingsPath = WorkspaceSettings.getWorkspaceSettingsPath(
       this._workingDirectory
     );
@@ -324,12 +342,13 @@ export class WorkspaceSettings extends UserSettings {
     }
 
     // Write when there is something to persist, or when a previous file needs
-    // to be cleared. mkdir is unconditional: recursive mode is a no-op when the
-    // directory already exists, and checking first only opens a race window.
+    // to be cleared. The directory is created by the writer.
     if (Object.keys(wsSettings).length > 0 || fs.existsSync(wsSettingsPath)) {
-      fs.mkdirSync(path.dirname(wsSettingsPath), { recursive: true });
-      fs.writeFileSync(wsSettingsPath, JSON.stringify(wsSettings, null, 2));
+      // 'umask' rather than the 0600 default: this one lives in the user's project, not in the app's own directory, it holds no token, and a project directory shared between two accounts is a real place for it to be. master created it this way.
+      return writeJsonConfigFile(wsSettingsPath, wsSettings, 'umask');
     }
+
+    return true;
   }
 
   private _isDifferentThanUserSetting(setting: SettingType): boolean {

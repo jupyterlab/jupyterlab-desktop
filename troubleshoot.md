@@ -239,6 +239,8 @@ Application launch might fail for various reasons and it is best to check logs f
 4. Try removing application cache data from `app-data.json`. Retry launch and check logs.
 5. Try to launch using `jlab --log-level debug` CLI command to check if there are any logs output in system Terminal.
 
+If you edit one of these files by hand and leave it with invalid JSON, the application still starts, but it starts on defaults and refuses to write that file for the rest of the run, so any setting you change afterwards is discarded when you quit. The log says which file it could not read. Repair the JSON in it, or move it aside and let a fresh one be written, then restart.
+
 ## Reverting to an older version and disabling auto-update
 
 JupyterLab Desktop automatically downloads and installs new versions on some platforms. If newer versions are causing compatibility issues or other problems you can reinstall an older version. Follow the steps below to disable auto-updates, and revert to an older version.

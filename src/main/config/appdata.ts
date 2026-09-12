@@ -2,8 +2,12 @@
 // Distributed under the terms of the Modified BSD License.
 
 import * as path from 'path';
-import * as fs from 'fs';
-import { clearSession, getUserDataDir } from '../utils';
+import {
+  clearSession,
+  getUserDataDir,
+  readJsonConfigFile,
+  writeJsonConfigFile
+} from '../utils';
 import { IPythonEnvironment } from '../tokens';
 import { SessionConfig } from './sessionconfig';
 import { session as electronSession } from 'electron';
@@ -55,11 +59,10 @@ export class ApplicationData {
 
   read() {
     const appDataPath = ApplicationData.getAppDataPath();
-    if (!fs.existsSync(appDataPath)) {
+    const jsonData = readJsonConfigFile(appDataPath);
+    if (!jsonData) {
       return;
     }
-    const data = fs.readFileSync(appDataPath);
-    const jsonData = JSON.parse(data.toString());
 
     if ('pythonPath' in jsonData) {
       this.pythonPath = jsonData.pythonPath;
@@ -175,7 +178,7 @@ export class ApplicationData {
     }
   }
 
-  save() {
+  save(): boolean {
     const appDataPath = ApplicationData.getAppDataPath();
     const appDataJSON: { [key: string]: any } = {};
 
@@ -253,7 +256,7 @@ export class ApplicationData {
       appDataJSON.updateBundledEnvOnRestart = true;
     }
 
-    fs.writeFileSync(appDataPath, JSON.stringify(appDataJSON, null, 2));
+    return writeJsonConfigFile(appDataPath, appDataJSON);
   }
 
   addRemoteURLToRecents(url: string) {
