@@ -1,19 +1,22 @@
-import { app, Menu, MenuItem } from 'electron';
+import { app, BrowserWindow, dialog, Menu, MenuItem, shell } from 'electron';
 
 // Update paths to prevent Snap saving persistent data to version specific paths.
 // (Must be called before any other initialization)
 updatePathsForSnap();
 
 import * as fs from 'fs';
+import * as path from 'path';
 import * as semver from 'semver';
 import {
   bundledEnvironmentIsInstalled,
   EnvironmentInstallStatus,
   getBundledPythonEnvPath,
   getBundledPythonPath,
+  getUnreadableConfigFiles,
   installBundledEnvironment,
   isDevMode,
   jlabCLICommandIsSetup,
+  resetConfigFile,
   setupJlabCommandWithUserRights,
   versionWithoutSuffix,
   waitForDuration,
@@ -229,11 +232,107 @@ app.on('ready', async () => {
     createPythonEnvsDirectory();
     argv.cwd = process.cwd();
     jupyterApp = new JupyterApplication((argv as unknown) as ICLIArguments);
+    reportUnreadableConfig();
   } catch (error) {
     log.error(error);
     app.quit();
   }
 });
+
+/**
+ * Say so when config could not be read. Falling back to defaults is not a neutral act: which interpreter runs, which conda channels packages come from, and whether updates install by themselves all revert with it, so this is worth interrupting for rather than leaving in a log nobody opens.
+ */
+function reportUnreadableConfig(): void {
+  const files = getUnreadableConfigFiles();
+  if (files.length === 0) {
+    return;
+  }
+
+  const fileList = files.join('\n');
+  const them = files.length === 1 ? 'it' : 'them';
+  const detail =
+    `Nothing has been moved or deleted, and settings will not be saved over ` +
+    `${them} while this session runs.\n\n${fileList}\n\n` +
+    `Repair the JSON and restart to pick the values back up, or use Reset to ` +
+    `Defaults below, which moves ${them} aside with a .corrupt suffix and ` +
+    `saves normally from then on.`;
+
+  // Waits for a window and hands it over as the parent. Electron's dialog docs note that on macOS a message box with no parent "runs synchronously due to platform limitations", so showing this before the first window blocks the whole startup until somebody clicks: an app launched at login or over a remote session never comes up, and the e2e harness cannot get past it.
+  firstWindow()
+    .then(parent =>
+      dialog.showMessageBox(parent, {
+        type: 'warning',
+        title: 'Configuration could not be read',
+        message:
+          files.length === 1
+            ? 'A configuration file could not be read, so this session started with defaults.'
+            : 'Some configuration files could not be read, so this session started with defaults.',
+        detail,
+        buttons: ['Show in Folder', 'Reset to Defaults', 'Continue'],
+        defaultId: 2,
+        cancelId: 2
+      })
+    )
+    .then(({ response }) => {
+      if (response === 0) {
+        revealConfigFiles(files);
+      } else if (response === 1) {
+        reportFailedResets(files.filter(file => !resetConfigFile(file)));
+      }
+    })
+    .catch(error =>
+      log.error('Could not show the unreadable configuration notice', error)
+    );
+}
+
+/**
+ * The parent a message box needs so that showing it does not block startup. Bounded, and destroyed windows are skipped: the notice is worth losing to the log, and a parent that has gone away leaves the box without one, which is the case that hangs.
+ */
+async function firstWindow(): Promise<BrowserWindow> {
+  await waitForFunction(() => liveWindows().length > 0, 30000);
+  // the focused one first: several windows are up by now, and attaching to a transient one means the sheet closes with it before anybody reads it
+  const focused = BrowserWindow.getFocusedWindow();
+  const parent = focused && !focused.isDestroyed() ? focused : liveWindows()[0];
+  if (!parent) {
+    throw new Error('every window closed before the notice could be shown');
+  }
+  return parent;
+}
+
+function liveWindows(): BrowserWindow[] {
+  return BrowserWindow.getAllWindows().filter(win => !win.isDestroyed());
+}
+
+function revealConfigFiles(files: readonly string[]): void {
+  try {
+    // one window per folder, since two config files can share a directory
+    new Map(
+      files.map(filePath => [path.dirname(filePath), filePath])
+    ).forEach(filePath => shell.showItemInFolder(filePath));
+  } catch (error) {
+    log.error('Could not reveal the configuration files', error);
+  }
+}
+
+function reportFailedResets(stuck: string[]): void {
+  if (stuck.length === 0) {
+    return;
+  }
+
+  firstWindow()
+    .then(parent =>
+      dialog.showMessageBox(parent, {
+        type: 'error',
+        title: 'Configuration could not be moved aside',
+        message:
+          stuck.length === 1
+            ? 'The file is still in place, so this session keeps its defaults.'
+            : 'The files are still in place, so this session keeps its defaults.',
+        detail: `${stuck.join('\n')}\n\nSee the log for the reason.`
+      })
+    )
+    .catch(error => log.error('Could not show the failed reset notice', error));
+}
 
 function processArgs(): Promise<void> {
   return new Promise<void>(resolve => {

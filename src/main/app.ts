@@ -44,6 +44,7 @@ import {
   resolveWorkingDirectory,
   SettingType,
   StartupMode,
+  UserSettings,
   userSettings
 } from './config/settings';
 import {
@@ -708,8 +709,13 @@ export class JupyterApplication implements IApplication, IDisposable {
 
     app.on('will-quit', event => {
       event.preventDefault();
-      appData.save();
-      userSettings.save();
+      // preventDefault is already in effect, so anything that escapes here leaves the app unable to close at all
+      try {
+        appData.save();
+        userSettings.save();
+      } catch (error) {
+        log.error('Failed to save on quit', error);
+      }
 
       this._quit();
     });
@@ -910,7 +916,7 @@ export class JupyterApplication implements IApplication, IDisposable {
       EventTypeMain.SetPythonEnvironmentInstallDirectory,
       async (event, dirPath) => {
         userSettings.setValue(SettingType.pythonEnvsPath, dirPath);
-        userSettings.save();
+        this._saveUserSettingsOrWarn(event.sender);
       }
     );
 
@@ -918,7 +924,7 @@ export class JupyterApplication implements IApplication, IDisposable {
       EventTypeMain.SetCondaPath,
       async (event, condaPath) => {
         userSettings.setValue(SettingType.condaPath, condaPath);
-        userSettings.save();
+        this._saveUserSettingsOrWarn(event.sender);
       }
     );
 
@@ -928,7 +934,7 @@ export class JupyterApplication implements IApplication, IDisposable {
         const channelList =
           condaChannels.trim() === '' ? [] : condaChannels.split(' ');
         userSettings.setValue(SettingType.condaChannels, channelList);
-        userSettings.save();
+        this._saveUserSettingsOrWarn(event.sender);
       }
     );
 
@@ -936,7 +942,7 @@ export class JupyterApplication implements IApplication, IDisposable {
       EventTypeMain.SetSystemPythonPath,
       async (event, pythonPath) => {
         userSettings.setValue(SettingType.systemPythonPath, pythonPath);
-        userSettings.save();
+        this._saveUserSettingsOrWarn(event.sender);
       }
     );
 
@@ -1087,7 +1093,7 @@ export class JupyterApplication implements IApplication, IDisposable {
       EventTypeMain.SetDefaultPythonPath,
       (event, path) => {
         userSettings.setValue(SettingType.pythonPath, path);
-        userSettings.save();
+        this._saveUserSettingsOrWarn(event.sender);
         this._registry.setDefaultPythonPath(path);
       }
     );
@@ -1376,6 +1382,33 @@ export class JupyterApplication implements IApplication, IDisposable {
         }
         console.error('Failed to check for updates:', error);
       });
+  }
+
+  /**
+   * A refused write is silent otherwise: the dialog closes as if the change took, and the only trace is a log line. The CLI reports the same case.
+   */
+  private _saveUserSettingsOrWarn(sender: Electron.WebContents): void {
+    if (userSettings.save()) {
+      return;
+    }
+
+    const options: Electron.MessageBoxOptions = {
+      type: 'warning',
+      title: 'Setting was not saved',
+      message:
+        'The settings file could not be written, so the change will be lost when the app closes.',
+      detail: `${UserSettings.getUserSettingsPath()}\n\nSee the log for the reason. A file that could not be read at startup is left alone until it is repaired or reset.`
+    };
+
+    // Parented, always. Electron's own note on the signal option says a message box without a parent "runs synchronously due to platform limitations" on macOS, and this is called from inside an IPC handler, so a parentless one freezes every window until somebody clicks a box nobody went looking for. A sender whose window is already gone gets any other live window rather than the parentless call, and the log if there is none.
+    const parent =
+      BrowserWindow.fromWebContents(sender) ??
+      BrowserWindow.getAllWindows().find(win => !win.isDestroyed());
+    if (!parent) {
+      log.error(`Could not write ${UserSettings.getUserSettingsPath()}`);
+      return;
+    }
+    dialog.showMessageBox(parent, options).catch(error => log.error(error));
   }
 
   private _quit(): void {
