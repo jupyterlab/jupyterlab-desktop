@@ -15,6 +15,7 @@ vi.mock('fs', async () => {
 });
 
 import {
+  resetUnreadableReports,
   SettingType,
   ThemeType,
   UIMode,
@@ -22,6 +23,11 @@ import {
 } from '../../src/main/config/settings';
 
 const mockFs = vi.mocked(fs);
+
+// The reported-unreadable set is module state and outlives a test, so without this a later one inherits a path already reported and reads as silent.
+beforeEach(() => {
+  resetUnreadableReports();
+});
 
 describe('WorkspaceSettings.getWorkspaceSettingsPath', () => {
   it('returns .jupyter/desktop-settings.json inside working dir', () => {
@@ -34,12 +40,12 @@ describe('WorkspaceSettings.getWorkspaceSettingsPath', () => {
   });
 });
 
-describe('WorkspaceSettings — no workspace file', () => {
+describe('WorkspaceSettings, no workspace file', () => {
   beforeEach(() => {
     // user settings file does not exist, workspace settings file does not exist
     mockFs.existsSync = vi.fn(() => false);
     mockFs.readFileSync = vi.fn(() => {
-      throw new Error('ENOENT');
+      throw Object.assign(new Error('ENOENT'), { code: 'ENOENT' });
     });
   });
 
@@ -60,7 +66,7 @@ describe('WorkspaceSettings — no workspace file', () => {
   });
 });
 
-describe('WorkspaceSettings — with workspace file', () => {
+describe('WorkspaceSettings, with workspace file', () => {
   beforeEach(() => {
     mockFs.existsSync = vi.fn((p: fs.PathLike) => {
       return p.toString().includes('desktop-settings.json');
@@ -72,7 +78,7 @@ describe('WorkspaceSettings — with workspace file', () => {
           JSON.stringify({ serverArgs: '--no-browser', uiMode: 'zen' })
         );
       }
-      throw new Error('ENOENT');
+      throw Object.assign(new Error('ENOENT'), { code: 'ENOENT' });
     });
   });
 
@@ -107,7 +113,7 @@ describe('WorkspaceSettings setValue / unsetValue', () => {
   beforeEach(() => {
     mockFs.existsSync = vi.fn(() => false);
     mockFs.readFileSync = vi.fn(() => {
-      throw new Error('ENOENT');
+      throw Object.assign(new Error('ENOENT'), { code: 'ENOENT' });
     });
   });
 
@@ -138,7 +144,7 @@ describe('WorkspaceSettings save', () => {
   beforeEach(() => {
     mockFs.existsSync = vi.fn(() => false);
     mockFs.readFileSync = vi.fn(() => {
-      throw new Error('ENOENT');
+      throw Object.assign(new Error('ENOENT'), { code: 'ENOENT' });
     });
     mockFs.writeFileSync = vi.fn();
     mockFs.mkdirSync = vi.fn();
@@ -156,6 +162,29 @@ describe('WorkspaceSettings save', () => {
     expect(parsed.uiMode).toBe(UIMode.Zen);
   });
 
+  // The twin of the UserSettings case in settings.test.ts, and it was the only one of the two guards no test could see: mutating this refusal away left the whole suite green. A project's desktop-settings.json that becomes unreadable between the read and the save would then be rebuilt from whatever survived, which is the loss the merge exists to prevent.
+  it('leaves a workspace file alone when it is there and could not be read', () => {
+    mockFs.existsSync = vi.fn(() => true);
+    let projectReads = 0;
+    mockFs.readFileSync = vi.fn((target: any) => {
+      // super.read() reads the global file first, and only the project one is the subject here
+      if (!String(target).includes('desktop-settings.json')) {
+        return Buffer.from('{}');
+      }
+      if (projectReads++ === 0) {
+        return Buffer.from('{"uiMode":"zen"}');
+      }
+      throw Object.assign(new Error('EBUSY'), { code: 'EBUSY' });
+    }) as any;
+    mockFs.writeFileSync = vi.fn();
+
+    const ws = new WorkspaceSettings('/data/nb');
+    ws.setValue(SettingType.uiMode, UIMode.MultiDocument);
+
+    expect(ws.save()).toBe(false);
+    expect(mockFs.writeFileSync).not.toHaveBeenCalled();
+  });
+
   it('creates parent directory when it does not exist', () => {
     const ws = new WorkspaceSettings('/data/nb');
     ws.setValue(SettingType.uiMode, UIMode.Zen);
@@ -167,5 +196,93 @@ describe('WorkspaceSettings save', () => {
     const ws = new WorkspaceSettings('/data/nb');
     ws.save();
     expect(mockFs.writeFileSync).not.toHaveBeenCalled();
+  });
+});
+
+describe('WorkspaceSettings, keys it does not claim', () => {
+  const written = () =>
+    JSON.parse(vi.mocked(fs.writeFileSync).mock.calls[0][1] as string);
+
+  beforeEach(() => {
+    mockFs.existsSync = vi.fn(() => true);
+    mockFs.writeFileSync = vi.fn();
+    mockFs.mkdirSync = vi.fn();
+    mockFs.readFileSync = vi.fn((p: fs.PathLike | fs.promises.FileHandle) => {
+      if (p.toString().includes('desktop-settings.json')) {
+        // uiMode is overridable, theme is not, futureProjectSetting is unknown
+        return Buffer.from(
+          JSON.stringify({
+            uiMode: 'zen',
+            theme: 'dark',
+            futureProjectSetting: 7
+          })
+        );
+      }
+      return Buffer.from(JSON.stringify({ futureGlobalSetting: 42 }));
+    });
+  });
+
+  it('writes back a key this build has no setting for', () => {
+    const ws = new WorkspaceSettings('/data/nb');
+
+    ws.save();
+
+    expect(written().futureProjectSetting).toBe(7);
+  });
+
+  it('writes back a key that is not overridable by a project', () => {
+    const ws = new WorkspaceSettings('/data/nb');
+
+    ws.save();
+
+    // meaningless in a project file, but deleting somebody's line is worse
+    expect(written().theme).toBe('dark');
+  });
+
+  it('keeps the global file-s leftovers out of the project file', () => {
+    const ws = new WorkspaceSettings('/data/nb');
+
+    ws.save();
+
+    // super.read() fills the base class from settings.json, and this class writes desktop-settings.json: one set each, or they cross over
+    expect('futureGlobalSetting' in written()).toBe(false);
+  });
+
+  it('writes a value set after that key was unset', () => {
+    const ws = new WorkspaceSettings('/data/nb');
+
+    ws.unsetValue(SettingType.uiMode);
+    ws.setValue(SettingType.uiMode, UIMode.SingleDocument);
+    ws.save();
+
+    // setting a key again has to undo the pending removal, or the write is dropped and the menu action silently does nothing
+    expect(written().uiMode).toBe(UIMode.SingleDocument);
+  });
+
+  it('drops an override that no longer differs from the global value', () => {
+    // only the project file holds it, or super.read() picks the same value up as the global one and the two no longer differ for the wrong reason
+    mockFs.readFileSync = vi.fn((p: fs.PathLike | fs.promises.FileHandle) =>
+      p.toString().includes('desktop-settings.json')
+        ? Buffer.from(JSON.stringify({ serverArgs: '--no-browser' }))
+        : Buffer.from('{}')
+    ) as any;
+    const ws = new WorkspaceSettings('/data/nb');
+    expect(ws.getValue(SettingType.serverArgs)).toBe('--no-browser');
+
+    // serverArgs is overridable and the global default is ''
+    ws.setValue(SettingType.serverArgs, '');
+    ws.save();
+
+    expect('serverArgs' in written()).toBe(false);
+  });
+
+  it('drops a leftover when that key is explicitly unset', () => {
+    const ws = new WorkspaceSettings('/data/nb');
+
+    // uiMode, because the CLI refuses a key a project cannot override, so a non-overridable one is not a reachable input to unsetValue here
+    ws.unsetValue(SettingType.uiMode);
+    ws.save();
+
+    expect('uiMode' in written()).toBe(false);
   });
 });
