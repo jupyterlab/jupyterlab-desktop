@@ -30,6 +30,7 @@ export class WelcomeView {
   constructor(options: WelcomeView.IOptions) {
     this._registry = options.registry;
     this._isDarkTheme = options.isDarkTheme;
+    this._notification = options.notification ?? '';
     this._view = new WebContentsView({
       webPreferences: {
         preload: path.join(__dirname, './preload.js'),
@@ -772,7 +773,9 @@ export class WelcomeView {
       .getDefaultEnvironment()
       .then(() => {
         this.enableLocalServerActions(true);
-        this.showNotification('', false);
+        // falls back to the notice the caller passed in, if any: this runs on
+        // every environment list change and would otherwise clear it
+        this.showNotification(this._notification, this._notification !== '');
       })
       .catch(() => {
         this.enableLocalServerActions(false);
@@ -887,6 +890,7 @@ export class WelcomeView {
   private _view: WebContentsView;
   private _viewReady: Promise<void>;
   private _registry: IRegistry;
+  private _notification: string;
   private _pageSource: string;
   static _newsList: INewsItem[] = [];
   static _newsListFetched = false;
@@ -896,5 +900,10 @@ export namespace WelcomeView {
   export interface IOptions {
     isDarkTheme: boolean;
     registry: IRegistry;
+    /**
+     * Plain-text notice to show in the notification panel while nothing more
+     * urgent (a missing Python environment) needs the space.
+     */
+    notification?: string;
   }
 }

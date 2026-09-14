@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import * as fs from 'fs';
+import { safeStorage, session } from 'electron';
 
 vi.mock('fs', async () => {
   const actual = await vi.importActual<typeof import('fs')>('fs');
@@ -10,13 +11,17 @@ vi.mock('fs', async () => {
       throw new Error('ENOENT');
     }),
     writeFileSync: vi.fn(),
+    chmodSync: vi.fn(),
     mkdirSync: vi.fn()
   };
 });
 
 import { appData, ApplicationData } from '../../src/main/config/appdata';
+import { SessionConfig } from '../../src/main/config/sessionconfig';
 
 const mockFs = vi.mocked(fs);
+const mockSafeStorage = vi.mocked(safeStorage);
+const mockSession = vi.mocked(session);
 
 function resetAppData() {
   appData.pythonPath = '';
@@ -29,6 +34,8 @@ function resetAppData() {
   appData.newsList = [];
   appData.sessions = [];
   appData.updateBundledEnvOnRestart = false;
+  appData.removedLegacyRemoteTokens = false;
+  appData.storedURLsRewritten = false;
 }
 
 describe('ApplicationData.getAppDataPath', () => {
@@ -87,19 +94,132 @@ describe('ApplicationData.read', () => {
     expect(appData.condaPath.replace(/\\/g, '/')).toContain('/opt/conda');
   });
 
-  it('reads recentRemoteURLs list', () => {
+  it('removes query parameters from stored remote URLs', () => {
     const date = new Date('2024-01-01').toISOString();
     mockFs.existsSync = vi.fn(() => true);
     mockFs.readFileSync = vi.fn(() =>
       Buffer.from(
         JSON.stringify({
-          recentRemoteURLs: [{ url: 'https://example.com', date }]
+          sessions: [
+            { remoteURL: 'https://example.com/lab?token=session', date }
+          ],
+          recentSessions: [
+            {
+              remoteURL: 'https://example.com/lab?token=recent-session',
+              date
+            }
+          ],
+          recentRemoteURLs: [
+            { url: 'https://example.com/lab?token=recent-url', date }
+          ]
         })
       )
     );
     appData.read();
+    expect(appData.sessions[0].remoteURL).toBe('https://example.com/lab');
+    expect(appData.recentSessions[0].remoteURL).toBe('https://example.com/lab');
     expect(appData.recentRemoteURLs).toHaveLength(1);
-    expect(appData.recentRemoteURLs[0].url).toBe('https://example.com');
+    expect(appData.recentRemoteURLs[0].url).toBe('https://example.com/lab');
+  });
+
+  it('keeps malformed remote URLs readable without their query', () => {
+    const date = new Date('2024-01-01').toISOString();
+    mockFs.existsSync = vi.fn(() => true);
+    mockFs.readFileSync = vi.fn(() =>
+      Buffer.from(
+        JSON.stringify({
+          recentRemoteURLs: [{ url: 'not a URL?token=old', date }]
+        })
+      )
+    );
+    appData.read();
+    expect(appData.recentRemoteURLs[0].url).toBe('not a URL');
+  });
+
+  it('reports a token that only the dialog list held as rewritten', async () => {
+    // the recents row for this server was evicted or deleted, so the dialog
+    // list alone still carries the token and neither migration step sees it;
+    // the startup save has to be told another way
+    const date = new Date('2024-01-01').toISOString();
+    mockFs.existsSync = vi.fn(() => true);
+    mockFs.readFileSync = vi.fn(() =>
+      Buffer.from(
+        JSON.stringify({
+          recentSessions: [{ workingDirectory: '/data/nb', date }],
+          recentRemoteURLs: [
+            { url: 'https://example.com/lab?token=only-here', date }
+          ]
+        })
+      )
+    );
+    appData.read();
+    expect(appData.recentRemoteURLs[0].url).toBe('https://example.com/lab');
+    await expect(appData.mergeDuplicateRecents()).resolves.toBe(false);
+    await expect(appData.migrateRemoteCredentials()).resolves.toBe(false);
+    expect(appData.storedURLsRewritten).toBe(true);
+  });
+
+  it('reports a session stored in another spelling as rewritten', () => {
+    const date = new Date('2024-01-01').toISOString();
+    mockFs.existsSync = vi.fn(() => true);
+    mockFs.readFileSync = vi.fn(() =>
+      Buffer.from(
+        JSON.stringify({
+          sessions: [{ remoteURL: 'https://Example.com/lab', date }]
+        })
+      )
+    );
+    appData.read();
+    expect(appData.sessions[0].remoteURL).toBe('https://example.com/lab');
+    expect(appData.storedURLsRewritten).toBe(true);
+  });
+
+  it('reports nothing rewritten for a file already in canonical form', () => {
+    const date = new Date('2024-01-01').toISOString();
+    mockFs.existsSync = vi.fn(() => true);
+    mockFs.readFileSync = vi.fn(() =>
+      Buffer.from(
+        JSON.stringify({
+          sessions: [{ remoteURL: 'https://example.com/lab', date }],
+          recentSessions: [{ remoteURL: 'https://example.com/lab', date }],
+          recentRemoteURLs: [{ url: 'https://example.com/lab', date }]
+        })
+      )
+    );
+    appData.read();
+    expect(appData.storedURLsRewritten).toBe(false);
+  });
+
+  it('migrates legacy remote credentials to encrypted session fields', async () => {
+    const date = new Date('2024-01-01').toISOString();
+    mockFs.existsSync = vi.fn(() => true);
+    mockFs.readFileSync = vi.fn(() =>
+      Buffer.from(
+        JSON.stringify({
+          sessions: [{ remoteURL: 'https://example.com/lab?token=active' }],
+          recentSessions: [
+            {
+              remoteURL: 'https://example.com/lab?token=recent',
+              date
+            }
+          ]
+        })
+      )
+    );
+    mockSafeStorage.isAsyncEncryptionAvailable.mockResolvedValue(true);
+    mockSafeStorage.getSelectedStorageBackend.mockReturnValue(
+      'gnome_libsecret'
+    );
+    mockSafeStorage.encryptStringAsync.mockImplementation(value =>
+      Promise.resolve(Buffer.from(value))
+    );
+    appData.read();
+    await expect(appData.migrateRemoteCredentials()).resolves.toBe(true);
+    appData.save();
+    const content = (mockFs.writeFileSync as any).mock.calls[0][1] as string;
+    expect(content).not.toContain('token=active');
+    expect(content).not.toContain('token=recent');
+    expect(content).toContain('encryptedRemoteURL');
   });
 
   it('reads updateBundledEnvOnRestart flag', () => {
@@ -117,6 +237,7 @@ describe('ApplicationData.save', () => {
     resetAppData();
     mockFs.existsSync = vi.fn(() => false);
     mockFs.writeFileSync = vi.fn();
+    mockFs.chmodSync = vi.fn();
   });
 
   it('calls writeFileSync with app-data.json path', () => {
@@ -124,6 +245,20 @@ describe('ApplicationData.save', () => {
     expect(mockFs.writeFileSync).toHaveBeenCalledOnce();
     const [writePath] = (mockFs.writeFileSync as any).mock.calls[0];
     expect(writePath).toMatch(/app-data\.json$/);
+    expect((mockFs.writeFileSync as any).mock.calls[0][2]).toEqual({
+      mode: 0o600
+    });
+    expect(mockFs.chmodSync).toHaveBeenCalledWith(writePath, 0o600);
+  });
+
+  it('keeps the save when the mount refuses the mode change', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    mockFs.chmodSync = vi.fn(() => {
+      throw new Error('EPERM');
+    });
+    expect(() => appData.save()).not.toThrow();
+    expect(mockFs.writeFileSync).toHaveBeenCalledOnce();
+    warn.mockRestore();
   });
 
   it('omits empty pythonPath from saved JSON', () => {
@@ -142,16 +277,310 @@ describe('ApplicationData.save', () => {
     expect(json.pythonPath).toBe('/usr/bin/python3');
   });
 
-  it('saves recentRemoteURLs with ISO date strings', () => {
+  it('saves remote URLs without query parameters', () => {
+    const date = new Date('2024-06-01');
+    const session = new SessionConfig();
+    session.remoteURL = 'https://example.com/lab?token=session';
+    appData.sessions = [session];
     appData.recentRemoteURLs = [
-      { url: 'https://example.com', date: new Date('2024-06-01') }
+      { url: 'https://example.com/lab?token=recent-url', date }
+    ];
+    appData.recentSessions = [
+      {
+        remoteURL: 'https://example.com/lab?token=recent-session',
+        filesToOpen: [],
+        date
+      }
     ];
     appData.save();
     const content = (mockFs.writeFileSync as any).mock.calls[0][1] as string;
     const json = JSON.parse(content);
-    expect(json.recentRemoteURLs).toHaveLength(1);
-    expect(json.recentRemoteURLs[0].url).toBe('https://example.com');
+    expect(json.sessions[0].remoteURL).toBe('https://example.com/lab');
+    expect(json.recentSessions[0].remoteURL).toBe('https://example.com/lab');
+    expect(json.recentRemoteURLs[0].url).toBe('https://example.com/lab');
     expect(typeof json.recentRemoteURLs[0].date).toBe('string');
+  });
+});
+
+describe('ApplicationData.migrateRemoteCredentials', () => {
+  beforeEach(() => {
+    resetAppData();
+    mockSafeStorage.isAsyncEncryptionAvailable.mockResolvedValue(true);
+    mockSafeStorage.getSelectedStorageBackend.mockReturnValue(
+      'gnome_libsecret'
+    );
+    mockSafeStorage.encryptStringAsync.mockImplementation(value =>
+      Promise.resolve(Buffer.from(value))
+    );
+  });
+
+  function readOneLegacyRow(persistSessionData: boolean) {
+    mockFs.existsSync = vi.fn(() => true);
+    mockFs.readFileSync = vi.fn(() =>
+      Buffer.from(
+        JSON.stringify({
+          recentSessions: [
+            {
+              remoteURL: 'https://lab.example.com/lab?token=legacy',
+              persistSessionData,
+              partition: persistSessionData ? 'persist:one' : undefined,
+              date: '2024-01-01T00:00:00.000Z'
+            }
+          ]
+        })
+      )
+    );
+    appData.read();
+  }
+
+  it('reports nothing removed when the token could be encrypted', async () => {
+    readOneLegacyRow(true);
+    await appData.migrateRemoteCredentials();
+    expect(appData.recentSessions[0].encryptedRemoteURL).toBeDefined();
+    expect(appData.removedLegacyRemoteTokens).toBe(false);
+  });
+
+  it('reports the removal when no credential store is available', async () => {
+    mockSafeStorage.isAsyncEncryptionAvailable.mockResolvedValue(false);
+    readOneLegacyRow(true);
+    await appData.migrateRemoteCredentials();
+    expect(appData.recentSessions[0].encryptedRemoteURL).toBeUndefined();
+    expect(appData.removedLegacyRemoteTokens).toBe(true);
+  });
+
+  it.each([
+    ['a bare origin with no trailing slash', 'http://localhost:8888'],
+    ['an uppercase host', 'https://Example.com/lab'],
+    ['an explicit default port', 'https://example.com:443/lab']
+  ])('does not report %s as a removed token', async (_name, stored) => {
+    mockSafeStorage.isAsyncEncryptionAvailable.mockResolvedValue(false);
+    mockFs.existsSync = vi.fn(() => true);
+    mockFs.readFileSync = vi.fn(() =>
+      Buffer.from(
+        JSON.stringify({
+          recentSessions: [
+            {
+              // a v4.6.3-1 row for a server whose URL never had a token
+              remoteURL: stored,
+              persistSessionData: true,
+              partition: 'persist:one',
+              date: '2024-01-01T00:00:00.000Z'
+            }
+          ],
+          sessions: [{ remoteURL: stored, persistSessionData: true }]
+        })
+      )
+    );
+    appData.read();
+    expect(appData.recentSessions[0].legacyRemoteURL).toBeUndefined();
+    expect(appData.sessions[0].legacyRemoteURL).toBeUndefined();
+    await appData.migrateRemoteCredentials();
+    expect(appData.removedLegacyRemoteTokens).toBe(false);
+    expect(appData.recentSessions[0].encryptedRemoteURL).toBeUndefined();
+  });
+
+  it('still reports a row whose URL carried userinfo', async () => {
+    mockSafeStorage.isAsyncEncryptionAvailable.mockResolvedValue(false);
+    mockFs.existsSync = vi.fn(() => true);
+    mockFs.readFileSync = vi.fn(() =>
+      Buffer.from(
+        JSON.stringify({
+          recentSessions: [
+            {
+              remoteURL: 'https://user:pw@lab.example.com/lab',
+              persistSessionData: true,
+              partition: 'persist:one',
+              date: '2024-01-01T00:00:00.000Z'
+            }
+          ]
+        })
+      )
+    );
+    appData.read();
+    await appData.migrateRemoteCredentials();
+    expect(appData.removedLegacyRemoteTokens).toBe(true);
+  });
+
+  it('stays quiet for a session that declined to persist its data', async () => {
+    mockSafeStorage.isAsyncEncryptionAvailable.mockResolvedValue(false);
+    readOneLegacyRow(false);
+    await appData.migrateRemoteCredentials();
+    expect(appData.removedLegacyRemoteTokens).toBe(false);
+  });
+});
+
+describe('ApplicationData.mergeDuplicateRecents', () => {
+  beforeEach(() => {
+    resetAppData();
+    mockSession.fromPartition.mockClear();
+  });
+
+  // An install upgraded from a release that kept the token in the URL holds one
+  // recents row per token. Reading maps them all onto the same canonical URL,
+  // so the lists end up with rows the user cannot tell apart.
+  function readThreeVisitsToOneServer() {
+    mockFs.existsSync = vi.fn(() => true);
+    mockFs.readFileSync = vi.fn(() =>
+      Buffer.from(
+        JSON.stringify({
+          recentSessions: [
+            {
+              remoteURL: 'https://lab.example.com/lab?token=old',
+              persistSessionData: true,
+              partition: 'persist:old',
+              date: '2024-01-01T00:00:00.000Z'
+            },
+            {
+              remoteURL: 'https://lab.example.com/lab?token=newest',
+              persistSessionData: true,
+              partition: 'persist:newest',
+              date: '2024-03-01T00:00:00.000Z'
+            },
+            {
+              remoteURL: 'https://lab.example.com/lab?token=middle',
+              persistSessionData: true,
+              partition: 'persist:middle',
+              date: '2024-02-01T00:00:00.000Z'
+            },
+            {
+              workingDirectory: '/data/nb',
+              date: '2024-02-15T00:00:00.000Z'
+            }
+          ],
+          recentRemoteURLs: [
+            {
+              url: 'https://lab.example.com/lab?token=old',
+              date: '2024-01-01T00:00:00.000Z'
+            },
+            {
+              url: 'https://lab.example.com/lab?token=newest',
+              date: '2024-03-01T00:00:00.000Z'
+            },
+            {
+              url: 'https://other.example.com/lab',
+              date: '2024-02-01T00:00:00.000Z'
+            }
+          ]
+        })
+      )
+    );
+    appData.read();
+  }
+
+  it('collapses recent remote URLs that differ only by a stripped query', async () => {
+    readThreeVisitsToOneServer();
+    expect(appData.recentRemoteURLs).toHaveLength(3);
+    await expect(appData.mergeDuplicateRecents()).resolves.toBe(true);
+    expect(appData.recentRemoteURLs.map(item => item.url)).toEqual([
+      'https://lab.example.com/lab',
+      'https://other.example.com/lab'
+    ]);
+  });
+
+  it('keeps the newest row for a server and every local session', async () => {
+    readThreeVisitsToOneServer();
+    await appData.mergeDuplicateRecents();
+    expect(appData.recentSessions).toHaveLength(2);
+    const remote = appData.recentSessions.find(item => item.remoteURL);
+    expect(remote.remoteURL).toBe('https://lab.example.com/lab');
+    expect(remote.partition).toBe('persist:newest');
+    expect(
+      appData.recentSessions.some(item => item.workingDirectory === '/data/nb')
+    ).toBe(true);
+  });
+
+  it('releases the session data of the rows it drops', async () => {
+    readThreeVisitsToOneServer();
+    await appData.mergeDuplicateRecents();
+    const cleared = mockSession.fromPartition.mock.calls
+      .map(call => call[0])
+      .sort();
+    expect(cleared).toEqual(['persist:middle', 'persist:old']);
+  });
+
+  it('keeps the credential of the newest row for a server', async () => {
+    appData.recentSessions = [
+      {
+        remoteURL: 'https://lab.example.com/lab',
+        filesToOpen: [],
+        persistSessionData: true,
+        partition: 'persist:newest',
+        encryptedRemoteURL: 'blob-newest',
+        date: new Date('2024-03-01')
+      },
+      {
+        remoteURL: 'https://lab.example.com/lab',
+        filesToOpen: [],
+        persistSessionData: true,
+        partition: 'persist:old',
+        encryptedRemoteURL: 'blob-old',
+        date: new Date('2024-01-01')
+      }
+    ];
+    await expect(appData.mergeDuplicateRecents()).resolves.toBe(true);
+    expect(appData.recentSessions).toHaveLength(1);
+    expect(appData.recentSessions[0].encryptedRemoteURL).toBe('blob-newest');
+  });
+
+  it('collapses rows for one server written with different URL spellings', async () => {
+    mockFs.existsSync = vi.fn(() => true);
+    mockFs.readFileSync = vi.fn(() =>
+      Buffer.from(
+        JSON.stringify({
+          recentRemoteURLs: [
+            {
+              url: 'https://lab.example.com:443/lab',
+              date: '2024-01-01T00:00:00.000Z'
+            },
+            {
+              url: 'https://lab.example.com/lab?token=x',
+              date: '2024-02-01T00:00:00.000Z'
+            }
+          ]
+        })
+      )
+    );
+    appData.read();
+    await expect(appData.mergeDuplicateRecents()).resolves.toBe(true);
+    expect(appData.recentRemoteURLs.map(item => item.url)).toEqual([
+      'https://lab.example.com/lab'
+    ]);
+  });
+
+  it('keeps the session data a window is about to restore into', async () => {
+    readThreeVisitsToOneServer();
+    // two windows were open on this server, so a restored session still holds
+    // the partition of a row the merge drops
+    const restored = new SessionConfig();
+    restored.partition = 'persist:old';
+    appData.sessions = [restored];
+    await appData.mergeDuplicateRecents();
+    expect(mockSession.fromPartition.mock.calls.map(call => call[0])).toEqual([
+      'persist:middle'
+    ]);
+  });
+
+  it('changes nothing when every server appears once', async () => {
+    appData.recentSessions = [
+      {
+        remoteURL: 'https://a.example.com/lab',
+        filesToOpen: [],
+        partition: 'persist:a',
+        date: new Date('2024-01-01')
+      },
+      {
+        workingDirectory: '/data/nb',
+        filesToOpen: [],
+        date: new Date('2024-01-02')
+      }
+    ];
+    appData.recentRemoteURLs = [
+      { url: 'https://a.example.com/lab', date: new Date('2024-01-01') }
+    ];
+    await expect(appData.mergeDuplicateRecents()).resolves.toBe(false);
+    expect(appData.recentSessions).toHaveLength(2);
+    expect(appData.recentRemoteURLs).toHaveLength(1);
+    expect(mockSession.fromPartition).not.toHaveBeenCalled();
   });
 });
 
@@ -161,14 +590,14 @@ describe('ApplicationData.addRemoteURLToRecents', () => {
   });
 
   it('adds a new URL', () => {
-    appData.addRemoteURLToRecents('https://example.com');
+    appData.addRemoteURLToRecents('https://example.com/lab');
     expect(appData.recentRemoteURLs).toHaveLength(1);
-    expect(appData.recentRemoteURLs[0].url).toBe('https://example.com');
+    expect(appData.recentRemoteURLs[0].url).toBe('https://example.com/lab');
   });
 
   it('new entry gets a date close to now', () => {
     const before = Date.now();
-    appData.addRemoteURLToRecents('https://example.com');
+    appData.addRemoteURLToRecents('https://example.com/lab');
     expect(appData.recentRemoteURLs[0].date.valueOf()).toBeGreaterThanOrEqual(
       before
     );
@@ -176,8 +605,10 @@ describe('ApplicationData.addRemoteURLToRecents', () => {
 
   it('updates date of existing URL without duplicating', () => {
     const oldDate = new Date(Date.now() - 5000);
-    appData.recentRemoteURLs = [{ url: 'https://example.com', date: oldDate }];
-    appData.addRemoteURLToRecents('https://example.com');
+    appData.recentRemoteURLs = [
+      { url: 'https://example.com/lab', date: oldDate }
+    ];
+    appData.addRemoteURLToRecents('https://example.com/lab');
     expect(appData.recentRemoteURLs).toHaveLength(1);
     expect(appData.recentRemoteURLs[0].date.valueOf()).toBeGreaterThan(
       oldDate.valueOf()
@@ -185,8 +616,8 @@ describe('ApplicationData.addRemoteURLToRecents', () => {
   });
 
   it('treats different URLs as separate entries', () => {
-    appData.addRemoteURLToRecents('https://a.com');
-    appData.addRemoteURLToRecents('https://b.com');
+    appData.addRemoteURLToRecents('https://a.example.com/lab');
+    appData.addRemoteURLToRecents('https://b.example.com/lab');
     expect(appData.recentRemoteURLs).toHaveLength(2);
   });
 });
@@ -194,19 +625,19 @@ describe('ApplicationData.addRemoteURLToRecents', () => {
 describe('ApplicationData.removeRemoteURLFromRecents', () => {
   beforeEach(() => {
     appData.recentRemoteURLs = [
-      { url: 'https://a.com', date: new Date() },
-      { url: 'https://b.com', date: new Date() }
+      { url: 'https://a.example.com/lab', date: new Date() },
+      { url: 'https://b.example.com/lab', date: new Date() }
     ];
   });
 
   it('removes the matching URL', () => {
-    appData.removeRemoteURLFromRecents('https://a.com');
+    appData.removeRemoteURLFromRecents('https://a.example.com/lab');
     expect(appData.recentRemoteURLs).toHaveLength(1);
-    expect(appData.recentRemoteURLs[0].url).toBe('https://b.com');
+    expect(appData.recentRemoteURLs[0].url).toBe('https://b.example.com/lab');
   });
 
   it('no-ops when URL is not in list', () => {
-    appData.removeRemoteURLFromRecents('https://missing.com');
+    appData.removeRemoteURLFromRecents('https://missing.example.com/lab');
     expect(appData.recentRemoteURLs).toHaveLength(2);
   });
 });
@@ -227,11 +658,13 @@ describe('ApplicationData.addSessionToRecents', () => {
 
   it('adds a new remote session', async () => {
     await appData.addSessionToRecents({
-      remoteURL: 'https://hub.example.com',
+      remoteURL: 'https://hub.example.com/lab',
       filesToOpen: []
     });
     expect(appData.recentSessions).toHaveLength(1);
-    expect(appData.recentSessions[0].remoteURL).toBe('https://hub.example.com');
+    expect(appData.recentSessions[0].remoteURL).toBe(
+      'https://hub.example.com/lab'
+    );
   });
 
   it('caps the recents list at 20 entries', async () => {
@@ -279,6 +712,46 @@ describe('ApplicationData.addSessionToRecents', () => {
     expect(appData.recentSessions[0].date.valueOf()).toBeGreaterThanOrEqual(
       before
     );
+  });
+
+  it('gives an existing row its new partition and credential before clearing the old partition', async () => {
+    // _createSessionForRemoteUrl does not wait for this call, so a save that
+    // runs while the old partition is still being cleared must already see
+    // the row as the new session left it
+    appData.recentSessions = [
+      {
+        remoteURL: 'https://hub.example.com/lab',
+        filesToOpen: [],
+        persistSessionData: true,
+        partition: 'persist:old',
+        encryptedRemoteURL: 'blob-old',
+        date: new Date('2024-01-01')
+      }
+    ];
+    let releaseClear: () => void;
+    const clearing = new Promise<void>(resolve => {
+      releaseClear = resolve;
+    });
+    mockSession.fromPartition.mockReturnValueOnce({
+      clearCache: () => clearing,
+      clearAuthCache: () => Promise.resolve(),
+      clearStorageData: () => Promise.resolve(),
+      flushStorageData: () => Promise.resolve()
+    } as any);
+    const pending = appData.addSessionToRecents({
+      remoteURL: 'https://hub.example.com/lab',
+      filesToOpen: [],
+      persistSessionData: true,
+      partition: 'persist:new',
+      encryptedRemoteURL: 'blob-new'
+    });
+    // the old partition is being cleared, and the row already reads as new
+    expect(mockSession.fromPartition).toHaveBeenCalledWith('persist:old');
+    expect(appData.recentSessions[0].partition).toBe('persist:new');
+    expect(appData.recentSessions[0].encryptedRemoteURL).toBe('blob-new');
+    releaseClear();
+    await pending;
+    expect(appData.recentSessions).toHaveLength(1);
   });
 });
 

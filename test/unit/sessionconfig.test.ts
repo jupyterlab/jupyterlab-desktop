@@ -1,5 +1,7 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import * as fs from 'fs';
+import * as path from 'path';
+import { safeStorage } from 'electron';
 
 vi.mock('fs', async () => {
   const actual = await vi.importActual<typeof import('fs')>('fs');
@@ -19,12 +21,25 @@ vi.mock('../../src/main/config/settings', () => ({
   resolveWorkingDirectory: vi.fn((dir: string) => dir || '/home/user')
 }));
 vi.mock('../../src/main/config/appdata', () => ({
-  appData: { recentSessions: [] }
+  appData: { recentSessions: [] as any[] }
 }));
 
 import { SessionConfig } from '../../src/main/config/sessionconfig';
+import { appData } from '../../src/main/config/appdata';
 
 const mockFs = vi.mocked(fs);
+const mockSafeStorage = vi.mocked(safeStorage);
+
+beforeEach(() => {
+  mockSafeStorage.isAsyncEncryptionAvailable.mockResolvedValue(true);
+  mockSafeStorage.getSelectedStorageBackend.mockReturnValue('gnome_libsecret');
+  mockSafeStorage.encryptStringAsync.mockImplementation(value =>
+    Promise.resolve(Buffer.from(value))
+  );
+  mockSafeStorage.decryptStringAsync.mockImplementation(value =>
+    Promise.resolve({ result: value.toString(), shouldReEncrypt: false })
+  );
+});
 
 describe('SessionConfig defaults', () => {
   it('x and y default to 0', () => {
@@ -101,13 +116,14 @@ describe('SessionConfig.createLocal', () => {
 });
 
 describe('SessionConfig.createRemote', () => {
-  it('sets remoteURL', () => {
+  it('keeps remoteURL without query parameters', () => {
     const s = SessionConfig.createRemote(
       'http://localhost:8888/lab?token=abc',
       true,
       ''
     );
-    expect(s.remoteURL).toBe('http://localhost:8888/lab?token=abc');
+    expect(s.remoteURL).toBe('http://localhost:8888/lab');
+    expect(s.url.href).toBe('http://localhost:8888/lab?token=abc');
     expect(s.isRemote).toBe(true);
   });
 
@@ -118,6 +134,15 @@ describe('SessionConfig.createRemote', () => {
       ''
     );
     expect(s.token).toBe('mysecret');
+  });
+
+  it('removes credentials, query parameters, and fragments from storage URLs', () => {
+    const s = SessionConfig.createRemote(
+      'https://user:password@example.com/lab?token=secret#access-token',
+      true,
+      ''
+    );
+    expect(s.remoteURL).toBe('https://example.com/lab');
   });
 
   it('persist partition when persistSessionData is true', () => {
@@ -163,6 +188,208 @@ describe('SessionConfig.createRemote', () => {
       ''
     );
     expect(s.persistSessionData).toBe(true);
+  });
+});
+
+describe('remote session startup', () => {
+  it('uses the in-memory URL before its query-free persisted URL', () => {
+    const source = fs.readFileSync(
+      path.join(__dirname, '../../src/main/sessionwindow/sessionwindow.ts'),
+      'utf8'
+    );
+    expect(source).toContain(
+      'this._sessionConfig.url?.href || this._sessionConfig.remoteURL'
+    );
+  });
+});
+
+describe('SessionConfig.carriesCredentials', () => {
+  it.each([
+    ['a query string', 'https://example.com/lab?token=x'],
+    ['userinfo', 'https://user:pw@example.com/lab'],
+    ['a fragment', 'https://example.com/lab#access=x']
+  ])('reports %s', (_name, url) => {
+    expect(SessionConfig.carriesCredentials(url)).toBe(true);
+  });
+
+  it.each([
+    ['a canonical URL', 'https://example.com/lab'],
+    ['a bare origin', 'http://localhost:8888'],
+    ['an uppercase host', 'https://Example.com/lab'],
+    ['an explicit default port', 'https://example.com:443/lab'],
+    ['a trailing space', 'https://example.com/lab '],
+    ['a bare query mark', 'https://example.com/lab?'],
+    ['a bare hash', 'https://example.com/lab#']
+  ])('reports no credentials for %s', (_name, url) => {
+    expect(SessionConfig.carriesCredentials(url)).toBe(false);
+  });
+});
+
+describe('SessionConfig.remoteURLForStorage', () => {
+  it('gives one key to a server whether or not the URL carries a query', () => {
+    expect(
+      SessionConfig.remoteURLForStorage('HTTPS://Example.COM:443/lab')
+    ).toBe(
+      SessionConfig.remoteURLForStorage('HTTPS://Example.COM:443/lab?token=x')
+    );
+  });
+
+  it('lowercases the host and drops a default port', () => {
+    expect(
+      SessionConfig.remoteURLForStorage('HTTPS://Example.COM:443/lab')
+    ).toBe('https://example.com/lab');
+  });
+
+  it('leaves a URL it cannot parse readable without its query', () => {
+    expect(SessionConfig.remoteURLForStorage('not a URL?token=old')).toBe(
+      'not a URL'
+    );
+  });
+});
+
+describe('SessionConfig.storedRemoteCredential', () => {
+  beforeEach(() => {
+    appData.recentSessions = [
+      {
+        remoteURL: 'https://example.com/lab',
+        encryptedRemoteURL: 'stored-blob'
+      }
+    ];
+  });
+
+  afterEach(() => {
+    appData.recentSessions = [];
+  });
+
+  it('returns the credential kept for a canonical URL', () => {
+    expect(
+      SessionConfig.storedRemoteCredential('https://example.com/lab')
+    ).toBe('stored-blob');
+  });
+
+  it('lets a URL that carries its own credentials win', () => {
+    expect(
+      SessionConfig.storedRemoteCredential('https://example.com/lab?token=new')
+    ).toBeUndefined();
+  });
+
+  it.each([
+    ['a trailing space from a paste', 'https://example.com/lab '],
+    ['an uppercase host', 'https://Example.com/lab'],
+    ['an explicit default port', 'https://example.com:443/lab'],
+    ['an empty query', 'https://example.com/lab?'],
+    ['an empty fragment', 'https://example.com/lab#']
+  ])('finds the credential through %s', (_name, typed) => {
+    expect(SessionConfig.storedRemoteCredential(typed)).toBe('stored-blob');
+  });
+
+  it('lets userinfo in the URL win over the stored credential', () => {
+    expect(
+      SessionConfig.storedRemoteCredential('https://user:pw@example.com/lab')
+    ).toBeUndefined();
+  });
+
+  it('lets a fragment in the URL win over the stored credential', () => {
+    expect(
+      SessionConfig.storedRemoteCredential('https://example.com/lab#access=x')
+    ).toBeUndefined();
+  });
+
+  it('returns nothing for a server with no recent session', () => {
+    expect(
+      SessionConfig.storedRemoteCredential('https://other.example.com/lab')
+    ).toBeUndefined();
+  });
+});
+
+describe('SessionConfig remote credential storage', () => {
+  it('does not persist credentials when asynchronous encryption is unavailable', async () => {
+    mockSafeStorage.isAsyncEncryptionAvailable.mockResolvedValue(false);
+    await expect(SessionConfig.canPersistRemoteURL()).resolves.toBe(false);
+  });
+
+  it('treats credential-store initialization errors as unavailable', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    mockSafeStorage.isAsyncEncryptionAvailable.mockRejectedValue(
+      new Error('keyring unavailable')
+    );
+    await expect(SessionConfig.canPersistRemoteURL()).resolves.toBe(false);
+    warn.mockRestore();
+  });
+
+  it('serializes only the encrypted remote URL', async () => {
+    const s = SessionConfig.createRemote(
+      'https://example.com/lab?token=secret',
+      true,
+      ''
+    );
+    await s.protectRemoteURL(s.url.href);
+    const serialized = JSON.stringify(s.serialize());
+    expect(serialized).not.toContain('secret');
+    expect(s.serialize().encryptedRemoteURL).toBeDefined();
+  });
+
+  it('does not persist credentials with Linux basic_text storage', async () => {
+    mockSafeStorage.getSelectedStorageBackend.mockReturnValue('basic_text');
+    mockSafeStorage.encryptStringAsync.mockClear();
+    const s = SessionConfig.createRemote(
+      'https://example.com/lab?token=secret',
+      true,
+      ''
+    );
+    const platform = Object.getOwnPropertyDescriptor(process, 'platform');
+    Object.defineProperty(process, 'platform', { value: 'linux' });
+    try {
+      await s.protectRemoteURL(s.url.href);
+      expect(s.encryptedRemoteURL).toBeUndefined();
+      expect(mockSafeStorage.encryptStringAsync).not.toHaveBeenCalled();
+    } finally {
+      Object.defineProperty(process, 'platform', platform);
+    }
+  });
+
+  it('continues connecting when remote URL encryption fails', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    mockSafeStorage.encryptStringAsync.mockRejectedValue(
+      new Error('keyring locked')
+    );
+    const s = SessionConfig.createRemote(
+      'https://example.com/lab?token=secret',
+      true,
+      ''
+    );
+    await expect(s.protectRemoteURL(s.url.href)).resolves.toBe(false);
+    expect(s.encryptedRemoteURL).toBeUndefined();
+    warn.mockRestore();
+  });
+
+  it('falls back to the canonical URL when credential decryption fails', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    mockSafeStorage.decryptStringAsync.mockRejectedValue(
+      new Error('keyring locked')
+    );
+    const s = new SessionConfig();
+    s.remoteURL = 'https://example.com/lab';
+    s.encryptedRemoteURL = Buffer.from('encrypted').toString('base64');
+    await expect(s.remoteURLForConnection()).resolves.toBe(s.remoteURL);
+    warn.mockRestore();
+  });
+
+  it('re-encrypts a decrypted remote URL after key rotation', async () => {
+    mockSafeStorage.decryptStringAsync.mockResolvedValue({
+      result: 'https://example.com/lab?token=secret',
+      shouldReEncrypt: true
+    });
+    mockSafeStorage.encryptStringAsync.mockResolvedValue(
+      Buffer.from('rotated')
+    );
+    const s = new SessionConfig();
+    s.remoteURL = 'https://example.com/lab';
+    s.encryptedRemoteURL = Buffer.from('old').toString('base64');
+    await expect(s.remoteURLForConnection()).resolves.toContain('secret');
+    expect(s.encryptedRemoteURL).toBe(
+      Buffer.from('rotated').toString('base64')
+    );
   });
 });
 
@@ -219,6 +446,7 @@ describe('SessionConfig.createLocalForFilesOrFolders', () => {
 
 describe('SessionConfig.createFromArgs', () => {
   beforeEach(() => {
+    appData.recentSessions = [];
     mockFs.existsSync = vi.fn(() => false);
     mockFs.lstatSync = vi.fn(() => {
       throw new Error('ENOENT');
@@ -246,7 +474,7 @@ describe('SessionConfig.createFromArgs', () => {
     });
     expect(result).toBeDefined();
     expect(result.isRemote).toBe(true);
-    expect(result.remoteURL).toBe('https://example.com/lab?token=tok');
+    expect(result.remoteURL).toBe('https://example.com/lab');
   });
 
   it('uses a persist: partition when persistSessionData is true', () => {
@@ -260,6 +488,25 @@ describe('SessionConfig.createFromArgs', () => {
     });
     expect(result.persistSessionData).toBe(true);
     expect(result.partition.startsWith('persist:')).toBe(true);
+  });
+
+  it('reuses a persisted partition for the URL without its query', () => {
+    appData.recentSessions = [
+      {
+        remoteURL: 'https://example.com/lab',
+        persistSessionData: true,
+        partition: 'persist:existing'
+      }
+    ];
+    const result = SessionConfig.createFromArgs({
+      _: ['https://example.com/lab?token=tok'],
+      $0: '',
+      cwd: '/cwd',
+      pythonPath: '',
+      workingDir: '',
+      persistSessionData: true
+    });
+    expect(result.partition).toBe('persist:existing');
   });
 
   it('uses a non-persistent partition when persistSessionData is not set', () => {
@@ -451,9 +698,22 @@ describe('SessionConfig.deserialize', () => {
     expect(s.height).toBe(600);
   });
 
-  it('sets remoteURL', () => {
+  it('marks a URL with a token as a legacy credential to migrate', () => {
     const s = new SessionConfig();
-    s.deserialize({ remoteURL: 'http://remote:8888/lab' });
+    s.deserialize({ remoteURL: 'http://remote:8888/lab?token=tok' });
+    expect(s.legacyRemoteURL).toBe('http://remote:8888/lab?token=tok');
+  });
+
+  it('does not mark a token-free URL spelled another way', () => {
+    const s = new SessionConfig();
+    s.deserialize({ remoteURL: 'http://Remote:8888/lab' });
+    expect(s.remoteURL).toBe('http://remote:8888/lab');
+    expect(s.legacyRemoteURL).toBeUndefined();
+  });
+
+  it('sets remoteURL without query parameters', () => {
+    const s = new SessionConfig();
+    s.deserialize({ remoteURL: 'http://remote:8888/lab?token=tok' });
     expect(s.remoteURL).toBe('http://remote:8888/lab');
   });
 
@@ -529,7 +789,7 @@ describe('SessionConfig serialize/deserialize round-trip', () => {
     const copy = new SessionConfig();
     copy.deserialize(original.serialize());
 
-    expect(copy.remoteURL).toBe('http://remote:8888/lab?token=tok');
+    expect(copy.remoteURL).toBe('http://remote:8888/lab');
     expect(copy.persistSessionData).toBe(true);
     expect(copy.partition).toBe('persist:id123');
     expect(copy.isRemote).toBe(true);

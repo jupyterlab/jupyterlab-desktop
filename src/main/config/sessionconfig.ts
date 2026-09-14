@@ -3,6 +3,7 @@
 
 import * as path from 'path';
 import * as fs from 'fs';
+import { safeStorage } from 'electron';
 import {
   DEFAULT_WIN_HEIGHT,
   DEFAULT_WIN_WIDTH,
@@ -31,6 +32,8 @@ export class SessionConfig {
   token: string;
   pageConfig: any;
   cookies?: Electron.Cookie[];
+  encryptedRemoteURL?: string;
+  legacyRemoteURL?: string;
 
   static createLocal(
     workingDirectory?: string,
@@ -89,8 +92,8 @@ export class SessionConfig {
     partition: string
   ): SessionConfig {
     const sessionConfig = new SessionConfig();
-    sessionConfig.remoteURL = remoteURL;
     const url = new URL(remoteURL);
+    sessionConfig.remoteURL = SessionConfig.remoteURLForStorage(remoteURL);
     const token = url.searchParams.get('token');
     sessionConfig.url = url;
     sessionConfig.token = token;
@@ -119,12 +122,14 @@ export class SessionConfig {
         const strArg = arg.toString();
         if (/^https?:\/\//.test(strArg)) {
           const remoteURL = strArg;
+          const storedRemoteURL = SessionConfig.remoteURLForStorage(remoteURL);
           const persistSessionData = cliArgs.persistSessionData === true;
           let partition: string = undefined;
+          let encryptedRemoteURL: string = undefined;
 
           if (persistSessionData) {
             const existing = appData.recentSessions.find(recentSession => {
-              return recentSession.remoteURL === remoteURL;
+              return recentSession.remoteURL === storedRemoteURL;
             });
             if (
               existing &&
@@ -132,14 +137,19 @@ export class SessionConfig {
               existing?.partition?.startsWith('persist:')
             ) {
               partition = existing.partition;
+              encryptedRemoteURL = existing.encryptedRemoteURL;
             }
           }
 
-          return SessionConfig.createRemote(
+          const sessionConfig = SessionConfig.createRemote(
             remoteURL,
             persistSessionData,
             partition
           );
+          if (encryptedRemoteURL) {
+            sessionConfig.encryptedRemoteURL = encryptedRemoteURL;
+          }
+          return sessionConfig;
         }
       }
 
@@ -208,6 +218,112 @@ export class SessionConfig {
     return this.remoteURL !== '';
   }
 
+  static remoteURLForStorage(remoteURL: string): string {
+    try {
+      const url = new URL(remoteURL);
+      url.username = '';
+      url.password = '';
+      url.search = '';
+      url.hash = '';
+      // always the parsed form, so one server gets one key: a URL with nothing
+      // to strip would otherwise keep its own spelling of the host and port and
+      // never match the stripped form of the same server
+      return url.href;
+    } catch {
+      return remoteURL.split(/[?#]/)[0];
+    }
+  }
+
+  /**
+   * Whether the URL carries what remoteURLForStorage() strips: userinfo, a
+   * query string or a fragment. A difference in spelling alone (host case, a
+   * default port, whitespace, a bare `?` or `#`) does not count, so the same
+   * server typed another way is still recognised as that server.
+   */
+  static carriesCredentials(remoteURL: string): boolean {
+    try {
+      const url = new URL(remoteURL);
+      return (
+        url.username !== '' ||
+        url.password !== '' ||
+        url.search !== '' ||
+        url.hash !== ''
+      );
+    } catch {
+      // matches what remoteURLForStorage strips from a URL it cannot parse
+      return /[?#]/.test(remoteURL);
+    }
+  }
+
+  /**
+   * The credential stored for a server, for a URL that carries none of its own.
+   * Both the recents list and the remote server dialog hand back the canonical
+   * URL, so without this lookup a reconnect from either would connect with no
+   * token and then overwrite the stored credential with a token-free one.
+   */
+  static storedRemoteCredential(remoteURL: string): string | undefined {
+    if (SessionConfig.carriesCredentials(remoteURL)) {
+      return undefined;
+    }
+    const storedRemoteURL = SessionConfig.remoteURLForStorage(remoteURL);
+    return appData.recentSessions.find(
+      recentSession => recentSession.remoteURL === storedRemoteURL
+    )?.encryptedRemoteURL;
+  }
+
+  static async canPersistRemoteURL(): Promise<boolean> {
+    try {
+      if (!(await safeStorage.isAsyncEncryptionAvailable())) {
+        return false;
+      }
+      return (
+        process.platform !== 'linux' ||
+        safeStorage.getSelectedStorageBackend() !== 'basic_text'
+      );
+    } catch (error) {
+      console.warn('Remote credential storage is unavailable', error);
+      return false;
+    }
+  }
+
+  async protectRemoteURL(remoteURL: string): Promise<boolean> {
+    if (
+      !this.persistSessionData ||
+      !(await SessionConfig.canPersistRemoteURL())
+    ) {
+      return false;
+    }
+    try {
+      this.encryptedRemoteURL = (
+        await safeStorage.encryptStringAsync(remoteURL)
+      ).toString('base64');
+      return true;
+    } catch (error) {
+      console.warn('Failed to encrypt remote connection URL', error);
+      return false;
+    }
+  }
+
+  async remoteURLForConnection(): Promise<string> {
+    if (!this.encryptedRemoteURL) {
+      return this.remoteURL;
+    }
+    try {
+      const decrypted = await safeStorage.decryptStringAsync(
+        Buffer.from(this.encryptedRemoteURL, 'base64')
+      );
+      if (decrypted.shouldReEncrypt) {
+        this.encryptedRemoteURL = (
+          await safeStorage.encryptStringAsync(decrypted.result)
+        ).toString('base64');
+      }
+      return decrypted.result;
+    } catch (error) {
+      console.warn('Failed to decrypt remote connection URL', error);
+      return this.remoteURL;
+    }
+  }
+
   get resolvedWorkingDirectory(): string {
     return resolveWorkingDirectory(this.workingDirectory);
   }
@@ -247,7 +363,13 @@ export class SessionConfig {
       this.lastOpened = new Date(jsonData.lastOpened);
     }
     if ('remoteURL' in jsonData) {
-      this.remoteURL = jsonData.remoteURL;
+      this.remoteURL = SessionConfig.remoteURLForStorage(jsonData.remoteURL);
+      if (SessionConfig.carriesCredentials(jsonData.remoteURL)) {
+        this.legacyRemoteURL = jsonData.remoteURL;
+      }
+    }
+    if (typeof jsonData.encryptedRemoteURL === 'string') {
+      this.encryptedRemoteURL = jsonData.encryptedRemoteURL;
     }
     if ('persistSessionData' in jsonData) {
       this.persistSessionData = jsonData.persistSessionData;
@@ -273,7 +395,11 @@ export class SessionConfig {
     };
 
     if (this.remoteURL !== '') {
-      jsonData.remoteURL = this.remoteURL;
+      jsonData.remoteURL = SessionConfig.remoteURLForStorage(this.remoteURL);
+    }
+
+    if (this.persistSessionData && this.encryptedRemoteURL) {
+      jsonData.encryptedRemoteURL = this.encryptedRemoteURL;
     }
 
     if (this.persistSessionData === false) {
