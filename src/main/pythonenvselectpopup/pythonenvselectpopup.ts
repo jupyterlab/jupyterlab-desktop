@@ -8,7 +8,10 @@ import { ThemedView } from '../dialog/themedview';
 import { EventTypeRenderer } from '../eventtypes';
 import { IPythonEnvironment } from '../tokens';
 import { IApplication } from '../app';
-import { getRelativePathToUserHome } from '../utils';
+import {
+  getRelativePathToUserHome,
+  getUniquePythonEnvironments
+} from '../utils';
 
 export class PythonEnvironmentSelectPopup {
   constructor(options: PythonEnvironmentSelectView.IOptions) {
@@ -482,11 +485,18 @@ export class PythonEnvironmentSelectPopup {
   }
 
   setPythonEnvironmentList(envs: IPythonEnvironment[]) {
-    this._envs = envs;
+    this._envs = getUniquePythonEnvironments([
+      ...envs,
+      ...this._projectEnvironments
+    ]);
     this._view.view.webContents.send(
       EventTypeRenderer.SetPythonEnvironmentList,
-      envs
+      this._envs
     );
+  }
+
+  setProjectEnvironmentList(envs: IPythonEnvironment[]) {
+    this._projectEnvironments = envs;
   }
 
   private async _onEnvironmentListUpdated() {
@@ -497,6 +507,7 @@ export class PythonEnvironmentSelectPopup {
   private _view: ThemedView;
   private _pageBody: string;
   private _envs: IPythonEnvironment[];
+  private _projectEnvironments: IPythonEnvironment[] = [];
   private _app: IApplication;
 }
 
