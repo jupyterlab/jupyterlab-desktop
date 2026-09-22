@@ -112,9 +112,15 @@ bin/wrjpgcom
 bin/xmlcatalog
 bin/xmllint
 bin/zstd
+etc/conda/test-files/conda-index/1/tests/archives/conda-index-pkg-a-1.0-py27h5e241af_0.conda
+etc/conda/test-files/conda-index/1/tests/index_hotfix_pkgs/osx-64/hotfix_depends_test-1.0-dummy_0.conda
+etc/conda/test-files/conda-index/1/tests/index_hotfix_pkgs/osx-64/remove_test-1.0-0.conda
+etc/conda/test-files/conda-index/1/tests/index_hotfix_pkgs/osx-64/revoke_test-1.0-0.conda
+etc/conda/test-files/conda-index/1/tests/index_hotfix_pkgs/osx-64/track_features_test-1.0-0.conda
 etc/conda/test-files/conda-package-handling/1/tests/data/mock-2.0.0-py37_1000.conda
 etc/conda/test-files/ipython/2/tests/nonascii.py
 etc/conda/test-files/ipython/2/tests/nonascii2.py
+etc/conda/test-files/openjpeg/0/p0_01.j2k
 lib/cairo/libcairo-fdr.dylib
 lib/cairo/libcairo-trace.dylib
 lib/girepository-1.0/GIRepository-3.0.typelib
@@ -152,7 +158,7 @@ lib/libcurl.4.dylib
 lib/libdeflate.0.dylib
 lib/libedit.0.dylib
 lib/libev.4.dylib
-lib/libexpat.1.12.1.dylib
+lib/libexpat.1.12.4.dylib
 lib/libffi.8.dylib
 lib/libfmt.12.1.0.dylib
 lib/libfontconfig.1.dylib
@@ -220,6 +226,7 @@ lib/libpixman-1.0.dylib
 lib/libpng16.16.dylib
 lib/libpsl.5.dylib
 lib/libpython3.12.dylib
+lib/libpython3.dylib
 lib/libqhull_r.8.0.2.dylib
 lib/libquadmath.0.dylib
 lib/libraqm.0.dylib
@@ -357,8 +364,8 @@ lib/python3.12/lib-dynload/xxlimited.cpython-312-darwin.so
 lib/python3.12/lib-dynload/xxlimited_35.cpython-312-darwin.so
 lib/python3.12/lib-dynload/xxsubtype.cpython-312-darwin.so
 lib/python3.12/lib-dynload/zlib.cpython-312-darwin.so
-lib/python3.12/lib2to3/Grammar3.12.13.final.0.pickle
-lib/python3.12/lib2to3/PatternGrammar3.12.13.final.0.pickle
+lib/python3.12/lib2to3/Grammar3.12.14.final.0.pickle
+lib/python3.12/lib2to3/PatternGrammar3.12.14.final.0.pickle
 lib/python3.12/site-packages/AppKit/_AppKit.cpython-312-darwin.so
 lib/python3.12/site-packages/AppKit/_inlines.cpython-312-darwin.so
 lib/python3.12/site-packages/CoreFoundation/_CoreFoundation.cpython-312-darwin.so
@@ -579,8 +586,6 @@ lib/python3.12/site-packages/tornado/speedups.abi3.so
 lib/python3.12/site-packages/unicodedata2.cpython-312-darwin.so
 lib/python3.12/site-packages/yaml/_yaml.cpython-312-darwin.so
 lib/python3.12/site-packages/zmq/backend/cython/_zmq.abi3.so
-lib/python3.12/site-packages/zstandard/_cffi.cpython-312-darwin.so
-lib/python3.12/site-packages/zstandard/backend_c.cpython-312-darwin.so
 lib/sqlite3.40.0/libsqlite3.40.0.dylib
 lib/tdbc1.1.5/libtdbc1.1.5.dylib
 lib/tdbcmysql1.1.5/libtdbcmysql1.1.5.dylib
