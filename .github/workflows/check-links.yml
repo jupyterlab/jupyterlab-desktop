@@ -1,0 +1,66 @@
+# Link rot in the documentation, found before a reader finds it. Uses the organisation's own action, the same one jupyterlab/jupyterlab runs.
+name: External Link Audit
+
+# No pull_request trigger, and neither shape of one worked. Blocking, a 403 from Cloudflare or a Read the Docs outage reddens a TypeScript change that touches no documentation. Advisory through continue-on-error is worse: the step fails and `gh pr checks` still prints pass, so the only surface is the raw log and nobody reads it, which is the same criticism this repository already writes about zizmor. What is left is a link added in a pull request being caught on the push that merges it, minutes later, on a run where nothing is waiting.
+on:
+  push:
+    branches: [master]
+  schedule:
+    # Weekly: link rot happens over time, so a push trigger alone would never see a link that died after it merged.
+    - cron: '17 6 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  # Keyed by event, which is the part that matters: it is what stops a push from cancelling a pending weekly run. `cancel-in-progress: false` protects the run that is already going, not one that is queued behind it, since the documented default cancels an existing pending run when a new one arrives; keeping those would need `queue: max`, and for an audit that reads the same files every time the newer run is the one worth having.
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: false
+
+# No change-detection job, unlike jupyterlab's: theirs builds the docs first and takes minutes, this one walks the markdown in well under a minute, so the extra runner would cost more than it saves. It would also be the wrong gate, since most of the links here are relative and a broken relative link changes no line containing a URL.
+
+# Not audited: markdown under `.github/`. check_links.py collects with `glob.glob('**/*.md', recursive=True)`, and that function skips dot-directories unless asked otherwise, so the pull request and issue templates are outside this permanently. Measured, not assumed: `pathlib.Path.glob` does see them, so reading the wrong one of the two is how this looks covered.
+jobs:
+  audit:
+    name: Audit external links
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+      # The action runs a bare `pip install pytest-check-links[cache]` with no interpreter of its own, so without this it lands in whatever the runner image happens to ship. sync_lab_release.yml already pins one for the same reason, and a reinstated PEP 668 marker or an image bump would otherwise turn a hard-gating master check red for a reason that has nothing to do with link rot.
+      - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6
+        with:
+          python-version: '3.12'
+      # Left to fail rather than tolerated, because master and the weekly run are where a red result is worth having. It gates nothing, since there is no pull_request trigger and so no check to block a merge: what it does is redden the commit and the scheduled run. The hosts belong to other people, so this will occasionally go red for their reasons, and the ignore list below is where that gets answered.
+
+      # The comment says v1 because jupyterlab/jupyterlab pins this exact SHA with this exact label; the tag has since moved off it, so read the SHA rather than the word. The action's own files are unchanged between the two.
+      - uses: jupyterlab/maintainer-tools/.github/actions/check-links@95d85449e4f3f352e261221f6529f8ed307f5728 # v1
+        with:
+          # Only the installer links, not github.com wholesale: the checker GETs each link in full, so those five download 2.2 GB per run, while the other twenty github.com links in these files cost nothing to check and include a file path inside somebody else's repository, which is the shape a rename breaks. jupyterlab ignores the host outright because their docs carry hundreds of them; here it is twenty-five. blog.jupyter.org stays whole: Medium answers a checker with 403 while the pages load fine.
+          ignore_links: >-
+            https://github.com/jupyterlab/jupyterlab-desktop/releases/latest/download/.*
+            https://blog.jupyter.org/.*
+
+      # The five links the ignore above takes out are the most used in the repository and the ones a packaging change breaks: those filenames come from electron-builder's artifactName, so a rename lands a 404 on every install instruction with the audit unable to see it. HEAD rather than GET, which is what makes them cheap enough to check here and not cheap enough for the action, and read out of the markdown so the list cannot go stale.
+      - name: Check the installer links resolve
+        # always(), because the step above failing is exactly when these matter, and a step with no condition runs only after success
+        if: always()
+        run: |
+          set -euo pipefail
+          # `|| true` because grep exits 1 on no match and pipefail would abort the assignment before the check below it, turning the drift case into a red step with an empty log
+          urls=$(grep -ohE 'https://github\.com/jupyterlab/jupyterlab-desktop/releases/latest/download/[^) ]+' *.md | sort -u || true)
+          if [ -z "$urls" ]; then
+            echo "no installer links found; the ignore pattern above and the documentation have drifted apart"
+            exit 1
+          fi
+          bad=0
+          for u in $urls; do
+            # curl writes the -w value even when it exits non-zero, so a `|| echo 000` would concatenate onto it and `2*` would then read a late failure's `200000` as healthy
+            code=$(curl -sIL -o /dev/null -w '%{http_code}' --max-time 30 "$u") || code=000
+            echo "$code  $u"
+            case "$code" in 2[0-9][0-9]) ;; *) bad=1 ;; esac
+          done
+          exit $bad
