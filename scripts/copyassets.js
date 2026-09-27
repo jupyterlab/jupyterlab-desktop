@@ -1,8 +1,6 @@
 const path = require('path');
 const fs = require('fs');
-
-// fs-extra's copySync replaced with the native recursive cp (Node 16.7+).
-const copySync = (src, dest) => fs.cpSync(src, dest, { recursive: true });
+const { copySync } = require('./fsutil');
 
 const platform = process.platform;
 const buildDir = path.resolve('./build');
