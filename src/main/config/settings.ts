@@ -3,6 +3,7 @@
 
 import * as path from 'path';
 import * as fs from 'fs';
+import log from 'electron-log';
 import { getUserDataDir, getUserHomeDir } from '../utils';
 
 export const DEFAULT_WIN_WIDTH = 1024;
@@ -136,6 +137,97 @@ export namespace Setting {
   }
 }
 
+// Reported once per path per run. Eighteen call sites reach save(), so a condition that persists, an antivirus pass holding the file, a permission that stayed wrong, would otherwise put the same line in the log on every settings change, which is the reason this repository already gives for leaving the directory flush at debug.
+const reportedUnreadable = new Map<
+  string,
+  'unreadable' | 'malformed' | 'shape'
+>();
+
+/** Say once per path that the file was there and unusable, and give back the sentinel that tells the caller to leave the file alone rather than merge over it. */
+function reportRejected(filePath: string): undefined {
+  reportOnce(
+    filePath,
+    'shape',
+    `${filePath} holds no JSON object, so the file is left alone until it is repaired`
+  );
+  return undefined;
+}
+
+/**
+ * Say it once per path, and again when the file breaks a different way. Keyed by kind rather than by path alone: a file that fails to parse and then comes back as an array is two different things to repair, and remembering only that "this path was reported" left the second one silent with the first one's wording standing in a support log.
+ */
+function reportOnce(
+  filePath: string,
+  kind: 'unreadable' | 'malformed' | 'shape',
+  message: string,
+  error?: unknown
+): void {
+  if (reportedUnreadable.get(filePath) === kind) {
+    return;
+  }
+  reportedUnreadable.set(filePath, kind);
+  if (error === undefined) {
+    log.error(message);
+  } else {
+    log.error(message, error);
+  }
+}
+
+/** Only for tests: the set above outlives them otherwise, and the second one to run reads as silent because the first already reported. */
+export function resetUnreadableReports(): void {
+  reportedUnreadable.clear();
+}
+
+/**
+ * What the file holds right now, or nothing when it is absent or unusable. save merges over this rather than rebuilding, so a read that fails here costs the keys this build does not know rather than corrupting the ones it does; #1115 replaces this with the shared reader.
+ */
+function readJsonFileOrEmpty(
+  filePath: string
+): { [key: string]: any } | undefined {
+  try {
+    const parsed = JSON.parse(fs.readFileSync(filePath).toString());
+    if (
+      parsed === null ||
+      typeof parsed !== 'object' ||
+      Array.isArray(parsed)
+    ) {
+      return reportRejected(filePath);
+    }
+    // Only here, on a read that actually produced an object. Clearing it before the shape check undid the dedup for a file that parses and is not an object, which then logged on every save while a parse failure logged once. A later break in the same run still has to say so, or a support log collected that evening shows the first one rather than the current state.
+    reportedUnreadable.delete(filePath);
+    return parsed;
+  } catch (error) {
+    // Absent is the ordinary case and merging over nothing is right for it. Anything else means the file is there and we could not read it, and merging over {} would delete every key this build does not know, which is the loss this merge exists to prevent. The case that actually reaches the write is the parse failure: `userSettings` is constructed once at import, so a user who follows troubleshoot.md and hand-edits settings.json while the app runs, leaving a trailing comma, gets the SyntaxError caught here and will-quit rewrites the file without their edit. Measured on darwin: a settings.json at mode 0200 gives EACCES on the read and OK on the write, because writeFileSync opens O_WRONLY and never reads, so a read failure does not imply a write failure and the loss lands. The file is left alone instead, which is what #1115's shared reader will do through a different route.
+    if ((error as NodeJS.ErrnoException)?.code === 'ENOENT') {
+      // gone rather than broken, so whatever was reported about it no longer describes anything
+      reportedUnreadable.delete(filePath);
+      return {};
+    }
+    // A SyntaxError is the case this function's comment names as the one that reaches the write, and it is the one a reader can fix. Saying "could not read" about it sends them to look at permissions instead of at the trailing comma they just typed. Its own kind rather than reusing 'unreadable', or by the dedup's own rule a file that goes EACCES and then malformed would stay silent on the second break.
+    if (error instanceof SyntaxError) {
+      reportOnce(
+        filePath,
+        'malformed',
+        `${filePath} is not valid JSON, so the file is left alone until it is repaired`,
+        error
+      );
+      return undefined;
+    }
+    reportOnce(
+      filePath,
+      'unreadable',
+      `Could not read ${filePath}, so the file is left alone until it is repaired`,
+      error
+    );
+    return undefined;
+  }
+}
+
+type SettingDecision =
+  | { kind: 'write'; value: any }
+  | { kind: 'delete' }
+  | { kind: 'leave' };
+
 export class UserSettings {
   constructor(readSettings: boolean = true) {
     this._settings = {
@@ -211,28 +303,55 @@ export class UserSettings {
       return;
     }
     const data = fs.readFileSync(userSettingsPath);
+    // Unguarded on purpose, and worth saying because the reader above makes it look otherwise: this branch protects the *write*, not the read. `userSettings` is constructed at module import, so a settings.json edited into invalid JSON while the app is closed throws here before app.whenReady and the app does not start at all. Only the mid-run edit reaches readJsonFileOrEmpty's catch and gets the file left alone. Guarding this one is #1115, which replaces both call sites with a shared reader.
     const jsonData = JSON.parse(data.toString());
 
     for (let key in SettingType) {
       if (key in jsonData) {
-        const setting = this._settings[key];
-        setting.value = jsonData[key];
+        this._settings[key].value = jsonData[key];
       }
     }
   }
 
-  save() {
+  save(): boolean {
     const userSettingsPath = UserSettings.getUserSettingsPath();
-    const userSettings: { [key: string]: any } = {};
+    const onDisk = readJsonFileOrEmpty(userSettingsPath);
+    // Absent is `{}` and merging over nothing is right for it. Undefined means the file is there and we could not read it, and writing anyway is the loss this merge exists to prevent: measured on darwin, a settings.json at mode 0200 gives EACCES on the read and OK on the write, because writeFileSync opens O_WRONLY and never reads. A read failure does not imply a write failure.
+    if (onDisk === undefined) {
+      return false;
+    }
+    const userSettings = this._merged(onDisk, key => {
+      const setting = this._settings[key];
+      // every key of SettingType is one this build owns, so one matching its default does not belong in the file, whatever the file holds
+      return setting.differentThanDefault
+        ? { kind: 'write', value: setting.value }
+        : { kind: 'delete' };
+    });
+
+    fs.writeFileSync(userSettingsPath, JSON.stringify(userSettings, null, 2));
+    return true;
+  }
+
+  /**
+   * The file as it is on disk, with this object's settings written over it. Rebuilding from the settings alone deletes every key the build has no setting for. It does not preserve a value the read declined to take: a key this build owns is written or deleted by the decision below, and `UserSettings.save` deletes any that equals its default, which is what a declining read leaves behind. Keeping those is #1116's question, not this one's.
+   */
+  protected _merged(
+    onDisk: { [key: string]: any },
+    decide: (key: string) => SettingDecision
+  ): { [key: string]: any } {
+    // spread defines rather than assigns, so a __proto__ key out of the file stays an own property instead of reaching Object.prototype
+    const merged = { ...onDisk };
 
     for (let key in SettingType) {
-      const setting = this._settings[key];
-      if (setting.differentThanDefault) {
-        userSettings[key] = setting.value;
+      const decision = decide(key);
+      if (decision.kind === 'write') {
+        merged[key] = decision.value;
+      } else if (decision.kind === 'delete') {
+        delete merged[key];
       }
     }
 
-    fs.writeFileSync(userSettingsPath, JSON.stringify(userSettings, null, 2));
+    return merged;
   }
 
   get resolvedWorkingDirectory(): string {
@@ -303,25 +422,32 @@ export class WorkspaceSettings extends UserSettings {
     }
   }
 
-  save() {
+  save(): boolean {
     const wsSettingsPath = WorkspaceSettings.getWorkspaceSettingsPath(
       this._workingDirectory
     );
-    const wsSettings: { [key: string]: any } = {};
-
-    // uiMode needs special handling, it needs to be saved even if same as global default.
-    // this is due to automatically setting uiMode to Zen for default for opening single file
-    for (let key in SettingType) {
+    const onDisk = readJsonFileOrEmpty(wsSettingsPath);
+    // same as the user file above: there and unreadable means leave it alone
+    if (onDisk === undefined) {
+      return false;
+    }
+    const wsSettings = this._merged(onDisk, key => {
+      // a key a project cannot override is not this file's to remove, even though it does nothing here
+      if (!this._settings[key].wsOverridable) {
+        return { kind: 'leave' };
+      }
       const setting = this._wsSettings[key];
       if (
         setting &&
-        this._settings[key].wsOverridable &&
+        // uiMode is saved even when it matches the global default, because opening a single file sets it to Zen automatically and a project that matched by coincidence would lose the override
         (key === SettingType.uiMode ||
           this._isDifferentThanUserSetting(key as SettingType))
       ) {
-        wsSettings[key] = setting.value;
+        return { kind: 'write', value: setting.value };
       }
-    }
+      // unsetValue takes it out of _wsSettings, and an override matching the global value is not an override any more
+      return { kind: 'delete' };
+    });
 
     // Write when there is something to persist, or when a previous file needs
     // to be cleared. mkdir is unconditional: recursive mode is a no-op when the
@@ -330,6 +456,8 @@ export class WorkspaceSettings extends UserSettings {
       fs.mkdirSync(path.dirname(wsSettingsPath), { recursive: true });
       fs.writeFileSync(wsSettingsPath, JSON.stringify(wsSettings, null, 2));
     }
+    // true also when there was nothing to write and no file to clear, which is not a failure. #1114 carries the case where a caller reads that as a value having been persisted.
+    return true;
   }
 
   private _isDifferentThanUserSetting(setting: SettingType): boolean {

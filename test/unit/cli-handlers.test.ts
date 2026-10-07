@@ -32,21 +32,42 @@ vi.mock('../../src/main/config/appdata', () => ({
   },
   ApplicationData: { getSingleton: vi.fn() }
 }));
+// Hoisted, because a vi.mock factory runs above every const. Hard-coding save to one value leaves the other branch unreachable and the suite green whichever way it goes.
+const cfg = vi.hoisted(() => ({ saveResult: true }));
+
 vi.mock('../../src/main/config/settings', () => ({
   userSettings: {
     getValue: vi.fn(() => ''),
     setValue: vi.fn(),
-    save: vi.fn()
+    unsetValue: vi.fn(),
+    save: vi.fn(() => cfg.saveResult),
+    // the config handlers read this to decide whether a key may be overridden per project
+    settings: { theme: { wsOverridable: true } }
   },
   SettingType: {
     pythonPath: 'pythonPath',
     pythonEnvsPath: 'pythonEnvsPath',
     condaPath: 'condaPath',
     condaChannels: 'condaChannels',
-    systemPythonPath: 'systemPythonPath'
+    systemPythonPath: 'systemPythonPath',
+    theme: 'theme'
   },
   UserSettings: vi.fn(),
-  WorkspaceSettings: vi.fn()
+  // an arrow function cannot be used with `new`, and a bare vi.fn() builds an object with none of the methods the handler calls
+  WorkspaceSettings: Object.assign(
+    vi.fn().mockImplementation(function () {
+      return {
+        setValue: vi.fn(),
+        unsetValue: vi.fn(),
+        save: vi.fn(() => cfg.saveResult)
+      };
+    } as any),
+    {
+      getWorkspaceSettingsPath: vi.fn(
+        (dir: string) => `${dir}/.jupyter/desktop-settings.json`
+      )
+    }
+  )
 }));
 vi.mock('../../src/main/utils', () => ({
   getBundledPythonPath: vi.fn(() => '/bundled/python'),
@@ -90,6 +111,8 @@ vi.mock('../../src/main/registry', () => ({ Registry: vi.fn() }));
 
 import {
   addUserSetEnvironment,
+  handleConfigSetCommand,
+  handleConfigUnsetCommand,
   handleEnvActivateCommand,
   handleEnvSetCondaChannelsCommand,
   handleEnvSetCondaPathCommand,
@@ -336,4 +359,44 @@ describe('handleEnvActivateCommand', () => {
     errorSpy.mockRestore();
     logSpy.mockRestore();
   });
+});
+
+// Neither refusal had a test: the handlers were not exported, so mutating either guard away left the whole suite green. `set` got its guard three rounds before `unset` did, and the gap between them is the shape this branch already carries a note about, a guard written on one side only.
+describe('a config command that could not write says so', () => {
+  let exit: ReturnType<typeof vi.spyOn>;
+  beforeEach(() => {
+    cfg.saveResult = false;
+    exit = vi
+      .spyOn(process, 'exit')
+      .mockImplementation((() => undefined) as any);
+  });
+  afterEach(() => {
+    cfg.saveResult = true;
+    exit.mockRestore();
+  });
+
+  for (const [name, run] of [
+    ['set', () => handleConfigSetCommand({ _: ['set', 'theme', 'dark'] })],
+    ['unset', () => handleConfigUnsetCommand({ _: ['unset', 'theme'] })]
+  ] as const) {
+    it(`${name} does not claim success over a refused write`, () => {
+      const err = vi
+        .spyOn(console, 'error')
+        .mockImplementation(() => undefined);
+      const out = vi.spyOn(console, 'log').mockImplementation(() => undefined);
+
+      try {
+        run();
+
+        expect(err).toHaveBeenCalledWith(
+          expect.stringContaining('Could not write the settings file')
+        );
+        const said = out.mock.calls.map(c => String(c[0])).join('\n');
+        expect(said).not.toContain('successfully');
+      } finally {
+        err.mockRestore();
+        out.mockRestore();
+      }
+    });
+  }
 });
