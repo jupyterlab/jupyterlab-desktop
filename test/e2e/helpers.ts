@@ -45,6 +45,7 @@ export const NEEDS_PYTHON =
 // returned so the caller can remove it alongside userDataDir.
 export async function launchApp(opts?: {
   pythonPath?: string;
+  appData?: Record<string, unknown>;
 }): Promise<{
   app: ElectronApplication;
   userDataDir: string;
@@ -52,21 +53,26 @@ export async function launchApp(opts?: {
 }> {
   const userDataDir = mkdtempSync(join(tmpdir(), 'jlab-e2e-'));
   const jupyterDir = mkdtempSync(join(tmpdir(), 'jlab-e2e-jupyter-'));
-  if (opts?.pythonPath) {
+  if (opts?.pythonPath || opts?.appData) {
     writeFileSync(
       join(userDataDir, 'app-data.json'),
       JSON.stringify({
+        ...opts?.appData,
         pythonPath: opts.pythonPath,
-        userSetPythonEnvs: [
-          {
-            path: opts.pythonPath,
-            name: 'e2e-env',
-            type: 'path',
-            defaultKernel: 'python3'
-          }
-        ]
+        userSetPythonEnvs: opts?.pythonPath
+          ? [
+              {
+                path: opts.pythonPath,
+                name: 'e2e-env',
+                type: 'path',
+                defaultKernel: 'python3'
+              }
+            ]
+          : undefined
       })
     );
+  }
+  if (opts?.pythonPath) {
     // Point new sessions at the temp jupyter dir so notebooks the test creates
     // (New notebook) land there and get removed with it, instead of the real
     // home. On macOS the spawned server's cwd follows this setting; HOME alone
