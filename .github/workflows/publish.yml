@@ -199,10 +199,14 @@ jobs:
           # runners ("hdiutil: couldn't eject disk2 - Resource busy", upstream
           # electron-builder#4606 and dmgbuild#26). Three separate PRs hit it in
           # one day, so retry once rather than spend a full matrix rerun on it.
-          yarn dist:${{ matrix.cfg.platform }} || {
+          # forceCodeSigning turns a missing signing identity into a build
+          # error, so an unsigned dmg cannot be published. It is kept out of
+          # package.json, because the test installer step builds without
+          # signing and would then fail whenever it runs on a push.
+          yarn dist:${{ matrix.cfg.platform }} -c.mac.forceCodeSigning=true || {
             echo "installer build failed, retrying once"
             sleep 15
-            yarn dist:${{ matrix.cfg.platform }}
+            yarn dist:${{ matrix.cfg.platform }} -c.mac.forceCodeSigning=true
           }
         if: steps.release-exists.outputs.result == 'true'
 

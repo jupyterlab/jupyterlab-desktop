@@ -142,7 +142,6 @@
       "darkModeSupport": true,
       "hardenedRuntime": true,
       "gatekeeperAssess": false,
-      "forceCodeSigning": true,
       "minimumSystemVersion": "12.0.0",
       "artifactName": "${productName}-${arch}.${ext}",
       "extraResources": [
