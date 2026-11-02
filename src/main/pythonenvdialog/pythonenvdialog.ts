@@ -21,6 +21,7 @@ import {
   isEnvInstalledByDesktopApp,
   launchTerminalInDirectory,
   openDirectoryInExplorer,
+  shellQuotePath,
   waitForDuration
 } from '../utils';
 import { EventManager } from '../eventmanager';
@@ -131,8 +132,7 @@ export class ManagePythonEnvironmentDialog {
               const condaEnvPath = condaEnvPathForCondaExePath(condaPath);
               const activateCommand = createCommandScriptInEnv(
                 envPath,
-                condaEnvPath,
-                { quoteChar: "'" }
+                condaEnvPath
               );
 
               launchTerminalInDirectory({
@@ -168,8 +168,10 @@ export class ManagePythonEnvironmentDialog {
                 envPath,
                 condaEnvPath,
                 {
-                  command: `jupyter lab --notebook-dir='${workingDir}'`,
-                  quoteChar: "'",
+                  command: `jupyter lab --notebook-dir=${shellQuotePath(
+                    workingDir,
+                    process.platform === 'win32'
+                  )}`,
                   joinStr: ' && '
                 }
               );

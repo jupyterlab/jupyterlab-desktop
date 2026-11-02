@@ -66,12 +66,14 @@ import {
   isSameServerOrigin,
   jlabCLICommandIsSetup,
   jupyterEnvInstallInfoPathForEnvPath,
+  launchTerminalInDirectory,
   LightThemeBGColor,
   markEnvironmentAsJupyterInstalled,
   matchesScheme,
   openDirectoryInExplorer,
   originOf,
   pythonPathForEnvPath,
+  shellQuotePath,
   versionWithoutSuffix,
   waitForDuration,
   waitForFunction
@@ -459,10 +461,10 @@ describe('jlabCLICommandIsSetup', () => {
 
 describe('openDirectoryInExplorer', () => {
   const originalPlatform = process.platform;
-  const mockExec = vi.mocked(childProcess.exec);
+  const mockExecFile = vi.mocked(childProcess.execFile);
 
   beforeEach(() => {
-    mockExec.mockReset();
+    mockExecFile.mockReset();
   });
   afterEach(() => {
     Object.defineProperty(process, 'platform', { value: originalPlatform });
@@ -471,7 +473,7 @@ describe('openDirectoryInExplorer', () => {
   it('returns false when path does not exist', () => {
     mockFs.existsSync = vi.fn(() => false);
     expect(openDirectoryInExplorer('/nonexistent')).toBe(false);
-    expect(mockExec).not.toHaveBeenCalled();
+    expect(mockExecFile).not.toHaveBeenCalled();
   });
 
   it('returns false when path is a file not a directory', () => {
@@ -480,31 +482,34 @@ describe('openDirectoryInExplorer', () => {
     expect(openDirectoryInExplorer('/some/file.txt')).toBe(false);
   });
 
-  it('returns true and calls exec on darwin', () => {
+  it('passes the path as argv on darwin', () => {
     Object.defineProperty(process, 'platform', { value: 'darwin' });
     mockFs.existsSync = vi.fn(() => true);
     mockFs.statSync = vi.fn(() => ({ isDirectory: () => true } as fs.Stats));
     const result = openDirectoryInExplorer('/data/notebooks');
     expect(result).toBe(true);
-    expect(mockExec).toHaveBeenCalledWith(expect.stringContaining('open'));
+    // argv form: the path is a separate argument, so no shell can reinterpret it
+    expect(mockExecFile).toHaveBeenCalledWith('open', ['/data/notebooks']);
   });
 
-  it('returns true and calls exec on windows', () => {
+  it('passes the path as argv on windows', () => {
     Object.defineProperty(process, 'platform', { value: 'win32' });
     mockFs.existsSync = vi.fn(() => true);
     mockFs.statSync = vi.fn(() => ({ isDirectory: () => true } as fs.Stats));
     const result = openDirectoryInExplorer('/data/notebooks');
     expect(result).toBe(true);
-    expect(mockExec).toHaveBeenCalledWith(expect.stringContaining('explorer'));
+    // argv form: the path is a separate argument, so no shell can reinterpret it
+    expect(mockExecFile).toHaveBeenCalledWith('explorer', ['/data/notebooks']);
   });
 
-  it('returns true and calls exec on linux', () => {
+  it('passes the path as argv on linux', () => {
     Object.defineProperty(process, 'platform', { value: 'linux' });
     mockFs.existsSync = vi.fn(() => true);
     mockFs.statSync = vi.fn(() => ({ isDirectory: () => true } as fs.Stats));
     const result = openDirectoryInExplorer('/data/notebooks');
     expect(result).toBe(true);
-    expect(mockExec).toHaveBeenCalledWith(expect.stringContaining('xdg-open'));
+    // argv form: the path is a separate argument, so no shell can reinterpret it
+    expect(mockExecFile).toHaveBeenCalledWith('xdg-open', ['/data/notebooks']);
   });
 });
 
@@ -568,7 +573,7 @@ describe('createCommandScriptInEnv', () => {
     expect(script).toContain('activate');
   });
 
-  it('uses custom quoteChar and joinStr', () => {
+  it('uses custom joinStr', () => {
     Object.defineProperty(process, 'platform', { value: 'linux' });
     mockFs.lstatSync = vi.fn(() => ({ isDirectory: () => true } as fs.Stats));
     mockFs.existsSync = vi.fn((p: fs.PathLike) =>
@@ -576,11 +581,141 @@ describe('createCommandScriptInEnv', () => {
     );
     const script = createCommandScriptInEnv('/env', '/base', {
       command: 'echo hello',
-      quoteChar: "'",
       joinStr: ' ; '
     });
-    expect(script).toContain("'");
     expect(script).toContain(' ; ');
+  });
+
+  it('keeps a command substitution in the env path inert on posix', () => {
+    Object.defineProperty(process, 'platform', { value: 'linux' });
+    mockFs.lstatSync = vi.fn(() => ({ isDirectory: () => true } as fs.Stats));
+    mockFs.existsSync = vi.fn((p: fs.PathLike) =>
+      p.toString().includes('activate')
+    );
+    const script = createCommandScriptInEnv('/env/$(id -u)', '/base', {});
+    // single quotes, so the shell never evaluates it. Double quotes would.
+    expect(toSlash(script)).toContain("source '/env/$(id -u)/bin/activate'");
+    expect(script).not.toContain('"');
+  });
+
+  it('quotes a path containing spaces on windows', () => {
+    Object.defineProperty(process, 'platform', { value: 'win32' });
+    mockFs.lstatSync = vi.fn(() => ({ isDirectory: () => true } as fs.Stats));
+    mockFs.existsSync = vi.fn((p: fs.PathLike) =>
+      p.toString().includes('activate')
+    );
+    const script = createCommandScriptInEnv(
+      'C:/Users/First Last/env',
+      '/base',
+      {
+        command: 'pip install numpy'
+      }
+    );
+    // unquoted, cmd splits at the space and cannot find activate (see #837). Assert the closing quote too, otherwise dropping it still passes.
+    const activatePath = path.join(
+      'C:/Users/First Last/env',
+      'Scripts',
+      'activate.bat'
+    );
+    expect(script).toContain(`CALL "${activatePath}"`);
+  });
+
+  it('quotes the env path appended to a conda command', () => {
+    Object.defineProperty(process, 'platform', { value: 'linux' });
+    mockFs.lstatSync = vi.fn(() => ({ isDirectory: () => true } as fs.Stats));
+    // conda-meta present (isCondaEnv) and activate present, but no condabin, so this is a sub environment and -p gets appended
+    mockFs.existsSync = vi.fn(
+      (pth: fs.PathLike) =>
+        pth.toString().includes('activate') ||
+        pth.toString().includes('conda-meta')
+    );
+    const script = createCommandScriptInEnv('/env/a b', '/base', {
+      command: 'conda install numpy'
+    });
+    expect(script).toContain("-p '/env/a b'");
+  });
+});
+
+describe('launchTerminalInDirectory', () => {
+  const originalPlatform = process.platform;
+  const mockExecFile = vi.mocked(childProcess.execFile);
+
+  beforeEach(() => {
+    mockExecFile.mockReset();
+    mockFs.existsSync = vi.fn(() => true);
+    mockFs.statSync = vi.fn(() => ({ isDirectory: () => true } as fs.Stats));
+  });
+  afterEach(() => {
+    Object.defineProperty(process, 'platform', { value: originalPlatform });
+  });
+
+  it('hands gnome-terminal argv so the outer shell cannot re-expand', () => {
+    Object.defineProperty(process, 'platform', { value: 'linux' });
+    launchTerminalInDirectory({
+      dirPath: '/envs',
+      interactive: false,
+      commands: "source '/env/$(id -u)/bin/activate'"
+    });
+    expect(mockExecFile).toHaveBeenCalledWith('gnome-terminal', [
+      '--working-directory=/envs',
+      '--',
+      'bash',
+      '-c',
+      "source '/env/$(id -u)/bin/activate'"
+    ]);
+  });
+
+  it('hands osascript argv with the substitution still literal', () => {
+    Object.defineProperty(process, 'platform', { value: 'darwin' });
+    launchTerminalInDirectory({
+      dirPath: '/envs',
+      interactive: false,
+      commands: "source '/env/$(id -u)/bin/activate'"
+    });
+    const args = mockExecFile.mock.calls[0][1] as string[];
+    expect(mockExecFile.mock.calls[0][0]).toBe('osascript');
+    expect(args[1]).toContain("source '/env/$(id -u)/bin/activate'");
+  });
+
+  it('reports success once a terminal has been spawned', () => {
+    Object.defineProperty(process, 'platform', { value: 'linux' });
+
+    const launched = launchTerminalInDirectory({
+      dirPath: '/envs',
+      interactive: false
+    });
+
+    expect(launched).toBe(true);
+  });
+
+  it('reports failure when the directory is not one', () => {
+    Object.defineProperty(process, 'platform', { value: 'linux' });
+    mockFs.statSync = vi.fn(() => ({ isDirectory: () => false } as fs.Stats));
+
+    const launched = launchTerminalInDirectory({
+      dirPath: '/envs/notes.txt',
+      interactive: false
+    });
+
+    expect(launched).toBe(false);
+    expect(mockExecFile).not.toHaveBeenCalled();
+  });
+});
+
+describe('shellQuotePath', () => {
+  it('single quotes on posix so substitutions stay literal', () => {
+    expect(shellQuotePath('/a/$(whoami)/b', false)).toBe("'/a/$(whoami)/b'");
+    expect(shellQuotePath('/a/`id`/b', false)).toBe("'/a/`id`/b'");
+  });
+
+  it('closes, escapes and reopens an embedded single quote on posix', () => {
+    expect(shellQuotePath("/a/it's/b", false)).toBe("'/a/it'\\''s/b'");
+  });
+
+  it('double quotes on windows, where spaces are the problem', () => {
+    expect(shellQuotePath('C:/First Last/env', true)).toBe(
+      '"C:/First Last/env"'
+    );
   });
 });
 
